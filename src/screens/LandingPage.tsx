@@ -38,8 +38,11 @@ function StudentCard() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!classCode.trim() || !firstName.trim()) return
-    localStorage.setItem('adventure-classroom-code', classCode.trim().toUpperCase())
-    localStorage.setItem('adventure-student-name', firstName.trim())
+    const code = classCode.trim().toUpperCase()
+    const name = firstName.trim()
+    // Write to both key sets: StudentHub + useLiveSync use 'student-*'
+    localStorage.setItem('student-classroom-code', code)
+    localStorage.setItem('student-name', name)
     navigate('/student')
   }
 
