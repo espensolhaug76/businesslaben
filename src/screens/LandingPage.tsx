@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from 'firebase/auth'
-import { ref, set } from 'firebase/database'
+import { ref, set, get } from 'firebase/database'
 import { auth, db } from '../lib/firebase'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -118,6 +118,9 @@ function TeacherCard({ onOpenRegister }: { onOpenRegister: () => void }) {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password)
       localStorage.setItem('adventure-teacher-email', cred.user.email ?? '')
+      // Fetch teacher name from DB so Forum and other pages can use it
+      const snap = await get(ref(db, `teachers/${cred.user.uid}/name`))
+      if (snap.exists()) localStorage.setItem('adventure-teacher-name', snap.val() as string)
       navigate('/teacher')
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? ''
@@ -229,6 +232,7 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
       })
       localStorage.setItem('adventure-teacher-email', email.trim())
       localStorage.setItem('adventure-teacher-school', school.trim())
+      localStorage.setItem('adventure-teacher-name', `${firstName.trim()} ${lastName.trim()}`)
       navigate('/teacher')
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? ''

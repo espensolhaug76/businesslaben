@@ -365,7 +365,14 @@ export default function TeacherForum() {
   useThemeEffect()
   const navigate = useNavigate()
 
-  const [authorName, setAuthorName] = useState<string>(() => localStorage.getItem(AUTHOR_KEY) ?? '')
+  const [authorName, setAuthorName] = useState<string>(() => {
+    const saved = localStorage.getItem(AUTHOR_KEY) ||
+      localStorage.getItem('adventure-teacher-name') ||
+      localStorage.getItem('student-name') ||
+      ''
+    if (saved) localStorage.setItem(AUTHOR_KEY, saved)
+    return saved
+  })
   const [posts, setPosts] = useState<ForumPost[]>(loadPosts)
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('Alle')
   const [sortMode, setSortMode] = useState<SortMode>('newest')
