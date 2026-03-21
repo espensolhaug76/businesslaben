@@ -104,7 +104,23 @@ function DrawerContent({
   onClose: () => void
 }) {
   const { exercises } = phase
-  const exercise = exercises[exState.exerciseIndex]
+  const exercise = exercises[Math.min(exState.exerciseIndex, exercises.length - 1)]
+
+  // Guard: if phase has no exercises, show done state immediately
+  if (!exercise || exercises.length === 0) {
+    return (
+      <div className="p-6 pb-8 space-y-6 bg-white h-full overflow-y-auto">
+        <div className="flex justify-end">
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors text-lg">×</button>
+        </div>
+        <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+          <p className="text-green-700 font-medium text-sm">Tema uten øvelser</p>
+          <button onClick={onClose} className="mt-3 px-4 py-2 rounded-lg text-sm font-medium bg-teal-50 border border-teal-200 text-teal-700 hover:bg-teal-100 transition-colors">Tilbake til oversikten</button>
+        </div>
+      </div>
+    )
+  }
+
   const isLegacy = exercise.correctId === undefined
   const isCorrect = isLegacy
     ? exercise.choices.find(c => c.id === exState.selected)?.isCorrect ?? false

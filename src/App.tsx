@@ -59,6 +59,7 @@ import YearEndScreen from './screens/YearEndScreen'
 
 // Guards
 import FeatureGuard from './components/guards/FeatureGuard'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Learning hub
 import LearningHub from './screens/learninghub/LearningHub'
@@ -250,7 +251,7 @@ function App() {
           <Route path="/live-session" element={<LiveSession />} />
 
           {/* ── Teacher dashboard ────────────────────────────────────────── */}
-          <Route path="/teacher" element={<TeacherDashboard />} />
+          <Route path="/teacher" element={<ErrorBoundary><TeacherDashboard /></ErrorBoundary>} />
           <Route path="/student-questions" element={<StudentQuestionsScreen />} />
 
           {/* ── Forum ────────────────────────────────────────────────────── */}

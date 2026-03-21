@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import ThemeToggle, { useThemeEffect } from '../ui/ThemeToggle'
+import { ErrorBoundary } from '../ErrorBoundary'
 
 export default function LearningLayout() {
   useThemeEffect()
@@ -8,13 +9,13 @@ export default function LearningLayout() {
   const isHub = pathname === '/learning'
 
   return (
-    <>
+    <ErrorBoundary>
       <Outlet />
       {!isHub && (
         <div className="fixed top-4 right-4 z-50">
           <ThemeToggle />
         </div>
       )}
-    </>
+    </ErrorBoundary>
   )
 }

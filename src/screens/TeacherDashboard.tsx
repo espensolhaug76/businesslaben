@@ -2237,7 +2237,9 @@ function ModuleSummaryPanel({
                           {phase.subpoints && phase.subpoints.length > 0 && (
                             <ul style={{ paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               {phase.subpoints.map((sp, j) => (
-                                <li key={j} style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>{sp as string}</li>
+                                <li key={j} style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                                  {typeof sp === 'string' ? sp : `${(sp as { label: string; text: string }).label}: ${(sp as { label: string; text: string }).text}`}
+                                </li>
                               ))}
                             </ul>
                           )}
