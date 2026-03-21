@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ref, onValue } from 'firebase/database'
-import { db } from '../lib/firebase'
+import { signOut } from 'firebase/auth'
+import { db, auth } from '../lib/firebase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore } from '../store/gameStore'
 import { getLessonsBySubject } from '../data/lessons'
@@ -572,6 +573,22 @@ function KlasserTab() {
 export default function TeacherDashboard() {
   useThemeEffect()
   const navigate = useNavigate()
+
+  // Auth guard — redirect to landing if not logged in
+  useEffect(() => {
+    if (!auth.currentUser) {
+      navigate('/')
+    }
+  }, [navigate])
+
+  // Logout handler
+  async function handleLogout() {
+    await signOut(auth)
+    localStorage.removeItem('adventure-teacher-email')
+    localStorage.removeItem('adventure-teacher-school')
+    navigate('/')
+  }
+
   const [activeTab, setActiveTab] = useState<'laeringsinnhold' | 'sporsmal' | 'spillet' | 'elever' | 'prover' | 'konkurranser' | 'live'>('laeringsinnhold')
   const [liveSessionActive, setLiveSessionActive] = useState(() => localStorage.getItem('live-session-active') === 'true')
 
@@ -793,6 +810,13 @@ export default function TeacherDashboard() {
           </nav>
           <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              className="text-sm font-medium px-3 py-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+              title="Logg ut"
+            >
+              Logg ut
+            </button>
           </div>
         </div>
       </div>

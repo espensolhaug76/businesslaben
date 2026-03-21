@@ -9,6 +9,9 @@ import StartupLayout from './components/layout/StartupLayout'
 import CityLayout from './components/layout/CityLayout'
 import LearningLayout from './components/layout/LearningLayout'
 
+// Landing page
+import LandingPage from './screens/LandingPage'
+
 // Startup screens
 import StartScreen from './screens/StartScreen'
 import IndustryScreen from './screens/IndustryScreen'
@@ -214,9 +217,12 @@ function App() {
       <BrowserRouter>
         <Routes>
 
+          {/* ── Landing page ─────────────────────────────────────────────── */}
+          <Route path="/" element={<LandingPage />} />
+
           {/* ── Startup flow ─────────────────────────────────────────────── */}
           <Route element={<StartupLayout />}>
-            <Route path="/" element={<StartScreen />} />
+            <Route path="/start" element={<StartScreen />} />
             <Route path="/industry" element={<IndustryScreen />} />
             <Route path="/sustainability" element={<FeatureGuard featureId="sustainability_screen" redirectTo="/industry"><SustainabilityScreen /></FeatureGuard>} />
             <Route path="/target-audience" element={<FeatureGuard featureId="target_audience_screen" redirectTo="/industry"><TargetAudienceScreen /></FeatureGuard>} />
