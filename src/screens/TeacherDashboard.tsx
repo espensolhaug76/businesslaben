@@ -590,6 +590,7 @@ export default function TeacherDashboard() {
   }
 
   const [activeTab, setActiveTab] = useState<'laeringsinnhold' | 'sporsmal' | 'spillet' | 'elever' | 'prover' | 'konkurranser' | 'live'>('laeringsinnhold')
+  const [hoveredTab, setHoveredTab] = useState<string | null>(null)
   const [liveSessionActive, setLiveSessionActive] = useState(() => localStorage.getItem('live-session-active') === 'true')
 
   useEffect(() => {
@@ -881,30 +882,80 @@ export default function TeacherDashboard() {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
           {(['laeringsinnhold', 'sporsmal', 'spillet', 'elever', 'prover', 'konkurranser', 'live'] as const).map(tab => {
             const labels: Record<typeof tab, string> = { laeringsinnhold: 'Læringsinnhold', sporsmal: 'Spørsmål', spillet: 'Spillet', elever: 'Klasser', prover: '📝 Prøver', konkurranser: '🏆 Konkurranser', live: 'Live økt' }
+            const tooltips: Record<typeof tab, string> = {
+              laeringsinnhold: 'Aktiver presentasjoner og minileksjoner for klasser. Følg elevenes fremgang.',
+              sporsmal: 'Se og gi tilbakemelding på svar elevene har sendt inn.',
+              spillet: 'Åpne Business-simulatoren der elevene driver sin egen bedrift.',
+              elever: 'Opprett klasser og generer klassekoder som elevene logger inn med.',
+              prover: 'Lag og distribuer prøver til klassene dine.',
+              konkurranser: 'Sett opp konkurranser mellom klasser.',
+              live: 'Start en live presentasjon der elevene følger med i sanntid på sine enheter.',
+            }
             const isActive = activeTab === tab
+            const isHovered = hoveredTab === tab
             return (
-              <button
+              <div
                 key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: '8px',
-                  border: isActive ? '1.5px solid #111827' : '1px solid #e5e7eb',
-                  background: 'var(--card-bg)',
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                  fontSize: '14px',
-                  fontWeight: isActive ? 500 : 400,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredTab(tab)}
+                onMouseLeave={() => setHoveredTab(null)}
               >
-                {labels[tab]}
-                {tab === 'live' && liveSessionActive && (
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+                <button
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '7px 16px',
+                    borderRadius: '8px',
+                    border: isActive ? '1.5px solid #111827' : '1px solid #e5e7eb',
+                    background: 'var(--card-bg)',
+                    color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                    fontSize: '14px',
+                    fontWeight: isActive ? 500 : 400,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  {labels[tab]}
+                  {tab === 'live' && liveSessionActive && (
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+                  )}
+                </button>
+                {isHovered && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 'calc(100% + 8px)',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: '#1e293b',
+                    color: '#f1f5f9',
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    lineHeight: 1.4,
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    whiteSpace: 'normal',
+                    maxWidth: '220px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    pointerEvents: 'none',
+                  }}>
+                    {tooltips[tab]}
+                    {/* Arrow */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: 0,
+                      height: 0,
+                      borderLeft: '6px solid transparent',
+                      borderRight: '6px solid transparent',
+                      borderTop: '6px solid #1e293b',
+                    }} />
+                  </div>
                 )}
-              </button>
+              </div>
             )
           })}
         </div>
