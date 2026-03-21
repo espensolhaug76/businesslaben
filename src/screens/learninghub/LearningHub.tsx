@@ -582,12 +582,12 @@ const SUBJECT_THUMBNAIL_STYLE: Record<ModuleCard['subject'], string> = {
   ml1: 'linear-gradient(135deg, #e6f1fb, #b5d4f4)',
 }
 
-const SUBJECT_LABELS: Record<ModuleCard['subject'], string> = {
-  forretningsdrift: 'Forretningsdrift',
-  mfi: 'Markedsføring og innovasjon',
-  kultur: 'Kultur og samhandling',
-  ml1: 'Markedsføring og ledelse 1',
-}
+// const SUBJECT_LABELS: Record<ModuleCard['subject'], string> = {
+//   forretningsdrift: 'Forretningsdrift',
+//   mfi: 'Markedsføring og innovasjon',
+//   kultur: 'Kultur og samhandling',
+//   ml1: 'Markedsføring og ledelse 1',
+// }
 
 export interface ModuleSection {
   title: string
@@ -627,7 +627,7 @@ const BG_PRESETS: { id: AppTheme; color: string; label: string }[] = [
   { id: 'green', color: '#F0FDF4', label: 'Grønn' },
 ]
 
-function BgColorPicker() {
+export function BgColorPicker() {
   const theme = useGameStore((s) => s.theme) ?? 'light'
   const setTheme = useGameStore((s) => s.setTheme)
   return (
@@ -918,7 +918,7 @@ export default function LearningHub() {
       .filter((g) => g.modules.length > 0)
   }, [filteredAndSorted, levelFilter, subjectFilter, isStudentMode])
 
-  const totalCount = filteredAndSorted.length
+  // const totalCount = filteredAndSorted.length
 
   return (
     <div className="min-h-screen bg-white text-gray-900">

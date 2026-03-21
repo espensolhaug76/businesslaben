@@ -202,8 +202,8 @@ export default function TeacherPresentationEditor({
 
   // Expose editor-open state so the presentation close button can check it
   useEffect(() => {
-    ;(window as Record<string, unknown>).__adventureEditorOpen = open
-    return () => { ;(window as Record<string, unknown>).__adventureEditorOpen = false }
+    ;(window as unknown as Record<string, unknown>).__adventureEditorOpen = open
+    return () => { ;(window as unknown as Record<string, unknown>).__adventureEditorOpen = false }
   }, [open])
 
   // Scroll active slide into view when panel opens or slide changes

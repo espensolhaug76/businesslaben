@@ -1,4 +1,4 @@
-import type { QuizExercise } from '@/types/quiz'
+import type { QuizExercise } from '@/types/Quiz'
 
 export const REGNSKAPSANALYSE_EXERCISES: QuizExercise[] = [
   {

@@ -6,7 +6,7 @@ interface Props {
   total: number
 }
 
-export default function TeacherSlideRenderer({ slide, index, total }: Props) {
+export default function TeacherSlideRenderer({ slide, index: _index, total: _total }: Props) {
   return (
     <div style={{
       width: '100%',

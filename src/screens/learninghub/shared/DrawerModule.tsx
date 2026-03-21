@@ -7,12 +7,12 @@
  * Progress: "X av Y temaer fullført" with teal progress bar.
  */
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ref, set } from 'firebase/database'
 import { db } from '../../../lib/firebase'
-import TheoryDrawer from '../../../components/ui/TheoryDrawer'
+// import TheoryDrawer from '../../../components/ui/TheoryDrawer'
 import GlossaryTermBadge from '../../../components/ui/GlossaryTermBadge'
 import GlossaryPopup from '../../../components/ui/GlossaryPopup'
 import { useThemeEffect } from '../../../components/ui/ThemeToggle'
@@ -57,7 +57,7 @@ export interface DrawerPhase {
   title: string
   quote: string
   content?: string
-  subpoints?: string[]
+  subpoints?: (string | { label: string; text: string })[]
   practical: string
   glossaryTerm?: string
   exercises: DrawerExercise[]
@@ -90,7 +90,7 @@ interface PhaseExState {
 
 function DrawerContent({
   phase,
-  moduleTitle,
+  moduleTitle: _moduleTitle,
   exState,
   onSelect,
   onNext,
@@ -140,7 +140,9 @@ function DrawerContent({
           {phase.subpoints && phase.subpoints.length > 0 && (
             <ul className="space-y-1.5 pl-4 border-l-2 border-gray-200">
               {phase.subpoints.map((sp, j) => (
-                <li key={j} className="text-gray-600 leading-relaxed" style={{ fontSize: '16px' }}>{sp}</li>
+                <li key={j} className="text-gray-600 leading-relaxed" style={{ fontSize: '16px' }}>
+                  {typeof sp === 'string' ? sp : <><span className="font-semibold text-gray-700">{sp.label}: </span>{sp.text}</>}
+                </li>
               ))}
             </ul>
           )}
@@ -478,7 +480,7 @@ export default function DrawerModule({
   // First incomplete phase index for "Fortsett der du slapp"
   const firstIncompleteIdx = exStates.findIndex(s => !s.done)
 
-  const closeDrawer = useCallback(() => setActiveIdx(null), [])
+  // const closeDrawer = useCallback(() => setActiveIdx(null), [])
 
   function updateEx(idx: number, patch: Partial<PhaseExState>) {
     setExStates(prev => prev.map((s, i) => i === idx ? { ...s, ...patch } : s))

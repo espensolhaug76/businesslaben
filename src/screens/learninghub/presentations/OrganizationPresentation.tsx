@@ -203,7 +203,7 @@ function Slide0({ onNext, onStartLiveSession }: { onNext: () => void; onStartLiv
   )
 }
 
-function Slide1({ onShow }: { onShow: (title: string, text: string) => void }) {
+function Slide1({ onShow: _onShow }: { onShow: (title: string, text: string) => void }) {
   return (
     <Glass>
       <div style={twoCol}>
@@ -309,7 +309,7 @@ function Slide5({ onShow }: { onShow: (title: string, text: string) => void }) {
   )
 }
 
-function Slide6({ onShow }: { onShow: (title: string, text: string) => void }) {
+function Slide6({ onShow: _onShow }: { onShow: (title: string, text: string) => void }) {
   return (
     <Glass>
       <div style={twoCol}>
@@ -367,7 +367,7 @@ export default function OrganizationPresentation() {
   const TOTAL_SLIDES_WITH_TEACHER = TOTAL_SLIDES + TEACHER_SLIDE_COUNT
   const slideInfos: SlideInfo[] = [
     ...Array.from({ length: ORIGINAL_SLIDES }, (_, i) => ({ label: `Lysbilde ${i + 1}`, kind: 'original' as const })),
-    ...QUIZ_SLIDES.map((q, i) => ({ label: q.question.slice(0, 18), kind: 'quiz' as const })),
+    ...QUIZ_SLIDES.map((q, _i) => ({ label: q.question.slice(0, 18), kind: 'quiz' as const })),
     ...teacherSlides.map(s => ({ label: s.title ?? s.quote ?? s.body ?? 'Eget lysbilde', kind: 'teacher' as const })),
   ]
   const [modal, setModal] = useState<{ title: string; text: string } | null>(null)
@@ -516,7 +516,7 @@ export default function OrganizationPresentation() {
         <NavBtn onClick={prev} disabled={current === 0}>← Forrige</NavBtn>
         {current === TOTAL_SLIDES_WITH_TEACHER - 1
           ? <NavBtn onClick={() => {
-              if ((window as Record<string, unknown>).__adventureEditorOpen) {
+              if ((window as unknown as Record<string, unknown>).__adventureEditorOpen) {
                 if (!window.confirm('Lukk presentasjonen? Åpne endringer vil ikke lagres automatisk.')) return
               }
               window.close()

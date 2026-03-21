@@ -189,7 +189,7 @@ export default function CompetitionBuilder() {
             </button>
           </div>
 
-          <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+          <div className="divide-y divide-[var(--border)]">
             {QUESTION_BANK.map((q, i) => {
               const selected = selectedIds.has(q.id)
               const disabled = !selected && selectedIds.size >= 15

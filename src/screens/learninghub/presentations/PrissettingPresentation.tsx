@@ -166,7 +166,7 @@ function SlideLabel({ children }: { children: React.ReactNode }) {
 }
 
 const twoCol: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'center' }
-const listStyle: React.CSSProperties = { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }
+// const listStyle: React.CSSProperties = { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }
 const bodyText: React.CSSProperties = { fontSize: 18, color: '#cbd5e1', lineHeight: 1.7 }
 
 function Slide0({ onNext, onStartLiveSession }: { onNext: () => void; onStartLiveSession: () => void }) {
@@ -204,7 +204,7 @@ function Slide0({ onNext, onStartLiveSession }: { onNext: () => void; onStartLiv
   )
 }
 
-function Slide1({ onShow }: { onShow: (title: string, text: string) => void }) {
+function Slide1({ onShow: _onShow }: { onShow: (title: string, text: string) => void }) {
   return (
     <Glass>
       <div style={twoCol}>
@@ -381,7 +381,7 @@ export default function PrissettingPresentation() {
   const TOTAL_SLIDES_WITH_TEACHER = TOTAL_SLIDES + TEACHER_SLIDE_COUNT
   const slideInfos: SlideInfo[] = [
     ...Array.from({ length: ORIGINAL_SLIDES }, (_, i) => ({ label: `Lysbilde ${i + 1}`, kind: 'original' as const })),
-    ...QUIZ_SLIDES.map((q, i) => ({ label: q.question.slice(0, 18), kind: 'quiz' as const })),
+    ...QUIZ_SLIDES.map((q, _i) => ({ label: q.question.slice(0, 18), kind: 'quiz' as const })),
     ...teacherSlides.map(s => ({ label: s.title ?? s.quote ?? s.body ?? 'Eget lysbilde', kind: 'teacher' as const })),
   ]
   const [modal, setModal] = useState<{ title: string; text: string } | null>(null)
@@ -532,7 +532,7 @@ export default function PrissettingPresentation() {
         <NavBtn onClick={prev} disabled={current === 0}>← Forrige</NavBtn>
         {current === TOTAL_SLIDES_WITH_TEACHER - 1
           ? <NavBtn onClick={() => {
-              if ((window as Record<string, unknown>).__adventureEditorOpen) {
+              if ((window as unknown as Record<string, unknown>).__adventureEditorOpen) {
                 if (!window.confirm('Lukk presentasjonen? Åpne endringer vil ikke lagres automatisk.')) return
               }
               window.close()

@@ -58,15 +58,10 @@ const MINE_FAG_OPTIONS: MineFagOption[] = [
 ]
 
 const OPTION_COLORS = ['bg-red-500', 'bg-blue-500', 'bg-amber-500', 'bg-purple-500']
-const OPTION_COLORS_DIM = ['bg-red-500/20', 'bg-blue-500/20', 'bg-amber-500/20', 'bg-purple-500/20']
+// const OPTION_COLORS_DIM = ['bg-red-500/20', 'bg-blue-500/20', 'bg-amber-500/20', 'bg-purple-500/20']
 const OPTION_TEXT = ['text-red-600', 'text-blue-600', 'text-amber-600', 'text-purple-600']
 
-const SUBJECT_SQUARE_COLORS: Record<string, string> = {
-  forretningsdrift: 'bg-teal-500',
-  mfi: 'bg-orange-500',
-  kultur: 'bg-purple-500',
-  ml1: 'bg-blue-500',
-}
+// const SUBJECT_SQUARE_COLORS: Record<string, string> = { forretningsdrift: 'bg-teal-500', mfi: 'bg-orange-500', kultur: 'bg-purple-500', ml1: 'bg-blue-500' }
 
 const SUBJECT_HEX_COLORS: Record<string, string> = {
   forretningsdrift: '#0d9488',
@@ -1252,7 +1247,7 @@ export default function TeacherDashboard() {
                                   </p>
                                   {q.type === 'multiple_choice' && q.options ? (
                                     <div className="space-y-1">
-                                      {q.options.map((opt, idx) => {
+                                      {q.options.map((_opt, idx) => {
                                         const count = qAnswers.filter(a => a.selectedOptionIndex === idx).length
                                         const pct = qAnswers.length > 0 ? Math.round((count / qAnswers.length) * 100) : 0
                                         const isCorrect = idx === q.correctOptionIndex
@@ -1895,7 +1890,7 @@ const MODULE_LINKED_PRESENTATIONS: Record<string, { title: string; route: string
 
 // ── Module content preview ─────────────────────────────────────────────────────
 
-function ModuleContentPreview({
+export function ModuleContentPreview({
   mod,
   classCode,
   linkedQuestions,
@@ -2289,7 +2284,7 @@ function KonkurranserTab({ navigate }: { navigate: (path: string) => void }) {
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.questions.length} spørsmål</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, shrink: 0 }}>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <button
                   onClick={() => navigate(`/competition/leaderboard/${c.code}`)}
                   style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}

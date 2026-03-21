@@ -172,7 +172,7 @@ function Slide1({ show }: { show: (t: string, d: string) => void }) {
   )
 }
 
-function Slide2({ show }: { show: (t: string, d: string) => void }) {
+function Slide2({ show: _show }: { show: (t: string, d: string) => void }) {
   return (
     <Glass>
       <div style={{ textAlign: 'center', maxWidth: 900, margin: '0 auto' }}>
@@ -305,7 +305,7 @@ export default function VertskapsrollenPresentation() {
   const TOTAL_SLIDES_WITH_TEACHER = TOTAL_SLIDES + TEACHER_SLIDE_COUNT
   const slideInfos: SlideInfo[] = [
     ...Array.from({ length: ORIGINAL_SLIDES }, (_, i) => ({ label: `Lysbilde ${i + 1}`, kind: 'original' as const })),
-    ...QUIZ_SLIDES.map((q, i) => ({ label: q.question.slice(0, 18), kind: 'quiz' as const })),
+    ...QUIZ_SLIDES.map((q, _i) => ({ label: q.question.slice(0, 18), kind: 'quiz' as const })),
     ...teacherSlides.map(s => ({ label: s.title ?? s.quote ?? s.body ?? 'Eget lysbilde', kind: 'teacher' as const })),
   ]
   const [modal, setModal] = useState<{ title: string; text: string } | null>(null)
@@ -437,7 +437,7 @@ export default function VertskapsrollenPresentation() {
         <NavBtn onClick={prev} disabled={current === 0}>← Forrige</NavBtn>
         {current === TOTAL_SLIDES_WITH_TEACHER - 1
           ? <NavBtn onClick={() => {
-              if ((window as Record<string, unknown>).__adventureEditorOpen) {
+              if ((window as unknown as Record<string, unknown>).__adventureEditorOpen) {
                 if (!window.confirm('Lukk presentasjonen? Åpne endringer vil ikke lagres automatisk.')) return
               }
               window.close()
