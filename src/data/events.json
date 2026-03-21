@@ -1,0 +1,768 @@
+{
+  "events": [
+    {
+      "id": "PEST_P01",
+      "title": "Ny barekraftslov",
+      "description": "Regjeringen innforer strengere krav til barekraftsrapportering for alle bedrifter. Du ma tilpasse deg eller risikere boter.",
+      "category": "political",
+      "severity": "high",
+      "choices": [
+        {
+          "id": "P01_A",
+          "label": "Investere i barekraft",
+          "description": "Bruk ressurser pa a oppfylle kravene og kommuniser det til kundene.",
+          "consequence": { "description": "Du far bedre omdomme og unngaar boter, men det koster.", "demandModifier": 1.1, "costModifier": 1.15, "reputationModifier": 10, "duration": 3 }
+        },
+        {
+          "id": "P01_B",
+          "label": "Gjore minimumskrav",
+          "description": "Oppfyll bare det som er absolutt nodvendig for a unnga bot.",
+          "consequence": { "description": "Du unngaar bot, men faar ingen positiv effekt.", "demandModifier": 1.0, "costModifier": 1.05, "reputationModifier": 0, "duration": 2 }
+        },
+        {
+          "id": "P01_C",
+          "label": "Ignorere kravene",
+          "description": "Haape pa at ingen legger merke til det.",
+          "consequence": { "description": "Du faar en bot og negativt omdomme.", "demandModifier": 0.9, "costModifier": 1.2, "reputationModifier": -15, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_P02",
+      "title": "Nye tollregler pa import",
+      "description": "EU innforer nye tollsatser pa varer importert fra Asia. Dette paavirker leverandorkostnadene dine.",
+      "category": "political",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "P02_A",
+          "label": "Bytte til europeisk leverandor",
+          "description": "Finn en leverandor i Europa for a unnga toll.",
+          "consequence": { "description": "Hoyere innkjopspris, men stabile leveranser.", "demandModifier": 1.0, "costModifier": 1.1, "reputationModifier": 5, "duration": 4 }
+        },
+        {
+          "id": "P02_B",
+          "label": "Beholde naavrende leverandor",
+          "description": "Betal tollen og ta kostnaden.",
+          "consequence": { "description": "Kostnadene oker, men du slipper leverandorbytte.", "demandModifier": 1.0, "costModifier": 1.15, "reputationModifier": 0, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_P03",
+      "title": "Skattelettelse for smabedrifter",
+      "description": "Regjeringen reduserer skattesatsen for smabedrifter med omsetning under 5 millioner.",
+      "category": "political",
+      "severity": "low",
+      "choices": [
+        {
+          "id": "P03_A",
+          "label": "Bruke besparelsen pa vekst",
+          "description": "Invester de sparte pengene i markedsforing eller nye produkter.",
+          "consequence": { "description": "Mer penger til vekst.", "demandModifier": 1.05, "costModifier": 0.95, "reputationModifier": 0, "duration": 6 }
+        },
+        {
+          "id": "P03_B",
+          "label": "Spare pengene",
+          "description": "Legg pengene til side som buffer.",
+          "consequence": { "description": "Bedre likviditet, men ingen veksteffekt.", "demandModifier": 1.0, "costModifier": 0.95, "reputationModifier": 0, "duration": 6 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_P04",
+      "title": "Plastforbud i emballasje",
+      "description": "Myndighetene forbyr engangsplast i produktemballasje fra neste maaned.",
+      "category": "political",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "P04_A",
+          "label": "Ga over til papir og kartong",
+          "description": "Bytt all emballasje til miljoevennlige alternativer.",
+          "consequence": { "description": "Litt hoyere kostnader, men positiv PR.", "demandModifier": 1.05, "costModifier": 1.08, "reputationModifier": 8, "duration": 4 }
+        },
+        {
+          "id": "P04_B",
+          "label": "Bruke resirkulert plast",
+          "description": "Bytt til godkjent resirkulert plast.",
+          "consequence": { "description": "Billigere enn papir, men mindre PR-verdi.", "demandModifier": 1.0, "costModifier": 1.04, "reputationModifier": 3, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_P05",
+      "title": "Ny personvernlov",
+      "description": "Strengere regler for innsamling av kundedata traar i kraft. Dette paavirker din digitale markedsforing.",
+      "category": "political",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "P05_A",
+          "label": "Ansette personvernekspert",
+          "description": "Invester i kompetanse for a holde deg innenfor loven.",
+          "consequence": { "description": "Trygg drift, men hoyere personalkostnader.", "demandModifier": 1.0, "costModifier": 1.1, "reputationModifier": 5, "duration": 6 }
+        },
+        {
+          "id": "P05_B",
+          "label": "Tilpasse markedsforingen",
+          "description": "Reduser bruken av kundedata i markedsforing.",
+          "consequence": { "description": "Lavere markedsforingseffekt, men lovlig.", "demandModifier": 0.92, "costModifier": 1.0, "reputationModifier": 0, "duration": 4 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_P06",
+      "title": "Offentlig stotte til grnder",
+      "description": "Innovasjon Norge lanserer et tilskuddsprogram for nye bedrifter med baerekraftig profil.",
+      "category": "political",
+      "severity": "low",
+      "choices": [
+        {
+          "id": "P06_A",
+          "label": "Soke om stotte",
+          "description": "Bruk tid pa a skrive soknaden og dokumentere baerekraft.",
+          "consequence": { "description": "Du faar tilskudd som reduserer kostnadene.", "demandModifier": 1.0, "costModifier": 0.85, "reputationModifier": 5, "duration": 3 }
+        },
+        {
+          "id": "P06_B",
+          "label": "Ikke prioritere det",
+          "description": "Fokuser pa salg i stedet for byraakrati.",
+          "consequence": { "description": "Ingen endring.", "demandModifier": 1.0, "costModifier": 1.0, "reputationModifier": 0, "duration": 1 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_P07",
+      "title": "Momsendring pa netthandel",
+      "description": "Regjeringen varsler okt moms pa netthandel fra utlandet. Dette kan gi fordeler for norske nettbutikker.",
+      "category": "political",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "P07_A",
+          "label": "Styrke nettbutikken",
+          "description": "Invester i bedre netthandelsopplevelse for a fange opp kunder.",
+          "consequence": { "description": "Flere kunder velger norsk netthandel.", "demandModifier": 1.12, "costModifier": 1.05, "reputationModifier": 3, "duration": 4 }
+        },
+        {
+          "id": "P07_B",
+          "label": "Avvente situasjonen",
+          "description": "Se an hvordan markedet reagerer for du handler.",
+          "consequence": { "description": "Liten effekt, men du mister forstegangfordelen.", "demandModifier": 1.03, "costModifier": 1.0, "reputationModifier": 0, "duration": 2 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_E01",
+      "title": "Inflasjon oker",
+      "description": "Norges Bank rapporterer okt inflasjon. Forbrukerne blir mer prisbevisste og reduserer forbruket.",
+      "category": "economic",
+      "severity": "high",
+      "choices": [
+        {
+          "id": "E01_A",
+          "label": "Senke prisene",
+          "description": "Reduser prisene for a beholde kundene.",
+          "consequence": { "description": "Du beholder kundene, men margin synker.", "demandModifier": 1.05, "costModifier": 1.0, "reputationModifier": 5, "duration": 4 }
+        },
+        {
+          "id": "E01_B",
+          "label": "Beholde prisene",
+          "description": "Hold prisene stabile og haap at kundene blir.",
+          "consequence": { "description": "Noen kunder forsvinner til billigere alternativer.", "demandModifier": 0.85, "costModifier": 1.0, "reputationModifier": -3, "duration": 4 }
+        },
+        {
+          "id": "E01_C",
+          "label": "Tilby smaapakninger",
+          "description": "Lag mindre pakninger til lavere pris for a holde pa kundene.",
+          "consequence": { "description": "Kreativ losning som beholder flesteparten av kundene.", "demandModifier": 0.95, "costModifier": 1.05, "reputationModifier": 3, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_E02",
+      "title": "Renten settes opp",
+      "description": "Norges Bank oker styringsrenten. Laan blir dyrere og folk har mindre penger mellom hendene.",
+      "category": "economic",
+      "severity": "high",
+      "choices": [
+        {
+          "id": "E02_A",
+          "label": "Kutte kostnader",
+          "description": "Reduser utgifter der du kan for a kompensere.",
+          "consequence": { "description": "Lavere kostnader, men risiko for lavere kvalitet.", "demandModifier": 0.95, "costModifier": 0.9, "reputationModifier": -2, "duration": 4 }
+        },
+        {
+          "id": "E02_B",
+          "label": "Oke markedsforingen",
+          "description": "Bruk mer pa markedsforing for a kompensere for lavere etterspørsel.",
+          "consequence": { "description": "Dyrere, men du holder salget oppe.", "demandModifier": 1.05, "costModifier": 1.15, "reputationModifier": 0, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_E03",
+      "title": "Kronen styrker seg",
+      "description": "Den norske kronen styrker seg mot dollaren. Importvarer blir billigere.",
+      "category": "economic",
+      "severity": "low",
+      "choices": [
+        {
+          "id": "E03_A",
+          "label": "Oke importandelen",
+          "description": "Utnytt den sterke kronen til a importere mer.",
+          "consequence": { "description": "Lavere innkjopskostnader en stund.", "demandModifier": 1.0, "costModifier": 0.9, "reputationModifier": 0, "duration": 3 }
+        },
+        {
+          "id": "E03_B",
+          "label": "Beholde norske leverandorer",
+          "description": "Stott norsk produksjon og kommuniser det.",
+          "consequence": { "description": "Ingen kostnadsbesparelse, men bedre omdoemme.", "demandModifier": 1.03, "costModifier": 1.0, "reputationModifier": 5, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_E04",
+      "title": "Boligmarkedet faller",
+      "description": "Boligprisene synker kraftig. Forbrukerne holder igjen pa store kjop.",
+      "category": "economic",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "E04_A",
+          "label": "Tilby avbetaling",
+          "description": "Gi kundene mulighet til a betale i avdrag.",
+          "consequence": { "description": "Opprettholder salg, men oker risiko for tap.", "demandModifier": 1.05, "costModifier": 1.05, "reputationModifier": 3, "duration": 4 }
+        },
+        {
+          "id": "E04_B",
+          "label": "Fokusere pa rimelige produkter",
+          "description": "Skyv markedsforing mot de rimeligste produktene i sortimentet.",
+          "consequence": { "description": "Lavere snittomsetning, men stabilt volum.", "demandModifier": 1.0, "costModifier": 0.95, "reputationModifier": 0, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_E05",
+      "title": "Logistikkostnader oker",
+      "description": "Drivstoffprisene skyter i vaeret. Frakt og transport blir betydelig dyrere.",
+      "category": "economic",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "E05_A",
+          "label": "Forhandle nye avtaler",
+          "description": "Proev a forhandle bedre avtaler med transportoren.",
+          "consequence": { "description": "Noe bedre betingelser, men fortsatt okt kostnad.", "demandModifier": 1.0, "costModifier": 1.08, "reputationModifier": 0, "duration": 3 }
+        },
+        {
+          "id": "E05_B",
+          "label": "Bruke lokal leverandor",
+          "description": "Bytt til en leverandor naermere deg for a spare frakt.",
+          "consequence": { "description": "Hoyere produktpris, lavere fraktkostnad.", "demandModifier": 1.0, "costModifier": 1.03, "reputationModifier": 3, "duration": 4 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_E06",
+      "title": "Julebonanza!",
+      "description": "Det nrmer seg jul og handelstanden forventer rekordomsetning. Kundene er i kjopemodus!",
+      "category": "economic",
+      "severity": "low",
+      "month": 12,
+      "choices": [
+        {
+          "id": "E06_A",
+          "label": "Kjore julekampanje",
+          "description": "Invester tungt i juleannonsering og tilbud.",
+          "consequence": { "description": "Stor omsetnng, men hoy markedsforingskostnad.", "demandModifier": 1.3, "costModifier": 1.15, "reputationModifier": 5, "duration": 1 }
+        },
+        {
+          "id": "E06_B",
+          "label": "Normal drift",
+          "description": "Ikke gjor noe spesielt for julen.",
+          "consequence": { "description": "Du gaar glipp av julerushet.", "demandModifier": 1.05, "costModifier": 1.0, "reputationModifier": 0, "duration": 1 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_E07",
+      "title": "Ny konkurrent i markedet",
+      "description": "En stor internasjonal aktlr etablerer seg i Norge med aggressive priser.",
+      "category": "economic",
+      "severity": "high",
+      "choices": [
+        {
+          "id": "E07_A",
+          "label": "Differensiere deg",
+          "description": "Fokuser pa det som gjor deg unik: kvalitet, service, lokalt.",
+          "consequence": { "description": "Mindre priskrig, men krever innsats.", "demandModifier": 0.95, "costModifier": 1.05, "reputationModifier": 5, "duration": 4 }
+        },
+        {
+          "id": "E07_B",
+          "label": "Matche prisene",
+          "description": "Senk prisene for a vaere konkurransedyktig.",
+          "consequence": { "description": "Beholder markedsandel, men lavere marginer.", "demandModifier": 1.0, "costModifier": 1.0, "reputationModifier": -3, "duration": 4 }
+        },
+        {
+          "id": "E07_C",
+          "label": "Samarbeide med andre lokale",
+          "description": "Lag en felles kampanje med andre lokale bedrifter.",
+          "consequence": { "description": "Positivt omdoemme og delt kostnad.", "demandModifier": 1.05, "costModifier": 1.03, "reputationModifier": 8, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_E08",
+      "title": "Leverandoren gaar konkurs",
+      "description": "Din hovedleverandor har gaatt konkurs. Du maa finne en ny raskt!",
+      "category": "economic",
+      "severity": "high",
+      "choices": [
+        {
+          "id": "E08_A",
+          "label": "Finne premium-leverandor",
+          "description": "Bytt til en dyrere, men paalitelig leverandor.",
+          "consequence": { "description": "Hoyere kostnader, men stabil forsyning.", "demandModifier": 1.0, "costModifier": 1.2, "reputationModifier": 3, "duration": 2 }
+        },
+        {
+          "id": "E08_B",
+          "label": "Finne budsjett-alternativ",
+          "description": "Finn den billigste leverandoren du kan for a holde kostnadene nede.",
+          "consequence": { "description": "Lavere kostnader, men lavere kvalitet.", "demandModifier": 0.9, "costModifier": 1.05, "reputationModifier": -5, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_S01",
+      "title": "TikTok-trend eksploderer",
+      "description": "Et av produktene dine gaar viralt paa TikTok! Plutselig vil alle ha det.",
+      "category": "social",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "S01_A",
+          "label": "Utnytte trenden",
+          "description": "Oek produksjonen og kjor kampanje paa sosiale medier.",
+          "consequence": { "description": "Enormt salgsloeft, men risiko for overlager naar trenden avtar.", "demandModifier": 1.35, "costModifier": 1.1, "reputationModifier": 10, "duration": 2 }
+        },
+        {
+          "id": "S01_B",
+          "label": "Vaere forsiktig",
+          "description": "Oek litt, men ikke overinvester i en kortvarig trend.",
+          "consequence": { "description": "Moderat salgsoekning uten stor risiko.", "demandModifier": 1.15, "costModifier": 1.03, "reputationModifier": 5, "duration": 2 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_S02",
+      "title": "Barekraft-bevissthet oker",
+      "description": "En stor dokumentar om klimaendringer faar nordmenn til aa tenke mer paa barekraftig forbruk.",
+      "category": "social",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "S02_A",
+          "label": "Fremheve barekraft",
+          "description": "Kommuniser bedriftens barekraftsinnsats tydelig.",
+          "consequence": { "description": "Bedre omdoemme og lojale kunder.", "demandModifier": 1.1, "costModifier": 1.03, "reputationModifier": 10, "duration": 4 }
+        },
+        {
+          "id": "S02_B",
+          "label": "Greenwashe litt",
+          "description": "Overdriv bedriftens miljoeinnsats i markedsforingen.",
+          "consequence": { "description": "Kortsiktig gevinst, men risiko for avsloering.", "demandModifier": 1.08, "costModifier": 1.0, "reputationModifier": -10, "duration": 3 }
+        },
+        {
+          "id": "S02_C",
+          "label": "Ignorere trenden",
+          "description": "Fortsett som for.",
+          "consequence": { "description": "Gradvis tap av kunder som vil ha barekraft.", "demandModifier": 0.92, "costModifier": 1.0, "reputationModifier": -5, "duration": 4 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_S03",
+      "title": "Influencer anbefaler konkurrenten",
+      "description": "En populaer influencer anbefaler konkurrenten din paa Instagram med 500 000 foelgere.",
+      "category": "social",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "S03_A",
+          "label": "Kontakte influencere",
+          "description": "Bruk penger paa aa faa egne influencere til aa anbefale deg.",
+          "consequence": { "description": "Du faar eksponering, men det koster.", "demandModifier": 1.12, "costModifier": 1.1, "reputationModifier": 5, "duration": 2 }
+        },
+        {
+          "id": "S03_B",
+          "label": "Fokusere paa kundetilfredshet",
+          "description": "La kundene snakke for deg gjennom god service.",
+          "consequence": { "description": "Langsommere effekt, men mer autentisk.", "demandModifier": 1.03, "costModifier": 1.02, "reputationModifier": 3, "duration": 4 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_S04",
+      "title": "Handlelomme-trenden",
+      "description": "Forbrukerne oensker aa handle mer lokalt og stotte smaa bedrifter i naermiljeet.",
+      "category": "social",
+      "severity": "low",
+      "choices": [
+        {
+          "id": "S04_A",
+          "label": "Fremheve lokal profil",
+          "description": "Kommuniser at du er en lokal bedrift og stotter lokalsamfunnet.",
+          "consequence": { "description": "Oekt lokal kundelojalitet.", "demandModifier": 1.1, "costModifier": 1.0, "reputationModifier": 8, "duration": 4 }
+        },
+        {
+          "id": "S04_B",
+          "label": "Satse paa netthandel",
+          "description": "Fokuser pa netthandel for aa naa flere kunder utenfor lokalmiljeet.",
+          "consequence": { "description": "Bredere marked, men mister noe av det lokale.", "demandModifier": 1.08, "costModifier": 1.05, "reputationModifier": 0, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_S05",
+      "title": "Gen Z krever transparens",
+      "description": "Unge forbrukere forventer full apenhet om produksjonsforhold, priser og barekraft.",
+      "category": "social",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "S05_A",
+          "label": "Vaere helt apen",
+          "description": "Del produksjonsdetaljer, kostnader og miljopaavirkning aapenhjertlig.",
+          "consequence": { "description": "Hoy tillit, men du viser ogsaa svakheter.", "demandModifier": 1.12, "costModifier": 1.02, "reputationModifier": 10, "duration": 4 }
+        },
+        {
+          "id": "S05_B",
+          "label": "Dele noe informasjon",
+          "description": "Vis utvalgt informasjon som setter deg i godt lys.",
+          "consequence": { "description": "Noe forbedring, men kan virke uaerlig.", "demandModifier": 1.05, "costModifier": 1.0, "reputationModifier": 3, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_S06",
+      "title": "Negativ omtale i mediene",
+      "description": "En misfornoeyd kunde legger ut et innlegg som gaar viralt. Bedriften din faar negativ oppmerksomhet.",
+      "category": "social",
+      "severity": "high",
+      "choices": [
+        {
+          "id": "S06_A",
+          "label": "Beklage offentlig",
+          "description": "Legg ut en ekte beklagelse og tilby kompensasjon til kunden.",
+          "consequence": { "description": "God krisehndtering kan snu situasjonen.", "demandModifier": 0.95, "costModifier": 1.05, "reputationModifier": -3, "duration": 2 }
+        },
+        {
+          "id": "S06_B",
+          "label": "Ignorere det",
+          "description": "Haap at det blaaser over av seg selv.",
+          "consequence": { "description": "Situasjonen eskalerer.", "demandModifier": 0.82, "costModifier": 1.0, "reputationModifier": -15, "duration": 3 }
+        },
+        {
+          "id": "S06_C",
+          "label": "Gaa til motangrep",
+          "description": "Forsvar deg og forklar din side av saken.",
+          "consequence": { "description": "Blandet resultat. Noen stoetter deg, andre synes du er usaklig.", "demandModifier": 0.88, "costModifier": 1.0, "reputationModifier": -8, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_S07",
+      "title": "Helsetrend: Sukkerfritt",
+      "description": "En ny helseboolge gjor at forbrukerne unngaar sukker og soeker sunnere alternativer.",
+      "category": "social",
+      "severity": "low",
+      "choices": [
+        {
+          "id": "S07_A",
+          "label": "Lansere sukkerfri variant",
+          "description": "Utvikle en sukkerfri versjon av produktet.",
+          "consequence": { "description": "Du treffer trenden og faar nye kunder.", "demandModifier": 1.12, "costModifier": 1.08, "reputationModifier": 5, "duration": 4 }
+        },
+        {
+          "id": "S07_B",
+          "label": "Beholde produktet som det er",
+          "description": "Stol paa at kvaliteten taler for seg.",
+          "consequence": { "description": "Stabilt, men du gaar glipp av trenden.", "demandModifier": 0.95, "costModifier": 1.0, "reputationModifier": 0, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_S08",
+      "title": "Studentrabatt-forventning",
+      "description": "Flere og flere studenter forventer studentrabatt. Konkurrentene tilbyr allerede 10-15% rabatt.",
+      "category": "social",
+      "severity": "low",
+      "choices": [
+        {
+          "id": "S08_A",
+          "label": "Innfoere studentrabatt",
+          "description": "Gi 10% rabatt til studenter med gyldig studentbevis.",
+          "consequence": { "description": "Flere studenter handler hos deg.", "demandModifier": 1.1, "costModifier": 1.0, "reputationModifier": 5, "duration": 6 }
+        },
+        {
+          "id": "S08_B",
+          "label": "Tilby studentprodukter",
+          "description": "Lag et eget rimelig segment for studenter.",
+          "consequence": { "description": "Treffer maalgruppen uten aa senke prisen paa alt.", "demandModifier": 1.07, "costModifier": 1.03, "reputationModifier": 3, "duration": 4 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_T01",
+      "title": "AI-verktoy tilgjengelig",
+      "description": "Nye AI-verktoy kan automatisere kundeservice, innholdsproduksjon og lagerstyring.",
+      "category": "technological",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "T01_A",
+          "label": "Ta i bruk AI",
+          "description": "Investere i AI-verktoy for aa effektivisere driften.",
+          "consequence": { "description": "Lavere driftskostnader paa sikt.", "demandModifier": 1.0, "costModifier": 0.85, "reputationModifier": 3, "duration": 6 }
+        },
+        {
+          "id": "T01_B",
+          "label": "Avvente",
+          "description": "Vent til teknologien er mer moden.",
+          "consequence": { "description": "Ingen endring, men du risikerer aa henge etter.", "demandModifier": 1.0, "costModifier": 1.0, "reputationModifier": 0, "duration": 3 }
+        },
+        {
+          "id": "T01_C",
+          "label": "Kommunisere menneskelig service",
+          "description": "Bruk det som differensiering: 'Hos oss faar du ekte mennesker!'",
+          "consequence": { "description": "Noen kunder setter pris paa det.", "demandModifier": 1.05, "costModifier": 1.05, "reputationModifier": 5, "duration": 4 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_T02",
+      "title": "Ny betalingslosning",
+      "description": "Vipps lanserer en ny betalingslosning med lavere gebyrer for smaa bedrifter.",
+      "category": "technological",
+      "severity": "low",
+      "choices": [
+        {
+          "id": "T02_A",
+          "label": "Bytte til Vipps",
+          "description": "Ta i bruk den nye losningen for lavere transaksjonskostnader.",
+          "consequence": { "description": "Lavere kostnader og enklere betaling for kunder.", "demandModifier": 1.03, "costModifier": 0.97, "reputationModifier": 2, "duration": 6 }
+        },
+        {
+          "id": "T02_B",
+          "label": "Beholde eksisterende",
+          "description": "Behold din naavrende betalingslosning.",
+          "consequence": { "description": "Ingen endring.", "demandModifier": 1.0, "costModifier": 1.0, "reputationModifier": 0, "duration": 1 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_T03",
+      "title": "Nettbutikk-plattform oppgradert",
+      "description": "Din nettbutikk-plattform lanserer nye funksjoner: livestreaming av produkter, AR-proveroem og chatbot.",
+      "category": "technological",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "T03_A",
+          "label": "Aktivere alle funksjoner",
+          "description": "Ta i bruk alle nye funksjoner for best mulig opplevelse.",
+          "consequence": { "description": "Bedre kundeopplevelse, men krever opplaering.", "demandModifier": 1.12, "costModifier": 1.08, "reputationModifier": 5, "duration": 4 }
+        },
+        {
+          "id": "T03_B",
+          "label": "Velge noen funksjoner",
+          "description": "Plukk ut de mest relevante funksjonene.",
+          "consequence": { "description": "God balanse mellom innovasjon og kostnad.", "demandModifier": 1.07, "costModifier": 1.03, "reputationModifier": 3, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_T04",
+      "title": "Cyberangrep paa bransjen",
+      "description": "Flere bedrifter i bransjen har blitt utsatt for dataangrep. Kundene er bekymret for personvern.",
+      "category": "technological",
+      "severity": "high",
+      "choices": [
+        {
+          "id": "T04_A",
+          "label": "Investere i sikkerhet",
+          "description": "Oppgrader IT-sikkerhet og kommuniser det til kundene.",
+          "consequence": { "description": "Trygge kunder og sterkere posisjon.", "demandModifier": 1.05, "costModifier": 1.12, "reputationModifier": 8, "duration": 6 }
+        },
+        {
+          "id": "T04_B",
+          "label": "Gjore det minimum",
+          "description": "Oppdater passord og haap paa det beste.",
+          "consequence": { "description": "Sparsom losning med risiko for angrep.", "demandModifier": 0.95, "costModifier": 1.02, "reputationModifier": -3, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_T05",
+      "title": "Automatisert lagerstyring",
+      "description": "En ny skylosning gjor det mulig aa automatisere hele lagerstyringen med sanntidsdata.",
+      "category": "technological",
+      "severity": "low",
+      "choices": [
+        {
+          "id": "T05_A",
+          "label": "Investere i systemet",
+          "description": "Betale for lisens og implementering.",
+          "consequence": { "description": "Bedre lagerstyring og mindre svinn paa sikt.", "demandModifier": 1.0, "costModifier": 0.9, "reputationModifier": 0, "duration": 6 }
+        },
+        {
+          "id": "T05_B",
+          "label": "Fortsette manuelt",
+          "description": "Bruke regneark som for.",
+          "consequence": { "description": "Ingen forbedring, men heller ingen kostnad.", "demandModifier": 1.0, "costModifier": 1.0, "reputationModifier": 0, "duration": 1 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_T06",
+      "title": "3D-printing revolusjonerer produksjon",
+      "description": "Ny 3D-print-teknologi gjor det mulig aa produsere prototyper og smaaserier lokalt.",
+      "category": "technological",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "T06_A",
+          "label": "Investere i 3D-printer",
+          "description": "Kjop en 3D-printer og test lokal produksjon.",
+          "consequence": { "description": "Raskere prototyping og lavere minimumbestillinger.", "demandModifier": 1.05, "costModifier": 1.1, "reputationModifier": 5, "duration": 4 }
+        },
+        {
+          "id": "T06_B",
+          "label": "Folge med paa utviklingen",
+          "description": "Avvent til teknologien er billigere.",
+          "consequence": { "description": "Ingen risiko, men du kan gaa glipp av muligheter.", "demandModifier": 1.0, "costModifier": 1.0, "reputationModifier": 0, "duration": 2 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_T07",
+      "title": "Sosiale medier endrer algoritmen",
+      "description": "Instagram og TikTok endrer algoritmen. Organisk rekkevidde faller med 40% for bedriftskontorer.",
+      "category": "technological",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "T07_A",
+          "label": "Oeke betalt annonsering",
+          "description": "Bruk mer penger paa betalte annonser for aa kompensere.",
+          "consequence": { "description": "Du opprettholder synligheten, men det koster mer.", "demandModifier": 1.0, "costModifier": 1.12, "reputationModifier": 0, "duration": 4 }
+        },
+        {
+          "id": "T07_B",
+          "label": "Satse paa innholdsmarkedsforing",
+          "description": "Lag bedre innhold som deles organisk.",
+          "consequence": { "description": "Tar tid, men kan gi bedre langsiktig effekt.", "demandModifier": 0.95, "costModifier": 1.05, "reputationModifier": 3, "duration": 4 }
+        },
+        {
+          "id": "T07_C",
+          "label": "Diversifisere kanaler",
+          "description": "Spred markedsforingen til nyhetsbrev, SEO og samarbeid.",
+          "consequence": { "description": "Mindre avhengig av en kanal.", "demandModifier": 1.03, "costModifier": 1.07, "reputationModifier": 2, "duration": 5 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_T08",
+      "title": "Blockchain for sporbarhet",
+      "description": "Ny blockchain-teknologi lar forbrukere spore produktet fra produsent til butikk.",
+      "category": "technological",
+      "severity": "low",
+      "choices": [
+        {
+          "id": "T08_A",
+          "label": "Implementere blockchain-sporing",
+          "description": "Gi kundene full sporbarhet paa hvert produkt.",
+          "consequence": { "description": "Hoey tillit, men dyr implementering.", "demandModifier": 1.05, "costModifier": 1.1, "reputationModifier": 8, "duration": 6 }
+        },
+        {
+          "id": "T08_B",
+          "label": "Bruke enklere QR-losning",
+          "description": "Legg en QR-kode paa produktet som lenker til produsentinfo.",
+          "consequence": { "description": "Rimelig alternativ med noe av samme effekt.", "demandModifier": 1.03, "costModifier": 1.02, "reputationModifier": 3, "duration": 4 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_S09",
+      "title": "Black Friday-hysteri",
+      "description": "Black Friday naermer seg og kundene forventer store rabatter. Hva gjor du?",
+      "category": "social",
+      "severity": "medium",
+      "month": 11,
+      "choices": [
+        {
+          "id": "S09_A",
+          "label": "Kjore aggressive tilbud",
+          "description": "Gi 30-50% rabatt paa utvalgte produkter.",
+          "consequence": { "description": "Masse salg, men lav margin.", "demandModifier": 1.4, "costModifier": 1.0, "reputationModifier": 3, "duration": 1 }
+        },
+        {
+          "id": "S09_B",
+          "label": "Gjore Green Friday",
+          "description": "Ta et standpunkt mot overforbruk og doner til veldedighet i stedet.",
+          "consequence": { "description": "Mindre salg, men sterkt omdoemme.", "demandModifier": 0.9, "costModifier": 1.0, "reputationModifier": 12, "duration": 2 }
+        },
+        {
+          "id": "S09_C",
+          "label": "Moderate rabatter",
+          "description": "Gi 10-15% rabatt for aa vaere med uten aa tape for mye.",
+          "consequence": { "description": "Balansert tilnaerming.", "demandModifier": 1.15, "costModifier": 1.0, "reputationModifier": 0, "duration": 1 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_E09",
+      "title": "Stroempriser skyter i vaeret",
+      "description": "Rekordhoye stroempriser gjor at driftskostnadene oeker for alle bedrifter.",
+      "category": "economic",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "E09_A",
+          "label": "Investere i solceller",
+          "description": "Installer solcellepanel for aa redusere stroemregningen paa sikt.",
+          "consequence": { "description": "Hoey investering naa, men lavere kostnader senere.", "demandModifier": 1.0, "costModifier": 1.15, "reputationModifier": 8, "duration": 2 }
+        },
+        {
+          "id": "E09_B",
+          "label": "Kutte stroemforbruket",
+          "description": "Reduser belysning, senk temperaturen, effektiviser.",
+          "consequence": { "description": "Noe lavere kostnader.", "demandModifier": 1.0, "costModifier": 1.05, "reputationModifier": 0, "duration": 3 }
+        }
+      ]
+    },
+    {
+      "id": "PEST_P08",
+      "title": "Arbeidsmiljoetilsyn",
+      "description": "Arbeidstilsynet varsler inspeksjon av din bedrift neste maaned.",
+      "category": "political",
+      "severity": "medium",
+      "choices": [
+        {
+          "id": "P08_A",
+          "label": "Gjennomgaa alt grundig",
+          "description": "Bruk tid og penger paa aa sikre at alt er i orden.",
+          "consequence": { "description": "Du bestaar inspeksjonen med glans.", "demandModifier": 1.0, "costModifier": 1.05, "reputationModifier": 5, "duration": 1 }
+        },
+        {
+          "id": "P08_B",
+          "label": "Gjore det noedvendige",
+          "description": "Fiks de mest apenbare problemene.",
+          "consequence": { "description": "Du bestaar saa vidt, men faar noen anmerkninger.", "demandModifier": 1.0, "costModifier": 1.02, "reputationModifier": -2, "duration": 1 }
+        }
+      ]
+    }
+  ]
+}

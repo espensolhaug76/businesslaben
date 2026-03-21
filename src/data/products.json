@@ -1,0 +1,678 @@
+{
+  "products": [
+    {
+      "comment": "--- FASHION (mote) ---",
+      "id": "fashion_001",
+      "industry": "fashion",
+      "name": "Signatur Hettegenser",
+      "category": "klaer",
+      "supplier_tiers": {
+        "premium": { "brand": "Norwegian Wool Co.", "cost_per_unit": 600, "quality": "high", "lead_time_days": 14, "sustainability_score": 10 },
+        "medium": { "brand": "Urban Basics", "cost_per_unit": 250, "quality": "medium", "lead_time_days": 25, "sustainability_score": 5 },
+        "budget": { "brand": "FastFashion Inc.", "cost_per_unit": 80, "quality": "low", "lead_time_days": 50, "sustainability_score": 1 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Merinoull", "medium": "Bomullsmiks", "budget": "Polyester" },
+        "countries": {
+          "norway": { "cost_modifier": 100, "lead_time_days": 5 },
+          "turkey": { "cost_modifier": 60, "lead_time_days": 14 },
+          "bangladesh": { "cost_modifier": 20, "lead_time_days": 60 }
+        }
+      },
+      "typical_retail_price": 899,
+      "baseAppeal": 7,
+      "target_audience_match": ["youth", "comfort_seekers"],
+      "kids_price_ratio": 0.7
+    },
+    {
+      "id": "fashion_002",
+      "industry": "fashion",
+      "name": "Slim-fit Jeans",
+      "category": "klaer",
+      "supplier_tiers": {
+        "premium": { "brand": "Denim Architects", "cost_per_unit": 500, "quality": "high", "lead_time_days": 20, "sustainability_score": 8 },
+        "medium": { "brand": "Blue Standard", "cost_per_unit": 200, "quality": "medium", "lead_time_days": 30, "sustainability_score": 5 },
+        "budget": { "brand": "Volume Jeans", "cost_per_unit": 90, "quality": "low", "lead_time_days": 70, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Japansk Denim", "medium": "Standard Denim", "budget": "Stretch Syntet" },
+        "countries": {
+          "italy": { "cost_modifier": 90, "lead_time_days": 10 },
+          "turkey": { "cost_modifier": 50, "lead_time_days": 20 },
+          "china": { "cost_modifier": 25, "lead_time_days": 55 }
+        }
+      },
+      "typical_retail_price": 1199,
+      "baseAppeal": 8,
+      "target_audience_match": ["trend_followers", "students"],
+      "kids_price_ratio": 0.6
+    },
+    {
+      "id": "fashion_003",
+      "industry": "fashion",
+      "name": "Limited Edition Sneakers",
+      "category": "sko",
+      "supplier_tiers": {
+        "premium": { "brand": "HypeBeast Footwear", "cost_per_unit": 800, "quality": "high", "lead_time_days": 40, "sustainability_score": 6 },
+        "medium": { "brand": "StreetWalkers", "cost_per_unit": 300, "quality": "medium", "lead_time_days": 30, "sustainability_score": 4 },
+        "budget": { "brand": "NoName Kicks", "cost_per_unit": 100, "quality": "low", "lead_time_days": 60, "sustainability_score": 1 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Ekte laer og GoreTex", "medium": "Tekstil", "budget": "Plast og gummi" },
+        "countries": {
+          "vietnam": { "cost_modifier": 35, "lead_time_days": 45 },
+          "china": { "cost_modifier": 30, "lead_time_days": 50 },
+          "portugal": { "cost_modifier": 70, "lead_time_days": 15 }
+        }
+      },
+      "typical_retail_price": 1899,
+      "baseAppeal": 9,
+      "target_audience_match": ["collectors", "youth"],
+      "kids_price_ratio": 0.6
+    },
+    {
+      "id": "fashion_004",
+      "industry": "fashion",
+      "name": "Premium Skinnveske",
+      "category": "vesker",
+      "supplier_tiers": {
+        "premium": { "brand": "Italiano Luxe", "cost_per_unit": 650, "quality": "high", "lead_time_days": 14, "sustainability_score": 8 },
+        "medium": { "brand": "Nordic Design", "cost_per_unit": 350, "quality": "medium", "lead_time_days": 10, "sustainability_score": 6 },
+        "budget": { "brand": "Basic Line", "cost_per_unit": 150, "quality": "low", "lead_time_days": 7, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Italiensk laer", "medium": "Syntetisk laer", "budget": "PU-stoff" },
+        "countries": {
+          "italy": { "cost_modifier": 95, "lead_time_days": 12 },
+          "spain": { "cost_modifier": 70, "lead_time_days": 10 },
+          "china": { "cost_modifier": 30, "lead_time_days": 45 }
+        }
+      },
+      "typical_retail_price": 1299,
+      "baseAppeal": 7,
+      "target_audience_match": ["female", "21-30", "status"],
+      "kids_price_ratio": 0.5
+    },
+    {
+      "id": "fashion_005",
+      "industry": "fashion",
+      "name": "Canvas Tote Bag",
+      "category": "vesker",
+      "supplier_tiers": {
+        "premium": { "brand": "EcoCarry", "cost_per_unit": 80, "quality": "high", "lead_time_days": 10, "sustainability_score": 10 },
+        "medium": { "brand": "DailyBag", "cost_per_unit": 30, "quality": "medium", "lead_time_days": 20, "sustainability_score": 7 },
+        "budget": { "brand": "PromoBulk", "cost_per_unit": 10, "quality": "low", "lead_time_days": 45, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Okologisk bomull", "medium": "Resirkulert stoff", "budget": "Tynn bomull" },
+        "countries": {
+          "india": { "cost_modifier": 20, "lead_time_days": 50 },
+          "estonia": { "cost_modifier": 60, "lead_time_days": 10 },
+          "norway": { "cost_modifier": 100, "lead_time_days": 3 }
+        }
+      },
+      "typical_retail_price": 199,
+      "baseAppeal": 6,
+      "target_audience_match": ["students", "eco_conscious"],
+      "kids_price_ratio": 0.7
+    },
+    {
+      "id": "fashion_006",
+      "industry": "fashion",
+      "name": "Designersolbriller",
+      "category": "solbriller",
+      "supplier_tiers": {
+        "premium": { "brand": "Nordic Shades", "cost_per_unit": 450, "quality": "high", "lead_time_days": 14, "sustainability_score": 7 },
+        "medium": { "brand": "SunStyle", "cost_per_unit": 180, "quality": "medium", "lead_time_days": 20, "sustainability_score": 5 },
+        "budget": { "brand": "BudgetEyes", "cost_per_unit": 40, "quality": "low", "lead_time_days": 40, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Polarisert glass", "medium": "UV-filter plast", "budget": "Standard plast" },
+        "countries": {
+          "italy": { "cost_modifier": 90, "lead_time_days": 10 },
+          "china": { "cost_modifier": 25, "lead_time_days": 40 },
+          "taiwan": { "cost_modifier": 40, "lead_time_days": 30 }
+        }
+      },
+      "typical_retail_price": 899,
+      "baseAppeal": 7,
+      "target_audience_match": ["trend_followers", "outdoor_enthusiasts"],
+      "kids_price_ratio": 0.5
+    },
+    {
+      "id": "fashion_007",
+      "industry": "fashion",
+      "name": "Ullskjerf",
+      "category": "skjerf",
+      "supplier_tiers": {
+        "premium": { "brand": "Fjord Knit", "cost_per_unit": 280, "quality": "high", "lead_time_days": 10, "sustainability_score": 9 },
+        "medium": { "brand": "WarmWrap", "cost_per_unit": 110, "quality": "medium", "lead_time_days": 14, "sustainability_score": 6 },
+        "budget": { "brand": "TextileBulk", "cost_per_unit": 35, "quality": "low", "lead_time_days": 35, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Kashmir", "medium": "Merinoull", "budget": "Akryl" },
+        "countries": {
+          "norway": { "cost_modifier": 100, "lead_time_days": 5 },
+          "scotland": { "cost_modifier": 75, "lead_time_days": 12 },
+          "china": { "cost_modifier": 25, "lead_time_days": 45 }
+        }
+      },
+      "typical_retail_price": 599,
+      "baseAppeal": 6,
+      "target_audience_match": ["female", "gift_shoppers"],
+      "kids_price_ratio": 0.6
+    },
+    {
+      "id": "fashion_008",
+      "industry": "fashion",
+      "name": "Statement Smykke",
+      "category": "smykker",
+      "supplier_tiers": {
+        "premium": { "brand": "Scandi Gold", "cost_per_unit": 520, "quality": "high", "lead_time_days": 21, "sustainability_score": 8 },
+        "medium": { "brand": "TrendBijou", "cost_per_unit": 180, "quality": "medium", "lead_time_days": 14, "sustainability_score": 5 },
+        "budget": { "brand": "GlitterFactory", "cost_per_unit": 45, "quality": "low", "lead_time_days": 30, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "925 Sterling solv", "medium": "Gullbelagt messing", "budget": "Legering" },
+        "countries": {
+          "norway": { "cost_modifier": 100, "lead_time_days": 7 },
+          "denmark": { "cost_modifier": 80, "lead_time_days": 10 },
+          "china": { "cost_modifier": 20, "lead_time_days": 50 }
+        }
+      },
+      "typical_retail_price": 999,
+      "baseAppeal": 7,
+      "target_audience_match": ["female", "gift_shoppers", "status"],
+      "kids_price_ratio": 0.4
+    },
+
+    {
+      "comment": "--- ELECTRONICS (elektronikk) ---",
+      "id": "electronics_001",
+      "industry": "electronics",
+      "name": "Stoeydempende Hodetelefoner",
+      "category": "hodetelefoner",
+      "supplier_tiers": {
+        "premium": { "brand": "SoundMaster", "cost_per_unit": 1500, "quality": "high", "lead_time_days": 20, "sustainability_score": 6 },
+        "medium": { "brand": "AudioMid", "cost_per_unit": 600, "quality": "medium", "lead_time_days": 30, "sustainability_score": 4 },
+        "budget": { "brand": "SilentCheap", "cost_per_unit": 150, "quality": "low", "lead_time_days": 50, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Skinn og metall", "medium": "Kunstskinn", "budget": "Plast" },
+        "countries": {
+          "germany": { "cost_modifier": 90, "lead_time_days": 10 },
+          "japan": { "cost_modifier": 85, "lead_time_days": 25 },
+          "china": { "cost_modifier": 30, "lead_time_days": 40 }
+        }
+      },
+      "typical_retail_price": 3490,
+      "baseAppeal": 8,
+      "target_audience_match": ["commuters", "students", "music_lovers"],
+      "kids_price_ratio": 0.5
+    },
+    {
+      "id": "electronics_002",
+      "industry": "electronics",
+      "name": "Premium Mobilcover",
+      "category": "mobilcover",
+      "supplier_tiers": {
+        "premium": { "brand": "ShieldPro", "cost_per_unit": 120, "quality": "high", "lead_time_days": 10, "sustainability_score": 6 },
+        "medium": { "brand": "CaseMate", "cost_per_unit": 50, "quality": "medium", "lead_time_days": 14, "sustainability_score": 4 },
+        "budget": { "brand": "CoverBulk", "cost_per_unit": 15, "quality": "low", "lead_time_days": 30, "sustainability_score": 1 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Karbonfiber", "medium": "Silikon + hard plast", "budget": "Tynn plast" },
+        "countries": {
+          "south_korea": { "cost_modifier": 70, "lead_time_days": 15 },
+          "china": { "cost_modifier": 25, "lead_time_days": 30 },
+          "norway_warehouse": { "cost_modifier": 100, "lead_time_days": 2 }
+        }
+      },
+      "typical_retail_price": 299,
+      "baseAppeal": 6,
+      "target_audience_match": ["youth", "tech_enthusiasts"],
+      "kids_price_ratio": 0.7
+    },
+    {
+      "id": "electronics_003",
+      "industry": "electronics",
+      "name": "Baerbar Powerbank",
+      "category": "powerbank",
+      "supplier_tiers": {
+        "premium": { "brand": "EnergyGo", "cost_per_unit": 200, "quality": "high", "lead_time_days": 15, "sustainability_score": 5 },
+        "medium": { "brand": "ChargeIt", "cost_per_unit": 100, "quality": "medium", "lead_time_days": 30, "sustainability_score": 3 },
+        "budget": { "brand": "VoltGeneric", "cost_per_unit": 40, "quality": "low", "lead_time_days": 60, "sustainability_score": 1 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "20000mAh Litium", "medium": "10000mAh", "budget": "5000mAh" },
+        "countries": {
+          "china": { "cost_modifier": 25, "lead_time_days": 50 },
+          "india": { "cost_modifier": 20, "lead_time_days": 60 },
+          "germany_warehouse": { "cost_modifier": 80, "lead_time_days": 5 }
+        }
+      },
+      "typical_retail_price": 499,
+      "baseAppeal": 7,
+      "target_audience_match": ["travelers", "students"],
+      "kids_price_ratio": 0.8
+    },
+    {
+      "id": "electronics_004",
+      "industry": "electronics",
+      "name": "Smartklokke",
+      "category": "smartklokke",
+      "supplier_tiers": {
+        "premium": { "brand": "WristComputer", "cost_per_unit": 2000, "quality": "high", "lead_time_days": 25, "sustainability_score": 7 },
+        "medium": { "brand": "FitTracker", "cost_per_unit": 800, "quality": "medium", "lead_time_days": 30, "sustainability_score": 5 },
+        "budget": { "brand": "StepCounter", "cost_per_unit": 200, "quality": "low", "lead_time_days": 55, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Safirglass og titan", "medium": "Gorilla Glass", "budget": "Plastskjerm" },
+        "countries": {
+          "china": { "cost_modifier": 35, "lead_time_days": 45 },
+          "vietnam": { "cost_modifier": 30, "lead_time_days": 50 },
+          "taiwan": { "cost_modifier": 50, "lead_time_days": 35 }
+        }
+      },
+      "typical_retail_price": 4490,
+      "baseAppeal": 8,
+      "target_audience_match": ["athletes", "health_conscious", "tech_enthusiasts"],
+      "kids_price_ratio": 0.5
+    },
+    {
+      "id": "electronics_005",
+      "industry": "electronics",
+      "name": "USB-C Hub Multiport",
+      "category": "usb_hub",
+      "supplier_tiers": {
+        "premium": { "brand": "DockMaster", "cost_per_unit": 350, "quality": "high", "lead_time_days": 14, "sustainability_score": 5 },
+        "medium": { "brand": "HubConnect", "cost_per_unit": 150, "quality": "medium", "lead_time_days": 20, "sustainability_score": 4 },
+        "budget": { "brand": "MultiPort Basic", "cost_per_unit": 60, "quality": "low", "lead_time_days": 40, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Aluminium + Thunderbolt", "medium": "Aluminium + USB 3.1", "budget": "Plast + USB 3.0" },
+        "countries": {
+          "taiwan": { "cost_modifier": 55, "lead_time_days": 25 },
+          "china": { "cost_modifier": 25, "lead_time_days": 40 },
+          "eu_warehouse": { "cost_modifier": 85, "lead_time_days": 5 }
+        }
+      },
+      "typical_retail_price": 799,
+      "baseAppeal": 6,
+      "target_audience_match": ["business", "students", "remote_workers"],
+      "kids_price_ratio": 0.8
+    },
+    {
+      "id": "electronics_006",
+      "industry": "electronics",
+      "name": "Ergonomisk Tradloes Mus",
+      "category": "mus",
+      "supplier_tiers": {
+        "premium": { "brand": "ErgoClick Pro", "cost_per_unit": 380, "quality": "high", "lead_time_days": 14, "sustainability_score": 6 },
+        "medium": { "brand": "ClickComfort", "cost_per_unit": 150, "quality": "medium", "lead_time_days": 20, "sustainability_score": 4 },
+        "budget": { "brand": "MouseBasic", "cost_per_unit": 45, "quality": "low", "lead_time_days": 35, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Resirkulert plast + optisk sensor", "medium": "Standard plast", "budget": "Billig plast" },
+        "countries": {
+          "china": { "cost_modifier": 30, "lead_time_days": 35 },
+          "taiwan": { "cost_modifier": 50, "lead_time_days": 25 },
+          "eu_warehouse": { "cost_modifier": 90, "lead_time_days": 3 }
+        }
+      },
+      "typical_retail_price": 899,
+      "baseAppeal": 6,
+      "target_audience_match": ["office_workers", "gamers", "remote_workers"],
+      "kids_price_ratio": 0.7
+    },
+    {
+      "id": "electronics_007",
+      "industry": "electronics",
+      "name": "Tradloese Oerepropper",
+      "category": "hodetelefoner",
+      "supplier_tiers": {
+        "premium": { "brand": "BudsPro Elite", "cost_per_unit": 700, "quality": "high", "lead_time_days": 20, "sustainability_score": 5 },
+        "medium": { "brand": "AirSound", "cost_per_unit": 280, "quality": "medium", "lead_time_days": 25, "sustainability_score": 4 },
+        "budget": { "brand": "CheapBuds", "cost_per_unit": 60, "quality": "low", "lead_time_days": 45, "sustainability_score": 1 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Hybrid ANC drivere", "medium": "Standard Bluetooth 5.3", "budget": "Bluetooth 5.0 basis" },
+        "countries": {
+          "japan": { "cost_modifier": 80, "lead_time_days": 20 },
+          "china": { "cost_modifier": 25, "lead_time_days": 40 },
+          "vietnam": { "cost_modifier": 30, "lead_time_days": 45 }
+        }
+      },
+      "typical_retail_price": 1799,
+      "baseAppeal": 9,
+      "target_audience_match": ["youth", "commuters", "athletes"],
+      "kids_price_ratio": 0.6
+    },
+
+    {
+      "comment": "--- FOOD (mat_og_drikke) ---",
+      "id": "food_001",
+      "industry": "food",
+      "name": "Spesialkaffe Boenner",
+      "category": "kaffe",
+      "supplier_tiers": {
+        "premium": { "brand": "Oslo Roastery", "cost_per_unit": 120, "quality": "high", "lead_time_days": 7, "sustainability_score": 9 },
+        "medium": { "brand": "Daglig Kaffe", "cost_per_unit": 60, "quality": "medium", "lead_time_days": 14, "sustainability_score": 6 },
+        "budget": { "brand": "EuroCoffee", "cost_per_unit": 30, "quality": "low", "lead_time_days": 30, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Single Origin Arabica", "medium": "Arabica/Robusta Mix", "budget": "Robusta" },
+        "countries": {
+          "colombia_direct": { "cost_modifier": 80, "lead_time_days": 30 },
+          "brazil_bulk": { "cost_modifier": 40, "lead_time_days": 40 },
+          "local_roast": { "cost_modifier": 100, "lead_time_days": 2 }
+        }
+      },
+      "typical_retail_price": 349,
+      "baseAppeal": 7,
+      "target_audience_match": ["hipsters", "office_workers"],
+      "kids_price_ratio": 0.0
+    },
+    {
+      "id": "food_002",
+      "industry": "food",
+      "name": "Haandverks-sjokolade",
+      "category": "sjokolade",
+      "supplier_tiers": {
+        "premium": { "brand": "Fjord Cocoa", "cost_per_unit": 40, "quality": "high", "lead_time_days": 10, "sustainability_score": 8 },
+        "medium": { "brand": "Melkeveien", "cost_per_unit": 15, "quality": "medium", "lead_time_days": 7, "sustainability_score": 5 },
+        "budget": { "brand": "ChocoBlock", "cost_per_unit": 5, "quality": "low", "lead_time_days": 30, "sustainability_score": 1 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "70% Kakao Fairtrade", "medium": "Melkesjokolade", "budget": "Vegansk kakaoerstatning" },
+        "countries": {
+          "norway": { "cost_modifier": 100, "lead_time_days": 3 },
+          "belgium": { "cost_modifier": 70, "lead_time_days": 10 },
+          "ivory_coast_bulk": { "cost_modifier": 20, "lead_time_days": 40 }
+        }
+      },
+      "typical_retail_price": 89,
+      "baseAppeal": 8,
+      "target_audience_match": ["gift_shoppers", "impulse_buyers"],
+      "kids_price_ratio": 0.7
+    },
+    {
+      "id": "food_003",
+      "industry": "food",
+      "name": "Proteinbar",
+      "category": "proteinbar",
+      "supplier_tiers": {
+        "premium": { "brand": "IronFuel", "cost_per_unit": 18, "quality": "high", "lead_time_days": 7, "sustainability_score": 6 },
+        "medium": { "brand": "FitBar", "cost_per_unit": 10, "quality": "medium", "lead_time_days": 10, "sustainability_score": 4 },
+        "budget": { "brand": "BulkProtein", "cost_per_unit": 4, "quality": "low", "lead_time_days": 25, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Whey Isolat + noetter", "medium": "Whey Konsentrat + soya", "budget": "Sojaprotein + sukker" },
+        "countries": {
+          "sweden": { "cost_modifier": 85, "lead_time_days": 5 },
+          "germany": { "cost_modifier": 70, "lead_time_days": 10 },
+          "china": { "cost_modifier": 25, "lead_time_days": 35 }
+        }
+      },
+      "typical_retail_price": 39,
+      "baseAppeal": 7,
+      "target_audience_match": ["athletes", "gym_goers", "health_conscious"],
+      "kids_price_ratio": 0.8
+    },
+    {
+      "id": "food_004",
+      "industry": "food",
+      "name": "Kaldpresset Juice",
+      "category": "juice",
+      "supplier_tiers": {
+        "premium": { "brand": "PureSqueeze", "cost_per_unit": 35, "quality": "high", "lead_time_days": 3, "sustainability_score": 9 },
+        "medium": { "brand": "FriskFrukt", "cost_per_unit": 18, "quality": "medium", "lead_time_days": 5, "sustainability_score": 7 },
+        "budget": { "brand": "JuiceImport", "cost_per_unit": 8, "quality": "low", "lead_time_days": 20, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "100% fersk norsk frukt", "medium": "Fruktkonsentrat", "budget": "Nektar med tilsatt sukker" },
+        "countries": {
+          "norway_local": { "cost_modifier": 100, "lead_time_days": 1 },
+          "spain": { "cost_modifier": 50, "lead_time_days": 10 },
+          "brazil": { "cost_modifier": 30, "lead_time_days": 30 }
+        }
+      },
+      "typical_retail_price": 79,
+      "baseAppeal": 7,
+      "target_audience_match": ["health_conscious", "families"],
+      "kids_price_ratio": 0.8
+    },
+    {
+      "id": "food_005",
+      "industry": "food",
+      "name": "Premium Te-blanding",
+      "category": "te",
+      "supplier_tiers": {
+        "premium": { "brand": "Nordic Tea House", "cost_per_unit": 90, "quality": "high", "lead_time_days": 10, "sustainability_score": 8 },
+        "medium": { "brand": "TeHuset", "cost_per_unit": 40, "quality": "medium", "lead_time_days": 14, "sustainability_score": 6 },
+        "budget": { "brand": "BulkTea", "cost_per_unit": 15, "quality": "low", "lead_time_days": 30, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Loese bladte fra Japan", "medium": "Teposer med blandinger", "budget": "Standard svart te" },
+        "countries": {
+          "japan": { "cost_modifier": 90, "lead_time_days": 20 },
+          "india": { "cost_modifier": 40, "lead_time_days": 25 },
+          "china": { "cost_modifier": 30, "lead_time_days": 30 }
+        }
+      },
+      "typical_retail_price": 199,
+      "baseAppeal": 6,
+      "target_audience_match": ["health_conscious", "gift_shoppers"],
+      "kids_price_ratio": 0.5
+    },
+    {
+      "id": "food_006",
+      "industry": "food",
+      "name": "Noettemiks Premium",
+      "category": "noettemix",
+      "supplier_tiers": {
+        "premium": { "brand": "NutHarvest", "cost_per_unit": 55, "quality": "high", "lead_time_days": 7, "sustainability_score": 7 },
+        "medium": { "brand": "SnackNuts", "cost_per_unit": 28, "quality": "medium", "lead_time_days": 10, "sustainability_score": 5 },
+        "budget": { "brand": "BulkNuts", "cost_per_unit": 12, "quality": "low", "lead_time_days": 25, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Okologiske cashew og mandler", "medium": "Standard noettemiks", "budget": "Peanotter med salt" },
+        "countries": {
+          "norway_packed": { "cost_modifier": 100, "lead_time_days": 3 },
+          "spain": { "cost_modifier": 50, "lead_time_days": 12 },
+          "vietnam": { "cost_modifier": 25, "lead_time_days": 35 }
+        }
+      },
+      "typical_retail_price": 119,
+      "baseAppeal": 6,
+      "target_audience_match": ["health_conscious", "snack_lovers"],
+      "kids_price_ratio": 0.7
+    },
+    {
+      "id": "food_007",
+      "industry": "food",
+      "name": "Energidrikk",
+      "category": "drikke",
+      "supplier_tiers": {
+        "premium": { "brand": "PowerUp Pro", "cost_per_unit": 12, "quality": "high", "lead_time_days": 14, "sustainability_score": 4 },
+        "medium": { "brand": "GamerFuel", "cost_per_unit": 8, "quality": "medium", "lead_time_days": 20, "sustainability_score": 3 },
+        "budget": { "brand": "KjipCola Energy", "cost_per_unit": 3, "quality": "low", "lead_time_days": 40, "sustainability_score": 1 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Naturlig koffein og vitaminer", "medium": "Syntetisk koffein", "budget": "Sukker og vann" },
+        "countries": {
+          "austria": { "cost_modifier": 80, "lead_time_days": 7 },
+          "poland": { "cost_modifier": 50, "lead_time_days": 10 },
+          "norway": { "cost_modifier": 100, "lead_time_days": 2 }
+        }
+      },
+      "typical_retail_price": 29,
+      "baseAppeal": 8,
+      "target_audience_match": ["youth", "gamers"],
+      "kids_price_ratio": 0.0
+    },
+
+    {
+      "comment": "--- FURNITURE (mobler) ---",
+      "id": "furniture_001",
+      "industry": "furniture",
+      "name": "Ergonomisk Kontorstol",
+      "category": "kontorstol",
+      "supplier_tiers": {
+        "premium": { "brand": "ScandiSit Pro", "cost_per_unit": 3200, "quality": "high", "lead_time_days": 21, "sustainability_score": 8 },
+        "medium": { "brand": "OfficeComfort", "cost_per_unit": 1500, "quality": "medium", "lead_time_days": 14, "sustainability_score": 5 },
+        "budget": { "brand": "SitDown Basic", "cost_per_unit": 500, "quality": "low", "lead_time_days": 30, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Mesh og aluminium", "medium": "Stoff og staal", "budget": "Plast og skumgummi" },
+        "countries": {
+          "norway": { "cost_modifier": 100, "lead_time_days": 7 },
+          "sweden": { "cost_modifier": 80, "lead_time_days": 10 },
+          "china": { "cost_modifier": 30, "lead_time_days": 50 }
+        }
+      },
+      "typical_retail_price": 6990,
+      "baseAppeal": 7,
+      "target_audience_match": ["office_workers", "remote_workers", "health_conscious"],
+      "kids_price_ratio": 0.4
+    },
+    {
+      "id": "furniture_002",
+      "industry": "furniture",
+      "name": "Hev-senk Skrivebord",
+      "category": "skrivebord",
+      "supplier_tiers": {
+        "premium": { "brand": "StandUp Nordic", "cost_per_unit": 4500, "quality": "high", "lead_time_days": 21, "sustainability_score": 9 },
+        "medium": { "brand": "DeskWork", "cost_per_unit": 2200, "quality": "medium", "lead_time_days": 14, "sustainability_score": 6 },
+        "budget": { "brand": "BudgetDesk", "cost_per_unit": 800, "quality": "low", "lead_time_days": 30, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Massiv eik og elektrisk motor", "medium": "Laminat og elektrisk", "budget": "Sponplate og manuell sveiv" },
+        "countries": {
+          "norway": { "cost_modifier": 100, "lead_time_days": 10 },
+          "poland": { "cost_modifier": 55, "lead_time_days": 14 },
+          "china": { "cost_modifier": 30, "lead_time_days": 50 }
+        }
+      },
+      "typical_retail_price": 9990,
+      "baseAppeal": 8,
+      "target_audience_match": ["office_workers", "remote_workers"],
+      "kids_price_ratio": 0.5
+    },
+    {
+      "id": "furniture_003",
+      "industry": "furniture",
+      "name": "Bokhylle i Eik",
+      "category": "bokhylle",
+      "supplier_tiers": {
+        "premium": { "brand": "TreCraft", "cost_per_unit": 2800, "quality": "high", "lead_time_days": 28, "sustainability_score": 9 },
+        "medium": { "brand": "NordicShelf", "cost_per_unit": 1200, "quality": "medium", "lead_time_days": 14, "sustainability_score": 6 },
+        "budget": { "brand": "FlatPack AS", "cost_per_unit": 400, "quality": "low", "lead_time_days": 7, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Massiv norsk eik", "medium": "Eikefineer", "budget": "Melaminsponplate" },
+        "countries": {
+          "norway": { "cost_modifier": 100, "lead_time_days": 14 },
+          "lithuania": { "cost_modifier": 50, "lead_time_days": 14 },
+          "china": { "cost_modifier": 25, "lead_time_days": 60 }
+        }
+      },
+      "typical_retail_price": 5990,
+      "baseAppeal": 6,
+      "target_audience_match": ["families", "interior_enthusiasts"],
+      "kids_price_ratio": 0.5
+    },
+    {
+      "id": "furniture_004",
+      "industry": "furniture",
+      "name": "Design Skrivebordslampe",
+      "category": "skrivebordslampe",
+      "supplier_tiers": {
+        "premium": { "brand": "LuxLight Scandi", "cost_per_unit": 480, "quality": "high", "lead_time_days": 14, "sustainability_score": 7 },
+        "medium": { "brand": "BrightWork", "cost_per_unit": 200, "quality": "medium", "lead_time_days": 10, "sustainability_score": 5 },
+        "budget": { "brand": "LampBulk", "cost_per_unit": 60, "quality": "low", "lead_time_days": 25, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Aluminium + LED dimbar", "medium": "Staal + LED", "budget": "Plast + halogenpare" },
+        "countries": {
+          "denmark": { "cost_modifier": 85, "lead_time_days": 7 },
+          "china": { "cost_modifier": 25, "lead_time_days": 40 },
+          "poland": { "cost_modifier": 50, "lead_time_days": 14 }
+        }
+      },
+      "typical_retail_price": 1199,
+      "baseAppeal": 7,
+      "target_audience_match": ["students", "remote_workers", "interior_enthusiasts"],
+      "kids_price_ratio": 0.6
+    },
+    {
+      "id": "furniture_005",
+      "industry": "furniture",
+      "name": "Dekorative Pynteputer",
+      "category": "pyntepute",
+      "supplier_tiers": {
+        "premium": { "brand": "NordicTextile", "cost_per_unit": 180, "quality": "high", "lead_time_days": 10, "sustainability_score": 8 },
+        "medium": { "brand": "CozyHome", "cost_per_unit": 75, "quality": "medium", "lead_time_days": 14, "sustainability_score": 5 },
+        "budget": { "brand": "PillowFactory", "cost_per_unit": 25, "quality": "low", "lead_time_days": 30, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Okologisk lin og bomull", "medium": "Bomullsmiks", "budget": "Polyester" },
+        "countries": {
+          "norway": { "cost_modifier": 100, "lead_time_days": 5 },
+          "india": { "cost_modifier": 25, "lead_time_days": 35 },
+          "turkey": { "cost_modifier": 40, "lead_time_days": 20 }
+        }
+      },
+      "typical_retail_price": 399,
+      "baseAppeal": 6,
+      "target_audience_match": ["female", "interior_enthusiasts", "gift_shoppers"],
+      "kids_price_ratio": 0.6
+    },
+    {
+      "id": "furniture_006",
+      "industry": "furniture",
+      "name": "Vegghylle i Valnott",
+      "category": "vegghylle",
+      "supplier_tiers": {
+        "premium": { "brand": "WoodArt", "cost_per_unit": 650, "quality": "high", "lead_time_days": 21, "sustainability_score": 8 },
+        "medium": { "brand": "ShelfLine", "cost_per_unit": 280, "quality": "medium", "lead_time_days": 10, "sustainability_score": 5 },
+        "budget": { "brand": "MountIt", "cost_per_unit": 90, "quality": "low", "lead_time_days": 7, "sustainability_score": 3 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Massiv valnott", "medium": "Valnottfineer", "budget": "Foliebekledd spon" },
+        "countries": {
+          "norway": { "cost_modifier": 100, "lead_time_days": 10 },
+          "poland": { "cost_modifier": 50, "lead_time_days": 14 },
+          "china": { "cost_modifier": 25, "lead_time_days": 45 }
+        }
+      },
+      "typical_retail_price": 1499,
+      "baseAppeal": 6,
+      "target_audience_match": ["interior_enthusiasts", "families"],
+      "kids_price_ratio": 0.5
+    },
+    {
+      "id": "furniture_007",
+      "industry": "furniture",
+      "name": "Loungestol Retro",
+      "category": "stol",
+      "supplier_tiers": {
+        "premium": { "brand": "ScandiClassic", "cost_per_unit": 3800, "quality": "high", "lead_time_days": 28, "sustainability_score": 9 },
+        "medium": { "brand": "RetroSit", "cost_per_unit": 1800, "quality": "medium", "lead_time_days": 14, "sustainability_score": 6 },
+        "budget": { "brand": "CopyCat Furniture", "cost_per_unit": 600, "quality": "low", "lead_time_days": 21, "sustainability_score": 2 }
+      },
+      "production_options": {
+        "raw_material": { "premium": "Ekte laer og valnott", "medium": "Stoff og bjoerk", "budget": "PU-laer og finer" },
+        "countries": {
+          "denmark": { "cost_modifier": 90, "lead_time_days": 14 },
+          "poland": { "cost_modifier": 50, "lead_time_days": 14 },
+          "china": { "cost_modifier": 25, "lead_time_days": 50 }
+        }
+      },
+      "typical_retail_price": 7990,
+      "baseAppeal": 8,
+      "target_audience_match": ["interior_enthusiasts", "status"],
+      "kids_price_ratio": 0.0
+    }
+  ]
+}

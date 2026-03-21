@@ -1,0 +1,129 @@
+{
+  "cases": [
+    {
+      "id": "case_eplegaarden",
+      "title": "Eplekaarden - Fra gaard til gourmet",
+      "description": "Du overtar familiegaarden i Hardanger og vil starte en bedrift som selger premium epleproukter. Du har tilgang til de beste eplene i Norge, men maa ta viktige valg om produksjon, prising og distribusjon.",
+      "category": "food",
+      "difficulty": "easy",
+      "options": [
+        {
+          "id": "eplegaard_A",
+          "label": "Satse paa Rema/Kiwi",
+          "explanation": "Selge gjennom dagligvarekjedene for aa naa flest mulig.",
+          "isCorrect": false,
+          "feedback": "Dagligvarekjedene tar hoye marginer (40-60%), og du mister kontrollen over merkevaren. For et premium nisjeprodunkt er dette sjelden den beste strategien i starten."
+        },
+        {
+          "id": "eplegaard_B",
+          "label": "Direktesalg og lokale delikatesser",
+          "explanation": "Selge direkte fra gaarden, paa bondens marked og til lokale delikatessebutikker.",
+          "isCorrect": true,
+          "feedback": "Riktig! Direktesalg gir deg hoeyeste margin, kontroll over merkevaren, og mulighet til aa bygge en lojal kundebase. Dette er perfekt for et premium nisjeprodunkt."
+        },
+        {
+          "id": "eplegaard_C",
+          "label": "Kun nettbutikk",
+          "explanation": "Selge alt via egen nettbutikk med hjemlevering.",
+          "isCorrect": false,
+          "feedback": "Nettbutikk er bra som tillegg, men for ferske matvarer er logistikk dyrt og komplisert. Kundene vil ogsaa gjaerne smake foer de kjoeper premium mat."
+        }
+      ],
+      "learningObjective": "Forstaa fordeler og ulemper med direkte vs. indirekte distribusjon, og hvorfor premium nisje-produkter ofte tjener paa direkte salgskanaler."
+    },
+    {
+      "id": "case_nordic_tech",
+      "title": "Nordic Tech - Oppstartseventyret",
+      "description": "Du starter en tech-bedrift som selger smarte gadgets til unge forbrukere. Du har begrenset kapital, men stor ambisjon. Markedet er konkurranseutsatt med store internasjonale aktoerer.",
+      "category": "electronics",
+      "difficulty": "medium",
+      "options": [
+        {
+          "id": "ntech_A",
+          "label": "Skumme-floeten-strategi",
+          "explanation": "Sett hoey pris ved lansering og senk gradvis.",
+          "isCorrect": false,
+          "feedback": "Skumme-floeten fungerer best naar du har et unikt produkt uten konkurranse. I et marked med mange alternativer vil hoey pris skremme bort kundene."
+        },
+        {
+          "id": "ntech_B",
+          "label": "Inntrengningsstrategi",
+          "explanation": "Start med lav pris for aa vinne markedsandel raskt.",
+          "isCorrect": true,
+          "feedback": "Riktig! I et konkurranseutsatt marked med mange alternativer er inntrengningsstrategi smart. Lav pris tiltrekker kunder, og naar du har bygget merkevare, kan du gradvis oeke prisen."
+        },
+        {
+          "id": "ntech_C",
+          "label": "Premium-posisjonering",
+          "explanation": "Posisjonere deg som det dyreste og beste alternativet.",
+          "isCorrect": false,
+          "feedback": "Premium-posisjonering krever sterk merkevare og differensiering. Som ny aktler mangler du den tilliten som kreves for aa rettferdiggjore hoey pris."
+        }
+      ],
+      "learningObjective": "Forstaa ulike prisstrategier og naar de passer best. Laere om sammenhengen mellom markedsposisjon, konkurransesituasjon og prisstrategi."
+    },
+    {
+      "id": "case_mote_as",
+      "title": "Mote AS - Trendjaeger",
+      "description": "Du starter en motebutikk i en middels stor norsk by. Du maa velge mellom aa foelge de nyeste trendene eller bygge en tidloes kolleksjon. Maalgruppa er motebevisste kvinner 20-35 aar.",
+      "category": "fashion",
+      "difficulty": "medium",
+      "options": [
+        {
+          "id": "mote_A",
+          "label": "Fast fashion-modell",
+          "explanation": "Nye kolleksjoner hver uke med lave priser.",
+          "isCorrect": false,
+          "feedback": "Fast fashion gir hoyt volum, men laav margin og hoey risiko for overlager. Det krever ogsaa store innkjoep og rask logistikk som er vanskelig for en ny bedrift."
+        },
+        {
+          "id": "mote_B",
+          "label": "Kuratert utvalg med sesongkolleksjoner",
+          "explanation": "Haandplukke kvalitetsprodukter og ha 4 sesonger i aaret.",
+          "isCorrect": true,
+          "feedback": "Riktig! Et kuratert utvalg gir bedre kontroll over lageret, hoeyere marginer og en tydelig merkevareprofil. Det bygger ogsaa kundelojalitet gjennom tillit til ditt utvalg."
+        },
+        {
+          "id": "mote_C",
+          "label": "Kun eksklusive designmerker",
+          "explanation": "Selge kun dyre designmerker for aa vaere eksklusiv.",
+          "isCorrect": false,
+          "feedback": "Eksklusive merker gir prestisje, men begrenset kundebase i en middels stor by. Du faar ogsaa laav forhandlingsmakt mot store merkevarer."
+        }
+      ],
+      "learningObjective": "Forstaa sortimentsstrategier og sammenhengen mellom sortiment, maalgruppe og forretningsmodell. Laere om fordeler med selektiv distribusjon."
+    },
+    {
+      "id": "case_moebelhuset",
+      "title": "Moebelhuset - Skandinavisk design",
+      "description": "Du aapner en moebelbutikk som spesialiserer seg paa skandinavisk design. Du maa velge markedsforingsstrategi for aa naa ut til kundene. Budsjettet er begrenset.",
+      "category": "furniture",
+      "difficulty": "hard",
+      "options": [
+        {
+          "id": "moebel_A",
+          "label": "TV-reklame paa lokale kanaler",
+          "explanation": "Kjope reklameplass paa lokal-TV for bred dekning.",
+          "isCorrect": false,
+          "feedback": "TV-reklame er dyrt og maalgruppa din (interioerentusiaster) er ikke spesielt TV-tunge. Mye av budsjettet gaaar til spill."
+        },
+        {
+          "id": "moebel_B",
+          "label": "Sosiale medier og influencere",
+          "description": "Bruke Instagram, Pinterest og interioeerbloggere.",
+          "explanation": "Bygge tilstedevaerelse paa sosiale medier og samarbeide med interioeerbloggere.",
+          "isCorrect": true,
+          "feedback": "Riktig! Interioerentusiaster er svart aktive paa Instagram og Pinterest. Influencer-samarbeid gir autentisk markedsfoeering med hoey troverdighet i maalgruppa."
+        },
+        {
+          "id": "moebel_C",
+          "label": "Avisannonser og flyers",
+          "explanation": "Tradisjonell annonsering i lokalavisen og utdeling av flyers.",
+          "isCorrect": false,
+          "feedback": "Avisannonser naar en eldre maalgruppe enn dine primaerkunder. For mobler der visuell presentasjon er viktig, er trykte medier begrensende."
+        }
+      ],
+      "learningObjective": "Forstaa valg av markedsfoeringskanalr og matchingen mellom kanal, maalgruppe og produkttype. Laere om AIDA-modellen i praksis."
+    }
+  ]
+}

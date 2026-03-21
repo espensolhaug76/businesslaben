@@ -1,0 +1,782 @@
+{
+  "questions": [
+    {
+      "id": "Q_PROD_01",
+      "question": "Hva er de fire P-ene i markedsmiksn?",
+      "category": "produkt",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PROD_01_A", "text": "Produkt, Pris, Plass, Paavirkning", "isCorrect": true },
+        { "id": "Q_PROD_01_B", "text": "Produkt, Pris, Profitt, Personell", "isCorrect": false },
+        { "id": "Q_PROD_01_C", "text": "Plan, Pris, Plass, Produksjon", "isCorrect": false },
+        { "id": "Q_PROD_01_D", "text": "Produkt, Pris, PR, Plass", "isCorrect": false }
+      ],
+      "explanation": "De 4 P-ene er Produkt, Pris, Plass (distribusjon) og Paavirkning (markedskommunikasjon). Dette er de fire konkurransemidlene en bedrift bruker for aa paavirke salget.",
+      "relatedTerm": "MKT_001"
+    },
+    {
+      "id": "Q_PROD_02",
+      "question": "Hva er kjaerneproduktet til en kaffemaskin?",
+      "category": "produkt",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PROD_02_A", "text": "Selve maskinen (metall og plast)", "isCorrect": false },
+        { "id": "Q_PROD_02_B", "text": "Behovet for varm kaffe", "isCorrect": true },
+        { "id": "Q_PROD_02_C", "text": "Garantien og servicen", "isCorrect": false },
+        { "id": "Q_PROD_02_D", "text": "Merkenavnet", "isCorrect": false }
+      ],
+      "explanation": "Kjaerneproduktet er det grunnleggende behovet kunden vil tilfredsstille. For en kaffemaskin er det behovet for varm kaffe, ikke selve maskinen (som er det konkrete produktet).",
+      "relatedTerm": "MKT_002"
+    },
+    {
+      "id": "Q_PROD_03",
+      "question": "Hva er forskjellen mellom sortimentsbredde og sortimentsdybde?",
+      "category": "produkt",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PROD_03_A", "text": "Bredde = mange kategorier, Dybde = mange varianter innenfor en kategori", "isCorrect": true },
+        { "id": "Q_PROD_03_B", "text": "Bredde = mange varianter, Dybde = mange kategorier", "isCorrect": false },
+        { "id": "Q_PROD_03_C", "text": "Bredde = antall butikker, Dybde = antall produkter", "isCorrect": false },
+        { "id": "Q_PROD_03_D", "text": "De betyr det samme", "isCorrect": false }
+      ],
+      "explanation": "Sortimentsbredde handler om hvor mange ulike produktgrupper du har (f.eks. klier, sko, vesker). Sortimentsdybde handler om hvor mange varianter du har innenfor hver gruppe (f.eks. 20 forskjellige jeans).",
+      "relatedTerm": "MKT_003"
+    },
+    {
+      "id": "Q_PROD_04",
+      "question": "I hvilken fase av produktlivssyklusen er salget hoeyest?",
+      "category": "produkt",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PROD_04_A", "text": "Introduksjonsfasen", "isCorrect": false },
+        { "id": "Q_PROD_04_B", "text": "Vekstfasen", "isCorrect": false },
+        { "id": "Q_PROD_04_C", "text": "Modningsfasen", "isCorrect": true },
+        { "id": "Q_PROD_04_D", "text": "Tilbakegangsfasen", "isCorrect": false }
+      ],
+      "explanation": "I modningsfasen naar salget toppen. Produktet er vel etablert, men veksten flater ut. Konkurransen er hard og prisene presses ned.",
+      "relatedTerm": "MKT_005"
+    },
+    {
+      "id": "Q_PROD_05",
+      "question": "Hva betyr det aa ha et 'utvidet produkt'?",
+      "category": "produkt",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PROD_05_A", "text": "Et stoerre fysisk produkt", "isCorrect": false },
+        { "id": "Q_PROD_05_B", "text": "Et produkt med tilleggstjenester som garanti, support og service", "isCorrect": true },
+        { "id": "Q_PROD_05_C", "text": "Et produkt som selges i flere land", "isCorrect": false },
+        { "id": "Q_PROD_05_D", "text": "Et produkt med lengre holdbarhet", "isCorrect": false }
+      ],
+      "explanation": "Det utvidede produktet inkluderer alt utover det fysiske: garanti, kundeservice, levering, opplaering. For mange produkter er det utvidede produktet det som skiller deg fra konkurrentene.",
+      "relatedTerm": "MKT_002"
+    },
+    {
+      "id": "Q_PROD_06",
+      "question": "Hvilken leverandoerstrategi gir hoeyest kvalitet men ogsaa hoeyest kostnad?",
+      "category": "produkt",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PROD_06_A", "text": "Budget-leverandoer", "isCorrect": false },
+        { "id": "Q_PROD_06_B", "text": "Medium-leverandoer", "isCorrect": false },
+        { "id": "Q_PROD_06_C", "text": "Premium-leverandoer", "isCorrect": true },
+        { "id": "Q_PROD_06_D", "text": "Alle gir samme kvalitet", "isCorrect": false }
+      ],
+      "explanation": "Premium-leverandoerer tilbyr hoeyest kvalitet, best baerekraft og kortere leveringstid, men til en hoeyere pris per enhet. Det er en avveining mellom kvalitet og kostnad.",
+      "relatedTerm": "ECO_001"
+    },
+    {
+      "id": "Q_PROD_07",
+      "question": "Hva er en USP (Unique Selling Proposition)?",
+      "category": "produkt",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PROD_07_A", "text": "Den laveste prisen paa markedet", "isCorrect": false },
+        { "id": "Q_PROD_07_B", "text": "Det som gjor ditt produkt unikt og annerledes fra konkurrentene", "isCorrect": true },
+        { "id": "Q_PROD_07_C", "text": "En type markedsfoeringskampanje", "isCorrect": false },
+        { "id": "Q_PROD_07_D", "text": "Et juridisk merke paa produktet", "isCorrect": false }
+      ],
+      "explanation": "USP er det som gjor produktet ditt unikt. Det kan vaere kvalitet, design, baerekraft, lokal produksjon eller noe annet som skiller deg fra konkurrentene."
+    },
+    {
+      "id": "Q_PROD_08",
+      "question": "Hva betyr baerekraftsscore for en leverandoer?",
+      "category": "produkt",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PROD_08_A", "text": "Hvor lenge leverandoeren har eksistert", "isCorrect": false },
+        { "id": "Q_PROD_08_B", "text": "Hvor miljoevennlig og etisk produksjonen er", "isCorrect": true },
+        { "id": "Q_PROD_08_C", "text": "Hvor raskt de kan levere", "isCorrect": false },
+        { "id": "Q_PROD_08_D", "text": "Hvor billige de er", "isCorrect": false }
+      ],
+      "explanation": "Baerekraftsscore viser hvor miljoevennlig og etisk forsvarlig produksjonen er. Hoey score betyr bedre arbeidsforhold, lavere utslipp og mer ansvarlig ressursbruk."
+    },
+    {
+      "id": "Q_PROD_09",
+      "question": "Hva er forskjellen mellom en produsent og en forhandler?",
+      "category": "produkt",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PROD_09_A", "text": "Produsenten lager varen, forhandleren selger den videre", "isCorrect": true },
+        { "id": "Q_PROD_09_B", "text": "Produsenten selger, forhandleren lager", "isCorrect": false },
+        { "id": "Q_PROD_09_C", "text": "Det er ingen forskjell", "isCorrect": false },
+        { "id": "Q_PROD_09_D", "text": "Forhandleren er alltid billigere", "isCorrect": false }
+      ],
+      "explanation": "Produsenten lager produktet (f.eks. en fabrikk), mens forhandleren kjoeper det inn og selger det videre til sluttkunden (f.eks. en butikk)."
+    },
+    {
+      "id": "Q_PROD_10",
+      "question": "Hvorfor er lead time (leveringstid) viktig naar du velger leverandoer?",
+      "category": "produkt",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PROD_10_A", "text": "Lengre leveringstid betyr alltid bedre kvalitet", "isCorrect": false },
+        { "id": "Q_PROD_10_B", "text": "Kort leveringstid gjor at du kan reagere raskere paa ettersporselen", "isCorrect": true },
+        { "id": "Q_PROD_10_C", "text": "Leveringstid paavirker ikke salget", "isCorrect": false },
+        { "id": "Q_PROD_10_D", "text": "Lang leveringstid er alltid billigere", "isCorrect": false }
+      ],
+      "explanation": "Kort leveringstid betyr at du kan bestille varer naermere salgsstart, tilpasse deg trender og redusere risikoen for overlager. Lang leveringstid krever at du planlegger lenger frem."
+    },
+    {
+      "id": "Q_PROD_11",
+      "question": "Hva menes med minimum bestillingskvantum (MOQ)?",
+      "category": "produkt",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PROD_11_A", "text": "Det minste antallet du maa bestille fra leverandoeren", "isCorrect": true },
+        { "id": "Q_PROD_11_B", "text": "Det maksimale antallet du kan bestille", "isCorrect": false },
+        { "id": "Q_PROD_11_C", "text": "Det optimale antallet for best pris", "isCorrect": false },
+        { "id": "Q_PROD_11_D", "text": "Antall produkter du maa selge for break-even", "isCorrect": false }
+      ],
+      "explanation": "MOQ er minimumsantallet en leverandoer krever per bestilling. Budget-leverandoerer har ofte hoeyere MOQ enn premium-leverandoerer, noe som oeker risikoen for overlager."
+    },
+    {
+      "id": "Q_PROD_12",
+      "question": "Hva er fordelen med aa vaelge en norsk leverandoer fremfor en utenlandsk?",
+      "category": "produkt",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PROD_12_A", "text": "Alltid lavere pris", "isCorrect": false },
+        { "id": "Q_PROD_12_B", "text": "Kortere leveringstid og bedre kontroll", "isCorrect": true },
+        { "id": "Q_PROD_12_C", "text": "Alltid hoeyere kvalitet", "isCorrect": false },
+        { "id": "Q_PROD_12_D", "text": "Ingen fordel", "isCorrect": false }
+      ],
+      "explanation": "Norsk leverandoer gir typisk kortere leveringstid, enklere kommunikasjon, bedre kvalitetskontroll og mulighet for aa markedsfoere 'norskprodusert'. Men kostnaden er vanligvis hoeyere."
+    },
+    {
+      "id": "Q_PROD_13",
+      "question": "Hva er risikoen ved aa ha for stort sortiment?",
+      "category": "produkt",
+      "difficulty": "hard",
+      "options": [
+        { "id": "Q_PROD_13_A", "text": "Kundene faar for mange valg og du faar hoeyere lagerkostnader", "isCorrect": true },
+        { "id": "Q_PROD_13_B", "text": "Du selger alltid mer med storre sortiment", "isCorrect": false },
+        { "id": "Q_PROD_13_C", "text": "Det er ingen risiko", "isCorrect": false },
+        { "id": "Q_PROD_13_D", "text": "Du faar lavere innkjoepspriser", "isCorrect": false }
+      ],
+      "explanation": "For stort sortiment gir valgets kval (choice overload), hoeyere lagerkostnader, risiko for overlager og svinn. Ofte er et gjennomtenkt, begrenset utvalg mer loennsomt."
+    },
+    {
+      "id": "Q_PRIS_01",
+      "question": "Hva er dekningsbidrag (DB)?",
+      "category": "pris",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PRIS_01_A", "text": "Salgspris minus variable kostnader", "isCorrect": true },
+        { "id": "Q_PRIS_01_B", "text": "Salgspris minus alle kostnader", "isCorrect": false },
+        { "id": "Q_PRIS_01_C", "text": "Salgspris minus moms", "isCorrect": false },
+        { "id": "Q_PRIS_01_D", "text": "Salgspris minus innkjoepspris minus faste kostnader", "isCorrect": false }
+      ],
+      "explanation": "Dekningsbidrag er salgsinntekt minus variable kostnader. Det som er igjen skal dekke faste kostnader og gi fortjeneste. Formel: DB = Pris - Variable kostnader.",
+      "relatedTerm": "ECO_001"
+    },
+    {
+      "id": "Q_PRIS_02",
+      "question": "Hva er nullpunktet (break-even)?",
+      "category": "pris",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PRIS_02_A", "text": "Naar du har solgt alt lageret", "isCorrect": false },
+        { "id": "Q_PRIS_02_B", "text": "Naar inntektene er like store som kostnadene", "isCorrect": true },
+        { "id": "Q_PRIS_02_C", "text": "Naar du har 0 kunder", "isCorrect": false },
+        { "id": "Q_PRIS_02_D", "text": "Naar du har betalt tilbake laanet", "isCorrect": false }
+      ],
+      "explanation": "Nullpunktet er det salgsvolumet der totale inntekter er lik totale kostnader. Under nullpunktet gaar du med tap, over nullpunktet tjener du penger.",
+      "relatedTerm": "ECO_003"
+    },
+    {
+      "id": "Q_PRIS_03",
+      "question": "Hva er skumme-floeten-strategien?",
+      "category": "pris",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PRIS_03_A", "text": "Aa sette lav pris for aa vinne markedsandel", "isCorrect": false },
+        { "id": "Q_PRIS_03_B", "text": "Aa sette hoey pris ved lansering og senke den gradvis", "isCorrect": true },
+        { "id": "Q_PRIS_03_C", "text": "Aa sette pris lik konkurrentene", "isCorrect": false },
+        { "id": "Q_PRIS_03_D", "text": "Aa sette pris basert paa kostnad", "isCorrect": false }
+      ],
+      "explanation": "Skumme-floeten-strategien betyr at du setter hoey pris ved lansering for aa tjene mest paa de som 'maa ha det forst'. Deretter senkes prisen gradvis for aa naa flere kundegrupper.",
+      "relatedTerm": "MKT_011"
+    },
+    {
+      "id": "Q_PRIS_04",
+      "question": "Hva er psykologisk prising?",
+      "category": "pris",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PRIS_04_A", "text": "Aa sette pris basert paa kundens foelelser", "isCorrect": false },
+        { "id": "Q_PRIS_04_B", "text": "Aa prise varer slik at de foeles billigere, f.eks. 99 kr i stedet for 100 kr", "isCorrect": true },
+        { "id": "Q_PRIS_04_C", "text": "Aa gi rabatt til psykologer", "isCorrect": false },
+        { "id": "Q_PRIS_04_D", "text": "Aa sette hoeyest mulig pris", "isCorrect": false }
+      ],
+      "explanation": "Psykologisk prising bruker pristall som foeles lavere for kunden. 99 kr oppfattes som vesentlig billigere enn 100 kr, selv om forskjellen bare er 1 krone.",
+      "relatedTerm": "MKT_013"
+    },
+    {
+      "id": "Q_PRIS_05",
+      "question": "Hvis et produkt koster 60 kr i innkjoep og du selger det for 150 kr, hva er dekningsgraden?",
+      "category": "pris",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PRIS_05_A", "text": "40%", "isCorrect": false },
+        { "id": "Q_PRIS_05_B", "text": "60%", "isCorrect": true },
+        { "id": "Q_PRIS_05_C", "text": "90%", "isCorrect": false },
+        { "id": "Q_PRIS_05_D", "text": "150%", "isCorrect": false }
+      ],
+      "explanation": "DB = 150 - 60 = 90 kr. DG = (90 / 150) * 100 = 60%. Dekningsgraden viser hvor stor andel av prisen som er igjen til aa dekke faste kostnader og fortjeneste.",
+      "relatedTerm": "ECO_002"
+    },
+    {
+      "id": "Q_PRIS_06",
+      "question": "Hva er prisdifferensiering?",
+      "category": "pris",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PRIS_06_A", "text": "Aa ta forskjellig pris for samme produkt fra ulike kundegrupper", "isCorrect": true },
+        { "id": "Q_PRIS_06_B", "text": "Aa ha forskjellige priser paa forskjellige produkter", "isCorrect": false },
+        { "id": "Q_PRIS_06_C", "text": "Aa senke prisen over tid", "isCorrect": false },
+        { "id": "Q_PRIS_06_D", "text": "Aa ha hoeyere pris enn konkurrentene", "isCorrect": false }
+      ],
+      "explanation": "Prisdifferensiering betyr at du tar ulik pris for samme produkt basert paa kundegruppe. Eksempler: studentrabatt, barnebillett, honnorpris.",
+      "relatedTerm": "MKT_014"
+    },
+    {
+      "id": "Q_PRIS_07",
+      "question": "Faste kostnader er 50 000 kr i maaneden. DB per produkt er 200 kr. Hvor mange maa du selge for break-even?",
+      "category": "pris",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PRIS_07_A", "text": "100 stk", "isCorrect": false },
+        { "id": "Q_PRIS_07_B", "text": "250 stk", "isCorrect": true },
+        { "id": "Q_PRIS_07_C", "text": "500 stk", "isCorrect": false },
+        { "id": "Q_PRIS_07_D", "text": "1000 stk", "isCorrect": false }
+      ],
+      "explanation": "Nullpunkt = Faste kostnader / DB per enhet = 50 000 / 200 = 250 stk. Du maa selge 250 produkter for aa gaa i null.",
+      "relatedTerm": "ECO_003"
+    },
+    {
+      "id": "Q_PRIS_08",
+      "question": "Hva er forskjellen mellom paaslag og margin?",
+      "category": "pris",
+      "difficulty": "hard",
+      "options": [
+        { "id": "Q_PRIS_08_A", "text": "Paaslag beregnes paa innkjoepspris, margin beregnes paa salgspris", "isCorrect": true },
+        { "id": "Q_PRIS_08_B", "text": "De betyr det samme", "isCorrect": false },
+        { "id": "Q_PRIS_08_C", "text": "Margin beregnes paa innkjoepspris, paaslag paa salgspris", "isCorrect": false },
+        { "id": "Q_PRIS_08_D", "text": "Paaslag er alltid stoerre enn margin", "isCorrect": false }
+      ],
+      "explanation": "Paaslag beregnes paa innkjoepsprisen (f.eks. 100% paaslag paa 50 kr = salgspris 100 kr). Margin beregnes paa salgsprisen (margin = 50/100 = 50%). Samme tall, forskjellig perspektiv."
+    },
+    {
+      "id": "Q_PRIS_09",
+      "question": "Naar passer inntrengningsstrategi best?",
+      "category": "pris",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PRIS_09_A", "text": "Naar du har et helt unikt produkt", "isCorrect": false },
+        { "id": "Q_PRIS_09_B", "text": "Naar du vil vinne markedsandel raskt i et marked med mange konkurrenter", "isCorrect": true },
+        { "id": "Q_PRIS_09_C", "text": "Naar du har begrenset produksjonskapasitet", "isCorrect": false },
+        { "id": "Q_PRIS_09_D", "text": "Naar du vil selge til premium-segmentet", "isCorrect": false }
+      ],
+      "explanation": "Inntrengningsstrategi (lav pris ved lansering) passer best naar markedet har mange konkurrenter og du trenger aa bygge kundebase raskt. Prisen kan oeke naar du har faste kunder.",
+      "relatedTerm": "MKT_012"
+    },
+    {
+      "id": "Q_PRIS_10",
+      "question": "Hva er selvkost?",
+      "category": "pris",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PRIS_10_A", "text": "Kun innkjoepsprisen", "isCorrect": false },
+        { "id": "Q_PRIS_10_B", "text": "Alle kostnader knyttet til produktet, baade variable og faste", "isCorrect": true },
+        { "id": "Q_PRIS_10_C", "text": "Bare de faste kostnadene", "isCorrect": false },
+        { "id": "Q_PRIS_10_D", "text": "Salgsprisen minus moms", "isCorrect": false }
+      ],
+      "explanation": "Selvkost er summen av alle kostnader for et produkt: baade direkte (innkjoep, frakt) og indirekte (andel husleie, loenn). Aa selge til selvkost gir null fortjeneste.",
+      "relatedTerm": "ECO_004"
+    },
+    {
+      "id": "Q_PRIS_11",
+      "question": "Hva betyr likviditet?",
+      "category": "pris",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PRIS_11_A", "text": "Bedriftens totale omsetning", "isCorrect": false },
+        { "id": "Q_PRIS_11_B", "text": "Bedriftens evne til aa betale regninger naar de forfaller", "isCorrect": true },
+        { "id": "Q_PRIS_11_C", "text": "Bedriftens overskudd", "isCorrect": false },
+        { "id": "Q_PRIS_11_D", "text": "Bedriftens gjeld", "isCorrect": false }
+      ],
+      "explanation": "Likviditet handler om betalingsevne - aa ha penger paa konto til aa betale regninger ved forfall. En bedrift kan gaa konkurs selv om den er loennsam, hvis den mangler likviditet.",
+      "relatedTerm": "ECO_005"
+    },
+    {
+      "id": "Q_PRIS_12",
+      "question": "Du selger et produkt for 500 kr. Innkjoepspris er 200 kr. Husleie er 10 000 kr/mnd. Du selger 100 stk/mnd. Hva er resultatet?",
+      "category": "pris",
+      "difficulty": "hard",
+      "options": [
+        { "id": "Q_PRIS_12_A", "text": "20 000 kr i overskudd", "isCorrect": true },
+        { "id": "Q_PRIS_12_B", "text": "30 000 kr i overskudd", "isCorrect": false },
+        { "id": "Q_PRIS_12_C", "text": "10 000 kr i overskudd", "isCorrect": false },
+        { "id": "Q_PRIS_12_D", "text": "50 000 kr i overskudd", "isCorrect": false }
+      ],
+      "explanation": "DB per enhet = 500 - 200 = 300 kr. Totalt DB = 300 x 100 = 30 000 kr. Resultat = 30 000 - 10 000 (husleie) = 20 000 kr i overskudd."
+    },
+    {
+      "id": "Q_PRIS_13",
+      "question": "Hvorfor bor du ikke alltid velge den billigste leverandoeren?",
+      "category": "pris",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PRIS_13_A", "text": "Fordi lavere pris ofte betyr lavere kvalitet, lengre leveringstid og hoeyere risiko", "isCorrect": true },
+        { "id": "Q_PRIS_13_B", "text": "Fordi dyre leverandoerer alltid er bedre", "isCorrect": false },
+        { "id": "Q_PRIS_13_C", "text": "Fordi det er ulovlig", "isCorrect": false },
+        { "id": "Q_PRIS_13_D", "text": "Du bor alltid velge den billigste", "isCorrect": false }
+      ],
+      "explanation": "Billigste leverandoer betyr ofte lavere kvalitet, laenger leveringstid, hoeyere MOQ og laav baerekraftsscore. Total kostnad (inkl. svinn, returer, omdomme) kan bli hoeyere."
+    },
+    {
+      "id": "Q_PLASS_01",
+      "question": "Hva er en distribusjonskanal?",
+      "category": "plass",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PLASS_01_A", "text": "En TV-kanal som viser reklame", "isCorrect": false },
+        { "id": "Q_PLASS_01_B", "text": "Veien produktet tar fra produsent til sluttkunde", "isCorrect": true },
+        { "id": "Q_PLASS_01_C", "text": "En type sosiale medier", "isCorrect": false },
+        { "id": "Q_PLASS_01_D", "text": "En elv som brukes til transport", "isCorrect": false }
+      ],
+      "explanation": "Distribusjonskanal er hele veien produktet tar fra produsent til sluttkunde, inkludert alle mellomledd som grossister og detaljister.",
+      "relatedTerm": "MKT_006"
+    },
+    {
+      "id": "Q_PLASS_02",
+      "question": "Hva er forskjellen mellom direkte og indirekte distribusjon?",
+      "category": "plass",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PLASS_02_A", "text": "Direkte = uten mellomledd, Indirekte = med mellomledd", "isCorrect": true },
+        { "id": "Q_PLASS_02_B", "text": "Direkte er billigere, Indirekte er dyrere", "isCorrect": false },
+        { "id": "Q_PLASS_02_C", "text": "Direkte er for store bedrifter, Indirekte for smaa", "isCorrect": false },
+        { "id": "Q_PLASS_02_D", "text": "Det er ingen forskjell", "isCorrect": false }
+      ],
+      "explanation": "Direkte distribusjon: produsent selger direkte til kunde (f.eks. egen nettbutikk). Indirekte: produktet gaar gjennom mellomledd (f.eks. grossist og detaljist).",
+      "relatedTerm": "MKT_007"
+    },
+    {
+      "id": "Q_PLASS_03",
+      "question": "Hva er intensiv distribusjon?",
+      "category": "plass",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PLASS_03_A", "text": "Aa selge produktet paa saa mange steder som mulig", "isCorrect": true },
+        { "id": "Q_PLASS_03_B", "text": "Aa selge produktet kun i en butikk", "isCorrect": false },
+        { "id": "Q_PLASS_03_C", "text": "Aa selge produktet veldig aggressivt", "isCorrect": false },
+        { "id": "Q_PLASS_03_D", "text": "Aa ha intensiv markedsforing", "isCorrect": false }
+      ],
+      "explanation": "Intensiv distribusjon betyr aa vaere tilgjengelig paa flest mulig salgssted. Typisk for dagligvarer som brus, sjokolade og aviser. Ikke egnet for luksusvarer.",
+      "relatedTerm": "MKT_008"
+    },
+    {
+      "id": "Q_PLASS_04",
+      "question": "Naar passer selektiv distribusjon?",
+      "category": "plass",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PLASS_04_A", "text": "For dagligvarer som melk og broed", "isCorrect": false },
+        { "id": "Q_PLASS_04_B", "text": "For merkevarer som krever en viss standard paa utsalgsstedet", "isCorrect": true },
+        { "id": "Q_PLASS_04_C", "text": "For alle typer produkter", "isCorrect": false },
+        { "id": "Q_PLASS_04_D", "text": "Bare for netthandel", "isCorrect": false }
+      ],
+      "explanation": "Selektiv distribusjon passer for merkevarer som Gant, Apple eller Bang & Olufsen. Du velger ut forhandlere som holder en viss standard for aa beskytte merkevaren.",
+      "relatedTerm": "MKT_009"
+    },
+    {
+      "id": "Q_PLASS_05",
+      "question": "Hva er fordelen med netthandel for en ny bedrift?",
+      "category": "plass",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PLASS_05_A", "text": "Lavere oppstartskostnader og tilgang til hele landet", "isCorrect": true },
+        { "id": "Q_PLASS_05_B", "text": "Du trenger aldri aa mote kunder", "isCorrect": false },
+        { "id": "Q_PLASS_05_C", "text": "Du slipper aa betale skatt", "isCorrect": false },
+        { "id": "Q_PLASS_05_D", "text": "Du slipper aa ha produkter paa lager", "isCorrect": false }
+      ],
+      "explanation": "Netthandel gir lavere faste kostnader (ingen dyr butikkleie), tilgang til kunder over hele landet, og fleksible aapningstider. Men du maa haandtere logistikk og retur."
+    },
+    {
+      "id": "Q_PLASS_06",
+      "question": "Hva betyr 'omnikanalstrategi'?",
+      "category": "plass",
+      "difficulty": "hard",
+      "options": [
+        { "id": "Q_PLASS_06_A", "text": "Aa bare selge i en kanal", "isCorrect": false },
+        { "id": "Q_PLASS_06_B", "text": "Aa gi kunden en soemloes opplevelse paa tvers av alle salgskanaler", "isCorrect": true },
+        { "id": "Q_PLASS_06_C", "text": "Aa annonsere i alle medier", "isCorrect": false },
+        { "id": "Q_PLASS_06_D", "text": "Aa selge det samme produktet i alle land", "isCorrect": false }
+      ],
+      "explanation": "Omnikanalstrategi betyr at kunden faar en konsistent opplevelse enten de handler i butikk, paa nett eller via app. Kunden kan f.eks. bestille paa nett og hente i butikk."
+    },
+    {
+      "id": "Q_PLASS_07",
+      "question": "Hva er en grossist?",
+      "category": "plass",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PLASS_07_A", "text": "En som selger direkte til forbrukeren", "isCorrect": false },
+        { "id": "Q_PLASS_07_B", "text": "Et mellomledd som kjoeper store kvanta fra produsenter og selger videre til detaljister", "isCorrect": true },
+        { "id": "Q_PLASS_07_C", "text": "En stor butikk", "isCorrect": false },
+        { "id": "Q_PLASS_07_D", "text": "En transportoer", "isCorrect": false }
+      ],
+      "explanation": "Grossisten er et mellomledd i distribusjonskjeden. De kjoeper store partier fra produsenter og selger videre i mindre partier til detaljister (butikker). Eksempel: ASKO for matvarer."
+    },
+    {
+      "id": "Q_PLASS_08",
+      "question": "Hvorfor er beliggenhet viktig for en fysisk butikk?",
+      "category": "plass",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PLASS_08_A", "text": "God beliggenhet gir mer fottrafikk og synlighet", "isCorrect": true },
+        { "id": "Q_PLASS_08_B", "text": "Beliggenhet betyr ingenting i dag pga. netthandel", "isCorrect": false },
+        { "id": "Q_PLASS_08_C", "text": "Billigst mulig beliggenhet er alltid best", "isCorrect": false },
+        { "id": "Q_PLASS_08_D", "text": "Butikker bor alltid ligge i utkanten av byen", "isCorrect": false }
+      ],
+      "explanation": "Beliggenhet er fortsatt en av de viktigste faktorene for fysiske butikker. God beliggenhet gir fottrafikk, synlighet og tilgjengelighet. Men det koster mer i husleie."
+    },
+    {
+      "id": "Q_PLASS_09",
+      "question": "Er Zalando direkte eller indirekte distribusjon for klesskprodusentene?",
+      "category": "plass",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PLASS_09_A", "text": "Direkte, fordi det er netthandel", "isCorrect": false },
+        { "id": "Q_PLASS_09_B", "text": "Indirekte, fordi Zalando er et mellomledd mellom produsent og kunde", "isCorrect": true },
+        { "id": "Q_PLASS_09_C", "text": "Ingen av delene", "isCorrect": false },
+        { "id": "Q_PLASS_09_D", "text": "Det avhenger av produktet", "isCorrect": false }
+      ],
+      "explanation": "Zalando er indirekte distribusjon. Selv om det er netthandel, er Zalando et mellomledd (detaljist) mellom produsenten og kunden. Direkte ville vaert produsentens egen nettbutikk.",
+      "relatedTerm": "MKT_007"
+    },
+    {
+      "id": "Q_PLASS_10",
+      "question": "Hva er angrerett?",
+      "category": "plass",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PLASS_10_A", "text": "Rett til aa returnere varer kjopt i vanlig butikk", "isCorrect": false },
+        { "id": "Q_PLASS_10_B", "text": "14 dagers returrett paa varer kjopt paa nett eller utenfor fast utsalgssted", "isCorrect": true },
+        { "id": "Q_PLASS_10_C", "text": "Rett til aa angre paa alt du kjoeper", "isCorrect": false },
+        { "id": "Q_PLASS_10_D", "text": "En frivillig ordning butikker kan tilby", "isCorrect": false }
+      ],
+      "explanation": "Angrerett er lovfestet for kjoep utenfor fast utsalgssted (netthandel, telefonsalg). Du har 14 dager til aa returnere varen. I vanlige butikker er retur kun en service (aapent kjoep).",
+      "relatedTerm": "JUS_002"
+    },
+    {
+      "id": "Q_PLASS_11",
+      "question": "Hva er eksklusiv distribusjon?",
+      "category": "plass",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PLASS_11_A", "text": "Kun en forhandler i et geografisk omraade faar selge produktet", "isCorrect": true },
+        { "id": "Q_PLASS_11_B", "text": "Produktet selges bare til rike kunder", "isCorrect": false },
+        { "id": "Q_PLASS_11_C", "text": "Butikken ser eksklusiv ut", "isCorrect": false },
+        { "id": "Q_PLASS_11_D", "text": "Produktet har eksklusiv emballasje", "isCorrect": false }
+      ],
+      "explanation": "Eksklusiv distribusjon betyr at kun en forhandler i et geografisk omraade har rett til aa selge produktet. Det gir hoey kontroll og eksklusivitet, men lavest volum.",
+      "relatedTerm": "MKT_010"
+    },
+    {
+      "id": "Q_PAAV_01",
+      "question": "Hva staar AIDA for?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_01_A", "text": "Attention, Interest, Desire, Action", "isCorrect": true },
+        { "id": "Q_PAAV_01_B", "text": "Advertising, Internet, Data, Analytics", "isCorrect": false },
+        { "id": "Q_PAAV_01_C", "text": "Appeal, Interaction, Decision, Acquisition", "isCorrect": false },
+        { "id": "Q_PAAV_01_D", "text": "Analysis, Implementation, Distribution, Assessment", "isCorrect": false }
+      ],
+      "explanation": "AIDA staar for Attention (faa oppmerksomhet), Interest (vekke interesse), Desire (skape oenske), Action (faa kunden til aa handle). Det er en modell for effektiv markedskommunikasjon.",
+      "relatedTerm": "MKT_019"
+    },
+    {
+      "id": "Q_PAAV_02",
+      "question": "Hva er forskjellen mellom reklame og PR?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_02_A", "text": "Reklame betaler du for, PR maa du gjore deg fortjent til", "isCorrect": true },
+        { "id": "Q_PAAV_02_B", "text": "Reklame er paa TV, PR er paa nett", "isCorrect": false },
+        { "id": "Q_PAAV_02_C", "text": "De er det samme", "isCorrect": false },
+        { "id": "Q_PAAV_02_D", "text": "PR er alltid negativt", "isCorrect": false }
+      ],
+      "explanation": "Reklame er betalt kommunikasjon (annonser, bannere). PR er fortjent omtale (redaksjonelle artikler, nyhetssaker). PR har ofte hoeyere troverdighet fordi det ikke er betalt.",
+      "relatedTerm": "MKT_018"
+    },
+    {
+      "id": "Q_PAAV_03",
+      "question": "Hva er personlig salg?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_03_A", "text": "Bare doerselgere", "isCorrect": false },
+        { "id": "Q_PAAV_03_B", "text": "All direkte dialog mellom selger og kunde", "isCorrect": true },
+        { "id": "Q_PAAV_03_C", "text": "Aa selge personlige ting", "isCorrect": false },
+        { "id": "Q_PAAV_03_D", "text": "Salg via personlige annonser", "isCorrect": false }
+      ],
+      "explanation": "Personlig salg er all direkte kontakt mellom selger og kunde: i butikk, paa telefon, via videomote. Det er den mest effektive, men ogsaa dyreste formen for markedsforing.",
+      "relatedTerm": "MKT_017"
+    },
+    {
+      "id": "Q_PAAV_04",
+      "question": "Hvilken markedsfoeringskanal er mest effektiv for aa naa unge (18-25)?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_04_A", "text": "Avisannonser", "isCorrect": false },
+        { "id": "Q_PAAV_04_B", "text": "Sosiale medier (TikTok, Instagram)", "isCorrect": true },
+        { "id": "Q_PAAV_04_C", "text": "Radio-reklame", "isCorrect": false },
+        { "id": "Q_PAAV_04_D", "text": "Flyers i postkassen", "isCorrect": false }
+      ],
+      "explanation": "Unge forbrukere bruker mest tid paa sosiale medier. TikTok og Instagram er de viktigste kanalene for aa naa 18-25-aaringer med markedsforing."
+    },
+    {
+      "id": "Q_PAAV_05",
+      "question": "Hva er segmentering?",
+      "category": "pavirkning",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PAAV_05_A", "text": "Aa dele bedriften inn i avdelinger", "isCorrect": false },
+        { "id": "Q_PAAV_05_B", "text": "Aa dele markedet inn i grupper med fellestrekk", "isCorrect": true },
+        { "id": "Q_PAAV_05_C", "text": "Aa dele produktene inn i kategorier", "isCorrect": false },
+        { "id": "Q_PAAV_05_D", "text": "Aa dele opp en lang reklamefilm", "isCorrect": false }
+      ],
+      "explanation": "Segmentering er aa dele markedet inn i mindre grupper (segmenter) basert paa fellestrekk som alder, kjoenn, geografi eller livsstil. Maalgruppen er segmentet du velger aa rette deg mot.",
+      "relatedTerm": "MKT_020"
+    },
+    {
+      "id": "Q_PAAV_06",
+      "question": "Hva er forskjellen mellom segmentering og maalgruppe?",
+      "category": "pavirkning",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PAAV_06_A", "text": "Segmentering er analysen, maalgruppe er valget du tar", "isCorrect": true },
+        { "id": "Q_PAAV_06_B", "text": "De er det samme", "isCorrect": false },
+        { "id": "Q_PAAV_06_C", "text": "Maalgruppe er analysen, segmentering er valget", "isCorrect": false },
+        { "id": "Q_PAAV_06_D", "text": "Segmentering er for store bedrifter, maalgruppe for smaa", "isCorrect": false }
+      ],
+      "explanation": "Segmentering er prosessen med aa dele markedet inn i grupper. Maalgruppe er det segmentet du velger aa fokusere paa. Foerst segmenterer du, saa velger du maalgruppe.",
+      "relatedTerm": "MKT_020"
+    },
+    {
+      "id": "Q_PAAV_07",
+      "question": "Hva betyr det aa 'greenwashe'?",
+      "category": "pavirkning",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PAAV_07_A", "text": "Aa male butikken groenn", "isCorrect": false },
+        { "id": "Q_PAAV_07_B", "text": "Aa overdrive bedriftens miljoeinnsats i markedsforingen", "isCorrect": true },
+        { "id": "Q_PAAV_07_C", "text": "Aa vaske produktene paa en miljoevennlig maate", "isCorrect": false },
+        { "id": "Q_PAAV_07_D", "text": "Aa selge groenne produkter", "isCorrect": false }
+      ],
+      "explanation": "Greenwashing er aa gi et falskt inntrykk av at bedriften er mer miljoevennlig enn den faktisk er. Det kan skade omdoemmet alvorlig hvis man blir avsloert."
+    },
+    {
+      "id": "Q_PAAV_08",
+      "question": "Hva er massekommunikasjon?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_08_A", "text": "Kommunikasjon fra en sender til mange mottakere", "isCorrect": true },
+        { "id": "Q_PAAV_08_B", "text": "Kommunikasjon mellom mange sendre", "isCorrect": false },
+        { "id": "Q_PAAV_08_C", "text": "En-til-en kommunikasjon", "isCorrect": false },
+        { "id": "Q_PAAV_08_D", "text": "Kommunikasjon i store mengder", "isCorrect": false }
+      ],
+      "explanation": "Massekommunikasjon er en-til-mange kommunikasjon gjennom medier: TV-reklame, avisannonser, plakater. Fordelen er bred dekning, ulempen er lav personalisering.",
+      "relatedTerm": "MKT_016"
+    },
+    {
+      "id": "Q_PAAV_09",
+      "question": "Hva er service recovery?",
+      "category": "pavirkning",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PAAV_09_A", "text": "Aa reparere et produkt", "isCorrect": false },
+        { "id": "Q_PAAV_09_B", "text": "Aa snu en negativ kundeopplevelse til noe positivt", "isCorrect": true },
+        { "id": "Q_PAAV_09_C", "text": "Aa gjenopprette en nettside etter nedetid", "isCorrect": false },
+        { "id": "Q_PAAV_09_D", "text": "Aa hente tilbake en tapt kunde", "isCorrect": false }
+      ],
+      "explanation": "Service recovery er kunsten aa haandtere en klage saa godt at kunden blir mer fornoyd enn om feilen aldri hadde skjedd. Beklage, fikse problemet, og gjerne gi noe ekstra.",
+      "relatedTerm": "SRV_001"
+    },
+    {
+      "id": "Q_PAAV_10",
+      "question": "Hva er 'sannhetens oyeblikk' i kundeservice?",
+      "category": "pavirkning",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PAAV_10_A", "text": "Naar kunden faar vite den ekte prisen", "isCorrect": false },
+        { "id": "Q_PAAV_10_B", "text": "Det kritiske moetet mellom kunde og bedrift som former kundens oppfatning", "isCorrect": true },
+        { "id": "Q_PAAV_10_C", "text": "Naar butikken aapner om morgenen", "isCorrect": false },
+        { "id": "Q_PAAV_10_D", "text": "Naar kunden legger igjen en anmeldelse", "isCorrect": false }
+      ],
+      "explanation": "Sannhetens oyeblikk er det kritiske moeetet mellom kunde og medarbeider der kundens oppfatning av kvaliteten avgjores. Foorsteinntrykket er vanskelig aa endre.",
+      "relatedTerm": "SRV_002"
+    },
+    {
+      "id": "Q_PAAV_11",
+      "question": "Hvorfor er influencer-markedsforing effektivt?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_11_A", "text": "Fordi influencere er billige", "isCorrect": false },
+        { "id": "Q_PAAV_11_B", "text": "Fordi foelgerne stoler paa influencerens anbefalinger", "isCorrect": true },
+        { "id": "Q_PAAV_11_C", "text": "Fordi alle unge er influencere", "isCorrect": false },
+        { "id": "Q_PAAV_11_D", "text": "Fordi det er lovpaalagt", "isCorrect": false }
+      ],
+      "explanation": "Influencer-markedsforing fungerer fordi foelgerne har tillit til influenceren. Anbefalingen foeles mer autentisk enn tradisjonell reklame, noe som gir hoeyere konvertering."
+    },
+    {
+      "id": "Q_PAAV_12",
+      "question": "Hva er det foerste steget i AIDA-modellen?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_12_A", "text": "Interest - Vekke interesse", "isCorrect": false },
+        { "id": "Q_PAAV_12_B", "text": "Action - Faa kunden til aa handle", "isCorrect": false },
+        { "id": "Q_PAAV_12_C", "text": "Attention - Faa oppmerksomhet", "isCorrect": true },
+        { "id": "Q_PAAV_12_D", "text": "Desire - Skape oensse", "isCorrect": false }
+      ],
+      "explanation": "Attention er foerste steg. Du maa foerst faa kundens oppmerksomhet (stoppeffekt) foer du kan bygge interesse, oenske og handling.",
+      "relatedTerm": "MKT_019"
+    },
+    {
+      "id": "Q_PAAV_13",
+      "question": "Hva er forskjellen mellom betalt og fortjent medieomtale?",
+      "category": "pavirkning",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PAAV_13_A", "text": "Betalt = annonser du betaler for, Fortjent = omtale du faar gratis gjennom PR", "isCorrect": true },
+        { "id": "Q_PAAV_13_B", "text": "De er det samme", "isCorrect": false },
+        { "id": "Q_PAAV_13_C", "text": "Fortjent er alltid negativt", "isCorrect": false },
+        { "id": "Q_PAAV_13_D", "text": "Betalt er alltid bedre", "isCorrect": false }
+      ],
+      "explanation": "Betalt medieomtale (reklame) styrer du selv, men koster penger. Fortjent medieomtale (PR, anmeldelser) er gratis og har hoeyere troverdighet, men du kan ikke styre budskapet.",
+      "relatedTerm": "MKT_018"
+    },
+    {
+      "id": "Q_PAAV_14",
+      "question": "Hva er en maalgruppe?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_14_A", "text": "Alle som bor i Norge", "isCorrect": false },
+        { "id": "Q_PAAV_14_B", "text": "Den spesifikke gruppen mennesker du retter markedsforingen mot", "isCorrect": true },
+        { "id": "Q_PAAV_14_C", "text": "De som allerede er kunder", "isCorrect": false },
+        { "id": "Q_PAAV_14_D", "text": "De som har mest penger", "isCorrect": false }
+      ],
+      "explanation": "Maalgruppen er den spesifikke gruppen mennesker du vil naa med produktet og markedsforingen din. Aa proeve aa naa 'alle' gjor at du ikke treffer noen skikkelig."
+    },
+    {
+      "id": "Q_PAAV_15",
+      "question": "Hva er forbrukerkjoepsloven?",
+      "category": "pavirkning",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PAAV_15_A", "text": "Loven som gjelder alle typer kjoep", "isCorrect": false },
+        { "id": "Q_PAAV_15_B", "text": "Loven som beskytter forbrukere naar de kjoeper fra en bedrift", "isCorrect": true },
+        { "id": "Q_PAAV_15_C", "text": "Loven som beskytter bedrifter mot kunder", "isCorrect": false },
+        { "id": "Q_PAAV_15_D", "text": "En internasjonal lov", "isCorrect": false }
+      ],
+      "explanation": "Forbrukerkjoepsloven gjelder naar en privatperson kjoeper av en bedrift. Den gir forbrukeren sterke rettigheter som reklamasjonsrett i opptil 5 aar.",
+      "relatedTerm": "JUS_001"
+    },
+    {
+      "id": "Q_PAAV_16",
+      "question": "Hva er HMS?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_16_A", "text": "Helse, Miljo og Sikkerhet", "isCorrect": true },
+        { "id": "Q_PAAV_16_B", "text": "Haandtering, Motivasjon og Strategi", "isCorrect": false },
+        { "id": "Q_PAAV_16_C", "text": "Handel, Marked og Salg", "isCorrect": false },
+        { "id": "Q_PAAV_16_D", "text": "Hovedkontor, Marked og Salgsavdeling", "isCorrect": false }
+      ],
+      "explanation": "HMS staar for Helse, Miljo og Sikkerhet. Alle bedrifter i Norge maa jobbe systematisk med HMS for aa sikre et trygt arbeidsmiljo. Dette inkluderer baade fysisk og psykisk miljo.",
+      "relatedTerm": "LED_003"
+    },
+    {
+      "id": "Q_PAAV_17",
+      "question": "Hva er kommunikasjonsmodellens viktigste element?",
+      "category": "pavirkning",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PAAV_17_A", "text": "Senderen", "isCorrect": false },
+        { "id": "Q_PAAV_17_B", "text": "Feedback/respons fra mottakeren", "isCorrect": true },
+        { "id": "Q_PAAV_17_C", "text": "Kanalen", "isCorrect": false },
+        { "id": "Q_PAAV_17_D", "text": "Budskapet", "isCorrect": false }
+      ],
+      "explanation": "Feedback er det viktigste elementet fordi det viser om budskapet ble forstatt riktig. Uten feedback vet du ikke om kommunikasjonen var vellykket.",
+      "relatedTerm": "MKT_015"
+    },
+    {
+      "id": "Q_PAAV_18",
+      "question": "Hva er aktiv lytting?",
+      "category": "pavirkning",
+      "difficulty": "easy",
+      "options": [
+        { "id": "Q_PAAV_18_A", "text": "Aa lytte med hoeye lytterapper", "isCorrect": false },
+        { "id": "Q_PAAV_18_B", "text": "Aa lytte for aa forstaa, vise interesse og stille oppfoelgingsspoersmaal", "isCorrect": true },
+        { "id": "Q_PAAV_18_C", "text": "Aa lytte mens du gjor andre ting", "isCorrect": false },
+        { "id": "Q_PAAV_18_D", "text": "Aa lytte paa podkaster", "isCorrect": false }
+      ],
+      "explanation": "Aktiv lytting betyr aa konsentrere seg fullt ut om det den andre sier, vise at du forstaar, og stille oppfoelgingsspoersmaal. Det er viktig baade i salg og kundeservice.",
+      "relatedTerm": "KOM_002"
+    },
+    {
+      "id": "Q_PAAV_19",
+      "question": "Hva er en PEST-analyse?",
+      "category": "pavirkning",
+      "difficulty": "hard",
+      "options": [
+        { "id": "Q_PAAV_19_A", "text": "En analyse av skadedyr i bedriften", "isCorrect": false },
+        { "id": "Q_PAAV_19_B", "text": "En analyse av Politiske, Oekonomiske, Sosiale og Teknologiske faktorer", "isCorrect": true },
+        { "id": "Q_PAAV_19_C", "text": "En analyse av personalets trivsel", "isCorrect": false },
+        { "id": "Q_PAAV_19_D", "text": "En analyse av konkurrentenes priser", "isCorrect": false }
+      ],
+      "explanation": "PEST staar for Political, Economic, Social, Technological. Det er et verktoy for aa analysere eksterne faktorer som paavirker bedriften din - ting du ikke kan kontrollere, men maa forholde deg til."
+    },
+    {
+      "id": "Q_PAAV_20",
+      "question": "Hva er viktigst for aa bygge god merkevare?",
+      "category": "pavirkning",
+      "difficulty": "medium",
+      "options": [
+        { "id": "Q_PAAV_20_A", "text": "Aa ha den laveste prisen", "isCorrect": false },
+        { "id": "Q_PAAV_20_B", "text": "Konsistent kvalitet, tydelig identitet og god kundeopplevelse over tid", "isCorrect": true },
+        { "id": "Q_PAAV_20_C", "text": "Aa bruke mest penger paa reklame", "isCorrect": false },
+        { "id": "Q_PAAV_20_D", "text": "Aa kopiere de stoerste merkevarene", "isCorrect": false }
+      ],
+      "explanation": "En sterk merkevare bygges gjennom konsistent levering av kvalitet, en tydelig visuell og verbal identitet, og gode kundeopplevelser over tid. Det krever taalmodighet og helhetlig tenkning."
+    }
+  ]
+}
