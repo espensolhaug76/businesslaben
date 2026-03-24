@@ -57,6 +57,9 @@ import PersonnelScreen from './screens/PersonnelScreen'
 import MonthResultScreen from './screens/MonthResultScreen'
 import YearEndScreen from './screens/YearEndScreen'
 
+// AdVenture 3.0
+import GameShell from './game/screens/GameShell'
+
 // Guards
 import FeatureGuard from './components/guards/FeatureGuard'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -224,6 +227,9 @@ function App() {
 
           {/* ── Landing page ─────────────────────────────────────────────── */}
           <Route path="/" element={<LandingPage />} />
+
+          {/* ── AdVenture 3.0 Business Simulator ─────────────────────────── */}
+          <Route path="/game" element={<GameShell />} />
 
           {/* ── Startup flow ─────────────────────────────────────────────── */}
           <Route element={<StartupLayout />}>
