@@ -1188,6 +1188,56 @@ export default function TeacherDashboard() {
                     </a>
                   ))}
                 </div>
+
+                {/* Markedsføring og Ledelse (ML) */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Markedsføring og Ledelse (ML)</h3>
+                  {([
+                    { title: 'ML1 – Markedsføring og markeder', desc: 'Verdiskaping, behov vs. ønsker, B2C, B2B og globale markeder', route: '/learning/presentations/ml1' },
+                    { title: 'ML2 – Strategi og merkevare', desc: 'Strategisk planlegging, Porters fem krefter, Brand Equity, IMC', route: '/learning/presentations/ml2' },
+                  ] as { title: string; desc: string; route: string }[]).map(p => (
+                    <a
+                      key={p.route}
+                      href={p.route}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
+                      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                    >
+                      <span className="text-xl shrink-0 text-gray-400">🎬</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm">{p.title}</p>
+                        <p className="text-gray-400 text-xs mt-0.5">{p.desc}</p>
+                      </div>
+                      <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
+                    </a>
+                  ))}
+                </div>
+
+                {/* Entreprenørskap og Bedriftsutvikling (ENT) */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Entreprenørskap og Bedriftsutvikling (ENT)</h3>
+                  {([
+                    { title: 'ENT1 – Innovatøren og kreativitet', desc: 'Entreprenørskap, innovasjonstyper, SCAMPER og Design Thinking', route: '/learning/presentations/ent1' },
+                    { title: 'ENT2 – Strategi og skalering', desc: 'Ansoff-matrise, VRIO, Blue Ocean Strategy og forretningsmodellinnovasjon', route: '/learning/presentations/ent2' },
+                  ] as { title: string; desc: string; route: string }[]).map(p => (
+                    <a
+                      key={p.route}
+                      href={p.route}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
+                      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                    >
+                      <span className="text-xl shrink-0 text-gray-400">🎬</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm">{p.title}</p>
+                        <p className="text-gray-400 text-xs mt-0.5">{p.desc}</p>
+                      </div>
+                      <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
           </>

@@ -192,6 +192,10 @@ import KlagehåndteringPresentation from './screens/learninghub/presentations/Kl
 import RisikovurderingPresentation from './screens/learninghub/presentations/RisikovurderingPresentation'
 import BeredskapsplanerPresentation from './screens/learninghub/presentations/BeredskapsplanerPresentation'
 import HMSPresentation from './screens/learninghub/presentations/HMSPresentation'
+import ML1Presentation from './screens/learninghub/presentations/ML1Presentation'
+import ML2Presentation from './screens/learninghub/presentations/ML2Presentation'
+import ENT1Presentation from './screens/learninghub/presentations/ENT1Presentation'
+import ENT2Presentation from './screens/learninghub/presentations/ENT2Presentation'
 
 // ── Forretningsdrift learning modules (FD1–FD8) ──────────────────────────────
 import OrganizationModule from './screens/learninghub/forretningsdrift/OrganizationModule'
@@ -304,6 +308,10 @@ function App() {
           <Route path="/learning/presentations/risikovurdering" element={<RisikovurderingPresentation />} />
           <Route path="/learning/presentations/beredskapsplaner" element={<BeredskapsplanerPresentation />} />
           <Route path="/learning/presentations/hms" element={<HMSPresentation />} />
+          <Route path="/learning/presentations/ml1" element={<ML1Presentation />} />
+          <Route path="/learning/presentations/ml2" element={<ML2Presentation />} />
+          <Route path="/learning/presentations/ent1" element={<ENT1Presentation />} />
+          <Route path="/learning/presentations/ent2" element={<ENT2Presentation />} />
 
           {/* ── Learning (all /learning/* routes share LearningLayout) ─── */}
           <Route element={<LearningLayout />}>
