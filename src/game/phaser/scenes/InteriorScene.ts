@@ -100,7 +100,9 @@ export default class InteriorScene extends Phaser.Scene {
       monBg.setAlpha(1)
     })
     monBg.on('pointerdown', () => {
-      window.dispatchEvent(new CustomEvent('phaser:roomClicked', { detail: 'dashboard' }))
+      if (!window.__OVERLAY_OPEN__) {
+        window.dispatchEvent(new CustomEvent('phaser:open-dashboard'))
+      }
     })
 
     this.add.text(roomX + roomW / 2, roomY + roomH - 135, '💻 Klikk for dashboard', {

@@ -38,6 +38,15 @@ function GameContent() {
   const [phaserReady, setPhaserReady]   = useState(false)
   const [inInterior, setInInterior]     = useState(false)
 
+  // Notify CityScene when a location gets rented (update building appearance)
+  useEffect(() => {
+    if (state.rentedLocationId) {
+      window.dispatchEvent(new CustomEvent('game:locationRented', {
+        detail: { id: state.rentedLocationId, companyName: state.companyName },
+      }))
+    }
+  }, [state.rentedLocationId])
+
   useEffect(() => {
     function onVacant(e: Event) {
       setVacantInfo((e as CustomEvent<VacantInfo>).detail)
