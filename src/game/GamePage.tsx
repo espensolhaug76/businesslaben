@@ -21,6 +21,15 @@ interface VacantInfo {
   worldY: number
 }
 
+// Step 2: Full Phaser input reset — dispatches events AND directly clears pointer state
+function forcePhaserReset() {
+  const game = (window as any).__PHASER_GAME__ as Phaser.Game | undefined
+  if (!game) return
+  game.scene.scenes.forEach((scene: any) => {
+    scene.input?.resetPointers?.()
+  })
+}
+
 function GameContent() {
   const { state } = useGame()
   const [openBuilding, setOpenBuilding] = useState<BuildingId>(null)
@@ -29,6 +38,10 @@ function GameContent() {
   const [vacantInfo, setVacantInfo] = useState<VacantInfo | null>(null)
   const [phaserReady, setPhaserReady] = useState(false)
   const [inInterior, setInInterior] = useState(false)
+  // Step 3: show welcome hint only once, dismissed via localStorage
+  const [showWelcome, setShowWelcome] = useState(
+    () => !localStorage.getItem('hasSeenWelcome')
+  )
 
   useEffect(() => {
     function onVacant(e: Event) {
@@ -71,6 +84,12 @@ function GameContent() {
     }))
   }
 
+  function dismissWelcome() {
+    localStorage.setItem('hasSeenWelcome', '1')
+    setShowWelcome(false)
+    forcePhaserReset()
+  }
+
   return (
     <>
       <PhaserGame onReady={() => setPhaserReady(true)} />
@@ -79,8 +98,8 @@ function GameContent() {
         <>
           <HUD />
 
-          {/* First-time hint: no location rented yet */}
-          {!state.rentedLocation && state.month === 1 && !inInterior && (
+          {/* Step 3: First-time hint — only shown once, unmounts completely */}
+          {showWelcome && !state.rentedLocation && state.month === 1 && !inInterior && (
             <div style={{
               position: 'fixed', top: '50%', left: '50%',
               transform: 'translate(-50%, -50%)',
@@ -90,8 +109,17 @@ function GameContent() {
               borderRadius: '1.5rem', padding: '1.5rem 2rem',
               zIndex: 85, textAlign: 'center',
               fontFamily: "'Outfit', sans-serif",
-              pointerEvents: 'none', maxWidth: 400,
+              maxWidth: 400,
             }}>
+              <button
+                onClick={dismissWelcome}
+                style={{
+                  position: 'absolute', top: 10, right: 12,
+                  background: 'none', border: 'none',
+                  color: '#64748b', cursor: 'pointer', fontSize: 16,
+                  fontFamily: 'inherit',
+                }}
+              >✕</button>
               <div style={{ fontSize: 32, marginBottom: '0.5rem' }}>🏙️</div>
               <div style={{ fontWeight: 700, fontSize: 18, color: '#f1f5f9', marginBottom: '0.5rem' }}>
                 Utforsk byen
@@ -124,16 +152,16 @@ function GameContent() {
             </div>
           )}
 
-          <SidePanel buildingId={openBuilding} onClose={() => setOpenBuilding(null)} />
+          <SidePanel buildingId={openBuilding} onClose={() => { setOpenBuilding(null); forcePhaserReset() }} />
           <SimulateButton onClick={() => { setOpenBuilding(null); setSimOpen(true) }} />
-          <SimulationModal open={simOpen} onClose={() => setSimOpen(false)} />
-          <DashboardOverlay open={dashboardOpen} onClose={() => setDashboardOpen(false)} />
+          <SimulationModal open={simOpen} onClose={() => { setSimOpen(false); forcePhaserReset() }} />
+          <DashboardOverlay open={dashboardOpen} onClose={() => { setDashboardOpen(false); forcePhaserReset() }} />
           <YearEndOverlay />
 
           {vacantInfo && (
             <RentPanel
               info={vacantInfo}
-              onClose={() => setVacantInfo(null)}
+              onClose={() => { setVacantInfo(null); forcePhaserReset() }}
               onEnterShop={handleEnterShop}
             />
           )}

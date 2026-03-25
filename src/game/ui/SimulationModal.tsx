@@ -44,8 +44,12 @@ export default function SimulationModal({ open, onClose }: SimulationModalProps)
             background: 'rgba(0,0,0,0.72)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: "'Outfit', sans-serif",
+            // Disable pointer events immediately when closing so the fading backdrop
+            // doesn't block canvas events during the exit animation.
+            pointerEvents: open ? 'auto' : 'none',
           }}
-          onClick={e => { if (e.target === e.currentTarget) handleClose() }}
+          onPointerDown={e => { e.stopPropagation(); if (e.target === e.currentTarget) handleClose() }}
+          onPointerUp={e => e.stopPropagation()}
         >
           <motion.div
             initial={{ scale: 0.85, opacity: 0, y: 40 }}
