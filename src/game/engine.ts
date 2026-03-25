@@ -1,161 +1,217 @@
-import type { GameState, MonthlyResult, ProductResult, GameEvent } from './types'
-import { GAME_EVENTS } from './productData'
+// ─── AdVenture 3.0 — Simulation Engine ────────────────────────────────────
+import type { GameState, MonthResult, PestEvent } from './types'
 
-// ─── Demand model ──────────────────────────────────────────────────────────────
+// ── PEST Event pool ───────────────────────────────────────────────────────────
 
-function priceElasticity(price: number, suggestedPrice: number): number {
-  const ratio = price / suggestedPrice
-  if (ratio <= 0.7) return 1.4
+const PEST_EVENTS: PestEvent[] = [
+  // Political
+  { id: 'p1', category: 'political', type: 'positive', emoji: '📜', title: 'Ny handelsavtale',
+    description: 'Regjeringen inngår ny handelsavtale — lavere importkostnader neste kvartal.',
+    demandModifier: 1.05, costModifier: 0.92,
+    choices: [{ text: 'Utnytt lavere kostnader', effect: 'Reduserer varekostnad 10%' }] },
+  { id: 'p2', category: 'political', type: 'negative', emoji: '📋', title: 'Ny avgiftsøkning',
+    description: 'Staten innfører økt merverdiavgift på forbruksvarer.',
+    demandModifier: 0.92, costModifier: 1.08,
+    choices: [{ text: 'Hold prisene', effect: 'Tap i margin' }, { text: 'Hev prisene litt', effect: 'Litt lavere salg' }] },
+  { id: 'p3', category: 'political', type: 'neutral', emoji: '🏛️', title: 'Nytt regelverk',
+    description: 'Myndighetene innfører ny merkingsplikt for produkter.',
+    demandModifier: 1.0, costModifier: 1.03,
+    choices: [{ text: 'Tilpass deg regelverket', effect: 'Ingen videre konsekvenser' }] },
+  { id: 'p4', category: 'political', type: 'positive', emoji: '💼', title: 'Støtteordning for SMB',
+    description: 'Innovasjon Norge åpner ny støtteordning for småbedrifter.',
+    demandModifier: 1.0, costModifier: 0.95,
+    choices: [{ text: 'Søk støtte', effect: '+10 000 kr i kontanter' }] },
+
+  // Economic
+  { id: 'e1', category: 'economic', type: 'positive', emoji: '📈', title: 'Sterkt forbrukermarked',
+    description: 'Optimisme i markedet — forbrukerne bruker mer penger enn normalt.',
+    demandModifier: 1.20, costModifier: 1.0,
+    choices: [{ text: 'Utnytt momentumet', effect: '+20% etterspørsel denne måneden' }] },
+  { id: 'e2', category: 'economic', type: 'negative', emoji: '📉', title: 'Resesjonsfrykt',
+    description: 'Analytikere advarer om nedkjøling i norsk økonomi. Forbrukerne stramme inn.',
+    demandModifier: 0.80, costModifier: 1.0,
+    choices: [{ text: 'Sett ned prisene', effect: 'Litt mer salg, lavere margin' }, { text: 'Hold kursen', effect: '-20% salg' }] },
+  { id: 'e3', category: 'economic', type: 'negative', emoji: '⛽', title: 'Energipriser stiger',
+    description: 'Strøm- og energikostnadene øker markant.',
+    demandModifier: 0.95, costModifier: 1.12,
+    choices: [{ text: 'Invester i strømsparende tiltak', effect: '-5% kostnad fremover' }] },
+  { id: 'e4', category: 'economic', type: 'positive', emoji: '💰', title: 'Rentekutt fra Norges Bank',
+    description: 'Sentralbanken senker renten — folk har mer penger å bruke.',
+    demandModifier: 1.12, costModifier: 1.0,
+    choices: [{ text: 'Øk markedsføringen', effect: 'Ekstra effekt av kampanjer' }] },
+
+  // Social
+  { id: 's1', category: 'social', type: 'positive', emoji: '🌟', title: 'Viral moment på TikTok',
+    description: 'Et produkt fra sortimentet ditt går viralt på sosiale medier!',
+    demandModifier: 1.35, costModifier: 1.0,
+    choices: [{ text: 'Øk lagerbeholdning raskt', effect: '+35% etterspørsel denne måneden' }] },
+  { id: 's2', category: 'social', type: 'negative', emoji: '😤', title: 'Negativ omtale online',
+    description: 'En utilfreds kunde har lagt ut en negativ video om butikken din.',
+    demandModifier: 0.88, costModifier: 1.0,
+    choices: [{ text: 'Gi refusjon og be om unnskyldning', effect: '+5 rykte' }, { text: 'Ignorer det', effect: '-10 rykte' }] },
+  { id: 's3', category: 'social', type: 'positive', emoji: '🎉', title: 'Lokal festival',
+    description: 'En stor festival i nærområdet trekker tusenvis av besøkende.',
+    demandModifier: 1.25, costModifier: 1.0,
+    choices: [{ text: 'Sett opp ekstra bemanning', effect: '+25% salg denne måneden' }] },
+  { id: 's4', category: 'social', type: 'neutral', emoji: '🏙️', title: 'Ny demografi i bydelen',
+    description: 'Nye studentboliger åpnes i nærheten. Yngre kundegruppe.',
+    demandModifier: 1.08, costModifier: 1.0,
+    choices: [{ text: 'Tilpass sortimentet', effect: 'Bedre match med unge kunder' }] },
+
+  // Technological
+  { id: 't1', category: 'technological', type: 'positive', emoji: '🤖', title: 'AI-verktøy for markedsføring',
+    description: 'Nye AI-verktøy lar deg automatisere og forbedre markedsføringen.',
+    demandModifier: 1.10, costModifier: 0.95,
+    choices: [{ text: 'Ta i bruk ny teknologi', effect: '+10% effekt av markedsbudsjettet' }] },
+  { id: 't2', category: 'technological', type: 'negative', emoji: '🔒', title: 'Datainnbrudd i bransjen',
+    description: 'En stor datasikkerhetshendelse rammer bransjen og skaper usikkerhet.',
+    demandModifier: 0.92, costModifier: 1.05,
+    choices: [{ text: 'Styrk sikkerhetstiltak', effect: 'Beskytt kundedata, litt kostnad' }] },
+  { id: 't3', category: 'technological', type: 'positive', emoji: '📱', title: 'Ny betalingsløsning populær',
+    description: 'Kundene elsker den nye digitale betalingsløsningen — kortere køer.',
+    demandModifier: 1.08, costModifier: 1.0,
+    choices: [{ text: 'Innfør ny betaling', effect: '+8% kundetilfredshet' }] },
+  { id: 't4', category: 'technological', type: 'neutral', emoji: '🔧', title: 'Kassasystem-oppdatering',
+    description: 'Ditt kassasystem krever obligatorisk oppdatering.',
+    demandModifier: 1.0, costModifier: 1.02,
+    choices: [{ text: 'Gjennomfør oppdateringen', effect: 'Ingen merkbar effekt' }] },
+]
+
+// ── Seasonal modifiers ────────────────────────────────────────────────────────
+
+const SEASONAL: Record<string, number[]> = {
+  default: [0.85, 0.80, 0.90, 0.95, 1.00, 1.05, 1.10, 1.00, 0.95, 1.05, 1.15, 1.35],
+  cafe:    [0.80, 0.78, 0.88, 0.95, 1.02, 1.10, 1.15, 1.10, 1.00, 0.95, 1.05, 1.20],
+  sports:  [0.70, 0.75, 0.95, 1.10, 1.20, 1.25, 1.15, 1.10, 1.05, 0.90, 0.80, 1.00],
+}
+
+// ── Helper functions ──────────────────────────────────────────────────────────
+
+function priceModifier(retailPrice: number, recommendedPrice: number): number {
+  const ratio = retailPrice / recommendedPrice
+  if (ratio <= 0.7)  return 1.4
   if (ratio <= 0.85) return 1.2
-  if (ratio <= 1.0) return 1.0
-  if (ratio <= 1.2) return 0.82
-  if (ratio <= 1.5) return 0.60
+  if (ratio <= 1.0)  return 1.0
+  if (ratio <= 1.2)  return 0.82
+  if (ratio <= 1.5)  return 0.60
   return 0.35
 }
 
-function marketingMultiplier(totalMarketing: number): number {
-  if (totalMarketing <= 0) return 0.7
-  if (totalMarketing < 5_000) return 0.85
-  if (totalMarketing < 15_000) return 1.0
-  if (totalMarketing < 30_000) return 1.18
-  if (totalMarketing < 60_000) return 1.35
-  return 1.5
+function marketingModifier(totalBudget: number): number {
+  if (totalBudget <= 0)      return 0.70
+  if (totalBudget < 5_000)   return 0.88
+  if (totalBudget < 15_000)  return 1.00
+  if (totalBudget < 30_000)  return 1.18
+  if (totalBudget < 60_000)  return 1.35
+  return 1.50
 }
 
-function distributionMultiplier(channels: string[]): number {
-  const base = 1.0
-  let extra = 0
-  if (channels.includes('webShop')) extra += 0.25
-  if (channels.includes('socialMedia')) extra += 0.18
-  if (channels.includes('delivery')) extra += 0.20
-  if (channels.includes('wholesale')) extra += 0.30
-  return base + extra
-}
-
-function reputationMultiplier(reputation: number): number {
-  return 0.7 + (reputation / 100) * 0.6  // 0.7 – 1.3
-}
-
-function seasonalMultiplier(month: number): number {
-  // Norwegian retail patterns
-  const seasonality = [0.85, 0.80, 0.90, 0.95, 1.0, 1.05, 1.10, 1.0, 0.95, 1.05, 1.15, 1.35]
-  return seasonality[month - 1] ?? 1.0
-}
-
-// ─── Roll random event ─────────────────────────────────────────────────────────
-
-function rollEvent(month: number): GameEvent {
-  const neutral = GAME_EVENTS.filter(e => e.type === 'neutral')
-  const positive = GAME_EVENTS.filter(e => e.type === 'positive')
-  const negative = GAME_EVENTS.filter(e => e.type === 'negative')
-
-  const roll = Math.random()
-  let pool: GameEvent[]
-  if (roll < 0.25) pool = positive
-  else if (roll < 0.45) pool = negative
-  else pool = neutral
-
-  // Avoid too many neutrals in later months — increase event probability
-  if (month >= 6 && roll < 0.35) pool = positive
-  if (month >= 9 && roll < 0.30) pool = negative
-
-  return pool[Math.floor(Math.random() * pool.length)]
-}
-
-// ─── Distribution channel margin impact ───────────────────────────────────────
-
-function avgMarginImpact(channels: string[]): number {
-  if (channels.length === 0) return 1.0
-  const impacts: Record<string, number> = {
-    physicalStore: 1.0,
-    webShop: 0.92,
-    socialMedia: 0.88,
-    delivery: 0.70,
-    wholesale: 0.60,
+function locationModifier(zone: string | null): number {
+  switch (zone) {
+    case 'gagata':    return 1.50
+    case 'hovedgata': return 1.00
+    case 'utkant':    return 0.60
+    default:          return 0.40
   }
-  const total = channels.reduce((sum, ch) => sum + (impacts[ch] ?? 1.0), 0)
-  return total / channels.length
+}
+
+function reputationModifier(rep: number): number {
+  return 0.60 + (rep / 100) * 0.70  // 0.60–1.30
+}
+
+function channelReach(channels: string[]): number {
+  let reach = 1.0
+  if (channels.includes('webShop'))      reach += 0.30
+  if (channels.includes('instagramShop')) reach += 0.20
+  if (channels.includes('delivery'))     reach += 0.25
+  if (channels.includes('wholesale'))    reach += 0.35
+  return reach
+}
+
+function channelMarginFactor(channels: string[]): number {
+  const margins: Record<string, number> = {
+    physicalStore: 1.00, webShop: 0.92, instagramShop: 0.88,
+    delivery: 0.70, wholesale: 0.60,
+  }
+  if (channels.length === 0) return 1.0
+  return channels.reduce((s, c) => s + (margins[c] ?? 1.0), 0) / channels.length
 }
 
 function channelMonthlyCost(channels: string[]): number {
   const costs: Record<string, number> = {
-    physicalStore: 0,
-    webShop: 2500,
-    socialMedia: 1200,
-    delivery: 800,
-    wholesale: 500,
+    physicalStore: 0, webShop: 2500, instagramShop: 1200,
+    delivery: 800, wholesale: 500,
   }
-  return channels.reduce((sum, ch) => sum + (costs[ch] ?? 0), 0)
+  return channels.reduce((s, c) => s + (costs[c] ?? 0), 0)
 }
 
-// ─── Location foot-traffic multiplier ─────────────────────────────────────────
-
-function locationMultiplier(state: GameState): number {
-  if (!state.rentedLocation) return 1.0
-  switch (state.rentedLocation.footTraffic) {
-    case 'høy': return 1.3
-    case 'middels': return 1.0
-    case 'lav': return 0.75
-    default: return 1.0
-  }
+function employeeBonus(employees: GameState['employees']): number {
+  const salesCount = employees.filter(e => e.role === 'selger').length
+  return 1.0 + salesCount * 0.10
 }
 
-// ─── Main simulation ──────────────────────────────────────────────────────────
+function rollPestEvent(month: number): PestEvent | null {
+  if (Math.random() > 0.30) return null  // 30% chance
+  const pool = month >= 9
+    ? PEST_EVENTS.filter(e => e.type !== 'neutral')
+    : PEST_EVENTS
+  return pool[Math.floor(Math.random() * pool.length)]
+}
 
-export function simulateMonth(state: GameState): MonthlyResult {
-  const { month, selectedProducts, activeChannels, marketingBudget, cash, reputation, scenario, rentedLocation } = state
+// ── Main simulation ────────────────────────────────────────────────────────────
+
+export function simulateMonth(state: GameState): MonthResult {
+  const { currentMonth: month, products, channels, marketingBudget, reputation,
+          locationZone, monthlyRent, employees, monthlyPayroll, industry } = state
 
   const totalMarketing = Object.values(marketingBudget).reduce((s, v) => s + v, 0)
-  const event = rollEvent(month)
+  const pest = rollPestEvent(month)
 
-  const demandMod = event.demandModifier
-  const costMod = event.costModifier
-  const mktMult = marketingMultiplier(totalMarketing)
-  const distMult = distributionMultiplier(activeChannels)
-  const repMult = reputationMultiplier(reputation)
-  const seasonal = seasonalMultiplier(month)
-  const marginImpact = avgMarginImpact(activeChannels)
-  const locMult = locationMultiplier(state)
+  const mktMod    = marketingModifier(totalMarketing)
+  const locMod    = locationModifier(locationZone)
+  const repMod    = reputationModifier(reputation)
+  const reachMod  = channelReach(channels)
+  const marginFac = channelMarginFactor(channels)
+  const empBonus  = employeeBonus(employees)
+  const seasonal  = (SEASONAL[industry] ?? SEASONAL.default)[month - 1] ?? 1.0
+  const pestDemand = pest?.demandModifier ?? 1.0
+  const pestCost   = pest?.costModifier   ?? 1.0
 
-  const productResults: ProductResult[] = selectedProducts.map(p => {
-    const priceElast = priceElasticity(p.price, p.suggestedPrice)
-    const demandFraction = priceElast * mktMult * distMult * repMult * seasonal * demandMod * locMult
-    const rawUnits = Math.round(p.maxMonthlyDemand * demandFraction * (0.85 + Math.random() * 0.30))
-    const unitsSold = Math.max(0, Math.min(rawUnits, p.stock > 0 ? p.stock : rawUnits))
+  let totalRevenue = 0
+  let totalCogs    = 0
+  let totalUnits   = 0
 
-    const revenue = unitsSold * p.price * marginImpact
-    const cogs = unitsSold * p.baseCost * costMod
-    const profit = revenue - cogs
+  for (const p of products) {
+    if (p.stock <= 0) continue
+    const priceMod = priceModifier(p.retailPrice, p.recommendedPrice)
+    const demand = p.maxDemandPerMonth * priceMod * mktMod * locMod * repMod * reachMod * empBonus * seasonal * pestDemand
+    const rawUnits = Math.round(demand * (0.80 + Math.random() * 0.40))
+    const unitsSold = Math.max(0, Math.min(rawUnits, p.stock))
+    totalUnits   += unitsSold
+    totalRevenue += unitsSold * p.retailPrice * marginFac
+    totalCogs    += unitsSold * p.costPrice * pestCost
+  }
 
-    return { productId: p.id, productName: p.name, unitsSold, revenue, cogs, profit }
-  })
+  const channelCosts = channelMonthlyCost(channels)
+  const baseCosts = monthlyRent + monthlyPayroll + channelCosts + 2_000  // +2k insurance
+  const totalCosts = Math.round(totalCogs + baseCosts + totalMarketing)
+  const revenue    = Math.round(totalRevenue)
+  const profit     = revenue - totalCosts
 
-  const revenue = productResults.reduce((s, r) => s + r.revenue, 0)
-  const cogs = productResults.reduce((s, r) => s + r.cogs, 0)
-  const grossProfit = revenue - cogs
+  const reputationDelta = profit > 0
+    ? Math.round(Math.random() * 4 + 1)    // +1..+5
+    : -Math.round(Math.random() * 2 + 1)   // -1..-3
 
-  // Use rentedLocation.monthlyRent if available, fall back to scenario.monthlyRent
-  const baseRent = rentedLocation?.monthlyRent ?? scenario?.monthlyRent ?? 15_000
-  const fixedCosts = baseRent + 2_000 + channelMonthlyCost(activeChannels) // rent + insurance + channels
-  const marketingCosts = totalMarketing
-  const netProfit = grossProfit - fixedCosts - marketingCosts
-  const cashAfter = cash + netProfit
+  const xpEarned = totalUnits * 2 + (profit > 0 ? 50 : 10)
 
   return {
     month,
-    revenue: Math.round(revenue),
-    cogs: Math.round(cogs),
-    grossProfit: Math.round(grossProfit),
-    fixedCosts: Math.round(fixedCosts),
-    marketingCosts: Math.round(marketingCosts),
-    netProfit: Math.round(netProfit),
-    cashAfter: Math.round(cashAfter),
-    productResults: productResults.map(r => ({
-      ...r,
-      revenue: Math.round(r.revenue),
-      cogs: Math.round(r.cogs),
-      profit: Math.round(r.profit),
-    })),
-    event,
+    revenue,
+    costs: totalCosts,
+    profit,
+    unitsSold: totalUnits,
+    reputationDelta,
+    xpEarned,
+    pestEvent: pest,
   }
 }

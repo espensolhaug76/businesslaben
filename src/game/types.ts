@@ -1,125 +1,153 @@
 // ─── AdVenture 3.0 — Core Types ───────────────────────────────────────────
 
+export type Industry = 'cafe' | 'fashion' | 'tech' | 'sports'
+export type LocationZone = 'utkant' | 'hovedgata' | 'gagata'
 export type GamePhase =
   | 'startup'
-  | 'city'
-  | 'dashboard'
+  | 'exploring_city'
+  | 'setting_up'
+  | 'ready_to_simulate'
+  | 'simulating'
+  | 'month_report'
   | 'year_end'
 
-// ── Rental Location ──────────────────────────────────────────────────────────
-
-export interface RentalLocation {
-  id: string
-  name: string           // e.g. "Gågata 7"
-  zone: 'gagate' | 'hovedgate' | 'utkant'
-  monthlyRent: number
-  footTraffic: 'lav' | 'middels' | 'høy'
-  sqm: number
-}
-
-// ── Scenario ────────────────────────────────────────────────────────────────
-
-export interface Scenario {
-  id: string
-  name: string
-  emoji: string
-  description: string
-  category: string
-  startingCash: number
-  monthlyRent: number
-  products: Product[]
-}
+export type DistributionChannel =
+  | 'physicalStore'
+  | 'webShop'
+  | 'instagramShop'
+  | 'delivery'
+  | 'wholesale'
 
 // ── Product ─────────────────────────────────────────────────────────────────
 
 export interface Product {
   id: string
   name: string
-  emoji: string
-  baseCost: number        // cost per unit (kr)
-  suggestedPrice: number  // typical selling price
-  maxMonthlyDemand: number // theoretical max units/month
-  quality: number          // 1-10
-  description: string
+  icon: string
+  tier: 'premium' | 'standard' | 'budget'
+  costPrice: number
+  retailPrice: number
+  recommendedPrice: number
+  stock: number
+  quality: number
+  sustainability: number
+  maxDemandPerMonth: number
 }
 
-export interface SelectedProduct extends Product {
-  price: number
-  stock: number  // units purchased this month
+// ── Staff ────────────────────────────────────────────────────────────────────
+
+export interface Employee {
+  id: string
+  role: 'selger' | 'markedsforer' | 'okonom'
+  level: 'junior' | 'senior' | 'ekspert'
+  monthlySalary: number
 }
 
-// ── Distribution ─────────────────────────────────────────────────────────────
+// ── Monthly result ───────────────────────────────────────────────────────────
 
-export type DistributionChannel = 'physicalStore' | 'webShop' | 'socialMedia' | 'delivery' | 'wholesale'
-
-export interface Distribution {
-  channel: DistributionChannel
-  name: string
-  emoji: string
-  description: string
-  monthlyCost: number
-  reachMultiplier: number
-  marginImpact: number  // 0-1, e.g. 0.85 means 15% taken by channel
-}
-
-// ── Marketing ──────────────────────────────────────────────────────────────
-
-export interface MarketingBudget {
-  social: number
-  google: number
-  print: number
-  influencer: number
-  event: number
-}
-
-// ── Monthly result ──────────────────────────────────────────────────────────
-
-export interface ProductResult {
-  productId: string
-  productName: string
-  unitsSold: number
-  revenue: number
-  cogs: number
-  profit: number
-}
-
-export interface MonthlyResult {
+export interface MonthResult {
   month: number
   revenue: number
-  cogs: number
-  grossProfit: number
-  fixedCosts: number
-  marketingCosts: number
-  netProfit: number
-  cashAfter: number
-  productResults: ProductResult[]
-  event: GameEvent | null
+  costs: number
+  profit: number
+  unitsSold: number
+  reputationDelta: number
+  xpEarned: number
+  pestEvent: PestEvent | null
 }
 
-// ── Random events ───────────────────────────────────────────────────────────
+// ── PEST Events ──────────────────────────────────────────────────────────────
 
-export interface GameEvent {
+export interface PestEvent {
   id: string
+  category: 'political' | 'economic' | 'social' | 'technological'
   title: string
   description: string
   emoji: string
   type: 'positive' | 'negative' | 'neutral'
-  demandModifier: number  // multiplier, e.g. 1.3 = +30%
+  demandModifier: number
   costModifier: number
+  choices: { text: string; effect: string }[]
 }
 
-// ── Game state ──────────────────────────────────────────────────────────────
+// ── Inbox ────────────────────────────────────────────────────────────────────
+
+export interface InboxMessage {
+  id: string
+  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor'
+  title: string
+  body: string
+  date: string
+  read: boolean
+  competenceGoal?: string
+  choices?: { text: string; effect: string }[]
+}
+
+// ── Game state ───────────────────────────────────────────────────────────────
 
 export interface GameState {
-  phase: GamePhase
+  // Level / progression
+  level: number
+  xp: number
+  xpToNextLevel: number
+
+  // Company
   companyName: string
-  scenario: Scenario | null
-  selectedProducts: SelectedProduct[]
-  activeChannels: DistributionChannel[]
-  marketingBudget: MarketingBudget
-  cash: number
-  month: number          // 1-12
-  monthlyResults: MonthlyResult[]
-  reputation: number     // 0-100
-  rentedLocation: RentalLocation | null
+  industry: Industry
+  money: number
+  reputation: number  // 0-100
+
+  // Location
+  rentedLocationId: string | null
+  locationZone: LocationZone | null
+  monthlyRent: number
+  storageCapacity: number
+
+  // Products & selling
+  products: Product[]
+  channels: DistributionChannel[]
+  marketingBudget: {
+    socialMedia: number
+    google: number
+    influencer: number
+    print: number
+    tv: number
+  }
+  appealType: 'rational' | 'emotional' | 'combined' | null
+
+  // Staff
+  employees: Employee[]
+  monthlyPayroll: number
+
+  // Target audience
+  targetAudience: {
+    geography: string | null
+    genders: string[]
+    ageGroups: string[]
+    psychographics: string[]
+  }
+
+  // Scene
+  currentScene: 'city' | 'interior'
+
+  // Time
+  currentMonth: number
+  currentYear: number
+
+  // Flow
+  phase: GamePhase
+  monthlyResults: MonthResult[]
+
+  // 4P completion flags
+  p1_complete: boolean
+  p2_complete: boolean
+  p3_complete: boolean
+  p4_complete: boolean
+
+  // Inbox
+  messages: InboxMessage[]
+  unreadCount: number
+
+  // Tutorial step (0 = done, 1-10 = active)
+  tutorialStep: number
 }

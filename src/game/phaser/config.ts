@@ -3,6 +3,18 @@ import BootScene from './scenes/BootScene'
 import CityScene from './scenes/CityScene'
 import InteriorScene from './scenes/InteriorScene'
 
+// ── Global overlay flag ──────────────────────────────────────────────────────
+// Set window.__OVERLAY_OPEN__ = true when ANY React overlay opens.
+// Set it back to false when ALL overlays are closed.
+// CityScene reads this flag and skips input processing while it is true.
+declare global {
+  interface Window {
+    __OVERLAY_OPEN__: boolean
+    __PHASER_GAME__: Phaser.Game | undefined
+  }
+}
+window.__OVERLAY_OPEN__ = false
+
 export function createPhaserConfig(parent: HTMLElement): Phaser.Types.Core.GameConfig {
   return {
     type: Phaser.AUTO,
