@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react'
-import type { GameState, GamePhase, Scenario, SelectedProduct, DistributionChannel, MarketingBudget, MonthlyResult } from './types'
+import type { GameState, GamePhase, Scenario, SelectedProduct, DistributionChannel, MarketingBudget, MonthlyResult, RentalLocation } from './types'
 
 // ─── Initial state ─────────────────────────────────────────────────────────────
 
@@ -14,6 +14,7 @@ const initialState: GameState = {
   month: 1,
   monthlyResults: [],
   reputation: 50,
+  rentedLocation: null,
 }
 
 // ─── Actions ───────────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ type Action =
   | { type: 'SET_CHANNELS'; channels: DistributionChannel[] }
   | { type: 'SET_MARKETING'; budget: MarketingBudget }
   | { type: 'APPLY_MONTH_RESULT'; result: MonthlyResult }
+  | { type: 'RENT_LOCATION'; location: RentalLocation }
   | { type: 'RESET' }
 
 // ─── Reducer ───────────────────────────────────────────────────────────────────
@@ -53,9 +55,11 @@ function reducer(state: GameState, action: Action): GameState {
         month: state.month + 1,
         monthlyResults: [...state.monthlyResults, result],
         reputation: Math.max(0, Math.min(100, state.reputation + reputationDelta)),
-        phase: state.month >= 12 ? 'year_end' : 'dashboard',
+        phase: state.month >= 12 ? 'year_end' : 'city',
       }
     }
+    case 'RENT_LOCATION':
+      return { ...state, rentedLocation: action.location, phase: 'city' }
     case 'RESET':
       return initialState
     default:

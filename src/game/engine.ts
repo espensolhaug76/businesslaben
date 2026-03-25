@@ -88,10 +88,22 @@ function channelMonthlyCost(channels: string[]): number {
   return channels.reduce((sum, ch) => sum + (costs[ch] ?? 0), 0)
 }
 
+// ─── Location foot-traffic multiplier ─────────────────────────────────────────
+
+function locationMultiplier(state: GameState): number {
+  if (!state.rentedLocation) return 1.0
+  switch (state.rentedLocation.footTraffic) {
+    case 'høy': return 1.3
+    case 'middels': return 1.0
+    case 'lav': return 0.75
+    default: return 1.0
+  }
+}
+
 // ─── Main simulation ──────────────────────────────────────────────────────────
 
 export function simulateMonth(state: GameState): MonthlyResult {
-  const { month, selectedProducts, activeChannels, marketingBudget, cash, reputation, scenario } = state
+  const { month, selectedProducts, activeChannels, marketingBudget, cash, reputation, scenario, rentedLocation } = state
 
   const totalMarketing = Object.values(marketingBudget).reduce((s, v) => s + v, 0)
   const event = rollEvent(month)
@@ -103,10 +115,11 @@ export function simulateMonth(state: GameState): MonthlyResult {
   const repMult = reputationMultiplier(reputation)
   const seasonal = seasonalMultiplier(month)
   const marginImpact = avgMarginImpact(activeChannels)
+  const locMult = locationMultiplier(state)
 
   const productResults: ProductResult[] = selectedProducts.map(p => {
     const priceElast = priceElasticity(p.price, p.suggestedPrice)
-    const demandFraction = priceElast * mktMult * distMult * repMult * seasonal * demandMod
+    const demandFraction = priceElast * mktMult * distMult * repMult * seasonal * demandMod * locMult
     const rawUnits = Math.round(p.maxMonthlyDemand * demandFraction * (0.85 + Math.random() * 0.30))
     const unitsSold = Math.max(0, Math.min(rawUnits, p.stock > 0 ? p.stock : rawUnits))
 
@@ -121,7 +134,9 @@ export function simulateMonth(state: GameState): MonthlyResult {
   const cogs = productResults.reduce((s, r) => s + r.cogs, 0)
   const grossProfit = revenue - cogs
 
-  const fixedCosts = (scenario?.monthlyRent ?? 15_000) + 2_000 + channelMonthlyCost(activeChannels) // rent + insurance + channels
+  // Use rentedLocation.monthlyRent if available, fall back to scenario.monthlyRent
+  const baseRent = rentedLocation?.monthlyRent ?? scenario?.monthlyRent ?? 15_000
+  const fixedCosts = baseRent + 2_000 + channelMonthlyCost(activeChannels) // rent + insurance + channels
   const marketingCosts = totalMarketing
   const netProfit = grossProfit - fixedCosts - marketingCosts
   const cashAfter = cash + netProfit

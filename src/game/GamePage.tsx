@@ -6,26 +6,69 @@ import SidePanel, { type BuildingId } from './ui/SidePanel'
 import SimulationModal from './ui/SimulationModal'
 import SimulateButton from './ui/SimulateButton'
 import YearEndOverlay from './ui/YearEndOverlay'
+import DashboardOverlay from './ui/DashboardOverlay'
+import RentPanel from './ui/panels/RentPanel'
 import StartupScreen from './screens/StartupScreen'
+
+interface VacantInfo {
+  id: string
+  label: string
+  zone: string
+  rent: number
+  footTraffic: string
+  sqm: number
+  worldX: number
+  worldY: number
+}
 
 function GameContent() {
   const { state } = useGame()
   const [openBuilding, setOpenBuilding] = useState<BuildingId>(null)
   const [simOpen, setSimOpen] = useState(false)
+  const [dashboardOpen, setDashboardOpen] = useState(false)
+  const [vacantInfo, setVacantInfo] = useState<VacantInfo | null>(null)
   const [phaserReady, setPhaserReady] = useState(false)
+  const [inInterior, setInInterior] = useState(false)
 
   useEffect(() => {
-    function handler(e: Event) {
-      const id = (e as CustomEvent<string>).detail as BuildingId
-      setOpenBuilding(id)
-      setSimOpen(false)
+    function onVacant(e: Event) {
+      setVacantInfo((e as CustomEvent<VacantInfo>).detail)
     }
-    window.addEventListener('phaser:buildingClicked', handler)
-    return () => window.removeEventListener('phaser:buildingClicked', handler)
+    function onRoom(e: Event) {
+      const room = (e as CustomEvent<string>).detail
+      if (room === 'dashboard') {
+        setDashboardOpen(true)
+      } else {
+        const mapping: Record<string, BuildingId> = {
+          shop: 'shop',
+          office: 'office',
+          warehouse: 'warehouse',
+        }
+        setOpenBuilding(mapping[room] ?? null)
+      }
+    }
+    function onExitInterior() {
+      setInInterior(false)
+    }
+    window.addEventListener('phaser:vacantClicked', onVacant)
+    window.addEventListener('phaser:roomClicked', onRoom)
+    window.addEventListener('phaser:exitInterior', onExitInterior)
+    return () => {
+      window.removeEventListener('phaser:vacantClicked', onVacant)
+      window.removeEventListener('phaser:roomClicked', onRoom)
+      window.removeEventListener('phaser:exitInterior', onExitInterior)
+    }
   }, [])
 
   if (state.phase === 'startup') {
     return <StartupScreen />
+  }
+
+  function handleEnterShop() {
+    setInInterior(true)
+    window.dispatchEvent(new CustomEvent('game:enterInterior', {
+      detail: { shopName: state.companyName },
+    }))
   }
 
   return (
@@ -35,26 +78,66 @@ function GameContent() {
       {phaserReady && (
         <>
           <HUD />
+
+          {/* First-time hint: no location rented yet */}
+          {!state.rentedLocation && state.month === 1 && !inInterior && (
+            <div style={{
+              position: 'fixed', top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(10,14,26,0.9)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(56,189,248,0.4)',
+              borderRadius: '1.5rem', padding: '1.5rem 2rem',
+              zIndex: 85, textAlign: 'center',
+              fontFamily: "'Outfit', sans-serif",
+              pointerEvents: 'none', maxWidth: 400,
+            }}>
+              <div style={{ fontSize: 32, marginBottom: '0.5rem' }}>🏙️</div>
+              <div style={{ fontWeight: 700, fontSize: 18, color: '#f1f5f9', marginBottom: '0.5rem' }}>
+                Utforsk byen
+              </div>
+              <div style={{ fontSize: 14, color: '#64748b' }}>
+                Finn et lokale med «TIL LEIE»-skilt og klikk på det for å starte virksomheten.
+              </div>
+            </div>
+          )}
+
+          {/* Enter shop button when location is rented */}
+          {state.rentedLocation && !inInterior && (
+            <div style={{
+              position: 'fixed', bottom: 90, right: 24,
+              zIndex: 92, fontFamily: "'Outfit', sans-serif",
+            }}>
+              <button
+                onClick={handleEnterShop}
+                style={{
+                  background: 'linear-gradient(135deg, #0d9488, #0f766e)',
+                  border: 'none', borderRadius: 99,
+                  padding: '0.75rem 1.5rem', color: '#fff',
+                  fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  boxShadow: '0 0 20px rgba(14,165,141,0.4)',
+                }}
+              >
+                🏪 Gå inn i butikken
+              </button>
+            </div>
+          )}
+
           <SidePanel buildingId={openBuilding} onClose={() => setOpenBuilding(null)} />
           <SimulateButton onClick={() => { setOpenBuilding(null); setSimOpen(true) }} />
           <SimulationModal open={simOpen} onClose={() => setSimOpen(false)} />
+          <DashboardOverlay open={dashboardOpen} onClose={() => setDashboardOpen(false)} />
           <YearEndOverlay />
-        </>
-      )}
 
-      {/* Hint overlay — show briefly on first load */}
-      {phaserReady && state.month === 1 && state.monthlyResults.length === 0 && (
-        <div style={{
-          position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
-          background: 'rgba(10,14,26,0.88)', backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255,255,255,0.1)', borderRadius: 99,
-          padding: '0.5rem 1.25rem', zIndex: 94,
-          fontSize: 13, color: '#64748b', whiteSpace: 'nowrap',
-          fontFamily: "'Outfit', sans-serif",
-          pointerEvents: 'none',
-        }}>
-          💡 Klikk på bygningene for å gjøre innstillinger · Dra for å panorere · Scroll for å zoome
-        </div>
+          {vacantInfo && (
+            <RentPanel
+              info={vacantInfo}
+              onClose={() => setVacantInfo(null)}
+              onEnterShop={handleEnterShop}
+            />
+          )}
+        </>
       )}
     </>
   )

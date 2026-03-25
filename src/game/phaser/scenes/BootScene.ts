@@ -22,6 +22,6 @@ export default class BootScene extends Phaser.Scene {
       duration: 700,
     })
 
-    this.time.delayedCall(800, () => this.scene.start('MainScene'))
+    this.time.delayedCall(800, () => this.scene.start('CityScene'))
   }
 }

@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import BootScene from './scenes/BootScene'
-import MainScene from './scenes/MainScene'
+import CityScene from './scenes/CityScene'
+import InteriorScene from './scenes/InteriorScene'
 
 export function createPhaserConfig(parent: HTMLElement): Phaser.Types.Core.GameConfig {
   return {
@@ -13,7 +14,7 @@ export function createPhaserConfig(parent: HTMLElement): Phaser.Types.Core.GameC
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [BootScene, MainScene],
+    scene: [BootScene, CityScene, InteriorScene],
     render: {
       antialias: true,
       pixelArt: false,

@@ -2,13 +2,20 @@
 
 export type GamePhase =
   | 'startup'
-  | 'product'
-  | 'pricing'
-  | 'distribution'
-  | 'marketing'
+  | 'city'
   | 'dashboard'
-  | 'month_report'
   | 'year_end'
+
+// ── Rental Location ──────────────────────────────────────────────────────────
+
+export interface RentalLocation {
+  id: string
+  name: string           // e.g. "Gågata 7"
+  zone: 'gagate' | 'hovedgate' | 'utkant'
+  monthlyRent: number
+  footTraffic: 'lav' | 'middels' | 'høy'
+  sqm: number
+}
 
 // ── Scenario ────────────────────────────────────────────────────────────────
 
@@ -114,4 +121,5 @@ export interface GameState {
   month: number          // 1-12
   monthlyResults: MonthlyResult[]
   reputation: number     // 0-100
+  rentedLocation: RentalLocation | null
 }

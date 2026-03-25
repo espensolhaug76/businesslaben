@@ -28,7 +28,7 @@ export default function StartupScreen() {
     const scenario = SCENARIOS.find(s => s.id === selectedId)!
     dispatch({ type: 'SET_COMPANY_NAME', name: companyName.trim() })
     dispatch({ type: 'SET_SCENARIO', scenario })
-    dispatch({ type: 'SET_PHASE', phase: 'dashboard' })
+    dispatch({ type: 'SET_PHASE', phase: 'city' })
   }
 
   return (
