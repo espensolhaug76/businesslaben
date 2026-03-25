@@ -58,7 +58,7 @@ import MonthResultScreen from './screens/MonthResultScreen'
 import YearEndScreen from './screens/YearEndScreen'
 
 // AdVenture 3.0
-import GameShell from './game/screens/GameShell'
+import GamePage from './game/GamePage'
 
 // Guards
 import FeatureGuard from './components/guards/FeatureGuard'
@@ -229,7 +229,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
 
           {/* ── AdVenture 3.0 Business Simulator ─────────────────────────── */}
-          <Route path="/game" element={<GameShell />} />
+          <Route path="/game" element={<GamePage />} />
 
           {/* ── Startup flow ─────────────────────────────────────────────── */}
           <Route element={<StartupLayout />}>

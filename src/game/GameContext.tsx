@@ -53,7 +53,7 @@ function reducer(state: GameState, action: Action): GameState {
         month: state.month + 1,
         monthlyResults: [...state.monthlyResults, result],
         reputation: Math.max(0, Math.min(100, state.reputation + reputationDelta)),
-        phase: state.month >= 12 ? 'year_end' : 'month_report',
+        phase: state.month >= 12 ? 'year_end' : 'dashboard',
       }
     }
     case 'RESET':
