@@ -4,6 +4,7 @@ import PhaserGame from './PhaserGame'
 import HUD from './ui/HUD'
 import SimulationModal from './ui/SimulationModal'
 import DashboardOverlay from './ui/DashboardOverlay'
+import YearEndOverlay from './ui/YearEndOverlay'
 import RentPanel from './ui/panels/RentPanel'
 import StartupScreen from './screens/StartupScreen'
 
@@ -156,6 +157,7 @@ function GameContent() {
 
           <SimulationModal open={simOpen} onClose={closeSim} />
           <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} />
+          <YearEndOverlay />
 
           {vacantInfo && (
             <RentPanel
