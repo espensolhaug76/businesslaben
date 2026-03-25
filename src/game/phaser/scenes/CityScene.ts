@@ -26,20 +26,8 @@ interface BuildingDef {
 const MAP_W = 22
 const MAP_H = 18
 
-interface VacantEntry {
-  def: BuildingDef
-  worldX: number
-  worldY: number
-  glow: Phaser.GameObjects.Graphics
-  // world-space AABB for hit testing
-  left: number; right: number; top: number; bottom: number
-}
-
 export default class CityScene extends Phaser.Scene {
   private npcs: Phaser.GameObjects.Container[] = []
-  private vacantBuildings: VacantEntry[] = []
-  private hoveredBuilding: VacantEntry | null = null
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
 
   constructor() { super({ key: 'CityScene' }) }
 
@@ -420,19 +408,37 @@ export default class CityScene extends Phaser.Scene {
     container.add(labelText)
 
     if (def.vacant) {
+      const hitArea = new Phaser.Geom.Rectangle(-w - 4, -h - d - 4, (w + 4) * 2, h + d + 30)
+      container.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains)
+
       const glow = this.add.graphics()
       glow.lineStyle(3, 0x38bdf8, 1)
       glow.strokeRect(-w, -h - d, w * 2, h + d)
       glow.setAlpha(0)
       container.add(glow)
 
-      // No setInteractive — all hit-testing is done manually in setupInput
-      this.vacantBuildings.push({
-        def, worldX: x, worldY: y, glow,
-        left:   x - w - 4,
-        right:  x + w + 4,
-        top:    y - h - d - 4,
-        bottom: y + 26,
+      container.on('pointerover', () => {
+        this.tweens.add({ targets: glow, alpha: 1, duration: 150 })
+        this.input.setDefaultCursor('pointer')
+      })
+      container.on('pointerout', () => {
+        this.tweens.add({ targets: glow, alpha: 0, duration: 150 })
+        this.input.setDefaultCursor('default')
+      })
+      container.on('pointerdown', () => {
+        window.dispatchEvent(new CustomEvent('phaser:vacantClicked', {
+          detail: {
+            id: def.id,
+            label: def.label,
+            zone: def.zone,
+            rent: def.rent,
+            footTraffic: def.footTraffic,
+            sqm: def.sqm,
+            worldX: x,
+            worldY: y,
+          },
+        }))
+        this.cameras.main.pan(x, y - 60, 500, 'Power2')
       })
     }
 
@@ -545,60 +551,30 @@ export default class CityScene extends Phaser.Scene {
 
   private setupInput() {
     const cam = this.cameras.main
-    const canvas = this.game.canvas
+    let isDragging = false
+    let dragStartX = 0
+    let dragStartY = 0
+    let camStartX = 0
+    let camStartY = 0
 
-    this.cursors = this.input.keyboard!.createCursorKeys()
-
-    // ── Building hover glow ───────────────────────────────────────────────────
-    const hitBuildingAt = (screenX: number, screenY: number): VacantEntry | null => {
-      const wp = this.cameras.main.getWorldPoint(screenX, screenY)
-      for (const b of this.vacantBuildings) {
-        if (wp.x >= b.left && wp.x <= b.right && wp.y >= b.top && wp.y <= b.bottom) return b
-      }
-      return null
-    }
+    this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+      isDragging = true
+      dragStartX = ptr.x
+      dragStartY = ptr.y
+      camStartX = cam.scrollX
+      camStartY = cam.scrollY
+    })
 
     this.input.on('pointermove', (ptr: Phaser.Input.Pointer) => {
-      const hit = hitBuildingAt(ptr.x, ptr.y)
-      if (hit !== this.hoveredBuilding) {
-        if (this.hoveredBuilding) {
-          this.tweens.killTweensOf(this.hoveredBuilding.glow)
-          this.tweens.add({ targets: this.hoveredBuilding.glow, alpha: 0, duration: 150 })
-        }
-        this.hoveredBuilding = hit
-        if (hit) {
-          this.tweens.add({ targets: hit.glow, alpha: 1, duration: 150 })
-          canvas.style.cursor = 'pointer'
-        } else {
-          canvas.style.cursor = 'default'
-        }
-      }
+      if (!isDragging) return
+      const dx = (ptr.x - dragStartX) / cam.zoom
+      const dy = (ptr.y - dragStartY) / cam.zoom
+      cam.scrollX = camStartX - dx
+      cam.scrollY = camStartY - dy
     })
 
-    // ── Building click ────────────────────────────────────────────────────────
-    this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
-      const rect = canvas.getBoundingClientRect()
-      const scaleX = canvas.width / rect.width
-      const scaleY = canvas.height / rect.height
-      const px = ptr.x * scaleX
-      const py = ptr.y * scaleY
-      const hit = hitBuildingAt(px, py)
-      if (!hit) return
-      this.tweens.killTweensOf(hit.glow)
-      hit.glow.setAlpha(0)
-      this.hoveredBuilding = null
-      canvas.style.cursor = 'default'
-      window.dispatchEvent(new CustomEvent('phaser:vacantClicked', {
-        detail: {
-          id: hit.def.id, label: hit.def.label, zone: hit.def.zone,
-          rent: hit.def.rent, footTraffic: hit.def.footTraffic,
-          sqm: hit.def.sqm, worldX: hit.worldX, worldY: hit.worldY,
-        },
-      }))
-      this.cameras.main.pan(hit.worldX, hit.worldY - 60, 500, 'Power2')
-    })
+    this.input.on('pointerup', () => { isDragging = false })
 
-    // ── Scroll zoom ───────────────────────────────────────────────────────────
     this.input.on('wheel', (_p: unknown, _g: unknown, _dx: number, dy: number) => {
       cam.setZoom(Phaser.Math.Clamp(cam.zoom - dy * 0.001, 0.4, 2))
     })
@@ -607,16 +583,5 @@ export default class CityScene extends Phaser.Scene {
       const { worldX, worldY } = (e as CustomEvent).detail
       cam.pan(worldX, worldY - 60, 600, 'Power2')
     })
-  }
-
-  update() {
-    const cam = this.cameras.main
-    const speed = 6 / cam.zoom   // faster when zoomed out, slower when zoomed in
-    const { left, right, up, down } = this.cursors
-
-    if (left.isDown)  cam.scrollX -= speed
-    if (right.isDown) cam.scrollX += speed
-    if (up.isDown)    cam.scrollY -= speed
-    if (down.isDown)  cam.scrollY += speed
   }
 }

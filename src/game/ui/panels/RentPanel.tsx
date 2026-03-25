@@ -54,15 +54,17 @@ export default function RentPanel({ info, onClose, onEnterShop }: RentPanelProps
   const trafficColor = TRAFFIC_COLORS[info.footTraffic] ?? '#94a3b8'
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       style={{
         position: 'fixed', inset: 0, zIndex: 150,
         background: 'rgba(0,0,0,0.6)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: "'Outfit', sans-serif",
       }}
-      onPointerDown={e => { e.stopPropagation(); if (e.target === e.currentTarget) onClose() }}
-      onPointerUp={e => e.stopPropagation()}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 30 }}
@@ -79,8 +81,7 @@ export default function RentPanel({ info, onClose, onEnterShop }: RentPanelProps
         }}
       >
         <button
-          onPointerDown={e => { e.stopPropagation(); onClose() }}
-          onPointerUp={e => e.stopPropagation()}
+          onClick={onClose}
           style={{
             position: 'absolute', top: 16, right: 16,
             background: 'rgba(255,255,255,0.08)',
@@ -141,7 +142,7 @@ export default function RentPanel({ info, onClose, onEnterShop }: RentPanelProps
           </button>
         )}
       </motion.div>
-    </div>
+    </motion.div>
   )
 }
 

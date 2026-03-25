@@ -37,10 +37,8 @@ export default function DashboardOverlay({ open, onClose }: DashboardOverlayProp
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: "'Outfit', sans-serif",
             padding: '1.5rem',
-            pointerEvents: open ? 'auto' : 'none',
           }}
-          onPointerDown={e => { e.stopPropagation(); if (e.target === e.currentTarget) onClose() }}
-          onPointerUp={e => e.stopPropagation()}
+          onClick={e => { if (e.target === e.currentTarget) onClose() }}
         >
           <motion.div
             initial={{ scale: 0.93, opacity: 0, y: 30 }}
