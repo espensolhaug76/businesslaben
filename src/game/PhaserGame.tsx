@@ -12,10 +12,26 @@ export default function PhaserGame({ onReady }: PhaserGameProps) {
 
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return
-    const config = createPhaserConfig(containerRef.current)
-    gameRef.current = new Phaser.Game(config)
+    const container = containerRef.current
+    const config = createPhaserConfig(container)
+    const game = new Phaser.Game(config)
+    gameRef.current = game
+    ;(window as any).__PHASER_GAME__ = game
+
+    // Force canvas to fill the container whenever it resizes
+    const observer = new ResizeObserver(() => {
+      game.scale.refresh()
+      const canvas = container.querySelector('canvas')
+      if (canvas) {
+        canvas.style.width = '100%'
+        canvas.style.height = '100%'
+      }
+    })
+    observer.observe(container)
+
     onReady?.()
     return () => {
+      observer.disconnect()
       gameRef.current?.destroy(true)
       gameRef.current = null
     }

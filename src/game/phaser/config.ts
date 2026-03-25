@@ -7,17 +7,20 @@ export function createPhaserConfig(parent: HTMLElement): Phaser.Types.Core.GameC
   return {
     type: Phaser.AUTO,
     parent,
-    width: '100%',
-    height: '100%',
     backgroundColor: '#0a0e1a',
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: '100%',
+      height: '100%',
     },
     scene: [BootScene, CityScene, InteriorScene],
     render: {
       antialias: true,
       pixelArt: false,
+    },
+    input: {
+      windowEvents: true,
     },
   }
 }
