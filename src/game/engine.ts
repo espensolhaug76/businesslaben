@@ -1,5 +1,6 @@
 // ─── AdVenture 3.0 — Simulation Engine ────────────────────────────────────
 import type { GameState, MonthResult, PestEvent } from './types'
+import { calcPersonaMatchScore, targetMatchMultiplier } from './data/personas'
 
 // ── PEST Event pool ───────────────────────────────────────────────────────────
 
@@ -176,6 +177,8 @@ export function simulateMonth(state: GameState): MonthResult {
   const seasonal  = (SEASONAL[industry] ?? SEASONAL.default)[month - 1] ?? 1.0
   const pestDemand = pest?.demandModifier ?? 1.0
   const pestCost   = pest?.costModifier   ?? 1.0
+  const matchScore = calcPersonaMatchScore(products, state.targetAudience.psychographics)
+  const targetMod  = targetMatchMultiplier(matchScore)
 
   let totalRevenue = 0
   let totalCogs    = 0
@@ -184,7 +187,7 @@ export function simulateMonth(state: GameState): MonthResult {
   for (const p of products) {
     if (p.stock <= 0) continue
     const priceMod = priceModifier(p.retailPrice, p.recommendedPrice)
-    const demand = p.maxDemandPerMonth * priceMod * mktMod * locMod * repMod * reachMod * empBonus * seasonal * pestDemand
+    const demand = p.maxDemandPerMonth * priceMod * mktMod * locMod * repMod * reachMod * empBonus * seasonal * pestDemand * targetMod
     const rawUnits = Math.round(demand * (0.80 + Math.random() * 0.40))
     const unitsSold = Math.max(0, Math.min(rawUnits, p.stock))
     totalUnits   += unitsSold

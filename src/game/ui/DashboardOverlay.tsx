@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
+import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import type { Product, DistributionChannel } from '../types'
 import type { Loan } from '../types'
 
@@ -406,63 +407,263 @@ function PlanSection({ title, complete, icon, children }: { title: string; compl
 
 // ── Målgruppe ──────────────────────────────────────────────────────────────────
 
+const AGE_GROUPS  = ['15-20','21-30','31-45','46-60','60+']
+const GENDERS     = ['Kvinner','Menn','Begge']
+const PSYCHO_OPTS = ['Miljøbevisste','Karriereorienterte','Trendsettere','Prisbevisste','Helsebevisste','Familieorienterte']
+const GEO_OPTS    = ['Lokalt','Regionalt','Nasjonalt']
+
 function MalgruppeTab() {
   const { state, dispatch } = useGame()
   const [audience, setAudience] = useState({ ...state.targetAudience })
 
-  const AGE_GROUPS = ['Under 18', '18-25', '25-35', '35-50', '50+']
-  const GENDERS = ['Kvinner', 'Menn', 'Alle']
-  const PSYCHO = ['Miljøbevisste', 'Trendy', 'Budsjettbevisste', 'Kvalitetsbevisste', 'Aktive/sporty', 'Teknologiinteresserte']
-
   function toggleArr<T>(arr: T[], item: T): T[] {
     return arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item]
+  }
+
+  function togglePsycho(p: string) {
+    setAudience(prev => {
+      const has = prev.psychographics.includes(p)
+      if (has) return { ...prev, psychographics: prev.psychographics.filter(x => x !== p) }
+      if (prev.psychographics.length >= 3) return prev   // max 3
+      return { ...prev, psychographics: [...prev.psychographics, p] }
+    })
   }
 
   function save() {
     dispatch({ type: 'SET_TARGET_AUDIENCE', audience })
   }
 
+  // Auto-generate persona (deterministic, live)
+  const persona = useMemo(
+    () => generatePersona(audience.geography, audience.genders, audience.ageGroups, audience.psychographics, state.industry),
+    [audience.geography, audience.genders, audience.ageGroups, audience.psychographics, state.industry],
+  )
+
+  const matchScore = useMemo(
+    () => calcPersonaMatchScore(state.products, audience.psychographics),
+    [state.products, audience.psychographics],
+  )
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <div>
-          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Målgruppe</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Hvem selger du til? Dette påvirker etterspørsel og markedseffektivitet.</p>
+          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>🎯 Målgruppe</h3>
+          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Hvem selger du til? Kunden genereres automatisk basert på valgene dine.</p>
         </div>
         <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
           Lagre ✓
         </button>
       </div>
 
+      <AudienceSection label="Geografi">
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {GEO_OPTS.map(g => {
+            const active = audience.geography === g
+            return (
+              <button key={g} onClick={() => setAudience(prev => ({ ...prev, geography: active ? null : g }))}
+                style={{
+                  background: active ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${active ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 99, padding: '0.4rem 1.1rem',
+                  color: active ? '#38bdf8' : '#94a3b8',
+                  fontSize: 13, fontWeight: active ? 700 : 400,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                {g}
+              </button>
+            )
+          })}
+        </div>
+      </AudienceSection>
+
       <AudienceSection label="Aldersgruppe (velg alle som gjelder)">
-        <ToggleGroup
-          options={AGE_GROUPS}
-          selected={audience.ageGroups}
-          onToggle={a => setAudience(prev => ({ ...prev, ageGroups: toggleArr(prev.ageGroups, a) }))}
-          color="#38bdf8"
-        />
+        <ToggleGroup options={AGE_GROUPS} selected={audience.ageGroups} color="#38bdf8"
+          onToggle={a => setAudience(prev => ({ ...prev, ageGroups: toggleArr(prev.ageGroups, a) }))} />
       </AudienceSection>
 
       <AudienceSection label="Kjønn">
-        <ToggleGroup
-          options={GENDERS}
-          selected={audience.genders}
-          onToggle={g => setAudience(prev => ({ ...prev, genders: toggleArr(prev.genders, g) }))}
-          color="#a855f7"
-        />
+        <ToggleGroup options={GENDERS} selected={audience.genders} color="#a855f7"
+          onToggle={g => setAudience(prev => ({ ...prev, genders: toggleArr(prev.genders, g) }))} />
       </AudienceSection>
 
-      <AudienceSection label="Psykografiske egenskaper">
-        <ToggleGroup
-          options={PSYCHO}
-          selected={audience.psychographics}
-          onToggle={p => setAudience(prev => ({ ...prev, psychographics: toggleArr(prev.psychographics, p) }))}
-          color="#00d4aa"
-        />
+      <AudienceSection label={`Psykografiske egenskaper (maks 3, valgt: ${audience.psychographics.length}/3)`}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {PSYCHO_OPTS.map(p => {
+            const active  = audience.psychographics.includes(p)
+            const maxed   = !active && audience.psychographics.length >= 3
+            return (
+              <button key={p} onClick={() => togglePsycho(p)} disabled={maxed}
+                style={{
+                  background: active ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${active ? '#00d4aa66' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 99, padding: '0.4rem 1rem',
+                  color: active ? '#00d4aa' : maxed ? '#334155' : '#94a3b8',
+                  fontSize: 13, fontWeight: active ? 700 : 400,
+                  cursor: maxed ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                  opacity: maxed ? 0.4 : 1,
+                }}>
+                {p}
+              </button>
+            )
+          })}
+        </div>
       </AudienceSection>
+
+      {/* Persona card — auto-generated */}
+      {persona && <PersonaCard persona={persona} matchScore={matchScore} products={state.products} psychographics={audience.psychographics} />}
+
+      {!persona && (
+        <div style={{ textAlign: 'center', color: '#475569', padding: '2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px dashed rgba(255,255,255,0.1)', marginTop: '1rem' }}>
+          <div style={{ fontSize: 40, marginBottom: '0.75rem' }}>🧑‍🤝‍🧑</div>
+          <p style={{ fontSize: 14 }}>Gjør minst ett valg for å generere din typiske kunde.</p>
+        </div>
+      )}
     </div>
   )
 }
+
+// ─── Persona Card ─────────────────────────────────────────────────────────────
+
+function PersonaCard({ persona, matchScore, products, psychographics }: {
+  persona: ReturnType<typeof generatePersona> & object
+  matchScore: number
+  products: { tier: string; sustainability: number; name: string }[]
+  psychographics: string[]
+}) {
+  if (!persona) return null
+  const ml = matchLabel(matchScore)
+  const primary = psychographics[0] ?? ''
+  const tip = MARKETING_CHANNEL_TIP[primary] ?? 'relevant markedsføring'
+
+  // Insight text
+  let insight: string
+  if (products.length === 0) {
+    insight = `Velg produkter som passer for ${persona.name}s preferanser for å beregne match.`
+  } else if (matchScore < 40) {
+    const preferred = primary === 'Prisbevisste' ? 'budsjett-produkter' : 'premium-produkter'
+    insight = `${persona.name} foretrekker ${preferred} — vurder å justere sortimentet for bedre match.`
+  } else if (matchScore >= 80) {
+    insight = `${persona.name} vil elske butikken din! Fokuser markedsføringen på ${tip}.`
+  } else {
+    insight = `Sortimentet passer godt for ${persona.name}. Styrk kommunikasjonen rundt ${tip}.`
+  }
+
+  // Avatar initials
+  const initials = `${persona.name[0]}${persona.lastName[0]}`
+
+  return (
+    <div style={{
+      marginTop: '1.5rem',
+      background: 'rgba(255,255,255,0.03)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: '1.25rem', padding: '1.5rem',
+      backdropFilter: 'blur(10px)',
+    }}>
+      {/* Header */}
+      <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.1em', marginBottom: '1rem' }}>
+        👤 PERSONA: DIN TYPISKE KUNDE
+      </div>
+
+      {/* Identity row */}
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+        {/* Avatar */}
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+          background: `linear-gradient(135deg, ${persona.avatarColor}88, ${persona.avatarColor}44)`,
+          border: `2px solid ${persona.avatarColor}66`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 20, fontWeight: 900, color: '#fff',
+        }}>
+          {initials}
+        </div>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 18, color: '#f1f5f9' }}>{persona.fullName}, {persona.age} år</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>📍 {persona.location}</div>
+          <div style={{ fontSize: 13, color: '#64748b' }}>💼 {persona.occupation}</div>
+          <div style={{ fontSize: 13, color: '#00d4aa', marginTop: 2 }}>
+            💰 Bruker ~{persona.monthlyBudget.toLocaleString('nb-NO')} kr/mnd
+          </div>
+        </div>
+      </div>
+
+      {/* Bio */}
+      <div style={{
+        background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem',
+        padding: '0.9rem 1rem', marginBottom: '1.25rem',
+        borderLeft: `3px solid ${persona.avatarColor}`,
+        fontSize: 13, color: '#cbd5e1', lineHeight: 1.6, fontStyle: 'italic',
+      }}>
+        "{persona.bio}"
+      </div>
+
+      {/* Two-column grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+        {/* Interests */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>INTERESSER</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+            {persona.interests.map(i => (
+              <span key={i} style={{
+                background: 'rgba(255,255,255,0.08)', borderRadius: 99,
+                padding: '2px 9px', fontSize: 11, color: '#94a3b8',
+              }}>🏷 {i}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Social media */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>SOSIALE MEDIER</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            {persona.socialMedia.map(s => (
+              <span key={s} style={{ fontSize: 12, color: '#94a3b8' }}>📱 {s}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Shopping habits */}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>HANDLEVANER</div>
+        <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: '0.25rem' }}>🛒 {persona.shoppingHabit}</div>
+        <div style={{ fontSize: 13, color: '#94a3b8' }}>💳 Betalingsvilje: {persona.willingness}</div>
+      </div>
+
+      {/* Insight */}
+      <div style={{
+        background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.2)',
+        borderRadius: '0.75rem', padding: '0.9rem 1rem', marginBottom: '1.25rem',
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#00d4aa', letterSpacing: '0.08em', marginBottom: '0.4rem' }}>INNSIKT FOR DIN BEDRIFT</div>
+        <div style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.5 }}>💡 {insight}</div>
+      </div>
+
+      {/* Match bar */}
+      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.9rem 1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Match med dine produkter</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: ml.color }}>{matchScore}% — {ml.text}</div>
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', borderRadius: 99,
+            width: `${matchScore}%`,
+            background: `linear-gradient(90deg, ${ml.color}99, ${ml.color})`,
+            transition: 'width 0.5s ease',
+          }} />
+        </div>
+        {products.length === 0 && (
+          <div style={{ fontSize: 11, color: '#475569', marginTop: '0.4rem' }}>
+            Tips: Bestill produkter for å beregne match
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Audience helpers ────────────────────────────────────────────────────────
 
 function AudienceSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
