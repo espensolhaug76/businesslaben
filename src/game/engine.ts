@@ -162,7 +162,7 @@ function rollPestEvent(month: number): PestEvent | null {
 
 export function simulateMonth(state: GameState): MonthResult {
   const { currentMonth: month, products, channels, marketingBudget, reputation,
-          locationZone, monthlyRent, employees, monthlyPayroll, industry } = state
+          locationZone, monthlyRent, employees, monthlyPayroll, industry, monthlyLoanPayment } = state
 
   const totalMarketing = Object.values(marketingBudget).reduce((s, v) => s + v, 0)
   const pest = rollPestEvent(month)
@@ -193,7 +193,7 @@ export function simulateMonth(state: GameState): MonthResult {
   }
 
   const channelCosts = channelMonthlyCost(channels)
-  const baseCosts = monthlyRent + monthlyPayroll + channelCosts + 2_000  // +2k insurance
+  const baseCosts = monthlyRent + monthlyPayroll + channelCosts + (monthlyLoanPayment ?? 0) + 2_000  // +2k insurance
   const totalCosts = Math.round(totalCogs + baseCosts + totalMarketing)
   const revenue    = Math.round(totalRevenue)
   const profit     = revenue - totalCosts

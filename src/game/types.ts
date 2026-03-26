@@ -2,6 +2,31 @@
 
 export type Industry = 'cafe' | 'fashion' | 'tech' | 'sports'
 export type LocationZone = 'utkant' | 'hovedgata' | 'gagata'
+export type BusinessModel = 'detaljhandel' | 'netthandel' | 'produsent' | 'kombinasjon'
+
+export interface Loan {
+  id: string
+  amount: number
+  interestRate: number     // annual decimal, e.g. 0.09
+  termMonths: number
+  monthlyPayment: number
+  remainingBalance: number
+  monthsRemaining: number
+  totalInterestPaid: number
+}
+
+export interface GameProgress {
+  industryChosen: boolean
+  businessModelChosen: boolean
+  targetAudienceDefined: boolean
+  productsSelected: boolean
+  businessPlanCreated: boolean
+  financingSecured: boolean
+  locationChosen: boolean
+  productsOrdered: boolean
+  pricesSet: boolean
+  marketingSet: boolean
+}
 export type GamePhase =
   | 'startup'
   | 'exploring_city'
@@ -150,4 +175,21 @@ export interface GameState {
 
   // Tutorial step (0 = done, 1-10 = active)
   tutorialStep: number
+
+  // Business model & plan
+  businessModel: BusinessModel
+  businessPlan: {
+    description: string
+    marketResearchDone: boolean
+    qualityScore: number   // 0-5
+  }
+
+  // Loans / financing
+  loans: Loan[]
+  totalDebt: number
+  monthlyLoanPayment: number
+  consecutiveNegativeMonths: number
+
+  // Progress checklist
+  progress: GameProgress
 }

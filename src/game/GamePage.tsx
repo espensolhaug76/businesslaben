@@ -35,6 +35,7 @@ function GameContent() {
   const { state } = useGame()
   const [simOpen, setSimOpen]           = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
+  const [dashboardTab, setDashboardTab] = useState<string>('oversikt')
   const [vacantInfo, setVacantInfo]     = useState<VacantInfo | null>(null)
   const [phaserReady, setPhaserReady]   = useState(false)
   const [inInterior, setInInterior]     = useState(false)
@@ -54,6 +55,12 @@ function GameContent() {
       setOverlay(true)
     }
     function onDashboard() {
+      setDashboardTab('oversikt')
+      setDashboardOpen(true)
+      setOverlay(true)
+    }
+    function onBank() {
+      setDashboardTab('okonomi')
       setDashboardOpen(true)
       setOverlay(true)
     }
@@ -66,11 +73,13 @@ function GameContent() {
     }
     window.addEventListener('phaser:vacantClicked', onVacant)
     window.addEventListener('phaser:open-dashboard', onDashboard)
+    window.addEventListener('phaser:open-bank', onBank)
     window.addEventListener('phaser:exitInterior', onExitInterior)
     window.addEventListener('phaser:simulate', onSimulate)
     return () => {
       window.removeEventListener('phaser:vacantClicked', onVacant)
       window.removeEventListener('phaser:open-dashboard', onDashboard)
+      window.removeEventListener('phaser:open-bank', onBank)
       window.removeEventListener('phaser:exitInterior', onExitInterior)
       window.removeEventListener('phaser:simulate', onSimulate)
     }
@@ -159,7 +168,8 @@ function GameContent() {
           )}
 
           <SimulationModal open={simOpen} onClose={closeSim} />
-          <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} />
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} initialTab={dashboardTab as any} />
           <YearEndOverlay />
 
           {vacantInfo && (

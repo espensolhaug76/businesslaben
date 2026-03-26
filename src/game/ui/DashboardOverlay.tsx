@@ -1,31 +1,40 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
 import type { Product, DistributionChannel } from '../types'
+import type { Loan } from '../types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
-type Tab = 'oversikt' | 'produkter' | 'priser' | 'distribusjon' | 'markedsforing' | 'personale' | 'rapporter'
+type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter'
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: 'oversikt',      label: 'Oversikt',       emoji: '📊' },
-  { id: 'produkter',     label: 'Produkter',       emoji: '📦' },
-  { id: 'priser',        label: 'Priser',          emoji: '💰' },
-  { id: 'distribusjon',  label: 'Distribusjon',    emoji: '🚚' },
-  { id: 'markedsforing', label: 'Markedsføring',   emoji: '📢' },
-  { id: 'personale',     label: 'Personale',       emoji: '👥' },
-  { id: 'rapporter',     label: 'Rapporter',       emoji: '📋' },
+  { id: 'oversikt',        label: 'Oversikt',         emoji: '📊' },
+  { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋' },
+  { id: 'produkter',       label: 'Produkter',         emoji: '📦' },
+  { id: 'malgruppe',       label: 'Målgruppe',         emoji: '🎯' },
+  { id: 'okonomi',         label: 'Økonomi',           emoji: '💰' },
+  { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍' },
+  { id: 'priser',          label: 'Priser',            emoji: '🏷️' },
+  { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢' },
+  { id: 'personale',       label: 'Personale',         emoji: '👥' },
+  { id: 'rapporter',       label: 'Rapporter',         emoji: '📋' },
 ]
 
 interface DashboardOverlayProps {
   open: boolean
   onClose: () => void
+  initialTab?: Tab
 }
 
-export default function DashboardOverlay({ open, onClose }: DashboardOverlayProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('oversikt')
+export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt' }: DashboardOverlayProps) {
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
+
+  useEffect(() => {
+    if (open && initialTab) setActiveTab(initialTab as Tab)
+  }, [open, initialTab])
 
   return (
     <AnimatePresence>
@@ -84,6 +93,7 @@ export default function DashboardOverlay({ open, onClose }: DashboardOverlayProp
                   color: activeTab === t.id ? '#00d4aa' : '#64748b',
                   fontWeight: 600, fontSize: 14, cursor: 'pointer',
                   fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s',
+                  flexShrink: 0,
                 }}>
                   {t.emoji} {t.label}
                 </button>
@@ -94,13 +104,16 @@ export default function DashboardOverlay({ open, onClose }: DashboardOverlayProp
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem 2rem' }}>
               <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-                  {activeTab === 'oversikt'      && <OversiktTab />}
-                  {activeTab === 'produkter'     && <ProdukterTab />}
-                  {activeTab === 'priser'        && <PriserTab />}
-                  {activeTab === 'distribusjon'  && <DistribusjonTab />}
-                  {activeTab === 'markedsforing' && <MarkedsforingTab />}
-                  {activeTab === 'personale'     && <PersonaleTab />}
-                  {activeTab === 'rapporter'     && <RapporterTab />}
+                  {activeTab === 'oversikt'        && <OversiktTab />}
+                  {activeTab === 'forretningsplan' && <ForretningsplanTab />}
+                  {activeTab === 'produkter'       && <ProdukterTab />}
+                  {activeTab === 'malgruppe'       && <MalgruppeTab />}
+                  {activeTab === 'okonomi'         && <OkonomiTab />}
+                  {activeTab === 'lokasjon'        && <LokasjonTab />}
+                  {activeTab === 'priser'          && <PriserTab />}
+                  {activeTab === 'markedsforing'   && <MarkedsforingTab />}
+                  {activeTab === 'personale'       && <PersonaleTab />}
+                  {activeTab === 'rapporter'       && <RapporterTab />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -114,40 +127,76 @@ export default function DashboardOverlay({ open, onClose }: DashboardOverlayProp
 // ── Oversikt ──────────────────────────────────────────────────────────────────
 
 function OversiktTab() {
-  const { state } = useGame()
-  const { money, reputation, currentMonth, monthlyResults, locationZone, monthlyRent } = state
+  const { state, dispatch } = useGame()
+  const { money, reputation, monthlyResults, locationZone, monthlyRent, progress, loans, totalDebt } = state
+
   const totalRev    = monthlyResults.reduce((s, r) => s + r.revenue, 0)
   const totalProfit = monthlyResults.reduce((s, r) => s + r.profit, 0)
   const maxRev      = Math.max(...monthlyResults.map(r => r.revenue), 1)
+  const monthlyCosts = monthlyRent + state.monthlyPayroll + state.monthlyLoanPayment + Object.values(state.marketingBudget).reduce((s, v) => s + v, 0)
 
-  const zoneLabel = locationZone === 'gagata' ? 'Gågata' : locationZone === 'hovedgata' ? 'Hovedgata' : locationZone === 'utkant' ? 'Utkanten' : '—'
+  void totalRev
+  void locationZone
+  void loans
+
+  const checklist: { label: string; done: boolean }[] = [
+    { label: 'Lag forretningsplan', done: progress.businessPlanCreated },
+    { label: 'Definer målgruppe', done: progress.targetAudienceDefined },
+    { label: 'Velg produkter', done: progress.productsSelected },
+    { label: 'Velg lokasjon/distribusjon', done: progress.locationChosen },
+    { label: 'Bestill varelager', done: progress.productsOrdered },
+    { label: 'Sett priser', done: progress.pricesSet },
+    { label: 'Sett opp markedsføring', done: progress.marketingSet },
+  ]
+
+  const allDone = checklist.every(c => c.done)
+
+  function handleSimulate() {
+    dispatch({ type: 'SET_PHASE', phase: 'ready_to_simulate' })
+    window.dispatchEvent(new CustomEvent('phaser:simulate'))
+  }
 
   return (
     <div>
+      {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        <KpiCard label="Kontanter"       value={formatKr(money)}    color="#22c55e" icon="💰" />
-        <KpiCard label="Rykte"           value={`${reputation}/100`} color={reputation >= 60 ? '#22c55e' : '#facc15'} icon="⭐" />
-        <KpiCard label="Måned"           value={MONTH_NAMES[(currentMonth - 1) % 12]} color="#38bdf8" icon="📅" />
-        <KpiCard label="Total omsetning" value={formatKr(totalRev)}  color="#a855f7" icon="📈" />
+        <KpiCard label="Kontanter"       value={formatKr(money)}       color="#22c55e" icon="💰" />
+        <KpiCard label="Gjeld"           value={formatKr(totalDebt)}   color={totalDebt > 0 ? '#f97316' : '#22c55e'} icon="🏦" />
+        <KpiCard label="Kostnader/mnd"   value={formatKr(monthlyCosts)} color="#f97316" icon="📤" />
+        <KpiCard label="Rykte"           value={`${reputation}/100`}   color={reputation >= 60 ? '#22c55e' : '#facc15'} icon="⭐" />
       </div>
 
-      {locationZone && (
-        <div style={{
-          background: 'rgba(0,212,170,0.07)', border: '1px solid rgba(0,212,170,0.2)',
-          borderRadius: '1rem', padding: '1rem', marginBottom: '1.5rem',
-          display: 'flex', gap: '1rem', alignItems: 'center',
-        }}>
-          <span style={{ fontSize: 32 }}>🏪</span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{state.companyName}</div>
-            <div style={{ fontSize: 13, color: '#64748b' }}>
-              {zoneLabel} · {formatKr(monthlyRent)}/mnd
+      {/* Progress checklist */}
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem', letterSpacing: '0.06em' }}>OPPSTARTSSJEKKLISTE</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {checklist.map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: 14 }}>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{item.done ? '✅' : '⬜'}</span>
+              <span style={{ color: item.done ? '#94a3b8' : '#f1f5f9', textDecoration: item.done ? 'line-through' : 'none' }}>
+                {item.label}
+              </span>
             </div>
-          </div>
+          ))}
         </div>
-      )}
+        {allDone && (
+          <button
+            onClick={handleSimulate}
+            style={{
+              marginTop: '1.25rem', width: '100%',
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              border: 'none', borderRadius: 99, padding: '0.9rem',
+              color: '#fff', fontWeight: 800, fontSize: 16,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            ▶ Simuler måneden
+          </button>
+        )}
+      </div>
 
-      {monthlyResults.length > 0 ? (
+      {/* Revenue chart if any results */}
+      {monthlyResults.length > 0 && (
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: '1rem', letterSpacing: '0.08em' }}>MÅNEDLIG OMSETNING</div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 100 }}>
@@ -170,10 +219,549 @@ function OversiktTab() {
             </span>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── Forretningsplan ────────────────────────────────────────────────────────────
+
+function ForretningsplanTab() {
+  const { state, dispatch } = useGame()
+  const { businessPlan, products, targetAudience, monthlyRent, monthlyPayroll, monthlyLoanPayment, marketingBudget } = state
+  const [description, setDescription] = useState(businessPlan.description)
+
+  const monthlyCosts = monthlyRent + monthlyPayroll + monthlyLoanPayment + Object.values(marketingBudget).reduce((s, v) => s + v, 0)
+  const estRevenue = products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
+  const breakEvenMonth = monthlyCosts > 0 && estRevenue > 0
+    ? Math.ceil(monthlyCosts / Math.max(1, estRevenue - monthlyCosts))
+    : null
+
+  const q = businessPlan.qualityScore
+  const stars = '★'.repeat(q) + '☆'.repeat(5 - q)
+  const QUALITY_COLOR = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#22c55e', '#22c55e']
+  const QUALITY_LABEL = ['Ingen plan', 'Svak plan', 'Akseptabel', 'God plan', 'Utmerket', 'Fantastisk!']
+
+  const taSummary = [
+    ...targetAudience.ageGroups,
+    ...targetAudience.genders,
+    ...targetAudience.psychographics,
+  ].join(', ') || 'Ikke definert'
+
+  const RATE_LABELS = ['15 %', '12 %', '9 %', '7 %', '5 %', '5 %']
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1.25rem' }}>
+        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Forretningsplan</h3>
+        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
+          En god plan gir bedre lånevilkår og viser deg veien videre.
+        </p>
+      </div>
+
+      {/* Quality badge */}
+      <div style={{
+        background: `${QUALITY_COLOR[q]}12`, border: `1px solid ${QUALITY_COLOR[q]}44`,
+        borderRadius: '1rem', padding: '1rem', marginBottom: '1.5rem',
+        display: 'flex', alignItems: 'center', gap: '1rem',
+      }}>
+        <div style={{ fontSize: 28, color: QUALITY_COLOR[q] }}>{stars}</div>
+        <div>
+          <div style={{ fontWeight: 700, color: QUALITY_COLOR[q] }}>{QUALITY_LABEL[q]}</div>
+          <div style={{ fontSize: 12, color: '#64748b' }}>Plankvalitet påvirker bankens rentesats</div>
+        </div>
+      </div>
+
+      {/* Sections */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+        {/* Description */}
+        <PlanSection title="Sammendrag" complete={description.trim().length > 20} icon="📝">
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Beskriv forretningsidéen din i 2-3 setninger. Hva selger du, til hvem, og hva gjør deg unik?"
+            style={{
+              width: '100%', minHeight: 80, background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
+              padding: '0.75rem', color: '#f1f5f9', fontSize: 13, fontFamily: 'inherit',
+              resize: 'vertical', boxSizing: 'border-box',
+            }}
+          />
+          <button
+            onClick={() => dispatch({ type: 'SAVE_BUSINESS_PLAN', description })}
+            style={{ marginTop: '0.5rem', background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.3)', borderRadius: 8, padding: '0.4rem 1rem', color: '#00d4aa', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Lagre
+          </button>
+        </PlanSection>
+
+        {/* Market research */}
+        <PlanSection title="Markedsanalyse" complete={businessPlan.marketResearchDone} icon="🔍">
+          {businessPlan.marketResearchDone ? (
+            <p style={{ color: '#22c55e', fontSize: 13, margin: 0 }}>✅ Markedsundersøkelse kjøpt. Du har god innsikt i markedet.</p>
+          ) : (
+            <div>
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 0.75rem' }}>
+                Kjøp en markedsundersøkelse for å få konkrete data. Gir +1 stjerne i plankvalitet.
+              </p>
+              <button
+                onClick={() => dispatch({ type: 'BUY_MARKET_RESEARCH' })}
+                disabled={state.money < 10_000}
+                style={{
+                  background: state.money >= 10_000 ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${state.money >= 10_000 ? 'rgba(0,212,170,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 8, padding: '0.5rem 1.25rem',
+                  color: state.money >= 10_000 ? '#00d4aa' : '#475569',
+                  fontSize: 13, cursor: state.money >= 10_000 ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+                }}
+              >
+                Kjøp markedsundersøkelse — 10 000 kr
+              </button>
+            </div>
+          )}
+        </PlanSection>
+
+        {/* Target audience */}
+        <PlanSection title="Målgruppe" complete={targetAudience.ageGroups.length > 0 || targetAudience.genders.length > 0} icon="🎯">
+          <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>
+            {taSummary !== 'Ikke definert' ? taSummary : 'Gå til Målgruppe-fanen for å definere hvem du selger til.'}
+          </p>
+        </PlanSection>
+
+        {/* Products */}
+        <PlanSection title="Produkter/Tjenester" complete={products.length > 0} icon="📦">
+          {products.length > 0 ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {products.map(p => (
+                <span key={p.id} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 99, padding: '3px 10px', fontSize: 12 }}>
+                  {p.icon} {p.name} ({p.tier})
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Gå til Produkter-fanen for å velge hva du skal selge.</p>
+          )}
+        </PlanSection>
+
+        {/* Budget */}
+        <PlanSection title="Driftsbudsjett (estimert)" complete={monthlyCosts > 0} icon="💵">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.3rem 1rem', fontSize: 13 }}>
+            <span style={{ color: '#64748b' }}>Husleie</span>
+            <span style={{ textAlign: 'right' }}>{formatKr(monthlyRent)}</span>
+            <span style={{ color: '#64748b' }}>Lønn</span>
+            <span style={{ textAlign: 'right' }}>{formatKr(monthlyPayroll)}</span>
+            <span style={{ color: '#64748b' }}>Markedsføring</span>
+            <span style={{ textAlign: 'right' }}>{formatKr(Object.values(marketingBudget).reduce((s, v) => s + v, 0))}</span>
+            <span style={{ color: '#64748b' }}>Lånebetalinger</span>
+            <span style={{ textAlign: 'right' }}>{formatKr(monthlyLoanPayment)}</span>
+            <span style={{ color: '#64748b' }}>Forsikring/div.</span>
+            <span style={{ textAlign: 'right' }}>{formatKr(2_000)}</span>
+            <div style={{ gridColumn: '1/-1', borderTop: '1px solid rgba(255,255,255,0.1)', margin: '0.3rem 0' }} />
+            <span style={{ fontWeight: 700 }}>Total/mnd</span>
+            <span style={{ textAlign: 'right', fontWeight: 700, color: '#f97316' }}>{formatKr(monthlyCosts + 2000)}</span>
+            {estRevenue > 0 && <>
+              <span style={{ color: '#64748b' }}>Est. inntekt/mnd</span>
+              <span style={{ textAlign: 'right', color: '#22c55e' }}>{formatKr(estRevenue)}</span>
+            </>}
+            {breakEvenMonth !== null && breakEvenMonth > 0 && breakEvenMonth < 36 && <>
+              <span style={{ color: '#64748b' }}>Estimert break-even</span>
+              <span style={{ textAlign: 'right', color: '#38bdf8' }}>Måned {breakEvenMonth}</span>
+            </>}
+          </div>
+        </PlanSection>
+      </div>
+
+      <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <button
+          onClick={() => dispatch({ type: 'SAVE_BUSINESS_PLAN', description })}
+          style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.7rem 1.75rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          Lagre plan
+        </button>
+        <div style={{ fontSize: 13, color: '#64748b' }}>
+          Plankvalitet ({q}/5) påvirker rente: {RATE_LABELS[Math.max(0, Math.min(5, q))]} p.a.
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PlanSection({ title, complete, icon, children }: { title: string; complete: boolean; icon: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      background: complete ? 'rgba(0,212,170,0.05)' : 'rgba(255,255,255,0.03)',
+      border: `1px solid ${complete ? 'rgba(0,212,170,0.25)' : 'rgba(255,255,255,0.08)'}`,
+      borderRadius: '0.75rem', padding: '1rem',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+        <span>{icon}</span>
+        <span style={{ fontWeight: 700, fontSize: 14 }}>{title}</span>
+        {complete && <span style={{ marginLeft: 'auto', color: '#00d4aa', fontSize: 13 }}>✅</span>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// ── Målgruppe ──────────────────────────────────────────────────────────────────
+
+function MalgruppeTab() {
+  const { state, dispatch } = useGame()
+  const [audience, setAudience] = useState({ ...state.targetAudience })
+
+  const AGE_GROUPS = ['Under 18', '18-25', '25-35', '35-50', '50+']
+  const GENDERS = ['Kvinner', 'Menn', 'Alle']
+  const PSYCHO = ['Miljøbevisste', 'Trendy', 'Budsjettbevisste', 'Kvalitetsbevisste', 'Aktive/sporty', 'Teknologiinteresserte']
+
+  function toggleArr<T>(arr: T[], item: T): T[] {
+    return arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item]
+  }
+
+  function save() {
+    dispatch({ type: 'SET_TARGET_AUDIENCE', audience })
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div>
+          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Målgruppe</h3>
+          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Hvem selger du til? Dette påvirker etterspørsel og markedseffektivitet.</p>
+        </div>
+        <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Lagre ✓
+        </button>
+      </div>
+
+      <AudienceSection label="Aldersgruppe (velg alle som gjelder)">
+        <ToggleGroup
+          options={AGE_GROUPS}
+          selected={audience.ageGroups}
+          onToggle={a => setAudience(prev => ({ ...prev, ageGroups: toggleArr(prev.ageGroups, a) }))}
+          color="#38bdf8"
+        />
+      </AudienceSection>
+
+      <AudienceSection label="Kjønn">
+        <ToggleGroup
+          options={GENDERS}
+          selected={audience.genders}
+          onToggle={g => setAudience(prev => ({ ...prev, genders: toggleArr(prev.genders, g) }))}
+          color="#a855f7"
+        />
+      </AudienceSection>
+
+      <AudienceSection label="Psykografiske egenskaper">
+        <ToggleGroup
+          options={PSYCHO}
+          selected={audience.psychographics}
+          onToggle={p => setAudience(prev => ({ ...prev, psychographics: toggleArr(prev.psychographics, p) }))}
+          color="#00d4aa"
+        />
+      </AudienceSection>
+    </div>
+  )
+}
+
+function AudienceSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: '1.25rem' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>{label.toUpperCase()}</div>
+      {children}
+    </div>
+  )
+}
+
+function ToggleGroup({ options, selected, onToggle, color }: { options: string[]; selected: string[]; onToggle: (o: string) => void; color: string }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+      {options.map(o => {
+        const active = selected.includes(o)
+        return (
+          <button key={o} onClick={() => onToggle(o)} style={{
+            background: active ? `${color}18` : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${active ? color + '66' : 'rgba(255,255,255,0.1)'}`,
+            borderRadius: 99, padding: '0.4rem 1rem',
+            color: active ? color : '#94a3b8',
+            fontSize: 13, fontWeight: active ? 700 : 400,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            {o}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Økonomi ────────────────────────────────────────────────────────────────────
+
+function OkonomiTab() {
+  const { state, dispatch } = useGame()
+  const [showBank, setShowBank] = useState(false)
+  const [loanAmount, setLoanAmount] = useState(250_000)
+  const [loanMonths, setLoanMonths] = useState(24)
+
+  const { money, loans, totalDebt, monthlyLoanPayment, businessPlan, monthlyRent, monthlyPayroll, marketingBudget } = state
+
+  const interestRates = [0.15, 0.12, 0.09, 0.07, 0.05, 0.05]
+  const RATE_LABELS = ['15 %', '12 %', '9 %', '7 %', '5 %', '5 %']
+  const rate = interestRates[Math.max(0, Math.min(5, businessPlan.qualityScore))]
+
+  function calcMonthlyPayment(amount: number, annualRate: number, months: number): number {
+    if (annualRate === 0) return Math.round(amount / months)
+    const r = annualRate / 12
+    return Math.round(amount * (r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1))
+  }
+
+  const monthly = calcMonthlyPayment(loanAmount, rate, loanMonths)
+  const totalRepay = monthly * loanMonths
+  const totalInterest = totalRepay - loanAmount
+
+  const LOAN_AMOUNTS = [100_000, 250_000, 500_000, 1_000_000]
+  const LOAN_TERMS = [
+    { months: 12, label: '12 måneder (høye avdrag, lite renter)' },
+    { months: 24, label: '24 måneder (middels)' },
+    { months: 36, label: '36 måneder (lave avdrag, mye renter)' },
+  ]
+
+  const monthlyCosts = monthlyRent + monthlyPayroll + monthlyLoanPayment + Object.values(marketingBudget).reduce((s, v) => s + v, 0) + 2000
+  const estRevenue = state.products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
+
+  function takeLoan() {
+    if (businessPlan.qualityScore < 1) return
+    const loan: Loan = {
+      id: `loan_${Date.now()}`,
+      amount: loanAmount,
+      interestRate: rate,
+      termMonths: loanMonths,
+      monthlyPayment: monthly,
+      remainingBalance: loanAmount,
+      monthsRemaining: loanMonths,
+      totalInterestPaid: 0,
+    }
+    dispatch({ type: 'TAKE_LOAN', loan })
+    setShowBank(false)
+  }
+
+  const q = businessPlan.qualityScore
+  const qStars = '★'.repeat(q) + '☆'.repeat(5 - q)
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1.25rem' }}>
+        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Økonomi & Finansiering</h3>
+      </div>
+
+      {/* Cash flow overview */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <KpiCard label="Egenkapital"      value={formatKr(money)}       color="#22c55e" icon="💰" />
+        <KpiCard label="Total gjeld"      value={formatKr(totalDebt)}   color={totalDebt > 0 ? '#f97316' : '#64748b'} icon="🏦" />
+        <KpiCard label="Kostnader/mnd"    value={formatKr(monthlyCosts)} color="#f97316" icon="📤" />
+        <KpiCard label="Est. inntekt/mnd" value={formatKr(estRevenue)}  color="#22c55e" icon="📈" />
+      </div>
+
+      {/* Cash flow detail */}
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>KONTANTSTRØM</div>
+        {(
+          [
+            ['Husleie', monthlyRent],
+            ['Lønn', monthlyPayroll],
+            ['Låneavdrag', monthlyLoanPayment],
+            ['Markedsføring', Object.values(marketingBudget).reduce((s, v) => s + v, 0)],
+            ['Forsikring/div.', 2000],
+          ] as [string, number][]
+        ).map(([label, val]) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
+            <span style={{ color: '#64748b' }}>{label}</span>
+            <span style={{ color: '#f97316' }}>-{formatKr(val)}</span>
+          </div>
+        ))}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
+          <span>Netto (estimert)</span>
+          <span style={{ color: estRevenue - monthlyCosts >= 0 ? '#22c55e' : '#ef4444' }}>
+            {estRevenue - monthlyCosts >= 0 ? '+' : ''}{formatKr(estRevenue - monthlyCosts)}
+          </span>
+        </div>
+      </div>
+
+      {/* Active loans */}
+      {loans.length > 0 && (
+        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>AKTIVE LÅN</div>
+          {loans.map(loan => (
+            <div key={loan.id} style={{ marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                <span>Lån ({(loan.interestRate * 100).toFixed(0)}% p.a.)</span>
+                <span style={{ color: '#f97316' }}>{formatKr(loan.remainingBalance)} gjenstår</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>
+                {formatKr(loan.monthlyPayment)}/mnd · {loan.monthsRemaining} måneder igjen
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Bank button */}
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem' }}>
+        <div style={{ fontSize: 24, marginBottom: '0.5rem' }}>🏦</div>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: '0.3rem' }}>SpareBank 1</div>
+        <div style={{ fontSize: 13, color: '#64748b', marginBottom: '1rem' }}>
+          Din plankvalitet: <span style={{ color: '#ffd700' }}>{qStars}</span> ({q}/5) → Rente: {RATE_LABELS[Math.max(0, Math.min(5, q))]} p.a.
+        </div>
+        {businessPlan.qualityScore < 1 ? (
+          <div style={{ fontSize: 13, color: '#f97316' }}>
+            ⚠️ Lag en forretningsplan for å søke om lån.
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowBank(true)}
+            style={{ background: 'linear-gradient(135deg,#38bdf8,#818cf8)', border: 'none', borderRadius: 99, padding: '0.7rem 1.75rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Søk om lån →
+          </button>
+        )}
+      </div>
+
+      {/* Bank loan modal */}
+      {showBank && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.8)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem',
+        }} onClick={() => setShowBank(false)}>
+          <div style={{
+            background: 'rgba(10,14,26,0.98)', backdropFilter: 'blur(30px)',
+            border: '1px solid rgba(255,255,255,0.12)', borderRadius: '2rem',
+            padding: '2.5rem', maxWidth: 500, width: '100%', color: '#f1f5f9',
+            fontFamily: 'inherit',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 36, marginBottom: '0.5rem', textAlign: 'center' }}>🏦</div>
+            <h2 style={{ textAlign: 'center', fontSize: 20, fontWeight: 800, margin: '0 0 0.25rem' }}>SpareBank 1 — Lånesøknad</h2>
+            <p style={{ textAlign: 'center', fontSize: 13, color: '#64748b', marginBottom: '1.5rem' }}>
+              Forretningsplan vurdert: <span style={{ color: '#ffd700' }}>{qStars}</span> · Rente: {(rate * 100).toFixed(0)}% p.a.
+            </p>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.5rem' }}>LÅNEBELØP</div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {LOAN_AMOUNTS.map(a => (
+                  <button key={a} onClick={() => setLoanAmount(a)} style={{
+                    flex: 1, minWidth: 100, background: loanAmount === a ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${loanAmount === a ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: 8, padding: '0.5rem', color: '#f1f5f9',
+                    fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                    {formatKr(a)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.5rem' }}>NEDBETALINGSTID</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {LOAN_TERMS.map(t => (
+                  <button key={t.months} onClick={() => setLoanMonths(t.months)} style={{
+                    background: loanMonths === t.months ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${loanMonths === t.months ? '#38bdf8' : 'rgba(255,255,255,0.08)'}`,
+                    borderRadius: 8, padding: '0.6rem 1rem', color: '#f1f5f9',
+                    fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                  }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>BANKENS TILBUD</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.4rem', fontSize: 14 }}>
+                <span style={{ color: '#64748b' }}>Månedlig avdrag</span>
+                <span style={{ fontWeight: 700, color: '#38bdf8' }}>{formatKr(monthly)}</span>
+                <span style={{ color: '#64748b' }}>Total tilbakebetaling</span>
+                <span>{formatKr(totalRepay)}</span>
+                <span style={{ color: '#64748b' }}>Total rentekostnad</span>
+                <span style={{ color: '#f97316' }}>{formatKr(totalInterest)}</span>
+              </div>
+            </div>
+
+            {q < 3 && (
+              <div style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: '0.75rem', padding: '0.75rem', marginBottom: '1rem', fontSize: 13, color: '#f97316' }}>
+                ⚠️ Banken anbefaler å styrke forretningsplanen for bedre vilkår.
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button onClick={() => setShowBank(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 99, padding: '0.75rem', color: '#94a3b8', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                ❌ Avslå
+              </button>
+              <button onClick={takeLoan} style={{ flex: 2, background: 'linear-gradient(135deg,#38bdf8,#818cf8)', border: 'none', borderRadius: 99, padding: '0.75rem', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                ✅ Godta lån — {formatKr(loanAmount)}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Lokasjon ───────────────────────────────────────────────────────────────────
+
+function LokasjonTab() {
+  const { state } = useGame()
+  const { businessModel, rentedLocationId, locationZone, monthlyRent, storageCapacity } = state
+
+  const zoneLabel: Record<string, string> = {
+    gagata: 'Gågata', hovedgata: 'Hovedgata', utkant: 'Utkanten',
+  }
+
+  if (businessModel === 'netthandel') {
+    return (
+      <div>
+        <h3 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 0.5rem' }}>Netthandel-oppsett</h3>
+        <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 1.5rem' }}>
+          Du driver netthandel — du trenger ikke fysisk butikk, men du trenger en plattform og lager.
+        </p>
+        <div style={{ background: 'rgba(0,212,170,0.07)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: '1rem', padding: '1.25rem' }}>
+          <div style={{ fontSize: 36, marginBottom: '0.5rem' }}>💻</div>
+          <div style={{ fontWeight: 700 }}>Nettbutikk aktiv</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: '0.3rem' }}>
+            Salgskanal: Netthandel · Kapasitet: 200 enheter
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 0.5rem' }}>Fysisk Lokasjon</h3>
+      <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 1.5rem' }}>
+        Finn et lokale i bykartet for å starte butikken.
+      </p>
+
+      {rentedLocationId ? (
+        <div style={{ background: 'rgba(0,212,170,0.07)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: '1rem', padding: '1.25rem' }}>
+          <div style={{ fontSize: 36, marginBottom: '0.5rem' }}>🏪</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{state.companyName}</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: '0.4rem' }}>
+            {zoneLabel[locationZone ?? ''] ?? locationZone} · {formatKr(monthlyRent)}/mnd
+          </div>
+          <div style={{ fontSize: 13, color: '#64748b' }}>
+            Lagringskapasitet: {storageCapacity} enheter
+          </div>
+        </div>
       ) : (
-        <div style={{ textAlign: 'center', color: '#475569', padding: '3rem' }}>
-          <div style={{ fontSize: 48, marginBottom: '1rem' }}>🚀</div>
-          <p style={{ fontSize: 16 }}>Ingen resultater ennå. Fullfør 4P-oppsettet og simuler din første måned!</p>
+        <div style={{ textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <div style={{ fontSize: 48, marginBottom: '1rem' }}>🗺️</div>
+          <p style={{ fontSize: 15, color: '#94a3b8', marginBottom: '1.5rem' }}>
+            Ingen lokasjon valgt ennå. Gå ut i bykartet og finn et "TIL LEIE"-skilt.
+          </p>
+          <div style={{ fontSize: 13, color: '#64748b' }}>Lukk dashboardet for å utforske byen</div>
         </div>
       )}
     </div>
@@ -407,85 +995,14 @@ function PriserTab() {
   )
 }
 
-// ── Distribusjon ──────────────────────────────────────────────────────────────
-
-const CHANNEL_INFO: Record<DistributionChannel, { label: string; emoji: string; cost: number; desc: string; requiresLevel?: number }> = {
-  physicalStore:  { label: 'Fysisk butikk',    emoji: '🏪', cost: 0,     desc: 'Din faste butikk. Alltid aktiv.' },
-  webShop:        { label: 'Nettbutikk',        emoji: '🌐', cost: 2500,  desc: '×1.5 rekkevidde. Krever Nivå 7.', requiresLevel: 7 },
-  instagramShop:  { label: 'Instagram Shop',    emoji: '📸', cost: 1200,  desc: '×1.3 rekkevidde. 12% gebyr.' },
-  delivery:       { label: 'Hjemlevering',      emoji: '🚚', cost: 800,   desc: '×1.4 rekkevidde. 30% gebyr. Kun kafé.' },
-  wholesale:      { label: 'Engros / B2B',      emoji: '📦', cost: 500,   desc: '×1.6 rekkevidde. 40% lavere margin. Krever Nivå 9.', requiresLevel: 9 },
-}
-
-function DistribusjonTab() {
-  const { state, dispatch } = useGame()
-  const [channels, setChannels] = useState<DistributionChannel[]>(state.channels)
-
-  function toggle(ch: DistributionChannel) {
-    if (ch === 'physicalStore') return  // always on
-    setChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch])
-  }
-
-  function save() {
-    dispatch({ type: 'SET_CHANNELS', channels })
-  }
-
-  const monthlyCost = channels.reduce((s, ch) => s + (CHANNEL_INFO[ch]?.cost ?? 0), 0)
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-        <div>
-          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Distribusjonskanaler</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Velg hvordan du selger til kundene</p>
-        </div>
-        <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-          Lagre ✓
-        </button>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
-        {(Object.entries(CHANNEL_INFO) as [DistributionChannel, typeof CHANNEL_INFO[DistributionChannel]][]).map(([ch, info]) => {
-          const active = channels.includes(ch)
-          const locked = info.requiresLevel ? state.level < info.requiresLevel : false
-          return (
-            <div key={ch}
-              onClick={() => !locked && toggle(ch)}
-              style={{
-                background: active ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${active ? '#00d4aa55' : 'rgba(255,255,255,0.08)'}`,
-                borderRadius: '1rem', padding: '1rem',
-                cursor: ch === 'physicalStore' ? 'default' : locked ? 'not-allowed' : 'pointer',
-                opacity: locked ? 0.45 : 1,
-                display: 'flex', alignItems: 'center', gap: '1rem',
-              }}>
-              <span style={{ fontSize: 28 }}>{info.emoji}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>{info.label}</div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>{info.desc}</div>
-                {locked && <div style={{ fontSize: 11, color: '#f97316', marginTop: 2 }}>🔒 Krever Nivå {info.requiresLevel}</div>}
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: info.cost === 0 ? '#22c55e' : '#f97316' }}>
-                  {info.cost === 0 ? 'Gratis' : `${formatKr(info.cost)}/mnd`}
-                </div>
-                {active && <div style={{ fontSize: 11, color: '#00d4aa', marginTop: 2 }}>✓ Aktiv</div>}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.75rem 1rem', fontSize: 14, display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ color: '#64748b' }}>Total kanalkostand:</span>
-        <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(monthlyCost)}/mnd</span>
-      </div>
-    </div>
-  )
-}
+// ── Distribusjon (now 'markedsforing' handles old distribusjon, we keep it under markedsforing) ──
+// Actually we keep distribusjon hidden — markedsforing tab includes everything
+// Let's preserve markedsforing as before and just not show distribusjon as a tab
 
 // ── Markedsføring ─────────────────────────────────────────────────────────────
 
-type BudgetKey = keyof GameState['marketingBudget']
-type GameState = ReturnType<typeof useGame>['state']
+type BudgetKey = keyof GameStateLocal['marketingBudget']
+type GameStateLocal = ReturnType<typeof useGame>['state']
 
 const MARKETING_CHANNELS: { key: BudgetKey; label: string; emoji: string }[] = [
   { key: 'socialMedia', label: 'Sosiale medier', emoji: '📱' },
@@ -495,24 +1012,41 @@ const MARKETING_CHANNELS: { key: BudgetKey; label: string; emoji: string }[] = [
   { key: 'tv',          label: 'TV / Radio',      emoji: '📺' },
 ]
 
+const CHANNEL_INFO: Record<DistributionChannel, { label: string; emoji: string; cost: number; desc: string; requiresLevel?: number }> = {
+  physicalStore:  { label: 'Fysisk butikk',    emoji: '🏪', cost: 0,     desc: 'Din faste butikk. Alltid aktiv.' },
+  webShop:        { label: 'Nettbutikk',        emoji: '🌐', cost: 2500,  desc: '×1.5 rekkevidde. Krever Nivå 7.', requiresLevel: 7 },
+  instagramShop:  { label: 'Instagram Shop',    emoji: '📸', cost: 1200,  desc: '×1.3 rekkevidde. 12% gebyr.' },
+  delivery:       { label: 'Hjemlevering',      emoji: '🚚', cost: 800,   desc: '×1.4 rekkevidde. 30% gebyr. Kun kafé.' },
+  wholesale:      { label: 'Engros / B2B',      emoji: '📦', cost: 500,   desc: '×1.6 rekkevidde. 40% lavere margin. Krever Nivå 9.', requiresLevel: 9 },
+}
+
 function MarkedsforingTab() {
   const { state, dispatch } = useGame()
   const [budget, setBudget] = useState({ ...state.marketingBudget })
   const [appeal, setAppeal] = useState(state.appealType)
+  const [channels, setChannels] = useState<DistributionChannel[]>(state.channels)
 
   const total = Object.values(budget).reduce((s, v) => s + v, 0)
+
+  function toggleChannel(ch: DistributionChannel) {
+    if (ch === 'physicalStore') return
+    setChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch])
+  }
 
   function save() {
     dispatch({ type: 'SET_MARKETING', budget })
     if (appeal) dispatch({ type: 'SET_APPEAL', appealType: appeal })
+    dispatch({ type: 'SET_CHANNELS', channels })
   }
+
+  const channelMonthlyCost = channels.reduce((s, ch) => s + (CHANNEL_INFO[ch]?.cost ?? 0), 0)
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <div>
-          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Markedsføring</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Fordel markedsbudsjett og velg appellform</p>
+          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Markedsføring & Distribusjon</h3>
+          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Fordel markedsbudsjett, appellform og salgskanaler</p>
         </div>
         <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
           Lagre ✓
@@ -540,7 +1074,7 @@ function MarkedsforingTab() {
         </div>
       </div>
 
-      <div>
+      <div style={{ marginBottom: '1.5rem' }}>
         <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: '0.75rem' }}>Appellform</h4>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           {[
@@ -559,6 +1093,45 @@ function MarkedsforingTab() {
               <div style={{ fontSize: 12, color: '#64748b' }}>{a.desc}</div>
             </button>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: '0.75rem' }}>Distribusjonskanaler</h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+          {(Object.entries(CHANNEL_INFO) as [DistributionChannel, typeof CHANNEL_INFO[DistributionChannel]][]).map(([ch, info]) => {
+            const active = channels.includes(ch)
+            const locked = info.requiresLevel ? state.level < info.requiresLevel : false
+            return (
+              <div key={ch}
+                onClick={() => !locked && toggleChannel(ch)}
+                style={{
+                  background: active ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${active ? '#00d4aa55' : 'rgba(255,255,255,0.08)'}`,
+                  borderRadius: '1rem', padding: '1rem',
+                  cursor: ch === 'physicalStore' ? 'default' : locked ? 'not-allowed' : 'pointer',
+                  opacity: locked ? 0.45 : 1,
+                  display: 'flex', alignItems: 'center', gap: '1rem',
+                }}>
+                <span style={{ fontSize: 28 }}>{info.emoji}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{info.label}</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>{info.desc}</div>
+                  {locked && <div style={{ fontSize: 11, color: '#f97316', marginTop: 2 }}>🔒 Krever Nivå {info.requiresLevel}</div>}
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: info.cost === 0 ? '#22c55e' : '#f97316' }}>
+                    {info.cost === 0 ? 'Gratis' : `${formatKr(info.cost)}/mnd`}
+                  </div>
+                  {active && <div style={{ fontSize: 11, color: '#00d4aa', marginTop: 2 }}>✓ Aktiv</div>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.75rem 1rem', fontSize: 14, display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ color: '#64748b' }}>Total kanalkostand:</span>
+          <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(channelMonthlyCost)}/mnd</span>
         </div>
       </div>
     </div>

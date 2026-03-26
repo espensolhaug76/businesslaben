@@ -1,7 +1,7 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type {
-  GameState, GamePhase, Industry, LocationZone,
-  Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent,
+  GameState, GamePhase, Industry, LocationZone, BusinessModel,
+  Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
 } from './types'
 
 // ─── XP thresholds ──────────────────────────────────────────────────────────
@@ -69,14 +69,37 @@ const initialState: GameState = {
   unreadCount: 0,
 
   tutorialStep: 1,
+
+  businessModel: 'detaljhandel',
+  businessPlan: { description: '', marketResearchDone: false, qualityScore: 0 },
+  loans: [],
+  totalDebt: 0,
+  monthlyLoanPayment: 0,
+  consecutiveNegativeMonths: 0,
+  progress: {
+    industryChosen: false,
+    businessModelChosen: false,
+    targetAudienceDefined: false,
+    productsSelected: false,
+    businessPlanCreated: false,
+    financingSecured: true,
+    locationChosen: false,
+    productsOrdered: false,
+    pricesSet: false,
+    marketingSet: false,
+  },
 }
 
 // ─── Actions ────────────────────────────────────────────────────────────────
 
 type Action =
   | { type: 'SET_PHASE'; phase: GamePhase }
-  | { type: 'START_GAME'; companyName: string; industry: Industry }
+  | { type: 'START_GAME'; companyName: string; industry: Industry; businessModel?: BusinessModel }
   | { type: 'RENT_LOCATION'; id: string; zone: LocationZone; rent: number; capacity: number }
+  | { type: 'SET_BUSINESS_MODEL'; model: BusinessModel }
+  | { type: 'SAVE_BUSINESS_PLAN'; description: string }
+  | { type: 'BUY_MARKET_RESEARCH' }
+  | { type: 'TAKE_LOAN'; loan: Loan }
   | { type: 'SET_PRODUCTS'; products: Product[] }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   | { type: 'SET_MARKETING'; budget: GameState['marketingBudget'] }
@@ -97,6 +120,21 @@ type Action =
   | { type: 'EXIT_INTERIOR' }
   | { type: 'RESET' }
 
+// ─── Plan quality helper ─────────────────────────────────────────────────────
+
+function calcPlanQuality(state: GameState): number {
+  let score = 0
+  if (state.businessPlan.description.trim().length > 20) score++
+  if (state.businessPlan.marketResearchDone) score++
+  const ta = state.targetAudience
+  if (ta.genders.length > 0 || ta.ageGroups.length > 0) score++
+  if (state.products.length > 0) score++
+  const monthlyCosts = state.monthlyRent + state.monthlyPayroll + state.monthlyLoanPayment
+  const estRevenue = state.products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
+  if (monthlyCosts > 0 && estRevenue > monthlyCosts * 0.8) score++
+  return Math.min(5, score)
+}
+
 // ─── Reducer ────────────────────────────────────────────────────────────────
 
 function reducer(state: GameState, action: Action): GameState {
@@ -111,8 +149,14 @@ function reducer(state: GameState, action: Action): GameState {
         companyName: action.companyName,
         industry: action.industry,
         money: STARTING_MONEY[action.industry],
+        businessModel: action.businessModel ?? 'detaljhandel',
         phase: 'exploring_city',
         tutorialStep: 1,
+        progress: {
+          ...initialState.progress,
+          industryChosen: true,
+          businessModelChosen: action.businessModel != null,
+        },
       }
 
     case 'RENT_LOCATION': {
@@ -137,6 +181,7 @@ function reducer(state: GameState, action: Action): GameState {
         messages: newMessages,
         unreadCount: state.unreadCount + 1,
         tutorialStep: state.tutorialStep === 2 ? 3 : state.tutorialStep,
+        progress: { ...state.progress, locationChosen: true },
       }
     }
 
@@ -179,8 +224,54 @@ function reducer(state: GameState, action: Action): GameState {
         p3_complete: action.channels.length > 0,
       }
 
-    case 'SET_TARGET_AUDIENCE':
-      return { ...state, targetAudience: action.audience }
+    case 'SET_TARGET_AUDIENCE': {
+      const newState = { ...state, targetAudience: action.audience }
+      const q = calcPlanQuality(newState)
+      const defined = action.audience.genders.length > 0 || action.audience.ageGroups.length > 0
+      return {
+        ...newState,
+        businessPlan: { ...newState.businessPlan, qualityScore: q },
+        progress: { ...newState.progress, targetAudienceDefined: defined },
+      }
+    }
+
+    case 'SET_BUSINESS_MODEL':
+      return {
+        ...state,
+        businessModel: action.model,
+        progress: { ...state.progress, businessModelChosen: true },
+      }
+
+    case 'SAVE_BUSINESS_PLAN': {
+      const desc = action.description
+      const q = calcPlanQuality({ ...state, businessPlan: { ...state.businessPlan, description: desc } })
+      return {
+        ...state,
+        businessPlan: { ...state.businessPlan, description: desc, qualityScore: q },
+        progress: { ...state.progress, businessPlanCreated: desc.trim().length > 20 },
+      }
+    }
+
+    case 'BUY_MARKET_RESEARCH': {
+      if (state.money < 10_000) return state
+      const bp = { ...state.businessPlan, marketResearchDone: true }
+      const q = calcPlanQuality({ ...state, businessPlan: bp })
+      return { ...state, money: state.money - 10_000, businessPlan: { ...bp, qualityScore: q } }
+    }
+
+    case 'TAKE_LOAN': {
+      const loans = [...state.loans, action.loan]
+      const totalDebt = loans.reduce((s, l) => s + l.remainingBalance, 0)
+      const monthlyLoanPayment = loans.reduce((s, l) => s + l.monthlyPayment, 0)
+      return {
+        ...state,
+        money: state.money + action.loan.amount,
+        loans,
+        totalDebt,
+        monthlyLoanPayment,
+        progress: { ...state.progress, financingSecured: true },
+      }
+    }
 
     case 'HIRE_EMPLOYEE': {
       const employees = [...state.employees, action.employee]
@@ -221,6 +312,32 @@ function reducer(state: GameState, action: Action): GameState {
           }]
         : []
 
+      // Process loans
+      const updatedLoans = state.loans.map(loan => {
+        if (loan.monthsRemaining <= 0) return loan
+        const interestThisMonth = loan.remainingBalance * loan.interestRate / 12
+        const principalThisMonth = loan.monthlyPayment - interestThisMonth
+        return {
+          ...loan,
+          remainingBalance: Math.max(0, loan.remainingBalance - principalThisMonth),
+          monthsRemaining: loan.monthsRemaining - 1,
+          totalInterestPaid: loan.totalInterestPaid + interestThisMonth,
+        }
+      }).filter(l => l.monthsRemaining > 0 || l.remainingBalance > 0)
+
+      const totalDebt = updatedLoans.reduce((s, l) => s + l.remainingBalance, 0)
+      const updatedMonthlyLoanPayment = updatedLoans.reduce((s, l) => s + l.monthlyPayment, 0)
+      const consNeg = r.profit < 0 ? state.consecutiveNegativeMonths + 1 : 0
+
+      const newProgress: GameProgress = {
+        ...state.progress,
+        productsSelected: state.products.length > 0,
+        productsOrdered: state.products.some(p => p.stock > 0),
+        pricesSet: state.products.some(p => p.retailPrice > 0),
+        marketingSet: Object.values(state.marketingBudget).some(v => v > 0),
+        locationChosen: !!state.rentedLocationId || state.businessModel === 'netthandel',
+      }
+
       return {
         ...state,
         money: state.money + r.profit,
@@ -239,6 +356,12 @@ function reducer(state: GameState, action: Action): GameState {
         p2_complete: state.products.some(p => p.retailPrice > 0),
         p3_complete: state.channels.length > 0,
         p4_complete: Object.values(state.marketingBudget).some(v => v > 0),
+        // Loan processing
+        loans: updatedLoans,
+        totalDebt,
+        monthlyLoanPayment: updatedMonthlyLoanPayment,
+        consecutiveNegativeMonths: consNeg,
+        progress: newProgress,
       }
     }
 
@@ -307,4 +430,4 @@ export function useGame() {
 }
 
 // Re-export types for consumers
-export type { GameState, GamePhase, Product, MonthResult, InboxMessage, PestEvent }
+export type { GameState, GamePhase, Product, MonthResult, InboxMessage, PestEvent, Loan, GameProgress, BusinessModel }

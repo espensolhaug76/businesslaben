@@ -62,12 +62,21 @@ interface VacantEntry {
   left: number; right: number; top: number; bottom: number
 }
 
+// ── BankEntry for hit-testing ───────────────────────────────────────────────
+interface BankEntry {
+  worldX: number
+  worldY: number
+  left: number; right: number; top: number; bottom: number
+  glow: Phaser.GameObjects.Graphics
+}
+
 
 export default class CityScene extends Phaser.Scene {
   private vacantBuildings: VacantEntry[] = []
   private hoveredBuilding: VacantEntry | null = null
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private playerLabel: Phaser.GameObjects.Text | null = null
+  private bankEntry: BankEntry | null = null
 
   constructor() { super({ key: 'CityScene' }) }
 
@@ -245,6 +254,24 @@ export default class CityScene extends Phaser.Scene {
         fontSize: '10px', fontFamily: 'Outfit, sans-serif',
         color: '#94a3b8', stroke: '#000', strokeThickness: 2,
       }).setOrigin(0.5, 0).setDepth(b.row + b.col * 2 + 0.5)
+
+      // Register bank building as clickable
+      if (b.label === 'DNB Bank') {
+        const depth = b.row + b.col * 2
+        const bankGlow = this.add.graphics().setDepth(depth + 1.5)
+        bankGlow.lineStyle(3, 0x38bdf8, 1)
+        bankGlow.strokeRect(x - b.w, y - b.h - b.d, b.w * 2, b.h + b.d)
+        bankGlow.setAlpha(0)
+
+        this.bankEntry = {
+          worldX: x, worldY: y,
+          left:   x - b.w - 4,
+          right:  x + b.w + 4,
+          top:    y - b.h - b.d - 4,
+          bottom: y + 28,
+          glow: bankGlow,
+        }
+      }
     }
 
     // Locked buildings (greyed out)
@@ -414,7 +441,7 @@ export default class CityScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard!.createCursorKeys()
 
-    // Hit-test helper
+    // Hit-test helper for vacant lots
     const hitAt = (screenX: number, screenY: number): VacantEntry | null => {
       if (window.__OVERLAY_OPEN__) return null
       const wp = cam.getWorldPoint(screenX, screenY)
@@ -424,10 +451,20 @@ export default class CityScene extends Phaser.Scene {
       return null
     }
 
+    // Hit-test helper for bank
+    const hitBank = (screenX: number, screenY: number): boolean => {
+      if (window.__OVERLAY_OPEN__ || !this.bankEntry) return false
+      const wp = cam.getWorldPoint(screenX, screenY)
+      const b = this.bankEntry
+      return wp.x >= b.left && wp.x <= b.right && wp.y >= b.top && wp.y <= b.bottom
+    }
+
     // Hover glow
     this.input.on('pointermove', (ptr: Phaser.Input.Pointer) => {
       if (window.__OVERLAY_OPEN__) return
       const hit = hitAt(ptr.x, ptr.y)
+      const onBank = hitBank(ptr.x, ptr.y)
+
       if (hit !== this.hoveredBuilding) {
         if (this.hoveredBuilding) {
           this.tweens.killTweensOf(this.hoveredBuilding.glow)
@@ -437,15 +474,34 @@ export default class CityScene extends Phaser.Scene {
         if (hit) {
           this.tweens.add({ targets: hit.glow, alpha: 1, duration: 150 })
           canvas.style.cursor = 'pointer'
-        } else {
+        } else if (!onBank) {
           canvas.style.cursor = 'default'
+        }
+      }
+
+      if (this.bankEntry) {
+        if (onBank) {
+          this.tweens.killTweensOf(this.bankEntry.glow)
+          this.tweens.add({ targets: this.bankEntry.glow, alpha: 1, duration: 150 })
+          canvas.style.cursor = 'pointer'
+        } else if (!hit) {
+          this.tweens.killTweensOf(this.bankEntry.glow)
+          this.tweens.add({ targets: this.bankEntry.glow, alpha: 0, duration: 150 })
         }
       }
     })
 
-    // Click vacant lot
+    // Click vacant lot or bank
     this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
       if (window.__OVERLAY_OPEN__) return
+
+      // Check bank first
+      if (hitBank(ptr.x, ptr.y) && this.bankEntry) {
+        this.cameras.main.pan(this.bankEntry.worldX, this.bankEntry.worldY - 60, 500, 'Power2')
+        window.dispatchEvent(new CustomEvent('phaser:open-bank'))
+        return
+      }
+
       const hit = hitAt(ptr.x, ptr.y)
       if (!hit) return
 
