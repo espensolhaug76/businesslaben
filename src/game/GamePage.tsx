@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { GameProvider, useGame } from './GameContext'
 import PhaserGame from './PhaserGame'
 import HUD from './ui/HUD'
@@ -110,6 +110,9 @@ function GameContent() {
         <>
           <HUD />
 
+          {/* Camera controls */}
+          <CameraControls visible={!inInterior && !simOpen && !dashboardOpen && !vacantInfo} />
+
           {/* First-time hint */}
           {state.tutorialStep === 1 && !state.rentedLocationId && !inInterior && (
             <TutorialBubble
@@ -172,7 +175,93 @@ function GameContent() {
   )
 }
 
-function TutorialBubble({ text, onDismiss }: { text: string; onDismiss: () => void }) {
+// ─── Camera arrow buttons ────────────────────────────────────────────────────
+
+const KEY_MAP: Record<string, { key: string; code: string; keyCode: number }> = {
+  up:    { key: 'ArrowUp',    code: 'ArrowUp',    keyCode: 38 },
+  down:  { key: 'ArrowDown',  code: 'ArrowDown',  keyCode: 40 },
+  left:  { key: 'ArrowLeft',  code: 'ArrowLeft',  keyCode: 37 },
+  right: { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 },
+}
+
+function CameraControls({ visible }: { visible: boolean }) {
+  const held = useRef<string | null>(null)
+
+  const startPan = useCallback((dir: string) => {
+    if (held.current === dir) return
+    if (held.current) {
+      const prev = KEY_MAP[held.current]
+      window.dispatchEvent(new KeyboardEvent('keyup', { ...prev, bubbles: true, cancelable: true }))
+    }
+    held.current = dir
+    const k = KEY_MAP[dir]
+    window.dispatchEvent(new KeyboardEvent('keydown', { ...k, bubbles: true, cancelable: true }))
+  }, [])
+
+  const stopPan = useCallback(() => {
+    if (!held.current) return
+    const k = KEY_MAP[held.current]
+    window.dispatchEvent(new KeyboardEvent('keyup', { ...k, bubbles: true, cancelable: true }))
+    held.current = null
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('pointerup', stopPan)
+    return () => window.removeEventListener('pointerup', stopPan)
+  }, [stopPan])
+
+  if (!visible) return null
+
+  const btnStyle = (_dir: string): React.CSSProperties => ({
+    width: 40, height: 40,
+    background: 'rgba(255,255,255,0.15)',
+    backdropFilter: 'blur(8px)',
+    border: '1px solid rgba(255,255,255,0.25)',
+    borderRadius: 8,
+    color: '#fff', fontSize: 16, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    userSelect: 'none', touchAction: 'none',
+  })
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 90, left: 20, zIndex: 91,
+      display: 'grid', gridTemplateColumns: '40px 40px 40px',
+      gridTemplateRows: '40px 40px 40px', gap: 4,
+    }}>
+      {/* Row 1: up */}
+      <div />
+      <button
+        style={btnStyle('up')}
+        onPointerDown={e => { e.preventDefault(); startPan('up') }}
+        onPointerLeave={stopPan}
+      >▲</button>
+      <div />
+      {/* Row 2: left / blank / right */}
+      <button
+        style={btnStyle('left')}
+        onPointerDown={e => { e.preventDefault(); startPan('left') }}
+        onPointerLeave={stopPan}
+      >◀</button>
+      <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 8 }} />
+      <button
+        style={btnStyle('right')}
+        onPointerDown={e => { e.preventDefault(); startPan('right') }}
+        onPointerLeave={stopPan}
+      >▶</button>
+      {/* Row 3: down */}
+      <div />
+      <button
+        style={btnStyle('down')}
+        onPointerDown={e => { e.preventDefault(); startPan('down') }}
+        onPointerLeave={stopPan}
+      >▼</button>
+      <div />
+    </div>
+  )
+}
+
+function TutorialBubble({ text, onDismiss: _onDismiss }: { text: string; onDismiss: () => void }) {
   return (
     <div style={{
       position: 'fixed', top: '50%', left: '50%',

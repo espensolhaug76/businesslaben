@@ -62,18 +62,11 @@ interface VacantEntry {
   left: number; right: number; top: number; bottom: number
 }
 
-// ── Player location (after renting) ───────────────────────────────────────────
-interface RentedInfo {
-  id: string
-  worldX: number
-  worldY: number
-}
 
 export default class CityScene extends Phaser.Scene {
   private vacantBuildings: VacantEntry[] = []
   private hoveredBuilding: VacantEntry | null = null
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
-  private rentedInfo: RentedInfo | null = null
   private playerLabel: Phaser.GameObjects.Text | null = null
 
   constructor() { super({ key: 'CityScene' }) }
@@ -111,7 +104,6 @@ export default class CityScene extends Phaser.Scene {
     // Remove the "TIL LEIE" vacancy entry
     const entry = this.vacantBuildings.find(v => v.id === id)
     if (entry) {
-      this.rentedInfo = { id, worldX: entry.worldX, worldY: entry.worldY }
       this.vacantBuildings = this.vacantBuildings.filter(v => v.id !== id)
       // Animate camera to the rented building
       this.cameras.main.pan(entry.worldX, entry.worldY - 40, 800, 'Power2')

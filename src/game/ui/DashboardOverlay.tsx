@@ -7,7 +7,7 @@ import type { Product, DistributionChannel } from '../types'
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
-type Tab = 'oversikt' | 'produkter' | 'priser' | 'distribusjon' | 'markedsforing' | 'rapporter'
+type Tab = 'oversikt' | 'produkter' | 'priser' | 'distribusjon' | 'markedsforing' | 'personale' | 'rapporter'
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'oversikt',      label: 'Oversikt',       emoji: '📊' },
@@ -15,6 +15,7 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'priser',        label: 'Priser',          emoji: '💰' },
   { id: 'distribusjon',  label: 'Distribusjon',    emoji: '🚚' },
   { id: 'markedsforing', label: 'Markedsføring',   emoji: '📢' },
+  { id: 'personale',     label: 'Personale',       emoji: '👥' },
   { id: 'rapporter',     label: 'Rapporter',       emoji: '📋' },
 ]
 
@@ -98,6 +99,7 @@ export default function DashboardOverlay({ open, onClose }: DashboardOverlayProp
                   {activeTab === 'priser'        && <PriserTab />}
                   {activeTab === 'distribusjon'  && <DistribusjonTab />}
                   {activeTab === 'markedsforing' && <MarkedsforingTab />}
+                  {activeTab === 'personale'     && <PersonaleTab />}
                   {activeTab === 'rapporter'     && <RapporterTab />}
                 </motion.div>
               </AnimatePresence>
@@ -183,90 +185,152 @@ function OversiktTab() {
 function ProdukterTab() {
   const { state, dispatch } = useGame()
   const catalog = INDUSTRY_CATALOG[state.industry] ?? []
-  const [orderedProducts, setOrderedProducts] = useState<Product[]>(
-    () => state.products.map(p => ({ ...p }))
-  )
 
-  function toggleProduct(id: string, tier: Product['tier']) {
-    const productId = `${id}_${tier}`
-    const exists = orderedProducts.find(p => p.id === productId)
-    if (exists) {
-      setOrderedProducts(prev => prev.filter(p => p.id !== productId))
-    } else {
-      const item = catalog.find(c => c.id === id)
-      if (item) {
-        setOrderedProducts(prev => [...prev, catalogToProduct(item, tier)])
-      }
-    }
+  // Per-item local state: selected tier + quantity
+  const [selections, setSelections] = useState<Record<string, { tier: Product['tier']; qty: number }>>({})
+
+  function setTier(id: string, tier: Product['tier']) {
+    setSelections(prev => ({ ...prev, [id]: { tier, qty: prev[id]?.qty ?? 10 } }))
   }
 
-  function setStock(productId: string, stock: number) {
-    setOrderedProducts(prev => prev.map(p => p.id === productId ? { ...p, stock } : p))
+  function setQty(id: string, qty: number) {
+    setSelections(prev => ({ ...prev, [id]: { ...prev[id]!, qty } }))
   }
 
-  function save() {
-    dispatch({ type: 'SET_PRODUCTS', products: orderedProducts })
+  function order(id: string) {
+    const sel = selections[id]
+    if (!sel || sel.qty <= 0) return
+    const item = catalog.find(c => c.id === id)
+    if (!item) return
+    const product = catalogToProduct(item, sel.tier)
+    dispatch({ type: 'ORDER_PRODUCT', product, quantity: sel.qty })
+  }
+
+  const TIER_COLORS: Record<Product['tier'], string> = {
+    premium: '#ffd700',
+    standard: '#00d4aa',
+    budget: '#94a3b8',
+  }
+  const TIER_LABELS: Record<Product['tier'], string> = {
+    premium: '⭐ Premium',
+    standard: '◆ Standard',
+    budget: '◇ Budget',
   }
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-        <div>
-          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Produktkatalog — {state.industry}</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Velg produkter og tier. Sett lagerantall.</p>
-        </div>
-        <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-          Lagre ✓
-        </button>
+      <div style={{ marginBottom: '1.25rem' }}>
+        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Varelager</h3>
+        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
+          Velg kvalitetstier og antall → klikk Bestill. Pengene trekkes med en gang.
+        </p>
       </div>
+
+      {/* Current stock summary */}
+      {state.products.length > 0 && (
+        <div style={{
+          background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.2)',
+          borderRadius: '1rem', padding: '0.75rem 1rem', marginBottom: '1.25rem',
+          display: 'flex', flexWrap: 'wrap', gap: '0.75rem',
+        }}>
+          {state.products.map(p => (
+            <div key={p.id} style={{ fontSize: 12, color: '#94a3b8' }}>
+              <span style={{ fontSize: 16 }}>{p.icon}</span>{' '}
+              <span style={{ fontWeight: 700, color: '#f1f5f9' }}>{p.name}</span>{' '}
+              <span style={{ color: '#00d4aa' }}>{p.stock} stk</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {catalog.map(item => {
-          const tiers = ['premium', 'standard', 'budget'] as const
+          const sel = selections[item.id]
+          const activeTier = sel?.tier
+          const qty = sel?.qty ?? 10
+          const t = activeTier ? item.tiers[activeTier] : null
+          const totalCost = t ? t.costPrice * qty : 0
+          const canAfford = totalCost <= state.money
+          const existingStock = state.products.find(p => p.id === `${item.id}_${activeTier}`)?.stock ?? 0
+
           return (
-            <div key={item.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1rem' }}>
+            <div key={item.id} style={{
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '1rem', padding: '1rem',
+            }}>
+              {/* Item header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: 24 }}>{item.icon}</span>
-                <span style={{ fontWeight: 700, fontSize: 15 }}>{item.name}</span>
-                <span style={{ fontSize: 11, color: '#475569', marginLeft: 'auto' }}>Maks etterspørsel: {item.maxDemandPerMonth} stk/mnd</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{item.name}</div>
+                  <div style={{ fontSize: 11, color: '#475569' }}>Maks etterspørsel: {item.maxDemandPerMonth} stk/mnd</div>
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem' }}>
-                {tiers.map(tier => {
-                  const productId = `${item.id}_${tier}`
-                  const ordered = orderedProducts.find(p => p.id === productId)
-                  const t = item.tiers[tier]
-                  const tierColor = tier === 'premium' ? '#ffd700' : tier === 'standard' ? '#00d4aa' : '#94a3b8'
+
+              {/* Tier selection */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                {(['premium', 'standard', 'budget'] as const).map(tier => {
+                  const tc = TIER_COLORS[tier]
+                  const active = activeTier === tier
                   return (
-                    <div key={tier} style={{
-                      background: ordered ? `${tierColor}12` : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${ordered ? tierColor + '55' : 'rgba(255,255,255,0.06)'}`,
-                      borderRadius: '0.75rem', padding: '0.75rem', cursor: 'pointer',
-                    }} onClick={() => toggleProduct(item.id, tier)}>
-                      <div style={{ fontSize: 11, color: tierColor, fontWeight: 700, marginBottom: 4 }}>
-                        {tier === 'premium' ? '⭐ Premium' : tier === 'standard' ? '◆ Standard' : '◇ Budget'}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#94a3b8' }}>Innkjøp: {formatKr(t.costPrice)}</div>
-                      <div style={{ fontSize: 12, color: '#94a3b8' }}>Anbefalt: {formatKr(t.recommendedPrice)}</div>
-                      {ordered && (
-                        <div style={{ marginTop: '0.5rem' }} onClick={e => e.stopPropagation()}>
-                          <input
-                            type="number" min={0} max={500} value={ordered.stock}
-                            onChange={e => setStock(productId, parseInt(e.target.value) || 0)}
-                            placeholder="Antall"
-                            style={{
-                              width: '100%', background: 'rgba(255,255,255,0.08)',
-                              border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
-                              padding: '4px 8px', color: '#f1f5f9', fontSize: 12, fontFamily: 'inherit',
-                            }}
-                          />
-                          <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>
-                            Kostnad: {formatKr(ordered.stock * t.costPrice)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <button key={tier} onClick={() => setTier(item.id, tier)} style={{
+                      background: active ? `${tc}18` : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${active ? tc + '88' : 'rgba(255,255,255,0.08)'}`,
+                      borderRadius: '0.6rem', padding: '0.6rem 0.5rem',
+                      cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9', textAlign: 'left',
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: tc, marginBottom: 2 }}>{TIER_LABELS[tier]}</div>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>Innkjøp: {formatKr(item.tiers[tier].costPrice)}</div>
+                      <div style={{ fontSize: 11, color: '#475569' }}>Anbefalt: {formatKr(item.tiers[tier].recommendedPrice)}</div>
+                    </button>
                   )
                 })}
               </div>
+
+              {/* Order row — only when tier is selected */}
+              {activeTier && t && (
+                <div style={{
+                  display: 'flex', gap: '0.75rem', alignItems: 'center',
+                  background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.75rem',
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Antall å bestille</div>
+                    <input
+                      type="number" min={1} max={500} value={qty}
+                      onChange={e => setQty(item.id, Math.max(1, parseInt(e.target.value) || 1))}
+                      style={{
+                        width: '100%', background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
+                        padding: '6px 10px', color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+                  <div style={{ textAlign: 'center', minWidth: 80 }}>
+                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Totalkostnad</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: canAfford ? '#22c55e' : '#ef4444' }}>
+                      {formatKr(totalCost)}
+                    </div>
+                    {existingStock > 0 && (
+                      <div style={{ fontSize: 10, color: '#00d4aa' }}>Har: {existingStock} stk</div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => order(item.id)}
+                    disabled={!canAfford || qty <= 0}
+                    style={{
+                      background: canAfford
+                        ? 'linear-gradient(135deg,#00d4aa,#0d9488)'
+                        : 'rgba(255,255,255,0.08)',
+                      border: 'none', borderRadius: 8, padding: '0.6rem 1.25rem',
+                      color: canAfford ? '#fff' : '#475569',
+                      fontWeight: 700, fontSize: 14, cursor: canAfford ? 'pointer' : 'not-allowed',
+                      fontFamily: 'inherit', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {canAfford ? '📦 Bestill' : '💸 Ikke råd'}
+                  </button>
+                </div>
+              )}
             </div>
           )
         })}
@@ -496,6 +560,167 @@ function MarkedsforingTab() {
             </button>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Personale ─────────────────────────────────────────────────────────────────
+
+type EmployeeRole = 'selger' | 'markedsforer' | 'okonom'
+type EmployeeLevel = 'junior' | 'senior' | 'ekspert'
+
+const ROLE_INFO: Record<EmployeeRole, { label: string; emoji: string; desc: string }> = {
+  selger:       { label: 'Selger',       emoji: '🛍️', desc: '+10% salgsvolum per ansatt' },
+  markedsforer: { label: 'Markedsfører', emoji: '📢', desc: '+8% markedseffekt per ansatt' },
+  okonom:       { label: 'Økonom',       emoji: '📊', desc: '-5% kostnader per ansatt' },
+}
+const LEVEL_INFO: Record<EmployeeLevel, { label: string; salary: number }> = {
+  junior:  { label: 'Junior',  salary: 15_000 },
+  senior:  { label: 'Senior',  salary: 25_000 },
+  ekspert: { label: 'Ekspert', salary: 40_000 },
+}
+
+function PersonaleTab() {
+  const { state, dispatch } = useGame()
+  const [role, setRole] = useState<EmployeeRole>('selger')
+  const [level, setLevel] = useState<EmployeeLevel>('junior')
+
+  const salary = LEVEL_INFO[level].salary
+  const canAfford = state.money >= salary
+
+  function hire() {
+    if (!canAfford) return
+    dispatch({
+      type: 'HIRE_EMPLOYEE',
+      employee: {
+        id: `emp_${Date.now()}`,
+        role,
+        level,
+        monthlySalary: salary,
+      },
+    })
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1.25rem' }}>
+        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Personale</h3>
+        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
+          Ansett og si opp ansatte. Lønn trekkes månedlig automatisk.
+        </p>
+      </div>
+
+      {/* Current employees */}
+      {state.employees.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.5rem' }}>
+          {state.employees.map(e => {
+            const ri = ROLE_INFO[e.role as EmployeeRole]
+            const li = LEVEL_INFO[e.level as EmployeeLevel]
+            return (
+              <div key={e.id} style={{
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '1rem', padding: '0.9rem 1rem',
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+              }}>
+                <span style={{ fontSize: 28 }}>{ri?.emoji ?? '👤'}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>
+                    {li?.label ?? e.level} {ri?.label ?? e.role}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                    {ri?.desc ?? ''} · {formatKr(e.monthlySalary)}/mnd
+                  </div>
+                </div>
+                <button
+                  onClick={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })}
+                  style={{
+                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                    borderRadius: 8, padding: '0.4rem 0.9rem',
+                    color: '#ef4444', fontWeight: 700, fontSize: 13,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  Si opp
+                </button>
+              </div>
+            )
+          })}
+          <div style={{
+            background: 'rgba(255,255,255,0.03)', borderRadius: '0.75rem',
+            padding: '0.6rem 1rem', fontSize: 14,
+            display: 'flex', justifyContent: 'space-between',
+          }}>
+            <span style={{ color: '#64748b' }}>Total lønn per måned:</span>
+            <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(state.monthlyPayroll)}</span>
+          </div>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', color: '#475569', padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: 36, marginBottom: '0.5rem' }}>👥</div>
+          <p style={{ fontSize: 14 }}>Ingen ansatte ennå.</p>
+        </div>
+      )}
+
+      {/* Hire form */}
+      <div style={{
+        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '1rem', padding: '1.25rem',
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: '1rem' }}>Ansett ny medarbeider</div>
+
+        <div style={{ marginBottom: '0.75rem' }}>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Stilling</div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {(Object.keys(ROLE_INFO) as EmployeeRole[]).map(r => (
+              <button key={r} onClick={() => setRole(r)} style={{
+                flex: 1, background: role === r ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${role === r ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: '0.6rem', padding: '0.6rem 0.4rem',
+                cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
+              }}>
+                <div style={{ fontSize: 18, marginBottom: 2 }}>{ROLE_INFO[r].emoji}</div>
+                <div style={{ fontSize: 12, fontWeight: 700 }}>{ROLE_INFO[r].label}</div>
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>{ROLE_INFO[role].desc}</div>
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Nivå</div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {(Object.keys(LEVEL_INFO) as EmployeeLevel[]).map(lv => (
+              <button key={lv} onClick={() => setLevel(lv)} style={{
+                flex: 1, background: level === lv ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${level === lv ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: '0.6rem', padding: '0.6rem',
+                cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{LEVEL_INFO[lv].label}</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>{formatKr(LEVEL_INFO[lv].salary)}/mnd</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={hire}
+          disabled={!canAfford}
+          style={{
+            width: '100%',
+            background: canAfford ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(255,255,255,0.06)',
+            border: 'none', borderRadius: 8, padding: '0.75rem',
+            color: canAfford ? '#fff' : '#475569',
+            fontWeight: 700, fontSize: 15,
+            cursor: canAfford ? 'pointer' : 'not-allowed',
+            fontFamily: 'inherit',
+          }}
+        >
+          {canAfford
+            ? `✅ Ansett ${LEVEL_INFO[level].label} ${ROLE_INFO[role].label} — ${formatKr(salary)}/mnd`
+            : '💸 Ikke råd til denne ansettelsen'}
+        </button>
       </div>
     </div>
   )

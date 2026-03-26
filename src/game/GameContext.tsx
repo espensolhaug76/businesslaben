@@ -78,6 +78,7 @@ type Action =
   | { type: 'START_GAME'; companyName: string; industry: Industry }
   | { type: 'RENT_LOCATION'; id: string; zone: LocationZone; rent: number; capacity: number }
   | { type: 'SET_PRODUCTS'; products: Product[] }
+  | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   | { type: 'SET_MARKETING'; budget: GameState['marketingBudget'] }
   | { type: 'SET_APPEAL'; appealType: GameState['appealType'] }
   | { type: 'SET_CHANNELS'; channels: DistributionChannel[] }
@@ -145,6 +146,21 @@ function reducer(state: GameState, action: Action): GameState {
         products: action.products,
         p1_complete: action.products.length > 0,
       }
+
+    case 'ORDER_PRODUCT': {
+      const totalCost = action.product.costPrice * action.quantity
+      if (state.money < totalCost || action.quantity <= 0) return state
+      const existingIdx = state.products.findIndex(p => p.id === action.product.id)
+      let newProducts: Product[]
+      if (existingIdx >= 0) {
+        newProducts = state.products.map(p =>
+          p.id === action.product.id ? { ...p, stock: p.stock + action.quantity } : p
+        )
+      } else {
+        newProducts = [...state.products, { ...action.product, stock: action.quantity }]
+      }
+      return { ...state, money: state.money - totalCost, products: newProducts, p1_complete: true }
+    }
 
     case 'SET_MARKETING':
       return {
