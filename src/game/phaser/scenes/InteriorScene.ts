@@ -1,358 +1,586 @@
 import Phaser from 'phaser'
 
+// ── Slot-typer ────────────────────────────────────────────────────────────────
+
+type SlotType = 'mobler' | 'hyller' | 'dekor'
+type Placement = 'wall' | 'floor'
+
+interface ShopSlot {
+  label: string
+  type: SlotType
+  placement: Placement
+  icon: string
+  w: number
+  h: number
+}
+
+// ── Farger ────────────────────────────────────────────────────────────────────
+
+const SLOT_COLORS: Record<SlotType, { fill: number; border: number; text: string }> = {
+  mobler: { fill: 0x607d8b, border: 0x37474f, text: '#e8f4f8' },
+  hyller: { fill: 0x795548, border: 0x3e2723, text: '#fbe9e7' },
+  dekor:  { fill: 0x388e3c, border: 0x1b5e20, text: '#e8f5e9' },
+}
+
+// ── Bransjespesifikke layouts ──────────────────────────────────────────────────
+
+const LAYOUTS: Record<string, ShopSlot[]> = {
+  cafe: [
+    { label: 'Meny-tavle',   type: 'dekor',  placement: 'wall',  icon: '📋', w: 65,  h: 75  },
+    { label: 'Kafé-hylle',   type: 'hyller', placement: 'wall',  icon: '🥐', w: 85,  h: 60  },
+    { label: 'Kafédisk',     type: 'mobler', placement: 'floor', icon: '☕', w: 110, h: 68  },
+    { label: 'Bord/stoler',  type: 'mobler', placement: 'floor', icon: '🪑', w: 80,  h: 82  },
+  ],
+  fashion: [
+    { label: 'Vegghylle',    type: 'hyller', placement: 'wall',  icon: '👗', w: 110, h: 62  },
+    { label: 'Speil',        type: 'dekor',  placement: 'wall',  icon: '🪞', w: 48,  h: 88  },
+    { label: 'Stativ (v)',   type: 'mobler', placement: 'floor', icon: '👔', w: 58,  h: 105 },
+    { label: 'Mannekeng',    type: 'dekor',  placement: 'floor', icon: '🧍', w: 48,  h: 98  },
+    { label: 'Stativ (h)',   type: 'mobler', placement: 'floor', icon: '👕', w: 58,  h: 105 },
+    { label: 'Prøverom',     type: 'dekor',  placement: 'floor', icon: '🚪', w: 68,  h: 112 },
+  ],
+  tech: [
+    { label: 'Vegghylle',    type: 'hyller', placement: 'wall',  icon: '📱', w: 135, h: 58  },
+    { label: 'Demo-bord',    type: 'mobler', placement: 'floor', icon: '💻', w: 105, h: 68  },
+    { label: 'Demo-stasjon', type: 'mobler', placement: 'floor', icon: '🖥️', w: 80,  h: 88  },
+    { label: 'Kasse',        type: 'dekor',  placement: 'floor', icon: '💳', w: 68,  h: 62  },
+  ],
+  sports: [
+    { label: 'Vegg-rack',    type: 'mobler', placement: 'wall',  icon: '🏋️', w: 145, h: 62  },
+    { label: 'Gulvdisplay',  type: 'hyller', placement: 'floor', icon: '⚽', w: 90,  h: 88  },
+    { label: 'Sykkelstativ', type: 'dekor',  placement: 'floor', icon: '🚲', w: 105, h: 92  },
+    { label: 'Klær-stativ',  type: 'mobler', placement: 'floor', icon: '🧥', w: 62,  h: 108 },
+  ],
+}
+
+// ── Lager fyllingsgrad ─────────────────────────────────────────────────────────
+
+function stockLvl(fill: number): { color: number; label: string; tc: string } {
+  if (fill <= 0.33) return { color: 0xf5e6c8, label: 'TOM',      tc: '#92400e' }
+  if (fill <= 0.66) return { color: 0x8d6e63, label: 'HALVFULL', tc: '#ffffff' }
+  return                   { color: 0x3e2723, label: 'FULL',     tc: '#ffffff' }
+}
+
+// ── Scene ─────────────────────────────────────────────────────────────────────
+
 export default class InteriorScene extends Phaser.Scene {
-  private shopName: string = 'Din butikk'
+  private shopName        = 'Din butikk'
+  private industry        = 'fashion'
+  private totalStock      = 0
+  private storageCapacity = 100
 
   constructor() { super({ key: 'InteriorScene' }) }
 
-  init(data: { shopName?: string }) {
-    this.shopName = data.shopName ?? 'Din butikk'
+  init(data: { shopName?: string; industry?: string; totalStock?: number; storageCapacity?: number }) {
+    this.shopName        = data.shopName        ?? 'Din butikk'
+    this.industry        = data.industry        ?? 'fashion'
+    this.totalStock      = data.totalStock      ?? 0
+    this.storageCapacity = data.storageCapacity ?? 100
   }
 
   create() {
     const W = this.scale.width
     const H = this.scale.height
 
-    this.cameras.main.setBackgroundColor(0xf8f4ef)
+    // ── Romgeometri ──────────────────────────────────────────────────────────
+    const mg  = 20           // ytre marg
+    const dw  = 20           // skillevegg-bredde
+    const usW = W - mg * 2 - dw * 2
+    const oW  = Math.floor(usW * 0.25)
+    const wW  = Math.floor(usW * 0.25)
+    const sW  = usW - oW - wW
 
-    this.drawExteriorWalls(W, H)
-    this.drawOfficeRoom(W, H)
-    this.drawSalesFloor(W, H)
-    this.drawWarehouse(W, H)
-    this.drawFloorStreet(W, H)
-    this.spawnShopCustomers(W, H)
+    const oX = mg
+    const sX = oX + oW + dw
+    const wX = sX + sW + dw
+
+    const rY     = 65
+    const rH     = H - 110
+    const wallH  = Math.floor(rH * 0.60)
+    const floorH = rH - wallH
+    const hY     = rY + wallH     // horisontlinje
+
+    this.cameras.main.setBackgroundColor(0x2c1e14)
+
+    this.drawTopBanner(W)
+    this.drawOfficeRoom(oX, oW, rY, wallH, floorH, hY)
+    this.drawSalesFloor(sX, sW, rY, wallH, floorH, hY)
+    this.drawWarehouse(wX, wW, rY, wallH, floorH, hY)
+    this.drawDividers(oX + oW, sX + sW, rY, rH, dw)
+    this.drawBaseboard(W, H, rY + rH)
+    this.addRoomLabels(oX, oW, sX, sW, wX, wW, hY)
+    this.spawnCustomers(sX, sW, H)
     this.addBackButton()
-    this.addRoomLabels(W, H)
   }
 
-  private drawExteriorWalls(W: number, H: number) {
-    const g = this.add.graphics()
+  // ── Tegnehjelpere ─────────────────────────────────────────────────────────
 
+  /** Tegner bakvegg + gulv med perspektivstriper */
+  private roomBg(
+    g: Phaser.GameObjects.Graphics,
+    rx: number, ry: number, rw: number,
+    wallH: number, floorH: number,
+    wallCol: number, floorCol: number, stripeCol: number
+  ) {
+    // Bakvegg
+    g.fillStyle(wallCol)
+    g.fillRect(rx, ry, rw, wallH)
+    // Subtile panel-linjer
+    g.lineStyle(1, 0x000000, 0.04)
+    for (let lx = rx + 36; lx < rx + rw - 10; lx += 36) {
+      g.lineBetween(lx, ry, lx, ry + wallH)
+    }
+
+    // Gulv
+    g.fillStyle(floorCol)
+    g.fillRect(rx, ry + wallH, rw, floorH)
+
+    // Perspektivstriper på gulv (tettere nær horisonten)
+    for (let i = 1; i <= 10; i++) {
+      const t   = (i / 10) ** 1.8
+      const ly  = ry + wallH + Math.floor(t * floorH)
+      const alp = 0.06 + t * 0.10
+      g.lineStyle(1, stripeCol, alp)
+      g.lineBetween(rx, ly, rx + rw, ly)
+    }
+
+    // Horisontskyggekant
+    g.fillStyle(0x000000, 0.12)
+    g.fillRect(rx, ry + wallH - 4, rw, 8)
+  }
+
+  /** Tegner én slot-boks med skygge, ikon og etikett */
+  private slotBox(
+    g: Phaser.GameObjects.Graphics,
+    sx: number, sy: number, sw: number, sh: number,
+    fc: number, bc: number, icon: string, label: string, tc: string,
+    depth: number
+  ) {
+    g.fillStyle(0x000000, 0.16)
+    g.fillEllipse(sx + sw / 2, sy + sh + 3, sw * 0.75, 7)
+
+    g.fillStyle(fc, 0.88)
+    g.fillRoundedRect(sx, sy, sw, sh, 5)
+    g.lineStyle(2, bc, 0.8)
+    g.strokeRoundedRect(sx, sy, sw, sh, 5)
+
+    this.add.text(sx + sw / 2, sy + sh / 2 - 10, icon, { fontSize: '20px' })
+      .setOrigin(0.5).setDepth(depth + 1)
+
+    this.add.text(sx + sw / 2, sy + sh / 2 + 11, label, {
+      fontSize: '9px', fontFamily: 'Outfit, sans-serif',
+      color: tc, fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(depth + 1)
+  }
+
+  /** Fordeler en rad med slots jevnt i tilgjengelig bredde */
+  private layoutRow(
+    g: Phaser.GameObjects.Graphics,
+    slots: ShopSlot[],
+    areaX: number, areaW: number,
+    topY: number, depth: number
+  ) {
+    if (!slots.length) return
+    const totalW = slots.reduce((s, sl) => s + sl.w, 0)
+    const gap    = Math.max(6, (areaW - totalW) / (slots.length + 1))
+    let cx = areaX + gap
+
+    for (const sl of slots) {
+      const c = SLOT_COLORS[sl.type]
+      this.slotBox(g, cx, topY, sl.w, sl.h, c.fill, c.border, sl.icon, sl.label, c.text, depth)
+      cx += sl.w + gap
+    }
+  }
+
+  // ── Topp-banner ───────────────────────────────────────────────────────────
+
+  private drawTopBanner(W: number) {
+    const g = this.add.graphics().setDepth(20)
     g.fillStyle(0x1e3a5f)
     g.fillRect(0, 0, W, 60)
-
-    const nameText = this.add.text(W / 2, 30, this.shopName, {
+    g.lineStyle(2, 0x2d5a9e, 0.6)
+    g.lineBetween(0, 60, W, 60)
+    this.add.text(W / 2, 30, this.shopName, {
       fontSize: '22px', fontFamily: 'Outfit, sans-serif',
       color: '#f1f5f9', fontStyle: 'bold',
-    }).setOrigin(0.5)
-    nameText.setDepth(10)
-
-    g.fillStyle(0xe8ddd0)
-    g.fillRect(20, 60, W - 40, H - 100)
-
-    g.fillStyle(0x334155)
-    g.fillRect(0, 55, W, 10)
-
-    g.fillStyle(0x92400e, 0.6)
-    g.fillRect(20, H - 45, W - 40, 8)
-
-    g.setDepth(0)
+    }).setOrigin(0.5).setDepth(21)
   }
 
-  private drawOfficeRoom(W: number, H: number) {
-    const roomX = 30
-    const roomW = Math.floor(W * 0.22)
-    const roomH = H - 110
-    const roomY = 65
+  // ── KONTOR ────────────────────────────────────────────────────────────────
 
-    const g = this.add.graphics()
+  private drawOfficeRoom(
+    rx: number, rw: number, ry: number,
+    wallH: number, floorH: number, hY: number
+  ) {
+    const g = this.add.graphics().setDepth(5)
+    this.roomBg(g, rx, ry, rw, wallH, floorH, 0xede0c4, 0x9a7040, 0x7a5228)
 
-    g.fillStyle(0xc8a96e)
-    g.fillRect(roomX, roomY + roomH - 30, roomW, 30)
+    const mid = rx + rw / 2
+    const D   = 7   // tekst-depth
 
-    g.fillStyle(0xfdf6e3)
-    g.fillRect(roomX, roomY, roomW, roomH - 30)
+    // ── VEGG-objekter ──
 
-    g.lineStyle(1, 0xe8d8c0)
-    g.strokeRect(roomX + 6, roomY + 6, roomW - 12, roomH - 42)
+    // Whiteboard (midtre bakvegg)
+    const wbX = mid - 36, wbY = ry + 18, wbW = 72, wbH = 52
+    g.fillStyle(0xf7f5ee)
+    g.fillRoundedRect(wbX, wbY, wbW, wbH, 3)
+    g.lineStyle(2, 0x4a4a4a)
+    g.strokeRoundedRect(wbX, wbY, wbW, wbH, 3)
+    // Håndskrift-linjer
+    g.lineStyle(1, 0x38bdf8, 0.7)
+    for (let i = 0; i < 3; i++) {
+      const ly = wbY + 16 + i * 10
+      g.lineBetween(wbX + 8, ly, wbX + wbW - (i === 1 ? 20 : 8), ly)
+    }
+    this.add.text(mid, wbY + wbH + 7, 'Whiteboard', {
+      fontSize: '8px', fontFamily: 'Outfit', color: '#64748b',
+    }).setOrigin(0.5).setDepth(D)
 
-    g.fillStyle(0xc0b8a8)
-    g.fillRect(roomX + roomW - 4, roomY, 4, roomH)
+    // Kaffemaskin (øvre høyre hjørne)
+    const cmX = rx + rw - 34, cmY = ry + 16
+    g.fillStyle(0x1e293b)
+    g.fillRoundedRect(cmX, cmY, 28, 42, 4)
+    g.fillStyle(0xc0c0c0)
+    g.fillRoundedRect(cmX + 4, cmY + 4, 20, 20, 3)
+    g.fillStyle(0x38bdf8, 0.5)
+    g.fillCircle(cmX + 14, cmY + 14, 6)
+    g.fillStyle(0x475569)
+    g.fillRect(cmX + 8, cmY + 30, 12, 8)
+    this.add.text(cmX + 14, cmY + 50, 'Kaffe', {
+      fontSize: '7px', fontFamily: 'Outfit', color: '#64748b',
+    }).setOrigin(0.5).setDepth(D)
 
-    g.fillStyle(0x8b5e3c)
-    g.fillRect(roomX + 15, roomY + roomH - 100, roomW - 30, 18)
-    g.fillStyle(0x6b4428)
-    g.fillRect(roomX + 16, roomY + roomH - 82, 6, 20)
-    g.fillRect(roomX + roomW - 22, roomY + roomH - 82, 6, 20)
+    // Bokhylle (venstre bakvegg)
+    const bsX = rx + 7, bsY = ry + 18, bsW = 24, bsH = 58
+    g.fillStyle(0x7c5030)
+    g.fillRect(bsX, bsY, bsW, bsH)
+    for (let i = 0; i < 4; i++) {
+      g.fillStyle(i % 2 === 0 ? 0x3b82f6 : 0xef4444, 0.9)
+      g.fillRect(bsX + 2, bsY + 4 + i * 13, bsW - 4, 9)
+    }
+    this.add.text(bsX + bsW / 2, bsY + bsH + 7, 'Hylle', {
+      fontSize: '7px', fontFamily: 'Outfit', color: '#64748b',
+    }).setOrigin(0.5).setDepth(D)
 
-    const monBg = this.add.graphics()
+    // ── GULV-objekter ──
+
+    // Plante (nede til venstre)
+    const plX = rx + 5, plY = hY + floorH - 55
+    g.fillStyle(0x7c5030)
+    g.fillRect(plX + 6, plY + 20, 14, 22)
+    g.fillStyle(0x2d6a4f)
+    g.fillEllipse(plX + 13, plY + 18, 26, 18)
+    g.fillEllipse(plX + 13, plY + 8,  20, 15)
+    g.fillEllipse(plX + 13, plY,      14, 12)
+    this.add.text(plX + 13, plY + 48, 'Plante', {
+      fontSize: '7px', fontFamily: 'Outfit', color: '#64748b',
+    }).setOrigin(0.5).setDepth(D)
+
+    // Stol (bak pulten)
+    const chX = mid - 17, chY = hY + 12
+    g.fillStyle(0x374151)
+    g.fillEllipse(chX + 17, chY + 8, 34, 15)
+    g.fillRect(chX + 3,  chY + 8, 28, 18)
+    g.fillRect(chX + 3,  chY - 2,  6, 12)
+    g.fillRect(chX + 23, chY - 2,  6, 12)
+    g.fillStyle(0x1f2937)
+    g.fillRect(chX + 11, chY + 25, 12, 14)
+    this.add.text(mid, chY + 44, 'Stol', {
+      fontSize: '7px', fontFamily: 'Outfit', color: '#64748b',
+    }).setOrigin(0.5).setDepth(D)
+
+    // ── PULT (klikkbar → dashboard) ──
+    const dkX = rx + 8, dkY = hY + 50, dkW = rw - 16, dkH = 38
+    g.fillStyle(0x6b4423)
+    g.fillRoundedRect(dkX, dkY, dkW, dkH, 4)
+    g.fillStyle(0x8b5e3c, 0.6)
+    g.fillRoundedRect(dkX + 2, dkY + 2, dkW - 4, 16, 3)
+    // Ben
+    g.fillStyle(0x4e3420)
+    g.fillRect(dkX + 6,       dkY + dkH, 8, 12)
+    g.fillRect(dkX + dkW - 14,dkY + dkH, 8, 12)
+    this.add.text(mid, dkY + dkH / 2 + 3, 'Pult', {
+      fontSize: '8px', fontFamily: 'Outfit', color: '#fde8c8',
+    }).setOrigin(0.5).setDepth(D)
+
+    // Skjerm på pulten
+    const mnX = mid - 22, mnY = dkY - 32
+    const monBg = this.add.graphics().setDepth(D + 2)
     monBg.fillStyle(0x1e293b)
-    monBg.fillRect(roomX + roomW / 2 - 20, roomY + roomH - 125, 40, 28)
-    monBg.fillStyle(0x38bdf8, 0.3)
-    monBg.fillRect(roomX + roomW / 2 - 18, roomY + roomH - 123, 36, 24)
+    monBg.fillRoundedRect(mnX, mnY, 44, 28, 3)
+    monBg.fillStyle(0x38bdf8, 0.35)
+    monBg.fillRoundedRect(mnX + 3, mnY + 3, 38, 20, 2)
     monBg.fillStyle(0x334155)
-    monBg.fillRect(roomX + roomW / 2 - 6, roomY + roomH - 97, 12, 6)
-    monBg.fillRect(roomX + roomW / 2 - 14, roomY + roomH - 91, 28, 4)
-    monBg.setDepth(5)
+    monBg.fillRect(mnX + 17, mnY + 28, 10, 6)
+    monBg.fillRect(mnX + 9,  mnY + 34, 26, 4)
 
-    const monHit = new Phaser.Geom.Rectangle(
-      roomX + roomW / 2 - 22,
-      roomY + roomH - 128,
-      44, 36
+    monBg.setInteractive(
+      new Phaser.Geom.Rectangle(mnX - 3, mnY - 3, 50, 38),
+      Phaser.Geom.Rectangle.Contains
     )
-    monBg.setInteractive(monHit, Phaser.Geom.Rectangle.Contains)
-    monBg.on('pointerover', () => {
-      this.input.setDefaultCursor('pointer')
-      monBg.setAlpha(1.2)
-    })
-    monBg.on('pointerout', () => {
-      this.input.setDefaultCursor('default')
-      monBg.setAlpha(1)
-    })
+    monBg.on('pointerover', () => { this.input.setDefaultCursor('pointer'); monBg.setAlpha(1.25) })
+    monBg.on('pointerout',  () => { this.input.setDefaultCursor('default'); monBg.setAlpha(1) })
     monBg.on('pointerdown', () => {
       if (!window.__OVERLAY_OPEN__) {
         window.dispatchEvent(new CustomEvent('phaser:open-dashboard'))
       }
     })
-
-    this.add.text(roomX + roomW / 2, roomY + roomH - 135, '💻 Klikk for dashboard', {
-      fontSize: '9px', fontFamily: 'Outfit, sans-serif', color: '#64748b',
-    }).setOrigin(0.5).setDepth(6)
-
-    g.fillStyle(0x374151)
-    g.fillEllipse(roomX + roomW / 2, roomY + roomH - 73, 26, 14)
-    g.fillRect(roomX + roomW / 2 - 13, roomY + roomH - 73, 26, 24)
-    g.fillStyle(0x1f2937)
-    g.fillRect(roomX + roomW / 2 - 4, roomY + roomH - 56, 8, 18)
-
-    g.fillStyle(0x8b5e3c)
-    g.fillRect(roomX + 15, roomY + 20, 20, 60)
-    for (let i = 0; i < 4; i++) {
-      g.fillStyle(i % 2 === 0 ? 0x3b82f6 : 0xef4444)
-      g.fillRect(roomX + 17, roomY + 22 + i * 14, 16, 12)
-    }
-
-    const roomZone = this.add.zone(roomX + roomW / 2, roomY + roomH / 2, roomW, roomH)
-    roomZone.setInteractive()
-    roomZone.on('pointerdown', () => {
-      window.dispatchEvent(new CustomEvent('phaser:roomClicked', { detail: 'office' }))
-    })
-
-    g.setDepth(1)
+    this.add.text(mid, mnY - 8, '💻 Klikk for dashboard', {
+      fontSize: '8px', fontFamily: 'Outfit', color: '#64748b',
+    }).setOrigin(0.5).setDepth(D + 3)
   }
 
-  private drawSalesFloor(W: number, H: number) {
-    const officeW = Math.floor(W * 0.22)
-    const warehouseW = Math.floor(W * 0.25)
-    const roomX = 30 + officeW + 4
-    const roomW = W - 40 - officeW - warehouseW - 8
-    const roomH = H - 110
-    const roomY = 65
+  // ── BUTIKKLOKALE ──────────────────────────────────────────────────────────
 
-    const g = this.add.graphics()
+  private drawSalesFloor(
+    rx: number, rw: number, ry: number,
+    wallH: number, floorH: number, hY: number
+  ) {
+    const g = this.add.graphics().setDepth(5)
+    this.roomBg(g, rx, ry, rw, wallH, floorH, 0xd4dde6, 0xc08850, 0x9a6428)
 
-    g.fillStyle(0xc8a060)
-    g.fillRect(roomX, roomY + roomH - 30, roomW, 30)
-    for (let i = 0; i < 6; i++) {
-      g.fillStyle(i % 2 === 0 ? 0xd4a96e : 0xc89458)
-      g.fillRect(roomX, roomY + roomH - 30 + (i * 5 % 10), roomW, 5)
+    const slots      = LAYOUTS[this.industry] ?? LAYOUTS['fashion']
+    const wallSlots  = slots.filter(s => s.placement === 'wall')
+    const floorSlots = slots.filter(s => s.placement === 'floor')
+
+    // Vegg-objekter: hengt på bakveggen, justert mot horisonten
+    if (wallSlots.length) {
+      const maxWH = Math.max(...wallSlots.map(s => s.h))
+      const wallObjY = hY - 14 - maxWH
+      this.layoutRow(g, wallSlots, rx + 8, rw - 16, wallObjY, 7)
     }
 
-    g.fillStyle(0xfef9f0)
-    g.fillRect(roomX, roomY, roomW, roomH - 30)
-
-    g.lineStyle(1, 0xf5e8d8)
-    g.strokeRect(roomX + 8, roomY + 8, roomW - 16, roomH - 46)
-
-    g.fillStyle(0xc0b8a8)
-    g.fillRect(roomX + roomW - 4, roomY, 4, roomH)
-
-    for (let s = 0; s < 3; s++) {
-      const shelfX = roomX + roomW - 55
-      const shelfY = roomY + 30 + s * 70
-      g.fillStyle(0x92400e)
-      g.fillRect(shelfX, shelfY, 40, 8)
-      g.fillRect(shelfX, shelfY + 50, 40, 8)
-      g.fillRect(shelfX, shelfY + 8, 5, 42)
-      g.fillRect(shelfX + 35, shelfY + 8, 5, 42)
-
-      const prodColors = [0x38bdf8, 0xf97316, 0xa855f7, 0x22c55e]
-      for (let p = 0; p < 4; p++) {
-        g.fillStyle(prodColors[p % prodColors.length], 0.85)
-        g.fillRect(shelfX + 3 + p * 9, shelfY + 10, 7, 12)
-        g.fillRect(shelfX + 3 + p * 9, shelfY + 52, 7, 12)
-      }
+    // Gulv-objekter: stående på gulvet rett bak disken
+    if (floorSlots.length) {
+      const floorObjY = hY + 14
+      this.layoutRow(g, floorSlots, rx + 8, rw - 16, floorObjY, 8)
     }
 
-    const ctrX = roomX + roomW / 2 - 50
-    const ctrY = roomY + roomH - 75
-    g.fillStyle(0x8b5e3c)
-    g.fillRect(ctrX, ctrY, 100, 22)
-    g.fillStyle(0x6b4428)
-    g.fillRect(ctrX, ctrY + 22, 100, 8)
+    // Kassedisk (foran, mot gulvet)
+    const cX = rx + rw / 2 - 55, cY = hY + floorH - 68
+    g.fillStyle(0x7c4e2e)
+    g.fillRoundedRect(cX, cY, 110, 24, 4)
+    g.fillStyle(0x5a3620)
+    g.fillRect(cX, cY + 24, 110, 8)
     g.fillStyle(0x1e293b)
-    g.fillRect(ctrX + 38, ctrY - 16, 28, 18)
-    g.fillStyle(0x38bdf8, 0.6)
-    g.fillRect(ctrX + 40, ctrY - 14, 24, 12)
+    g.fillRect(cX + 38, cY - 16, 30, 18)
+    g.fillStyle(0x38bdf8, 0.5)
+    g.fillRect(cX + 41, cY - 13, 24, 12)
+    this.add.text(rx + rw / 2, cY + 12, 'Kasse', {
+      fontSize: '9px', fontFamily: 'Outfit', color: '#fde8c8',
+    }).setOrigin(0.5).setDepth(9)
 
-    const doorX = roomX + roomW / 2 - 22
-    const doorY = roomY + roomH - 30
+    // Inngang/dør
+    const dX = rx + rw / 2 - 22, dY = hY + floorH - 30
     g.fillStyle(0x1a2744)
-    g.fillRect(doorX, doorY - 45, 44, 45)
+    g.fillRect(dX, dY - 44, 44, 44)
     g.fillStyle(0x2d4a6e)
-    g.fillRect(doorX + 2, doorY - 43, 40, 41)
+    g.fillRect(dX + 2, dY - 42, 40, 40)
     g.fillStyle(0xfbbf24)
-    g.fillCircle(doorX + 32, doorY - 23, 4)
+    g.fillCircle(dX + 32, dY - 22, 4)
     g.fillStyle(0x22c55e)
-    g.fillRect(doorX + 8, doorY - 65, 28, 14)
-    this.add.text(doorX + 22, doorY - 59, 'ÅPENT', {
+    g.fillRect(dX + 8, dY - 63, 28, 14)
+    this.add.text(dX + 22, dY - 57, 'ÅPENT', {
       fontSize: '7px', fontFamily: 'Outfit', color: '#fff', fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(8)
+    }).setOrigin(0.5).setDepth(9)
 
-    const roomZone = this.add.zone(roomX + roomW / 2, roomY + roomH / 2, roomW - 60, roomH - 30)
-    roomZone.setInteractive()
-    roomZone.on('pointerdown', () => {
-      window.dispatchEvent(new CustomEvent('phaser:roomClicked', { detail: 'shop' }))
-    })
-    roomZone.on('pointerover', () => { this.input.setDefaultCursor('pointer') })
-    roomZone.on('pointerout', () => { this.input.setDefaultCursor('default') })
-
-    g.setDepth(2)
+    const z = this.add.zone(rx + rw / 2, ry + (wallH + floorH) / 2, rw, wallH + floorH)
+    z.setInteractive()
+    z.on('pointerdown', () => window.dispatchEvent(new CustomEvent('phaser:roomClicked', { detail: 'shop' })))
+    z.on('pointerover', () => this.input.setDefaultCursor('pointer'))
+    z.on('pointerout',  () => this.input.setDefaultCursor('default'))
   }
 
-  private drawWarehouse(W: number, H: number) {
-    const roomX = W - 30 - Math.floor(W * 0.25)
-    const roomW = Math.floor(W * 0.25)
-    const roomH = H - 110
-    const roomY = 65
+  // ── LAGER ─────────────────────────────────────────────────────────────────
 
-    const g = this.add.graphics()
+  private drawWarehouse(
+    rx: number, rw: number, ry: number,
+    wallH: number, floorH: number, hY: number
+  ) {
+    const g = this.add.graphics().setDepth(5)
+    this.roomBg(g, rx, ry, rw, wallH, floorH, 0xb8b8b8, 0x7a7a7a, 0x505050)
 
-    g.fillStyle(0x9e8060)
-    g.fillRect(roomX, roomY + roomH - 30, roomW, 30)
+    const fill = this.storageCapacity > 0
+      ? Math.min(1, this.totalStock / this.storageCapacity) : 0
+    const fillPct = Math.round(fill * 100)
 
-    g.fillStyle(0xf0ebe4)
-    g.fillRect(roomX, roomY, roomW, roomH - 30)
+    // Bakdør
+    const bdX = rx + rw / 2 - 18, bdY = ry + wallH - 54
+    g.fillStyle(0x4a4a4a)
+    g.fillRect(bdX, bdY, 36, 50)
+    g.fillStyle(0x5c5c5c)
+    g.fillRect(bdX + 2, bdY + 2, 32, 46)
+    g.fillStyle(0xfbbf24)
+    g.fillCircle(bdX + 28, bdY + 26, 3)
+    this.add.text(rx + rw / 2, bdY - 8, 'BAKDØR', {
+      fontSize: '8px', fontFamily: 'Outfit', color: '#94a3b8',
+    }).setOrigin(0.5).setDepth(7)
 
-    for (let rack = 0; rack < 2; rack++) {
-      const rX = roomX + 15 + rack * (roomW / 2 - 8)
-      const rY = roomY + 20
-      const rH = roomH - 80
+    // ── 3 lagerreoler på gulvet ──
+    const nShelves  = 3
+    const shW = Math.min(72, Math.floor((rw - 24) / nShelves) - 10)
+    const shH = Math.min(175, floorH - 24)
+    const totalW = nShelves * shW + (nShelves - 1) * 10
+    let shX = rx + Math.floor((rw - totalW) / 2)
+    const shY = hY + floorH - shH - 6   // bunnen hviler på gulvet
 
-      g.fillStyle(0x4a5568)
-      g.fillRect(rX,      rY, 6, rH)
-      g.fillRect(rX + 30, rY, 6, rH)
+    for (let r = 0; r < nShelves; r++) {
+      // Vertikale stolper
+      g.fillStyle(0x37474f)
+      g.fillRect(shX,          shY, 6, shH)
+      g.fillRect(shX + shW - 6, shY, 6, shH)
+      // Bunnsokkel
+      g.fillStyle(0x263238)
+      g.fillRect(shX - 3, shY + shH - 5, shW + 6, 5)
+      // Topp-bjelke
+      g.fillRect(shX - 3, shY, shW + 6, 5)
 
-      for (let s = 0; s < 4; s++) {
-        g.fillStyle(0x6b7280)
-        g.fillRect(rX - 2, rY + 20 + s * (rH / 4), 40, 5)
+      // 4 hyllenivåer
+      const lvlH  = Math.floor((shH - 14) / 4)
+      const inner = shW - 14
 
-        const boxColors = [0x3b82f6, 0xef4444, 0xf59e0b, 0x8b5cf6]
-        const boxCount = 3 - s
-        for (let b = 0; b < boxCount; b++) {
-          g.fillStyle(boxColors[(rack * 3 + b) % boxColors.length], 0.9)
-          g.fillRect(rX + 1 + b * 13, rY + 22 + s * (rH / 4), 11, 14)
-          g.lineStyle(1, 0x000000, 0.2)
-          g.strokeRect(rX + 1 + b * 13, rY + 22 + s * (rH / 4), 11, 14)
-        }
+      for (let lv = 0; lv < 4; lv++) {
+        const lY  = shY + 6 + lv * lvlH
+        const lX  = shX + 7
+
+        // Hylleboard (mørk stripe under innholdet)
+        g.fillStyle(0x455a64)
+        g.fillRect(lX - 2, lY + lvlH - 7, inner + 4, 6)
+
+        // Innholds-rektangel farget etter fyllingsgrad
+        const lvl = stockLvl(fill)
+        g.fillStyle(lvl.color, 0.92)
+        g.fillRect(lX, lY + 3, inner, lvlH - 10)
+        g.lineStyle(1, 0x00000033)
+        g.strokeRect(lX, lY + 3, inner, lvlH - 10)
+
+        // Status-etikett
+        this.add.text(lX + inner / 2, lY + 3 + (lvlH - 10) / 2, lvl.label, {
+          fontSize: '7px', fontFamily: 'Outfit, sans-serif',
+          color: lvl.tc, fontStyle: 'bold',
+        }).setOrigin(0.5).setDepth(8)
       }
+
+      shX += shW + 10
     }
 
-    this.add.text(roomX + roomW / 2, roomY + roomH - 60, '📦 Lager', {
-      fontSize: '11px', fontFamily: 'Outfit, sans-serif', color: '#64748b',
+    // Lagerstatus-bar
+    const barX = rx + 8, barY = hY + 8, barW = rw - 16
+    this.add.text(rx + rw / 2, barY - 11, `Lagerstatus: ${fillPct}%`, {
+      fontSize: '9px', fontFamily: 'Outfit', color: '#94a3b8',
     }).setOrigin(0.5).setDepth(8)
+    g.fillStyle(0xd1c4b0)
+    g.fillRoundedRect(barX, barY, barW, 9, 3)
+    if (fill > 0) {
+      const fc = fill <= 0.33 ? 0x22c55e : fill <= 0.66 ? 0xf97316 : 0xef4444
+      g.fillStyle(fc)
+      g.fillRoundedRect(barX, barY, Math.max(6, barW * fill), 9, 3)
+    }
 
-    const roomZone = this.add.zone(roomX + roomW / 2, roomY + roomH / 2, roomW, roomH)
-    roomZone.setInteractive()
-    roomZone.on('pointerdown', () => {
-      window.dispatchEvent(new CustomEvent('phaser:roomClicked', { detail: 'warehouse' }))
-    })
-    roomZone.on('pointerover', () => { this.input.setDefaultCursor('pointer') })
-    roomZone.on('pointerout', () => { this.input.setDefaultCursor('default') })
-
-    g.setDepth(2)
+    const z = this.add.zone(rx + rw / 2, ry + (wallH + floorH) / 2, rw, wallH + floorH)
+    z.setInteractive()
+    z.on('pointerdown', () => window.dispatchEvent(new CustomEvent('phaser:roomClicked', { detail: 'warehouse' })))
+    z.on('pointerover', () => this.input.setDefaultCursor('pointer'))
+    z.on('pointerout',  () => this.input.setDefaultCursor('default'))
   }
 
-  private drawFloorStreet(W: number, H: number) {
-    const g = this.add.graphics()
-    g.fillStyle(0x7a5c3a)
-    g.fillRect(20, H - 42, W - 40, 8)
-    g.fillStyle(0x5a3c1a)
-    g.fillRect(20, H - 36, W - 40, 4)
-    g.fillStyle(0x374151)
-    g.fillRect(0, H - 32, W, 32)
-    g.lineStyle(2, 0x94a3b8, 0.5)
-    g.lineBetween(0, H - 32, W, H - 32)
-    g.setDepth(3)
+  // ── Skillevegger mellom rom ────────────────────────────────────────────────
+
+  private drawDividers(d1X: number, d2X: number, ry: number, rH: number, dw: number) {
+    const g = this.add.graphics().setDepth(15)
+    g.fillStyle(0x4a3020)
+    g.fillRect(d1X, ry, dw, rH)
+    g.fillRect(d2X, ry, dw, rH)
+    // Lyspunktkant (venstre side)
+    g.fillStyle(0xffffff, 0.07)
+    g.fillRect(d1X, ry, 3, rH)
+    g.fillRect(d2X, ry, 3, rH)
+    // Skygge (høyre side)
+    g.fillStyle(0x000000, 0.20)
+    g.fillRect(d1X + dw - 4, ry, 4, rH)
+    g.fillRect(d2X + dw - 4, ry, 4, rH)
   }
 
-  private addRoomLabels(W: number, _H: number) {
-    const officeW = Math.floor(W * 0.22)
-    const warehouseW = Math.floor(W * 0.25)
-    const salesW = W - 40 - officeW - warehouseW - 8
+  // ── Gateplan ──────────────────────────────────────────────────────────────
 
-    const labels = [
-      { x: 30 + officeW / 2,               text: 'KONTOR',        color: '#64748b' },
-      { x: 30 + officeW + 4 + salesW / 2,  text: 'BUTIKKLOKALE',  color: '#64748b' },
-      { x: W - 30 - warehouseW / 2,        text: 'LAGER',         color: '#64748b' },
+  private drawBaseboard(W: number, H: number, baseY: number) {
+    const g = this.add.graphics().setDepth(20)
+    g.fillStyle(0x3a2818)
+    g.fillRect(0, baseY, W, 7)
+    g.fillStyle(0x263040)
+    g.fillRect(0, baseY + 7, W, H - baseY - 7)
+    g.lineStyle(2, 0x4a5a6a, 0.5)
+    g.lineBetween(0, baseY + 7, W, baseY + 7)
+  }
+
+  // ── Rom-etiketter (på horisonten) ─────────────────────────────────────────
+
+  private addRoomLabels(
+    oX: number, oW: number,
+    sX: number, sW: number,
+    wX: number, wW: number,
+    hY: number
+  ) {
+    const y = hY - 6
+    const industryName: Record<string, string> = {
+      cafe: 'KAFÉ', fashion: 'KLESBUTIKK', tech: 'TECH-BUTIKK', sports: 'SPORTSBUTIKK',
+    }
+    const items = [
+      { x: oX + oW / 2, t: 'KONTOR' },
+      { x: sX + sW / 2, t: industryName[this.industry] ?? 'BUTIKK' },
+      { x: wX + wW / 2, t: 'LAGER' },
     ]
-
-    for (const lbl of labels) {
-      this.add.text(lbl.x, 70, lbl.text, {
-        fontSize: '11px', fontFamily: 'Outfit, sans-serif',
-        color: lbl.color, fontStyle: 'bold',
-        letterSpacing: 2,
-      }).setOrigin(0.5).setDepth(10)
+    for (const { x, t } of items) {
+      this.add.text(x, y, t, {
+        fontSize: '10px', fontFamily: 'Outfit, sans-serif',
+        color: '#94a3b8', fontStyle: 'bold', letterSpacing: 2,
+      }).setOrigin(0.5).setDepth(18)
     }
   }
 
-  private spawnShopCustomers(W: number, H: number) {
-    const officeW = Math.floor(W * 0.22)
-    const warehouseW = Math.floor(W * 0.25)
-    const salesX = 30 + officeW + 4
-    const salesW = W - 40 - officeW - warehouseW - 8
-    const doorX = salesX + salesW / 2
-    const doorY = H - 45
+  // ── Kundeanimasjon ────────────────────────────────────────────────────────
 
+  private spawnCustomers(sX: number, sW: number, H: number) {
+    const dx = sX + sW / 2, dy = H - 45
     for (let i = 0; i < 2; i++) {
-      this.time.delayedCall(i * 3000, () => {
-        this.spawnCustomerNPC(doorX + (i - 0.5) * 20, doorY, salesX, salesW, H)
-      })
+      this.time.delayedCall(i * 2800, () => this.spawnNPC(dx + (i - 0.5) * 20, dy, sX, sW, H))
     }
   }
 
-  private spawnCustomerNPC(startX: number, startY: number, salesX: number, salesW: number, H: number) {
-    const colors = [0x38bdf8, 0xa855f7, 0xf97316]
-    const color = colors[Math.floor(Math.random() * colors.length)]
+  private spawnNPC(sx: number, sy: number, roomX: number, roomW: number, H: number) {
+    const col = [0x38bdf8, 0xa855f7, 0xf97316][Math.floor(Math.random() * 3)]
+    const g   = this.add.graphics().setDepth(25)
+    g.fillStyle(col);         g.fillCircle(0, 0, 8)
+    g.fillStyle(0xffffff, 0.5); g.fillCircle(-2, -3, 3)
+    g.setPosition(sx, sy)
 
-    const g = this.add.graphics()
-    g.fillStyle(color)
-    g.fillCircle(0, 0, 8)
-    g.fillStyle(0xffffff, 0.5)
-    g.fillCircle(-2, -3, 3)
-    g.setPosition(startX, startY)
-    g.setDepth(20)
-
-    const shelfX = salesX + salesW - 60 + Math.random() * 40
-    const shelfY = H - 150 - Math.random() * 80
-    const counterX = salesX + salesW / 2 + (Math.random() - 0.5) * 30
-    const counterY = H - 100
+    const shX = roomX + roomW - 60 + Math.random() * 40
+    const shY = H - 155 - Math.random() * 70
+    const cX  = roomX + roomW / 2 + (Math.random() - 0.5) * 30
+    const cY  = H - 100
 
     this.tweens.chain({
       targets: g,
       tweens: [
-        { x: startX, y: H - 80, duration: 600 },
-        { x: shelfX, y: shelfY, duration: 1200, ease: 'Power1' },
-        { x: shelfX, y: shelfY, duration: 1500 },
-        { x: counterX, y: counterY, duration: 800 },
-        { x: counterX, y: counterY, duration: 800 },
+        { x: sx,  y: H - 80,  duration: 600 },
+        { x: shX, y: shY,     duration: 1100, ease: 'Power1' },
+        { x: shX, y: shY,     duration: 1400 },
+        { x: cX,  y: cY,      duration: 750 },
+        { x: cX,  y: cY,      duration: 700 },
         {
-          x: startX, y: startY + 30, duration: 700,
+          x: sx, y: sy + 30, duration: 650,
           onComplete: () => {
-            const saleText = this.add.text(counterX, counterY - 20, '+499 kr', {
-              fontSize: '14px', fontFamily: 'Outfit, sans-serif',
-              color: '#22c55e', fontStyle: 'bold',
+            const t = this.add.text(cX, cY - 20, '+499 kr', {
+              fontSize: '14px', fontFamily: 'Outfit', color: '#22c55e', fontStyle: 'bold',
               stroke: '#000', strokeThickness: 2,
             }).setOrigin(0.5).setDepth(30)
             this.tweens.add({
-              targets: saleText,
-              y: counterY - 60, alpha: 0,
-              duration: 1200,
-              onComplete: () => saleText.destroy(),
+              targets: t, y: cY - 60, alpha: 0, duration: 1100,
+              onComplete: () => t.destroy(),
             })
             g.destroy()
-            this.time.delayedCall(3000 + Math.random() * 3000, () => {
-              this.spawnCustomerNPC(startX, startY, salesX, salesW, H)
+            this.time.delayedCall(2500 + Math.random() * 3000, () => {
+              this.spawnNPC(sx, sy, roomX, roomW, H)
             })
           },
         },
@@ -360,22 +588,17 @@ export default class InteriorScene extends Phaser.Scene {
     })
   }
 
+  // ── Tilbake-knapp ─────────────────────────────────────────────────────────
+
   private addBackButton() {
     const btn = this.add.text(20, 15, '← Tilbake til byen', {
       fontSize: '14px', fontFamily: 'Outfit, sans-serif',
-      color: '#94a3b8',
-      backgroundColor: 'rgba(10,14,26,0.7)',
+      color: '#94a3b8', backgroundColor: 'rgba(10,14,26,0.7)',
       padding: { x: 12, y: 8 },
     }).setInteractive().setDepth(100)
 
-    btn.on('pointerover', () => {
-      btn.setStyle({ color: '#f1f5f9' })
-      this.input.setDefaultCursor('pointer')
-    })
-    btn.on('pointerout', () => {
-      btn.setStyle({ color: '#94a3b8' })
-      this.input.setDefaultCursor('default')
-    })
+    btn.on('pointerover', () => { btn.setStyle({ color: '#f1f5f9' }); this.input.setDefaultCursor('pointer') })
+    btn.on('pointerout',  () => { btn.setStyle({ color: '#94a3b8' }); this.input.setDefaultCursor('default') })
     btn.on('pointerdown', () => {
       window.dispatchEvent(new CustomEvent('phaser:exitInterior'))
       this.scene.start('CityScene')

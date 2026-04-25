@@ -367,7 +367,7 @@ export default function DistribusjonModule() {
       intro="Et godt produkt til riktig pris er verdiløst om det ikke når kunden. Distribusjon handler om å velge riktig vei fra produsent til forbruker — og den valgte veien kommuniserer like mye om merkevaren som reklamen gjør. Rolex og Coca-Cola selger begge globalt, men på helt ulike måter."
       vissteduAt="Distribusjonskostnader utgjør i snitt 10–30% av et produkts totale kostnad. For dagligvarer kan distribusjonen koste mer enn selve produksjonen."
       espenSier="Neste gang du handler på nett, tenk over alle leddene produktet har gått gjennom for å nå deg: produsent, grossist, lager, budtjeneste. Hvert ledd tar sin del — det er derfor nettpriser ikke alltid er mye billigere enn i butikk."
-      presentationLink={{ route: '/learning/presentations/konkurransemidlene' }}
+      presentationLink={{ route: '/learning/presentations/distribusjon', description: 'Distribusjon — direkte/indirekte, distribusjonsgrad og omnikanal' }}
     />
   )
 }

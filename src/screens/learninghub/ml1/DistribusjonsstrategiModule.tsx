@@ -398,7 +398,7 @@ export default function DistribusjonsstrategiModule() {
       intro="Distribusjonsstrategi handler om å velge de riktige kanalene for å gjøre produktet tilgjengelig for kunden — på riktig sted, til riktig tid og til lavest mulig kostnad."
       vissteduAt="McDonald's er verdens største eiendomsselskap — ikke matselskap. De tjener penger på franchiseavgifter og leie av eiendommene til franchisedriverne. Restaurantdrift er sekundær."
       espenSier="Tesla disrupted bilindustrien ikke bare med elektriske biler — men ved å eliminere forhandlerleddet. Direkte salg gir Tesla full kontroll over pris, opplevelse og kundedata. Det er distribusjon som konkurransefortrinn."
-      presentationLink={{ route: '/learning/presentations/konkurransemidlene', description: 'Konkurransemidlene — en visuell gjennomgang av distribusjon og de 4P-ene' }}
+      presentationLink={{ route: '/learning/presentations/distribusjon', description: 'Distribusjon — direkte/indirekte, distribusjonsgrad og omnikanal' }}
     />
   );
 }

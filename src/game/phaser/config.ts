@@ -19,7 +19,7 @@ export function createPhaserConfig(parent: HTMLElement): Phaser.Types.Core.GameC
   return {
     type: Phaser.AUTO,
     parent,
-    backgroundColor: '#0a0e1a',
+    backgroundColor: '#7ec850',
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,

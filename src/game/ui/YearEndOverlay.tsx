@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_META } from '../data/industries'
+import { evaluateOutcome } from '../../strategies/innovation/outcomeEngine'
+import type { InnovationFlags } from '../../strategies/innovation/types'
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Des']
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
@@ -19,11 +21,12 @@ export default function YearEndOverlay() {
   const { state, dispatch } = useGame()
   if (state.phase !== 'year_end') return null
 
-  const { monthlyResults, industry, companyName, money, level, xp } = state
+  const { monthlyResults, industry, companyName, money, level, xp, gameFlags } = state
   const meta = INDUSTRY_META[industry]
   const totalRevenue = monthlyResults.reduce((s, r) => s + r.revenue, 0)
   const totalProfit  = monthlyResults.reduce((s, r) => s + r.profit, 0)
   const g = grade(totalProfit, meta.startingMoney)
+  const outcome = evaluateOutcome({ ...gameFlags, capital: money } as unknown as InnovationFlags)
   const maxRev = Math.max(...monthlyResults.map(r => r.revenue), 1)
 
   return (
@@ -90,6 +93,26 @@ export default function YearEndOverlay() {
             </div>
           </div>
         )}
+
+        {/* Outcome section */}
+        <div style={{
+          background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)',
+          borderRadius: '1.5rem', padding: '1.5rem', marginBottom: '1.5rem',
+        }}>
+          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: '0.5rem' }}>
+            Sluttilstand
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#38bdf8', marginBottom: '0.25rem' }}>
+            {outcome.badge} {outcome.title}
+          </div>
+          <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 1rem' }}>{outcome.description}</p>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: '0.4rem' }}>Refleksjon for klassen</div>
+          <ol style={{ margin: 0, paddingLeft: '1.2rem' }}>
+            {outcome.refleksjon.map((q, i) => (
+              <li key={i} style={{ fontSize: 12, color: '#94a3b8', marginBottom: '0.3rem' }}>{q}</li>
+            ))}
+          </ol>
+        </div>
 
         <button
           onClick={() => dispatch({ type: 'RESET' })}

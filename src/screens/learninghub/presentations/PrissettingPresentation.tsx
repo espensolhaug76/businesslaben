@@ -173,11 +173,11 @@ function Slide0({ onNext, onStartLiveSession }: { onNext: () => void; onStartLiv
   return (
     <div style={{ textAlign: 'center' }}>
       <span style={{ color: '#38bdf8', fontWeight: 700, letterSpacing: '0.5em', marginBottom: 16, display: 'block', textTransform: 'uppercase', fontSize: 14 }}>
-        SSR | Forretningsdrift
+        Markedsføring | Konkurransemidlene
       </span>
       <h1 style={{ fontSize: 'clamp(3rem, 10vw, 8rem)', fontWeight: 800, marginBottom: 32, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
-        Kunst og<br />
-        <span style={{ color: '#38bdf8', fontStyle: 'italic' }}>prissetting</span>
+        Pris —<br />
+        <span style={{ color: '#38bdf8', fontStyle: 'italic' }}>det 2. P</span>
       </h1>
       <p style={{ fontSize: 22, color: '#94a3b8', marginBottom: 48, maxWidth: 600, margin: '0 auto 48px', fontWeight: 300, lineHeight: 1.6 }}>
         Pris sender en melding. Lær hvordan bedrifter setter prisen – og hvordan hjernen din reagerer på den.

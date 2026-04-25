@@ -401,7 +401,7 @@ export default function ProduktstrategiModule() {
       intro="Produktstrategi handler om å ta de riktige beslutningene om hva du selger, hvem du selger til, og hvordan du posisjonerer produktet gjennom hele livsløpet — fra idé til avvikling."
       vissteduAt="Grandiosa er Norges mestselgende matprodukt siden 1980-tallet. Orkla har brukt PLC-tenkning konsekvent: nye varianter introduseres for å forlenge modenhetsfarsen, mens originalen forsvarer sin markedsandel."
       espenSier="Det er fristende å legge til produkter og varianter — men smal fokus og dyp kompetanse innen ett segment er ofte mer lønnsomt enn å spre seg tynt utover."
-      presentationLink={{ route: '/learning/presentations/konkurransemidlene', description: 'Konkurransemidlene — en visuell gjennomgang av produktstrategi og de 4P-ene' }}
+      presentationLink={{ route: '/learning/presentations/produkt', description: 'Produkt — kjerneproduktet, Maslow, livssyklus og sortiment' }}
     />
   );
 }

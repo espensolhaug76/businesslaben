@@ -1396,9 +1396,9 @@ export default function ProduktBehovModule() {
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">🎬</span>
             <div className="flex-1 min-w-0">
-              <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">Forbrukeratferd — en visuell gjennomgang av behov og kjøpsmotiver</p>
+              <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">Produkt — kjerneproduktet, Maslow, livssyklus og sortiment</p>
               <button
-                onClick={() => navigate('/learning/presentations/forbrukeratferd')}
+                onClick={() => navigate('/learning/presentations/produkt')}
                 className="mt-2.5 px-4 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors"
               >
                 Åpne presentasjon →

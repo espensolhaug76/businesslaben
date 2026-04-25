@@ -41,7 +41,7 @@ function StudentCard() {
     const code = classCode.trim().toUpperCase()
     const name = firstName.trim()
     // Write to both key sets: StudentHub + useLiveSync use 'student-*'
-    localStorage.setItem('student-classroom-code', code)
+    sessionStorage.setItem('student-classroom-code', code)
     localStorage.setItem('student-name', name)
     navigate('/student')
   }

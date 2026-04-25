@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useGame } from '../GameContext'
 import { INDUSTRY_META } from '../data/industries'
 
@@ -51,6 +52,9 @@ export default function HUD() {
       <KpiChip icon="⭐" value={`Rykte: ${reputation}`} color={reputation >= 60 ? '#22c55e' : reputation >= 30 ? '#facc15' : '#ef4444'} />
       <KpiChip icon="📅" value={`${MONTH_NAMES[(currentMonth - 1) % 12]} · År ${currentYear}`} color="#38bdf8" />
 
+      {/* Xray toggle */}
+      <XrayToggle />
+
       {/* Notification bell */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
         {unreadCount > 0 && (
@@ -93,6 +97,24 @@ export default function HUD() {
         </div>
       </div>
     </div>
+  )
+}
+
+function XrayToggle() {
+  const [on, setOn] = useState(false)
+  return (
+    <button
+      onClick={() => { const next = !on; setOn(next); window.__CITY_XRAY__ = next }}
+      style={{
+        background: on ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.08)',
+        border: `1px solid ${on ? '#38bdf8' : 'rgba(255,255,255,0.15)'}`,
+        borderRadius: 99, padding: '4px 12px', cursor: 'pointer',
+        color: on ? '#38bdf8' : '#94a3b8', fontSize: 12, fontWeight: 700,
+        fontFamily: 'inherit', whiteSpace: 'nowrap',
+      }}
+    >
+      {on ? '🏙 Vis bygg' : '👁 Vis veier'}
+    </button>
   )
 }
 

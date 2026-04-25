@@ -185,3 +185,6 @@ body {
   40% { transform: translateY(-6px); }
   60% { transform: translateY(-3px); }
 }
+
+/* Hide scrollbar in dashboard tab bar without disabling scroll */
+.dashboard-tab-bar::-webkit-scrollbar { display: none; }

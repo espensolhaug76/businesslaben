@@ -36,26 +36,41 @@ import { PHASES as teamarbeidPhases }       from '../kultur/TeamarbeidModule'
 import { PHASES as vertskapsrollenPhases }  from '../kultur/VertskapsrollenModule'
 import { PHASES as konfliktNodPhases }      from '../kultur/KonfliktNodModule'
 
-// ── VG2 Forretningsdrift ──────────────────────────────────────────────────────
-import { PHASES as forretningsplanPhases }  from '../vg2/forretningsdrift/ForretningsplanModule'
-import { phases as lonnPhases }             from '../vg2/forretningsdrift/LonnPersonalkostnaderModule'
-import { phases as regnskapsanalysePhases } from '../vg2/forretningsdrift/RegnskapsanalyseModule'
-import { phases as risikoanalysePhases }    from '../vg2/forretningsdrift/RisikoanalyseModule'
-import { phases as svinnPhases }            from '../vg2/forretningsdrift/SvinnforebyggingModule'
+// ── VG2 Økonomi og administrasjon (SSR02-01) ──────────────────────────────────
+import { PHASES as forretningsplanPhases }  from '../vg2/okonomi/ForretningsplanModule'
+import { phases as lonnPhases }             from '../vg2/okonomi/LonnPersonalkostnaderModule'
+import { phases as regnskapsanalysePhases } from '../vg2/okonomi/RegnskapsanalyseModule'
+import { phases as risikoanalysePhases }    from '../vg2/hms/RisikoanalyseModule'
+import { phases as svinnPhases }            from '../vg2/okonomi/SvinnforebyggingModule'
+import { phases as arbeidslivetsPhases }    from '../vg2/okonomi/ArbeidslivetsSpillereglerModule'
+import { phases as trenderForretningsmodellerPhases } from '../vg2/okonomi/TrenderForretningsmodellerModule'
+import { phases as prisOgKalkulasjonPhases }          from '../vg2/okonomi/PrisOgKalkulasjonModule'
+import { phases as regelverkServicebedrifterPhases }   from '../vg2/okonomi/RegelverkServicebedrifterModule'
+import { phases as digitaleSystemPhases }              from '../vg2/okonomi/DigitaleSystemKundeoppfolgingModule'
+import { phases as rekrutteringPhases }                from '../vg2/okonomi/RekrutteringsprosesserModule'
+import { phases as nokkeltallPhases }                  from '../vg2/okonomi/NokkeltallLonnsomhetModule'
+import { phases as baerekraftVerdikjedePhases }        from '../vg2/okonomi/BaerekraftVerdikjedeModule'
 
-// ── VG2 Innovasjon ────────────────────────────────────────────────────────────
-import { phases as merkevarePhases }              from '../vg2/innovasjon/MerkevareModule'
-import { phases as markedsundersokelsePhases }    from '../vg2/innovasjon/MarkedsundersokelseModule'
-import { phases as reiselivsprodukPhases }        from '../vg2/innovasjon/ReiseligsprodukModule'
-import { phases as beredskapsledelsePhases }      from '../vg2/innovasjon/BeredskapsledelseModule'
-import { phases as posisjoneringPhases }          from '../vg2/innovasjon/PosisjoneringModule'
+// ── VG2 Kommunikasjon og markedsføring (SSR02-01) ─────────────────────────────
+import { phases as merkevarePhases }              from '../vg2/kommunikasjon/MerkevareModule'
+import { phases as markedsundersokelsePhases }    from '../vg2/kommunikasjon/MarkedsundersokelseModule'
+import { phases as reiselivsproduktPhases }       from '../vg2/kommunikasjon/ReiselivsproduktModule'
+import { phases as beredskapPhases }               from '../vg2/hms/BeredskapModule'
+import { phases as markedsforingstrekantenPhases }  from '../vg2/kommunikasjon/MarkedsforingstrekantenModule'
+import { phases as innovasjonProduktutviklingPhases } from '../vg2/kommunikasjon/InnovasjonProduktutviklingModule'
+import { phases as markedsforingskampanjerPhases }  from '../vg2/kommunikasjon/MarkedsforingskampanjerModule'
+import { phases as salgsprosessenVg2Phases }        from '../vg2/kommunikasjon/SalgsprosessenVg2Module'
+import { phases as posisjoneringPhases }          from '../vg2/kommunikasjon/PosisjoneringModule'
+import { phases as profKommPhases }               from '../vg2/kommunikasjon/ProfesjonellKommunikasjonModule'
+import { phases as internasjonaleMarkederPhases } from '../vg2/kommunikasjon/InternasjonaleMarkederModule'
 
-// ── VG2 Kultur ────────────────────────────────────────────────────────────────
-import { phases as profKommPhases }              from '../vg2/kultur/ProfesjonellKommunikasjonModule'
-import { phases as konfliktPhases }              from '../vg2/kultur/KonflikthandteringModule'
-import { phases as etiskeDilemmaerPhases }       from '../vg2/kultur/EtiskeDilemmaerModule'
-import { phases as internasjonaleMarkederPhases } from '../vg2/kultur/InternasjonaleMarkederModule'
-import { phases as arbeidslivetsPhases }         from '../vg2/kultur/ArbeidslivetsSpillereglerModule'
+// ── VG2 Helse, miljø og sikkerhet (SSR02-01) ──────────────────────────────────
+import { phases as konfliktPhases }              from '../vg2/hms/KonflikthandteringModule'
+import { phases as etiskeDilemmaerPhases }       from '../vg2/hms/EtiskeDilemmaerModule'
+import { phases as forstehjelpPhases }           from '../vg2/hms/ForstehjelpModule'
+import { phases as brannvernPhases }             from '../vg2/hms/BrannvernModule'
+import { phases as hmsArbeidRollerPhases }       from '../vg2/hms/HmsArbeidRollerModule'
+import { phases as digitalSikkerhetPhases }      from '../vg2/hms/DigitalSikkerhetPersonvernModule'
 
 // ── ML1 ───────────────────────────────────────────────────────────────────────
 import { PHASES as markedsforingFagPhases }     from '../ml1/MarkedsforingFagModule'
@@ -102,26 +117,42 @@ export const TEACHER_MODULE_PHASES: Record<string, DrawerPhase[]> = {
   '/learning/kultur/vertskapsrollen':       vertskapsrollenPhases as DrawerPhase[],
   '/learning/kultur/konflikt-nodssituasjon': konfliktNodPhases as DrawerPhase[],
 
-  // VG2 Forretningsdrift
-  '/learning/vg2/forretningsdrift/forretningsplan':        forretningsplanPhases as DrawerPhase[],
-  '/learning/vg2/forretningsdrift/lonn-personalkostnader': lonnPhases as DrawerPhase[],
-  '/learning/vg2/forretningsdrift/regnskapsanalyse':       regnskapsanalysePhases as DrawerPhase[],
-  '/learning/vg2/forretningsdrift/risikoanalyse':          risikoanalysePhases as DrawerPhase[],
-  '/learning/vg2/forretningsdrift/svinnforebygging':       svinnPhases as DrawerPhase[],
+  // VG2 Økonomi og administrasjon
+  '/learning/vg2/okonomi/forretningsplan':        forretningsplanPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/lonn-personalkostnader': lonnPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/regnskapsanalyse':       regnskapsanalysePhases as DrawerPhase[],
+  '/learning/vg2/hms/risikoanalyse':              risikoanalysePhases as DrawerPhase[],
+  '/learning/vg2/okonomi/svinnforebygging':       svinnPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/arbeidslivets-spilleregler':      arbeidslivetsPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/trender-forretningsmodeller':     trenderForretningsmodellerPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/pris-og-kalkulasjon':             prisOgKalkulasjonPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/regelverk-servicebedrifter':       regelverkServicebedrifterPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/digitale-system-kundeoppfolging': digitaleSystemPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/rekrutteringsprosesser':          rekrutteringPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/nokkeltall-lonnsomhet':           nokkeltallPhases as DrawerPhase[],
+  '/learning/vg2/okonomi/baerekraft-verdikjede':           baerekraftVerdikjedePhases as DrawerPhase[],
 
-  // VG2 Innovasjon
-  '/learning/vg2/innovasjon/merkevare':            merkevarePhases as DrawerPhase[],
-  '/learning/vg2/innovasjon/markedsundersokelse':  markedsundersokelsePhases as DrawerPhase[],
-  '/learning/vg2/innovasjon/reiselivsprodukt':     reiselivsprodukPhases as DrawerPhase[],
-  '/learning/vg2/innovasjon/beredskapsledelse':    beredskapsledelsePhases as DrawerPhase[],
-  '/learning/vg2/innovasjon/posisjonering':        posisjoneringPhases as DrawerPhase[],
+  // VG2 Kommunikasjon og markedsføring
+  '/learning/vg2/kommunikasjon/merkevare':            merkevarePhases as DrawerPhase[],
+  '/learning/vg2/kommunikasjon/markedsundersokelse':  markedsundersokelsePhases as DrawerPhase[],
+  '/learning/vg2/kommunikasjon/reiselivsprodukt':     reiselivsproduktPhases as DrawerPhase[],
+  '/learning/vg2/hms/beredskap':                        beredskapPhases as DrawerPhase[],
+  '/learning/vg2/kommunikasjon/markedsforingstrekan':   markedsforingstrekantenPhases as DrawerPhase[],
+  '/learning/vg2/kommunikasjon/innovasjon-produktutvikling': innovasjonProduktutviklingPhases as DrawerPhase[],
+  '/learning/vg2/kommunikasjon/markedsforingskampanjer': markedsforingskampanjerPhases as DrawerPhase[],
+  '/learning/vg2/kommunikasjon/salgsprosessen-vg2':     salgsprosessenVg2Phases as DrawerPhase[],
+  '/learning/vg2/kommunikasjon/posisjonering':        posisjoneringPhases as DrawerPhase[],
+  '/learning/vg2/kommunikasjon/profesjonell-kommunikasjon': profKommPhases as DrawerPhase[],
+  '/learning/vg2/kommunikasjon/internasjonale-markeder':    internasjonaleMarkederPhases as DrawerPhase[],
 
-  // VG2 Kultur
-  '/learning/vg2/kultur/profesjonell-kommunikasjon': profKommPhases as DrawerPhase[],
-  '/learning/vg2/kultur/konflikthåndtering':          konfliktPhases as DrawerPhase[],
-  '/learning/vg2/kultur/etiske-dilemmaer':            etiskeDilemmaerPhases as DrawerPhase[],
-  '/learning/vg2/kultur/internasjonale-markeder':     internasjonaleMarkederPhases as DrawerPhase[],
-  '/learning/vg2/kultur/arbeidslivets-spilleregler':  arbeidslivetsPhases as DrawerPhase[],
+  // VG2 Helse, miljø og sikkerhet
+  '/learning/vg2/hms/konflikthåndtering':           konfliktPhases as DrawerPhase[],
+  '/learning/vg2/hms/etiske-dilemmaer':             etiskeDilemmaerPhases as DrawerPhase[],
+  '/learning/vg2/hms/risikoanalyse':                risikoanalysePhases as DrawerPhase[],
+  '/learning/vg2/hms/forstehjelp':                    forstehjelpPhases as DrawerPhase[],
+  '/learning/vg2/hms/brannvern':                      brannvernPhases as DrawerPhase[],
+  '/learning/vg2/hms/hms-arbeid-roller':              hmsArbeidRollerPhases as DrawerPhase[],
+  '/learning/vg2/hms/digital-sikkerhet-personvern':   digitalSikkerhetPhases as DrawerPhase[],
 
   // ML1
   '/learning/ml1/markedsforingfag':       markedsforingFagPhases as DrawerPhase[],

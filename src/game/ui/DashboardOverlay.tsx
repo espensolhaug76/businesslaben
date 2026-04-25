@@ -9,7 +9,7 @@ import type { Loan } from '../types'
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
-type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter'
+type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter' | 'innboks'
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'oversikt',        label: 'Oversikt',         emoji: '📊' },
@@ -22,7 +22,47 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢' },
   { id: 'personale',       label: 'Personale',         emoji: '👥' },
   { id: 'rapporter',       label: 'Rapporter',         emoji: '📋' },
+  { id: 'innboks',         label: 'Innboks',           emoji: '📬' },
 ]
+
+// ── Tab bar (extracted so it can read unreadCount) ────────────────────────────
+
+function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveTab: (t: Tab) => void }) {
+  const { state } = useGame()
+  return (
+    <div className="dashboard-tab-bar" style={{
+      display: 'flex', gap: '0.5rem', padding: '1rem 2rem 0',
+      borderBottom: '1px solid rgba(255,255,255,0.08)',
+      overflowX: 'auto', flexShrink: 0,
+      scrollbarWidth: 'none',
+    }}>
+      {TABS.map(t => (
+        <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+          background: activeTab === t.id ? 'rgba(0,212,170,0.12)' : 'transparent',
+          border: `1px solid ${activeTab === t.id ? '#00d4aa' : 'transparent'}`,
+          borderBottom: 'none', borderRadius: '8px 8px 0 0',
+          padding: '0.6rem 1.2rem',
+          color: activeTab === t.id ? '#00d4aa' : '#64748b',
+          fontWeight: 600, fontSize: 14, cursor: 'pointer',
+          fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s',
+          flexShrink: 0, position: 'relative',
+        }}>
+          {t.emoji} {t.label}
+          {t.id === 'innboks' && state.unreadCount > 0 && (
+            <span style={{
+              position: 'absolute', top: 4, right: 4,
+              background: '#ef4444', color: '#fff',
+              borderRadius: 99, fontSize: 9, fontWeight: 800,
+              padding: '1px 5px', lineHeight: 1.4,
+            }}>
+              {state.unreadCount}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 interface DashboardOverlayProps {
   open: boolean
@@ -81,32 +121,14 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
             </div>
 
             {/* Tab bar */}
-            <div style={{
-              display: 'flex', gap: '0.5rem', padding: '1rem 2rem 0',
-              borderBottom: '1px solid rgba(255,255,255,0.08)', overflowX: 'auto',
-            }}>
-              {TABS.map(t => (
-                <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-                  background: activeTab === t.id ? 'rgba(0,212,170,0.12)' : 'transparent',
-                  border: `1px solid ${activeTab === t.id ? '#00d4aa' : 'transparent'}`,
-                  borderBottom: 'none', borderRadius: '8px 8px 0 0',
-                  padding: '0.6rem 1.2rem',
-                  color: activeTab === t.id ? '#00d4aa' : '#64748b',
-                  fontWeight: 600, fontSize: 14, cursor: 'pointer',
-                  fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s',
-                  flexShrink: 0,
-                }}>
-                  {t.emoji} {t.label}
-                </button>
-              ))}
-            </div>
+            <InnboksTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
 
             {/* Content */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem 2rem' }}>
               <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-                  {activeTab === 'oversikt'        && <OversiktTab />}
-                  {activeTab === 'forretningsplan' && <ForretningsplanTab />}
+                  {activeTab === 'oversikt'        && <OversiktTab onNavigate={setActiveTab} />}
+                  {activeTab === 'forretningsplan' && <ForretningsplanTab onNavigate={setActiveTab} />}
                   {activeTab === 'produkter'       && <ProdukterTab />}
                   {activeTab === 'malgruppe'       && <MalgruppeTab />}
                   {activeTab === 'okonomi'         && <OkonomiTab />}
@@ -115,6 +137,7 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                   {activeTab === 'markedsforing'   && <MarkedsforingTab />}
                   {activeTab === 'personale'       && <PersonaleTab />}
                   {activeTab === 'rapporter'       && <RapporterTab />}
+                  {activeTab === 'innboks'         && <InnboksTab />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -127,30 +150,22 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
 
 // ── Oversikt ──────────────────────────────────────────────────────────────────
 
-function OversiktTab() {
+function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const { state, dispatch } = useGame()
-  const { money, reputation, monthlyResults, locationZone, monthlyRent, progress, loans, totalDebt } = state
+  const { money, reputation, monthlyResults, monthlyRent, progress, totalDebt } = state
 
-  const totalRev    = monthlyResults.reduce((s, r) => s + r.revenue, 0)
   const totalProfit = monthlyResults.reduce((s, r) => s + r.profit, 0)
   const maxRev      = Math.max(...monthlyResults.map(r => r.revenue), 1)
-  const monthlyCosts = monthlyRent + state.monthlyPayroll + state.monthlyLoanPayment + Object.values(state.marketingBudget).reduce((s, v) => s + v, 0)
+  const monthlyCosts = monthlyRent + state.monthlyPayroll + state.monthlyLoanPayment + Object.values(state.marketingBudget).reduce((s, v) => s + v, 0) + 2000
+  const estRevenue = state.products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
+  const netFlow = estRevenue - monthlyCosts
+  const runway = netFlow < 0 && money > 0 ? Math.max(0, Math.floor(money / Math.abs(netFlow))) : null
 
-  void totalRev
-  void locationZone
-  void loans
+  const allDone = Object.values(progress).every(Boolean)
 
-  const checklist: { label: string; done: boolean }[] = [
-    { label: 'Lag forretningsplan', done: progress.businessPlanCreated },
-    { label: 'Definer målgruppe', done: progress.targetAudienceDefined },
-    { label: 'Velg produkter', done: progress.productsSelected },
-    { label: 'Velg lokasjon/distribusjon', done: progress.locationChosen },
-    { label: 'Bestill varelager', done: progress.productsOrdered },
-    { label: 'Sett priser', done: progress.pricesSet },
-    { label: 'Sett opp markedsføring', done: progress.marketingSet },
-  ]
-
-  const allDone = checklist.every(c => c.done)
+  const QUALITY_STARS = ['☆☆☆☆☆', '★☆☆☆☆', '★★☆☆☆', '★★★☆☆', '★★★★☆', '★★★★★']
+  const QUALITY_COLOR = ['#64748b', '#ef4444', '#f97316', '#facc15', '#22c55e', '#22c55e']
+  const q = state.businessPlan.qualityScore
 
   function handleSimulate() {
     dispatch({ type: 'SET_PHASE', phase: 'ready_to_simulate' })
@@ -167,24 +182,70 @@ function OversiktTab() {
         <KpiCard label="Rykte"           value={`${reputation}/100`}   color={reputation >= 60 ? '#22c55e' : '#facc15'} icon="⭐" />
       </div>
 
-      {/* Progress checklist */}
+      {/* Bedriftsstatus */}
       <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem', letterSpacing: '0.06em' }}>OPPSTARTSSJEKKLISTE</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {checklist.map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: 14 }}>
-              <span style={{ fontSize: 18, lineHeight: 1 }}>{item.done ? '✅' : '⬜'}</span>
-              <span style={{ color: item.done ? '#94a3b8' : '#f1f5f9', textDecoration: item.done ? 'line-through' : 'none' }}>
-                {item.label}
-              </span>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '1rem', letterSpacing: '0.06em' }}>📊 BEDRIFTSSTATUS</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+
+          {/* Plankvalitet */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem' }}>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Plankvalitet</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 16, color: QUALITY_COLOR[q] }}>{QUALITY_STARS[q]}</span>
+              <button
+                onClick={() => onNavigate('forretningsplan')}
+                style={{ fontSize: 11, color: '#38bdf8', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Rediger →
+              </button>
             </div>
-          ))}
+          </div>
+
+          {/* Runway */}
+          <div style={{
+            background: runway !== null && runway < 3 ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${runway !== null && runway < 3 ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.07)'}`,
+            borderRadius: 10, padding: '0.75rem',
+          }}>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Runway</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: runway === null ? '#22c55e' : runway < 3 ? '#ef4444' : runway < 6 ? '#f97316' : '#38bdf8' }}>
+              {runway === null ? '∞' : `${runway} mnd`}
+            </div>
+            {runway !== null && runway < 3 && <div style={{ fontSize: 10, color: '#ef4444' }}>⚠️ Kritisk</div>}
+          </div>
+
+          {/* Produkter */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem' }}>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Produkter</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: state.products.length > 0 ? '#f1f5f9' : '#475569' }}>
+              {state.products.length}
+            </div>
+            {state.products.length === 0 && (
+              <button onClick={() => onNavigate('produkter')} style={{ fontSize: 10, color: '#38bdf8', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Velg →</button>
+            )}
+          </div>
+
+          {/* Ansatte */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem' }}>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Ansatte</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9' }}>{state.employees.length}</div>
+          </div>
+
+          {/* Måned / År */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem', gridColumn: '1/-1' }}>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Periode</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>
+              Måned {state.currentMonth} · År {state.currentYear}
+            </div>
+          </div>
         </div>
+
+        {/* Simuler-knapp */}
         {allDone && (
           <button
             onClick={handleSimulate}
             style={{
-              marginTop: '1.25rem', width: '100%',
+              marginTop: '1rem', width: '100%',
               background: 'linear-gradient(135deg, #22c55e, #16a34a)',
               border: 'none', borderRadius: 99, padding: '0.9rem',
               color: '#fff', fontWeight: 800, fontSize: 16,
@@ -196,7 +257,7 @@ function OversiktTab() {
         )}
       </div>
 
-      {/* Revenue chart if any results */}
+      {/* Revenue chart */}
       {monthlyResults.length > 0 && (
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: '1rem', letterSpacing: '0.08em' }}>MÅNEDLIG OMSETNING</div>
@@ -227,10 +288,57 @@ function OversiktTab() {
 
 // ── Forretningsplan ────────────────────────────────────────────────────────────
 
-function ForretningsplanTab() {
+// ── Manual canvas fields ──────────────────────────────────────────────────────
+
+const MANUAL_CANVAS_FIELDS: { key: keyof import('../types').BusinessCanvas; label: string; emoji: string; suggestions: string[] }[] = [
+  { key: 'verditilbud',       label: 'Verditilbud',        emoji: '💡', suggestions: ['Laveste pris i markedet', 'Beste kundeservice', 'Unikt produkt', 'Rask levering'] },
+  { key: 'kundeforhold',      label: 'Kundeforhold',       emoji: '🤝', suggestions: ['Selvbetjening', 'Personlig service', 'Lojalitetsprogram', 'Abonnement'] },
+  { key: 'nokkelaktiviteter', label: 'Nøkkelaktiviteter',  emoji: '⚙️', suggestions: ['Produksjon', 'Markedsføring', 'Kundeservice', 'Produktutvikling'] },
+  { key: 'partnere',          label: 'Partnere',           emoji: '🔗', suggestions: ['Grossister', 'Lokale produsenter', 'Logistikk', 'Markedsføringsbyråer'] },
+]
+
+function genKundesegmenter(state: import('../types').GameState): string {
+  const { targetAudience } = state
+  const parts = [...targetAudience.ageGroups, ...targetAudience.genders, ...targetAudience.psychographics]
+  return parts.length > 0 ? parts.join(', ') : ''
+}
+
+function genKanaler(state: import('../types').GameState): string {
+  const CHANNEL_LABELS: Record<string, string> = {
+    physicalStore: 'Fysisk butikk', webShop: 'Nettbutikk',
+    instagramShop: 'Instagram Shop', delivery: 'Levering', wholesale: 'Grossist',
+  }
+  return state.channels.map(c => CHANNEL_LABELS[c] ?? c).join(', ')
+}
+
+function genInntektsstrommer(state: import('../types').GameState): string {
+  if (state.products.length === 0) return ''
+  const items = state.products.map(p => `${p.name} (${p.retailPrice.toLocaleString('nb-NO')} kr)`)
+  return items.slice(0, 3).join(', ') + (items.length > 3 ? ` + ${items.length - 3} til` : '')
+}
+
+function genNokkelressurser(state: import('../types').GameState): string {
+  const parts: string[] = []
+  if (state.rentedLocationId) parts.push('Lokale')
+  if (state.employees.length > 0) parts.push(`${state.employees.length} ansatte`)
+  if (state.products.length > 0) parts.push('Varelager')
+  return parts.join(', ')
+}
+
+function genKostnadsstruktur(state: import('../types').GameState): string {
+  const items: string[] = []
+  if (state.monthlyRent > 0) items.push(`Husleie ${state.monthlyRent.toLocaleString('nb-NO')} kr`)
+  if (state.monthlyPayroll > 0) items.push(`Lønn ${state.monthlyPayroll.toLocaleString('nb-NO')} kr`)
+  const mkt = Object.values(state.marketingBudget).reduce((s, v) => s + v, 0)
+  if (mkt > 0) items.push(`Markedsføring ${mkt.toLocaleString('nb-NO')} kr`)
+  return items.join(', ')
+}
+
+function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const { state, dispatch } = useGame()
   const { businessPlan, products, targetAudience, monthlyRent, monthlyPayroll, monthlyLoanPayment, marketingBudget } = state
   const [description, setDescription] = useState(businessPlan.description)
+  const [canvas, setCanvas] = useState({ ...(businessPlan.canvas ?? {}) })
 
   const monthlyCosts = monthlyRent + monthlyPayroll + monthlyLoanPayment + Object.values(marketingBudget).reduce((s, v) => s + v, 0)
   const estRevenue = products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
@@ -294,6 +402,114 @@ function ForretningsplanTab() {
             style={{ marginTop: '0.5rem', background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.3)', borderRadius: 8, padding: '0.4rem 1rem', color: '#00d4aa', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Lagre
+          </button>
+        </PlanSection>
+
+        {/* Business Model Canvas */}
+        <PlanSection
+          title="Business Model Canvas"
+          complete={Object.values(canvas).filter(v => (v as string).trim().length > 10).length >= 2}
+          icon="🗺️"
+        >
+          <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 0.75rem' }}>
+            Fyll ut de 4 manuelle feltene. De 5 grå feltene hentes automatisk fra andre faner.
+          </p>
+
+          {/* Auto-generated fields */}
+          {(() => {
+            const AUTO_FIELDS: { label: string; emoji: string; value: string; tab: Tab; tabLabel: string }[] = [
+              { label: 'Kundesegmenter', emoji: '👥', value: genKundesegmenter(state), tab: 'malgruppe', tabLabel: 'Målgruppe' },
+              { label: 'Kanaler', emoji: '📢', value: genKanaler(state), tab: 'markedsforing', tabLabel: 'Markedsføring' },
+              { label: 'Inntektsstrømmer', emoji: '💰', value: genInntektsstrommer(state), tab: 'priser', tabLabel: 'Priser' },
+              { label: 'Nøkkelressurser', emoji: '🏗️', value: genNokkelressurser(state), tab: 'personale', tabLabel: 'Personale' },
+              { label: 'Kostnadsstruktur', emoji: '📊', value: genKostnadsstruktur(state), tab: 'okonomi', tabLabel: 'Økonomi' },
+            ]
+            return (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Automatisk generert fra spilldata
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
+                  {AUTO_FIELDS.map(f => (
+                    <div key={f.label} style={{
+                      background: f.value ? 'rgba(56,189,248,0.06)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${f.value ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                      borderRadius: 8, padding: '0.5rem',
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: f.value ? '#38bdf8' : '#475569', marginBottom: '0.25rem' }}>
+                        {f.emoji} {f.label}
+                      </div>
+                      {f.value ? (
+                        <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.4 }}>{f.value}</div>
+                      ) : (
+                        <button
+                          onClick={() => onNavigate(f.tab)}
+                          style={{ fontSize: 10, color: '#38bdf8', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                        >
+                          Gå til {f.tabLabel}
+                        </button>
+                      )}
+                      <div style={{ fontSize: 9, color: '#334155', marginTop: 3 }}>🔗 fra {f.tabLabel}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Manual fields */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Skriv selv
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+            {MANUAL_CANVAS_FIELDS.map(f => {
+              const val = canvas[f.key] ?? ''
+              const filled = val.trim().length > 10
+              return (
+                <div key={f.key} style={{
+                  background: filled ? 'rgba(0,212,170,0.06)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${filled ? 'rgba(0,212,170,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                  borderRadius: 8, padding: '0.6rem',
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: filled ? '#00d4aa' : '#64748b', marginBottom: '0.3rem' }}>
+                    {f.emoji} {f.label} {filled && '✅'}
+                  </div>
+                  <textarea
+                    value={val}
+                    onChange={e => setCanvas(c => ({ ...c, [f.key]: e.target.value }))}
+                    placeholder={f.suggestions[0]}
+                    rows={2}
+                    style={{
+                      width: '100%', background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4,
+                      padding: '0.35rem', color: '#f1f5f9', fontSize: 11,
+                      fontFamily: 'inherit', resize: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
+                    {f.suggestions.slice(0, 2).map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setCanvas(c => ({ ...c, [f.key]: s }))}
+                        style={{
+                          background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)',
+                          borderRadius: 99, padding: '1px 6px', fontSize: 9, color: '#38bdf8',
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <button
+            onClick={() => dispatch({ type: 'SAVE_CANVAS', canvas })}
+            style={{ marginTop: '0.75rem', background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.3)', borderRadius: 8, padding: '0.4rem 1rem', color: '#00d4aa', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Lagre canvas
           </button>
         </PlanSection>
 
@@ -729,6 +945,9 @@ function OkonomiTab() {
 
   const monthlyCosts = monthlyRent + monthlyPayroll + monthlyLoanPayment + Object.values(marketingBudget).reduce((s, v) => s + v, 0) + 2000
   const estRevenue = state.products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
+  const netFlow = estRevenue - monthlyCosts
+  const burnRate = monthlyCosts
+  const runway = netFlow < 0 && money > 0 ? Math.max(0, Math.floor(money / Math.abs(netFlow))) : null
 
   function takeLoan() {
     if (businessPlan.qualityScore < 1) return
@@ -754,6 +973,31 @@ function OkonomiTab() {
       <div style={{ marginBottom: '1.25rem' }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Økonomi & Finansiering</h3>
       </div>
+
+      {/* Runway / Burn rate — varsling øverst */}
+      {runway !== null && (
+        <div style={{
+          background: runway < 3 ? 'rgba(239,68,68,0.1)' : runway < 6 ? 'rgba(249,115,22,0.08)' : 'rgba(56,189,248,0.06)',
+          border: `1px solid ${runway < 3 ? 'rgba(239,68,68,0.4)' : runway < 6 ? 'rgba(249,115,22,0.3)' : 'rgba(56,189,248,0.2)'}`,
+          borderRadius: '1rem', padding: '1rem 1.25rem', marginBottom: '1rem',
+          display: 'flex', gap: '1.5rem', alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Runway</div>
+            <div style={{
+              fontSize: 28, fontWeight: 900,
+              color: runway < 3 ? '#ef4444' : runway < 6 ? '#f97316' : '#38bdf8',
+            }}>
+              {runway} mnd
+            </div>
+            {runway < 3 && <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 700 }}>⚠️ Kritisk! Søk lån eller øk inntekter</div>}
+          </div>
+          <div style={{ borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '1.5rem' }}>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Burn rate</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#f97316' }}>{formatKr(burnRate)}<span style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>/mnd</span></div>
+          </div>
+        </div>
+      )}
 
       {/* Cash flow overview */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -1532,6 +1776,151 @@ function RapporterTab() {
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── Innboks ────────────────────────────────────────────────────────────────────
+
+function InnboksTab() {
+  const { state, dispatch } = useGame()
+  const [selected, setSelected] = useState<string | null>(null)
+  const [choiceMade, setChoiceMade] = useState<Record<string, string>>({}) // messageId → choiceId
+
+  const msgs = [...state.messages].reverse()
+
+  function handleChoice(messageId: string, eventId: string, choiceId: string) {
+    dispatch({ type: 'RESOLVE_GAME_EVENT', eventId, choiceId, messageId })
+    setChoiceMade(c => ({ ...c, [messageId]: choiceId }))
+  }
+
+  const TYPE_ICON: Record<string, string> = {
+    mentor: '🧑‍🏫', pest_event: '📰', game_event: '🚀',
+    customer_complaint: '😤', supplier: '📦', teacher_task: '📚',
+  }
+
+  if (msgs.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+        <div style={{ fontSize: 48, marginBottom: '1rem' }}>📬</div>
+        <p>Ingen meldinger ennå. Simuler en måned for å motta oppdateringer.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Innboks</h3>
+        {state.unreadCount > 0 && (
+          <span style={{ background: '#ef444420', border: '1px solid #ef444440', borderRadius: 99, padding: '2px 10px', fontSize: 12, color: '#ef4444', fontWeight: 700 }}>
+            {state.unreadCount} ulest
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {msgs.map(msg => {
+          const isOpen = selected === msg.id
+          const resolved = msg.id in choiceMade
+          return (
+            <div
+              key={msg.id}
+              style={{
+                background: msg.read ? 'rgba(255,255,255,0.03)' : 'rgba(56,189,248,0.06)',
+                border: `1px solid ${msg.read ? 'rgba(255,255,255,0.07)' : 'rgba(56,189,248,0.25)'}`,
+                borderRadius: '0.75rem', overflow: 'hidden',
+              }}
+            >
+              {/* Header row */}
+              <button
+                onClick={() => {
+                  setSelected(isOpen ? null : msg.id)
+                  if (!msg.read) dispatch({ type: 'READ_MESSAGE', id: msg.id })
+                }}
+                style={{
+                  width: '100%', background: 'transparent', border: 'none',
+                  padding: '0.75rem 1rem', cursor: 'pointer', color: '#f1f5f9',
+                  fontFamily: 'inherit', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                }}
+              >
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{TYPE_ICON[msg.type] ?? '📩'}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: msg.read ? 500 : 700, fontSize: 14, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {msg.title}
+                    {!msg.read && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', flexShrink: 0, display: 'inline-block' }} />}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748b' }}>{msg.date}</div>
+                </div>
+                <span style={{ color: '#64748b', fontSize: 12 }}>{isOpen ? '▲' : '▼'}</span>
+              </button>
+
+              {/* Expanded body */}
+              {isOpen && (
+                <div style={{ padding: '0 1rem 1rem' }}>
+                  <p style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.6, margin: '0 0 0.75rem', fontStyle: 'italic' }}>
+                    "{msg.body}"
+                  </p>
+
+                  {msg.competenceGoal && (
+                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: '0.75rem' }}>
+                      📚 {msg.competenceGoal}
+                    </div>
+                  )}
+
+                  {/* Choices (for game events) */}
+                  {msg.choices && msg.choices.length > 0 && !resolved && (
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: 1 }}>
+                        Hva gjør du?
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {msg.choices.map((c, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              if (c.eventId && c.choiceId) {
+                                handleChoice(msg.id, c.eventId, c.choiceId)
+                              }
+                            }}
+                            style={{
+                              background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)',
+                              borderRadius: 8, padding: '0.5rem 0.75rem',
+                              color: '#f1f5f9', fontSize: 13, cursor: 'pointer',
+                              fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(56,189,248,0.14)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(56,189,248,0.06)')}
+                          >
+                            <strong>{c.text}</strong>
+                            {c.effect && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{c.effect}</div>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {resolved && (
+                    <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>
+                      ✅ Valg registrert
+                    </div>
+                  )}
+
+                  {msg.choices && msg.choices.length > 0 && !msg.choices[0].eventId && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {msg.choices.map((c, i) => (
+                        <div key={i} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 6, padding: '0.4rem 0.6rem', fontSize: 12 }}>
+                          <span style={{ color: '#f1f5f9' }}>{c.text}</span>
+                          {c.effect && <span style={{ color: '#64748b' }}> — {c.effect}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -392,7 +392,7 @@ export default function PrisstrategierModule() {
       intro="Pris er det kraftigste verktøyet i markedsføringmiksen — og det mest undervurderte. Feil pris kan ødelegge et ellers godt produkt. Riktig pris kommuniserer verdi, posisjonerer merkevaren og avgjør lønnsomheten. Fra break-even til psykologisk prising: her er det du må vite."
       vissteduAt="En prisøkning på 1% gir i snitt 11% økning i driftsresultatet for en gjennomsnitts-bedrift — mer enn noen annen variabel i markedsføringmiksen."
       espenSier="Neste gang du ser 'Was 299 kr — Now 199 kr', tenk over om 299 kr-prisen noen gang var reell. Ankerprising er en av de mest brukte — og effektive — psykologiske pristeknikkene."
-      presentationLink={{ route: '/learning/presentations/konkurransemidlene' }}
+      presentationLink={{ route: '/learning/presentations/prissetting' }}
     />
   )
 }

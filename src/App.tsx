@@ -60,6 +60,7 @@ import YearEndScreen from './screens/YearEndScreen'
 // AdVenture 3.0
 import GamePage from './game/GamePage'
 
+
 // Guards
 import FeatureGuard from './components/guards/FeatureGuard'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -109,41 +110,71 @@ import VertskapsrollenComplete from './screens/learninghub/kultur/Vertskapsrolle
 import KonfliktNodModule from './screens/learninghub/kultur/KonfliktNodModule'
 import KonfliktNodComplete from './screens/learninghub/kultur/KonfliktNodComplete'
 
-// ── VG2 Forretningsdrift learning modules ─────────────────────────────────────
-import ForretningsplanModule from './screens/learninghub/vg2/forretningsdrift/ForretningsplanModule'
-import ForretningsplanComplete from './screens/learninghub/vg2/forretningsdrift/ForretningsplanComplete'
-import LonnPersonalkostnaderModule from './screens/learninghub/vg2/forretningsdrift/LonnPersonalkostnaderModule'
-import LonnPersonalkostnaderComplete from './screens/learninghub/vg2/forretningsdrift/LonnPersonalkostnaderComplete'
-import RegnskapsanalyseModule from './screens/learninghub/vg2/forretningsdrift/RegnskapsanalyseModule'
-import RegnskapsanalyseComplete from './screens/learninghub/vg2/forretningsdrift/RegnskapsanalyseComplete'
-import RisikoanalyseModule from './screens/learninghub/vg2/forretningsdrift/RisikoanalyseModule'
-import RisikoanalyseComplete from './screens/learninghub/vg2/forretningsdrift/RisikoanalyseComplete'
-import SvinnforebyggingModule from './screens/learninghub/vg2/forretningsdrift/SvinnforebyggingModule'
-import SvinnforebyggingComplete from './screens/learninghub/vg2/forretningsdrift/SvinnforebyggingComplete'
+// ── VG2 Økonomi og administrasjon learning modules ────────────────────────────
+import ForretningsplanModule from './screens/learninghub/vg2/okonomi/ForretningsplanModule'
+import ForretningsplanComplete from './screens/learninghub/vg2/okonomi/ForretningsplanComplete'
+import LonnPersonalkostnaderModule from './screens/learninghub/vg2/okonomi/LonnPersonalkostnaderModule'
+import LonnPersonalkostnaderComplete from './screens/learninghub/vg2/okonomi/LonnPersonalkostnaderComplete'
+import RegnskapsanalyseModule from './screens/learninghub/vg2/okonomi/RegnskapsanalyseModule'
+import RegnskapsanalyseComplete from './screens/learninghub/vg2/okonomi/RegnskapsanalyseComplete'
+import RisikoanalyseModule from './screens/learninghub/vg2/hms/RisikoanalyseModule'
+import RisikoanalyseComplete from './screens/learninghub/vg2/hms/RisikoanalyseComplete'
+import SvinnforebyggingModule from './screens/learninghub/vg2/okonomi/SvinnforebyggingModule'
+import SvinnforebyggingComplete from './screens/learninghub/vg2/okonomi/SvinnforebyggingComplete'
+import ArbeidslivetsSpillereglerModule from './screens/learninghub/vg2/okonomi/ArbeidslivetsSpillereglerModule'
+import ArbeidslivetsSpillereglerComplete from './screens/learninghub/vg2/okonomi/ArbeidslivetsSpillereglerComplete'
+import TrenderForretningsmodellerModule from './screens/learninghub/vg2/okonomi/TrenderForretningsmodellerModule'
+import TrenderForretningsmodellerComplete from './screens/learninghub/vg2/okonomi/TrenderForretningsmodellerComplete'
+import PrisOgKalkulasjonModule from './screens/learninghub/vg2/okonomi/PrisOgKalkulasjonModule'
+import PrisOgKalkulasjonComplete from './screens/learninghub/vg2/okonomi/PrisOgKalkulasjonComplete'
+import RegelverkServicebedrifterModule from './screens/learninghub/vg2/okonomi/RegelverkServicebedrifterModule'
+import RegelverkServicebedrifterComplete from './screens/learninghub/vg2/okonomi/RegelverkServicebedrifterComplete'
+import DigitaleSystemKundeoppfolgingModule from './screens/learninghub/vg2/okonomi/DigitaleSystemKundeoppfolgingModule'
+import DigitaleSystemKundeoppfolgingComplete from './screens/learninghub/vg2/okonomi/DigitaleSystemKundeoppfolgingComplete'
+import RekrutteringsprosesserModule from './screens/learninghub/vg2/okonomi/RekrutteringsprosesserModule'
+import RekrutteringsprosesserComplete from './screens/learninghub/vg2/okonomi/RekrutteringsprosesserComplete'
+import NokkeltallLonnsomhetModule from './screens/learninghub/vg2/okonomi/NokkeltallLonnsomhetModule'
+import NokkeltallLonnsomhetComplete from './screens/learninghub/vg2/okonomi/NokkeltallLonnsomhetComplete'
+import BaerekraftVerdikjedeModule from './screens/learninghub/vg2/okonomi/BaerekraftVerdikjedeModule'
+import BaerekraftVerdikjedeComplete from './screens/learninghub/vg2/okonomi/BaerekraftVerdikjedeComplete'
 
-// ── VG2 Innovasjon learning modules ───────────────────────────────────────────
-import MerkevareModule from './screens/learninghub/vg2/innovasjon/MerkevareModule'
-import MerkevareComplete from './screens/learninghub/vg2/innovasjon/MerkevareComplete'
-import MarkedsundersokelseModule from './screens/learninghub/vg2/innovasjon/MarkedsundersokelseModule'
-import MarkedsundersokelseComplete from './screens/learninghub/vg2/innovasjon/MarkedsundersokelseComplete'
-import ReiseligsprodukModule from './screens/learninghub/vg2/innovasjon/ReiseligsprodukModule'
-import ReiselivsproduktComplete from './screens/learninghub/vg2/innovasjon/ReiselivsproduktComplete'
-import BeredskapsledelseModule from './screens/learninghub/vg2/innovasjon/BeredskapsledelseModule'
-import BeredskapsledelseComplete from './screens/learninghub/vg2/innovasjon/BeredskapsledelseComplete'
-import PosisjoneringModule from './screens/learninghub/vg2/innovasjon/PosisjoneringModule'
-import PosisjoneringComplete from './screens/learninghub/vg2/innovasjon/PosisjoneringComplete'
+// ── VG2 Kommunikasjon og markedsføring learning modules ───────────────────────
+import MerkevareModule from './screens/learninghub/vg2/kommunikasjon/MerkevareModule'
+import MerkevareComplete from './screens/learninghub/vg2/kommunikasjon/MerkevareComplete'
+import MarkedsundersokelseModule from './screens/learninghub/vg2/kommunikasjon/MarkedsundersokelseModule'
+import MarkedsundersokelseComplete from './screens/learninghub/vg2/kommunikasjon/MarkedsundersokelseComplete'
+import ReiselivsproduktModule from './screens/learninghub/vg2/kommunikasjon/ReiselivsproduktModule'
+import ReiselivsproduktComplete from './screens/learninghub/vg2/kommunikasjon/ReiselivsproduktComplete'
+import BeredskapModule from './screens/learninghub/vg2/hms/BeredskapModule'
+import BeredskapComplete from './screens/learninghub/vg2/hms/BeredskapComplete'
+import MarkedsforingstrekantenModule from './screens/learninghub/vg2/kommunikasjon/MarkedsforingstrekantenModule'
+import MarkedsforingstrekantenComplete from './screens/learninghub/vg2/kommunikasjon/MarkedsforingstrekantenComplete'
+import InnovasjonProduktutviklingModule from './screens/learninghub/vg2/kommunikasjon/InnovasjonProduktutviklingModule'
+import InnovasjonProduktutviklingComplete from './screens/learninghub/vg2/kommunikasjon/InnovasjonProduktutviklingComplete'
+import MarkedsforingskampanjerModule from './screens/learninghub/vg2/kommunikasjon/MarkedsforingskampanjerModule'
+import MarkedsforingskampanjerComplete from './screens/learninghub/vg2/kommunikasjon/MarkedsforingskampanjerComplete'
+import SalgsprosessenVg2Module from './screens/learninghub/vg2/kommunikasjon/SalgsprosessenVg2Module'
+import SalgsprosessenVg2Complete from './screens/learninghub/vg2/kommunikasjon/SalgsprosessenVg2Complete'
+import PosisjoneringModule from './screens/learninghub/vg2/kommunikasjon/PosisjoneringModule'
+import PosisjoneringComplete from './screens/learninghub/vg2/kommunikasjon/PosisjoneringComplete'
+import ProfesjonellKommunikasjonModule from './screens/learninghub/vg2/kommunikasjon/ProfesjonellKommunikasjonModule'
+import ProfesjonellKommunikasjonComplete from './screens/learninghub/vg2/kommunikasjon/ProfesjonellKommunikasjonComplete'
+import InternasjonaleMarkederModule from './screens/learninghub/vg2/kommunikasjon/InternasjonaleMarkederModule'
+import InternasjonaleMarkederComplete from './screens/learninghub/vg2/kommunikasjon/InternasjonaleMarkederComplete'
 
-// ── VG2 Kultur learning modules ───────────────────────────────────────────────
-import ProfesjonellKommunikasjonModule from './screens/learninghub/vg2/kultur/ProfesjonellKommunikasjonModule'
-import ProfesjonellKommunikasjonComplete from './screens/learninghub/vg2/kultur/ProfesjonellKommunikasjonComplete'
-import KonflikthandteringModule from './screens/learninghub/vg2/kultur/KonflikthandteringModule'
-import KonflikthandteringComplete from './screens/learninghub/vg2/kultur/KonflikthandteringComplete'
-import EtiskeDilemmaerModule from './screens/learninghub/vg2/kultur/EtiskeDilemmaerModule'
-import EtiskeDilemmaerComplete from './screens/learninghub/vg2/kultur/EtiskeDilemmaerComplete'
-import InternasjonaleMarkederModule from './screens/learninghub/vg2/kultur/InternasjonaleMarkederModule'
-import InternasjonaleMarkederComplete from './screens/learninghub/vg2/kultur/InternasjonaleMarkederComplete'
-import ArbeidslivetsSpillereglerModule from './screens/learninghub/vg2/kultur/ArbeidslivetsSpillereglerModule'
-import ArbeidslivetsSpillereglerComplete from './screens/learninghub/vg2/kultur/ArbeidslivetsSpillereglerComplete'
+// ── VG2 Helse, miljø og sikkerhet learning modules ────────────────────────────
+import KonflikthandteringModule from './screens/learninghub/vg2/hms/KonflikthandteringModule'
+import KonflikthandteringComplete from './screens/learninghub/vg2/hms/KonflikthandteringComplete'
+import EtiskeDilemmaerModule from './screens/learninghub/vg2/hms/EtiskeDilemmaerModule'
+import EtiskeDilemmaerComplete from './screens/learninghub/vg2/hms/EtiskeDilemmaerComplete'
+import ForstehjelpModule from './screens/learninghub/vg2/hms/ForstehjelpModule'
+import ForstehjelpComplete from './screens/learninghub/vg2/hms/ForstehjelpComplete'
+import BrannvernModule from './screens/learninghub/vg2/hms/BrannvernModule'
+import BrannvernComplete from './screens/learninghub/vg2/hms/BrannvernComplete'
+import HmsArbeidRollerModule from './screens/learninghub/vg2/hms/HmsArbeidRollerModule'
+import HmsArbeidRollerComplete from './screens/learninghub/vg2/hms/HmsArbeidRollerComplete'
+import DigitalSikkerhetPersonvernModule from './screens/learninghub/vg2/hms/DigitalSikkerhetPersonvernModule'
+import DigitalSikkerhetPersonvernComplete from './screens/learninghub/vg2/hms/DigitalSikkerhetPersonvernComplete'
 
 // ── ML1 Studiespesialisering modules ─────────────────────────────────────────
 import MarkedsforingFagModule from './screens/learninghub/ml1/MarkedsforingFagModule'
@@ -200,7 +231,37 @@ import ML2Presentation from './screens/learninghub/presentations/ML2Presentation
 import ENT1Presentation from './screens/learninghub/presentations/ENT1Presentation'
 import ENT2Presentation from './screens/learninghub/presentations/ENT2Presentation'
 
-// ── Forretningsdrift learning modules (FD1–FD8) ──────────────────────────────
+// ── SSR02-01 VG2 Presentations ────────────────────────────────────────────────
+import TrenderForretningsmodellerPresentation from './screens/learninghub/presentations/TrenderForretningsmodellerPresentation'
+import RekrutteringsprosesserPresentation from './screens/learninghub/presentations/RekrutteringsprosesserPresentation'
+import PrisOgKalkulasjonPresentation from './screens/learninghub/presentations/PrisOgKalkulasjonPresentation'
+import NokkeltallLonnsomhetPresentation from './screens/learninghub/presentations/NokkeltallLonnsomhetPresentation'
+import BaerekraftVerdikjedePresentation from './screens/learninghub/presentations/BaerekraftVerdikjedePresentation'
+import RegelverkServicebedrifterPresentation from './screens/learninghub/presentations/RegelverkServicebedrifterPresentation'
+import DigitaleSystemKundeoppfolgingPresentation from './screens/learninghub/presentations/DigitaleSystemKundeoppfolgingPresentation'
+import ForretningsplanVg2Presentation from './screens/learninghub/presentations/ForretningsplanVg2Presentation'
+import MerkevareVg2Presentation from './screens/learninghub/presentations/MerkevareVg2Presentation'
+import MarkedsforingstrekantenPresentation from './screens/learninghub/presentations/MarkedsforingstrekantenPresentation'
+import InnovasjonProduktutviklingPresentation from './screens/learninghub/presentations/InnovasjonProduktutviklingPresentation'
+import MarkedsundersokelseVg2Presentation from './screens/learninghub/presentations/MarkedsundersokelseVg2Presentation'
+import MarkedsforingskampanjerPresentation from './screens/learninghub/presentations/MarkedsforingskampanjerPresentation'
+import SalgsprosessenVg2Presentation from './screens/learninghub/presentations/SalgsprosessenVg2Presentation'
+import ReiselivsproduktVg2Presentation from './screens/learninghub/presentations/ReiselivsproduktVg2Presentation'
+import PosisjoneringVg2Presentation from './screens/learninghub/presentations/PosisjoneringVg2Presentation'
+import ProfesjonellKommunikasjonVg2Presentation from './screens/learninghub/presentations/ProfesjonellKommunikasjonVg2Presentation'
+import InternasjonaleMarkederVg2Presentation from './screens/learninghub/presentations/InternasjonaleMarkederVg2Presentation'
+import RisikoanalyseVg2Presentation from './screens/learninghub/presentations/RisikoanalyseVg2Presentation'
+import ForstehjelpPresentation from './screens/learninghub/presentations/ForstehjelpPresentation'
+import BrannvernPresentation from './screens/learninghub/presentations/BrannvernPresentation'
+import HmsArbeidRollerPresentation from './screens/learninghub/presentations/HmsArbeidRollerPresentation'
+import BeredskapPresentation from './screens/learninghub/presentations/BeredskapPresentation'
+import DigitalSikkerhetPersonvernPresentation from './screens/learninghub/presentations/DigitalSikkerhetPersonvernPresentation'
+import LonnPersonalkostnaderPresentation from './screens/learninghub/presentations/LonnPersonalkostnaderPresentation'
+import SvinnforebyggingPresentation from './screens/learninghub/presentations/SvinnforebyggingPresentation'
+import DistribusjonPresentation from './screens/learninghub/presentations/DistribusjonPresentation'
+import ProduktPresentation from './screens/learninghub/presentations/ProduktPresentation'
+
+// ── Forretningsdrift (VG1) learning modules (FD1–FD8) ──────────────────────────────
 import OrganizationModule from './screens/learninghub/forretningsdrift/OrganizationModule'
 import OrganizationComplete from './screens/learninghub/forretningsdrift/OrganizationComplete'
 import PricingCalculatorModule from './screens/learninghub/forretningsdrift/PricingCalculatorModule'
@@ -230,6 +291,7 @@ function App() {
 
           {/* ── AdVenture 3.0 Business Simulator ─────────────────────────── */}
           <Route path="/game" element={<GamePage />} />
+
 
           {/* ── Startup flow ─────────────────────────────────────────────── */}
           <Route element={<StartupLayout />}>
@@ -319,6 +381,36 @@ function App() {
           <Route path="/learning/presentations/ent1" element={<ENT1Presentation />} />
           <Route path="/learning/presentations/ent2" element={<ENT2Presentation />} />
 
+          {/* ── SSR02-01 VG2 Presentations ──────────────────────────────── */}
+          <Route path="/learning/presentations/trender-forretningsmodeller" element={<TrenderForretningsmodellerPresentation />} />
+          <Route path="/learning/presentations/rekrutteringsprosesser" element={<RekrutteringsprosesserPresentation />} />
+          <Route path="/learning/presentations/pris-og-kalkulasjon" element={<PrisOgKalkulasjonPresentation />} />
+          <Route path="/learning/presentations/nokkeltall-lonnsomhet" element={<NokkeltallLonnsomhetPresentation />} />
+          <Route path="/learning/presentations/baerekraft-verdikjede" element={<BaerekraftVerdikjedePresentation />} />
+          <Route path="/learning/presentations/regelverk-servicebedrifter" element={<RegelverkServicebedrifterPresentation />} />
+          <Route path="/learning/presentations/digitale-system-kundeoppfolging" element={<DigitaleSystemKundeoppfolgingPresentation />} />
+          <Route path="/learning/presentations/forretningsplan-vg2" element={<ForretningsplanVg2Presentation />} />
+          <Route path="/learning/presentations/merkevare-vg2" element={<MerkevareVg2Presentation />} />
+          <Route path="/learning/presentations/markedsforingstrekanten" element={<MarkedsforingstrekantenPresentation />} />
+          <Route path="/learning/presentations/innovasjon-produktutvikling" element={<InnovasjonProduktutviklingPresentation />} />
+          <Route path="/learning/presentations/markedsundersokelse-vg2" element={<MarkedsundersokelseVg2Presentation />} />
+          <Route path="/learning/presentations/markedsforingskampanjer" element={<MarkedsforingskampanjerPresentation />} />
+          <Route path="/learning/presentations/salgsprosessen-vg2" element={<SalgsprosessenVg2Presentation />} />
+          <Route path="/learning/presentations/reiselivsprodukt-vg2" element={<ReiselivsproduktVg2Presentation />} />
+          <Route path="/learning/presentations/posisjonering-vg2" element={<PosisjoneringVg2Presentation />} />
+          <Route path="/learning/presentations/profesjonell-kommunikasjon-vg2" element={<ProfesjonellKommunikasjonVg2Presentation />} />
+          <Route path="/learning/presentations/internasjonale-markeder-vg2" element={<InternasjonaleMarkederVg2Presentation />} />
+          <Route path="/learning/presentations/risikoanalyse-vg2" element={<RisikoanalyseVg2Presentation />} />
+          <Route path="/learning/presentations/forstehjelp" element={<ForstehjelpPresentation />} />
+          <Route path="/learning/presentations/brannvern" element={<BrannvernPresentation />} />
+          <Route path="/learning/presentations/hms-arbeid-roller" element={<HmsArbeidRollerPresentation />} />
+          <Route path="/learning/presentations/beredskap" element={<BeredskapPresentation />} />
+          <Route path="/learning/presentations/digital-sikkerhet-personvern" element={<DigitalSikkerhetPersonvernPresentation />} />
+          <Route path="/learning/presentations/lonn-personalkostnader" element={<LonnPersonalkostnaderPresentation />} />
+          <Route path="/learning/presentations/svinnforebygging" element={<SvinnforebyggingPresentation />} />
+          <Route path="/learning/presentations/distribusjon" element={<DistribusjonPresentation />} />
+          <Route path="/learning/presentations/produkt" element={<ProduktPresentation />} />
+
           {/* ── Learning (all /learning/* routes share LearningLayout) ─── */}
           <Route element={<LearningLayout />}>
           <Route path="/learning" element={<LearningHub />} />
@@ -341,7 +433,7 @@ function App() {
           <Route path="/learning/ml1/markedskommunikasjon" element={<MarkedskommunikasjonModule />} />
           <Route path="/learning/ml1/markedskommunikasjon/complete" element={<MarkedskommunikasjonComplete />} />
 
-          {/* ── Forretningsdrift learning modules (standalone) ───────────── */}
+          {/* ── Forretningsdrift (VG1) learning modules (standalone) ───────────── */}
           <Route path="/learning/forretningsdrift/organization" element={<OrganizationModule />} />
           <Route path="/learning/forretningsdrift/organization/complete" element={<OrganizationComplete />} />
           <Route path="/learning/forretningsdrift/pricing-calculator" element={<PricingCalculatorModule />} />
@@ -401,41 +493,71 @@ function App() {
           <Route path="/learning/kultur/konflikt-nodssituasjon" element={<KonfliktNodModule />} />
           <Route path="/learning/kultur/konflikt-nodssituasjon/complete" element={<KonfliktNodComplete />} />
 
-          {/* ── VG2 Forretningsdrift learning modules ────────────────────── */}
-          <Route path="/learning/vg2/forretningsdrift/forretningsplan" element={<ForretningsplanModule />} />
-          <Route path="/learning/vg2/forretningsdrift/forretningsplan/complete" element={<ForretningsplanComplete />} />
-          <Route path="/learning/vg2/forretningsdrift/lonn-personalkostnader" element={<LonnPersonalkostnaderModule />} />
-          <Route path="/learning/vg2/forretningsdrift/lonn-personalkostnader/complete" element={<LonnPersonalkostnaderComplete />} />
-          <Route path="/learning/vg2/forretningsdrift/regnskapsanalyse" element={<RegnskapsanalyseModule />} />
-          <Route path="/learning/vg2/forretningsdrift/regnskapsanalyse/complete" element={<RegnskapsanalyseComplete />} />
-          <Route path="/learning/vg2/forretningsdrift/risikoanalyse" element={<RisikoanalyseModule />} />
-          <Route path="/learning/vg2/forretningsdrift/risikoanalyse/complete" element={<RisikoanalyseComplete />} />
-          <Route path="/learning/vg2/forretningsdrift/svinnforebygging" element={<SvinnforebyggingModule />} />
-          <Route path="/learning/vg2/forretningsdrift/svinnforebygging/complete" element={<SvinnforebyggingComplete />} />
+          {/* ── VG2 Økonomi og administrasjon learning modules ───────────── */}
+          <Route path="/learning/vg2/okonomi/forretningsplan" element={<ForretningsplanModule />} />
+          <Route path="/learning/vg2/okonomi/forretningsplan/complete" element={<ForretningsplanComplete />} />
+          <Route path="/learning/vg2/okonomi/lonn-personalkostnader" element={<LonnPersonalkostnaderModule />} />
+          <Route path="/learning/vg2/okonomi/lonn-personalkostnader/complete" element={<LonnPersonalkostnaderComplete />} />
+          <Route path="/learning/vg2/okonomi/regnskapsanalyse" element={<RegnskapsanalyseModule />} />
+          <Route path="/learning/vg2/okonomi/regnskapsanalyse/complete" element={<RegnskapsanalyseComplete />} />
+          <Route path="/learning/vg2/hms/risikoanalyse" element={<RisikoanalyseModule />} />
+          <Route path="/learning/vg2/hms/risikoanalyse/complete" element={<RisikoanalyseComplete />} />
+          <Route path="/learning/vg2/okonomi/svinnforebygging" element={<SvinnforebyggingModule />} />
+          <Route path="/learning/vg2/okonomi/svinnforebygging/complete" element={<SvinnforebyggingComplete />} />
+          <Route path="/learning/vg2/okonomi/arbeidslivets-spilleregler" element={<ArbeidslivetsSpillereglerModule />} />
+          <Route path="/learning/vg2/okonomi/arbeidslivets-spilleregler/complete" element={<ArbeidslivetsSpillereglerComplete />} />
+          <Route path="/learning/vg2/okonomi/trender-forretningsmodeller" element={<TrenderForretningsmodellerModule />} />
+          <Route path="/learning/vg2/okonomi/trender-forretningsmodeller/complete" element={<TrenderForretningsmodellerComplete />} />
+          <Route path="/learning/vg2/okonomi/pris-og-kalkulasjon" element={<PrisOgKalkulasjonModule />} />
+          <Route path="/learning/vg2/okonomi/pris-og-kalkulasjon/complete" element={<PrisOgKalkulasjonComplete />} />
+          <Route path="/learning/vg2/okonomi/regelverk-servicebedrifter" element={<RegelverkServicebedrifterModule />} />
+          <Route path="/learning/vg2/okonomi/regelverk-servicebedrifter/complete" element={<RegelverkServicebedrifterComplete />} />
+          <Route path="/learning/vg2/okonomi/digitale-system-kundeoppfolging" element={<DigitaleSystemKundeoppfolgingModule />} />
+          <Route path="/learning/vg2/okonomi/digitale-system-kundeoppfolging/complete" element={<DigitaleSystemKundeoppfolgingComplete />} />
+          <Route path="/learning/vg2/okonomi/rekrutteringsprosesser" element={<RekrutteringsprosesserModule />} />
+          <Route path="/learning/vg2/okonomi/rekrutteringsprosesser/complete" element={<RekrutteringsprosesserComplete />} />
+          <Route path="/learning/vg2/okonomi/nokkeltall-lonnsomhet" element={<NokkeltallLonnsomhetModule />} />
+          <Route path="/learning/vg2/okonomi/nokkeltall-lonnsomhet/complete" element={<NokkeltallLonnsomhetComplete />} />
+          <Route path="/learning/vg2/okonomi/baerekraft-verdikjede" element={<BaerekraftVerdikjedeModule />} />
+          <Route path="/learning/vg2/okonomi/baerekraft-verdikjede/complete" element={<BaerekraftVerdikjedeComplete />} />
 
-          {/* ── VG2 Innovasjon learning modules ──────────────────────────── */}
-          <Route path="/learning/vg2/innovasjon/merkevare" element={<MerkevareModule />} />
-          <Route path="/learning/vg2/innovasjon/merkevare/complete" element={<MerkevareComplete />} />
-          <Route path="/learning/vg2/innovasjon/markedsundersokelse" element={<MarkedsundersokelseModule />} />
-          <Route path="/learning/vg2/innovasjon/markedsundersokelse/complete" element={<MarkedsundersokelseComplete />} />
-          <Route path="/learning/vg2/innovasjon/reiselivsprodukt" element={<ReiseligsprodukModule />} />
-          <Route path="/learning/vg2/innovasjon/reiselivsprodukt/complete" element={<ReiselivsproduktComplete />} />
-          <Route path="/learning/vg2/innovasjon/beredskapsledelse" element={<BeredskapsledelseModule />} />
-          <Route path="/learning/vg2/innovasjon/beredskapsledelse/complete" element={<BeredskapsledelseComplete />} />
-          <Route path="/learning/vg2/innovasjon/posisjonering" element={<PosisjoneringModule />} />
-          <Route path="/learning/vg2/innovasjon/posisjonering/complete" element={<PosisjoneringComplete />} />
+          {/* ── VG2 Kommunikasjon og markedsføring learning modules ──────── */}
+          <Route path="/learning/vg2/kommunikasjon/merkevare" element={<MerkevareModule />} />
+          <Route path="/learning/vg2/kommunikasjon/merkevare/complete" element={<MerkevareComplete />} />
+          <Route path="/learning/vg2/kommunikasjon/markedsundersokelse" element={<MarkedsundersokelseModule />} />
+          <Route path="/learning/vg2/kommunikasjon/markedsundersokelse/complete" element={<MarkedsundersokelseComplete />} />
+          <Route path="/learning/vg2/kommunikasjon/reiselivsprodukt" element={<ReiselivsproduktModule />} />
+          <Route path="/learning/vg2/kommunikasjon/reiselivsprodukt/complete" element={<ReiselivsproduktComplete />} />
+          <Route path="/learning/vg2/hms/beredskap" element={<BeredskapModule />} />
+          <Route path="/learning/vg2/hms/beredskap/complete" element={<BeredskapComplete />} />
+          <Route path="/learning/vg2/kommunikasjon/markedsforingstrekan" element={<MarkedsforingstrekantenModule />} />
+          <Route path="/learning/vg2/kommunikasjon/markedsforingstrekan/complete" element={<MarkedsforingstrekantenComplete />} />
+          <Route path="/learning/vg2/kommunikasjon/innovasjon-produktutvikling" element={<InnovasjonProduktutviklingModule />} />
+          <Route path="/learning/vg2/kommunikasjon/innovasjon-produktutvikling/complete" element={<InnovasjonProduktutviklingComplete />} />
+          <Route path="/learning/vg2/kommunikasjon/markedsforingskampanjer" element={<MarkedsforingskampanjerModule />} />
+          <Route path="/learning/vg2/kommunikasjon/markedsforingskampanjer/complete" element={<MarkedsforingskampanjerComplete />} />
+          <Route path="/learning/vg2/kommunikasjon/salgsprosessen-vg2" element={<SalgsprosessenVg2Module />} />
+          <Route path="/learning/vg2/kommunikasjon/salgsprosessen-vg2/complete" element={<SalgsprosessenVg2Complete />} />
+          <Route path="/learning/vg2/kommunikasjon/posisjonering" element={<PosisjoneringModule />} />
+          <Route path="/learning/vg2/kommunikasjon/posisjonering/complete" element={<PosisjoneringComplete />} />
+          <Route path="/learning/vg2/kommunikasjon/profesjonell-kommunikasjon" element={<ProfesjonellKommunikasjonModule />} />
+          <Route path="/learning/vg2/kommunikasjon/profesjonell-kommunikasjon/complete" element={<ProfesjonellKommunikasjonComplete />} />
+          <Route path="/learning/vg2/kommunikasjon/internasjonale-markeder" element={<InternasjonaleMarkederModule />} />
+          <Route path="/learning/vg2/kommunikasjon/internasjonale-markeder/complete" element={<InternasjonaleMarkederComplete />} />
 
-          {/* ── VG2 Kultur learning modules ───────────────────────────────── */}
-          <Route path="/learning/vg2/kultur/profesjonell-kommunikasjon" element={<ProfesjonellKommunikasjonModule />} />
-          <Route path="/learning/vg2/kultur/profesjonell-kommunikasjon/complete" element={<ProfesjonellKommunikasjonComplete />} />
-          <Route path="/learning/vg2/kultur/konflikthåndtering" element={<KonflikthandteringModule />} />
-          <Route path="/learning/vg2/kultur/konflikthåndtering/complete" element={<KonflikthandteringComplete />} />
-          <Route path="/learning/vg2/kultur/etiske-dilemmaer" element={<EtiskeDilemmaerModule />} />
-          <Route path="/learning/vg2/kultur/etiske-dilemmaer/complete" element={<EtiskeDilemmaerComplete />} />
-          <Route path="/learning/vg2/kultur/internasjonale-markeder" element={<InternasjonaleMarkederModule />} />
-          <Route path="/learning/vg2/kultur/internasjonale-markeder/complete" element={<InternasjonaleMarkederComplete />} />
-          <Route path="/learning/vg2/kultur/arbeidslivets-spilleregler" element={<ArbeidslivetsSpillereglerModule />} />
-          <Route path="/learning/vg2/kultur/arbeidslivets-spilleregler/complete" element={<ArbeidslivetsSpillereglerComplete />} />
+          {/* ── VG2 Helse, miljø og sikkerhet learning modules ───────────── */}
+          <Route path="/learning/vg2/hms/konflikthandtering" element={<KonflikthandteringModule />} />
+          <Route path="/learning/vg2/hms/konflikthandtering/complete" element={<KonflikthandteringComplete />} />
+          <Route path="/learning/vg2/hms/etiske-dilemmaer" element={<EtiskeDilemmaerModule />} />
+          <Route path="/learning/vg2/hms/etiske-dilemmaer/complete" element={<EtiskeDilemmaerComplete />} />
+          <Route path="/learning/vg2/hms/forstehjelp" element={<ForstehjelpModule />} />
+          <Route path="/learning/vg2/hms/forstehjelp/complete" element={<ForstehjelpComplete />} />
+          <Route path="/learning/vg2/hms/brannvern" element={<BrannvernModule />} />
+          <Route path="/learning/vg2/hms/brannvern/complete" element={<BrannvernComplete />} />
+          <Route path="/learning/vg2/hms/hms-arbeid-roller" element={<HmsArbeidRollerModule />} />
+          <Route path="/learning/vg2/hms/hms-arbeid-roller/complete" element={<HmsArbeidRollerComplete />} />
+          <Route path="/learning/vg2/hms/digital-sikkerhet-personvern" element={<DigitalSikkerhetPersonvernModule />} />
+          <Route path="/learning/vg2/hms/digital-sikkerhet-personvern/complete" element={<DigitalSikkerhetPersonvernComplete />} />
           </Route>{/* end LearningLayout */}
 
         </Routes>

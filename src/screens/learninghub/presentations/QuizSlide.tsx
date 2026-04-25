@@ -162,6 +162,16 @@ export default function QuizSlide({ question, options, correct, timeSeconds, pin
     setSelected(i)
   }
 
+  // Self-study mode: clicking an option selects + immediately reveals
+  function handleSelfStudySelect(i: number) {
+    if (revealed || selected !== null) return
+    if (timerRef.current !== null) clearInterval(timerRef.current)
+    setSelected(i)
+    setRevealed(true)
+  }
+
+  const isSelfStudy = !liveCode && !studentMode
+
   const showAnswerCount = (pin || liveCode) && !studentMode
 
   return (
@@ -216,13 +226,13 @@ export default function QuizSlide({ question, options, correct, timeSeconds, pin
         </p>
       )}
 
-      {/* Student selection feedback */}
+      {/* Selection feedback */}
       {studentMode && !revealed && selected !== null && (
         <p style={{ fontSize: 14, color: '#38bdf8', fontWeight: 600, marginBottom: '1rem' }}>
           Du valgte {OPTION_LABELS[selected]} — venter på at læreren avslører svaret…
         </p>
       )}
-      {studentMode && revealed && selected !== null && (
+      {(studentMode || isSelfStudy) && revealed && selected !== null && (
         <p style={{ fontSize: 15, fontWeight: 700, marginBottom: '1rem', color: selected === correct ? '#22c55e' : '#ef4444' }}>
           {selected === correct ? '✅ Riktig!' : `❌ Feil — riktig svar var ${OPTION_LABELS[correct]}`}
         </p>
@@ -250,7 +260,10 @@ export default function QuizSlide({ question, options, correct, timeSeconds, pin
               initial={false}
               animate={{ borderColor }}
               transition={{ duration: 0.4 }}
-              onClick={() => studentMode && handleSelect(i)}
+              onClick={() => {
+                if (studentMode) handleSelect(i)
+                else if (isSelfStudy) handleSelfStudySelect(i)
+              }}
               style={{
                 background: bg,
                 borderWidth: 2,
@@ -260,7 +273,7 @@ export default function QuizSlide({ question, options, correct, timeSeconds, pin
                 position: 'relative',
                 overflow: 'hidden',
                 transition: 'background 0.3s',
-                cursor: studentMode && !revealed && selected === null ? 'pointer' : 'default',
+                cursor: (studentMode || isSelfStudy) && !revealed && selected === null ? 'pointer' : 'default',
               }}
             >
               {/* Bar fill */}
@@ -298,8 +311,8 @@ export default function QuizSlide({ question, options, correct, timeSeconds, pin
 
       {/* Action buttons */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
-        {/* Teacher: Vis svar button */}
-        {!revealed && !studentMode && (
+        {/* Teacher (live session): Vis svar button */}
+        {!revealed && !studentMode && !isSelfStudy && (
           <button
             onClick={handleReveal}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)' }}

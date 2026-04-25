@@ -7,6 +7,7 @@ import DashboardOverlay from './ui/DashboardOverlay'
 import YearEndOverlay from './ui/YearEndOverlay'
 import RentPanel from './ui/panels/RentPanel'
 import StartupScreen from './screens/StartupScreen'
+import MiniMap from './ui/MiniMap'
 
 interface VacantInfo {
   id: string
@@ -39,6 +40,7 @@ function GameContent() {
   const [vacantInfo, setVacantInfo]     = useState<VacantInfo | null>(null)
   const [phaserReady, setPhaserReady]   = useState(false)
   const [inInterior, setInInterior]     = useState(false)
+  const [tutorialDismissed, setTutorialDismissed] = useState(false)
 
   // Notify CityScene when a location gets rented (update building appearance)
   useEffect(() => {
@@ -92,7 +94,12 @@ function GameContent() {
   function handleEnterShop() {
     setInInterior(true)
     window.dispatchEvent(new CustomEvent('game:enterInterior', {
-      detail: { shopName: state.companyName },
+      detail: {
+        shopName: state.companyName,
+        industry: state.industry,
+        totalStock: state.products.reduce((s, p) => s + p.stock, 0),
+        storageCapacity: state.storageCapacity,
+      },
     }))
   }
 
@@ -122,11 +129,14 @@ function GameContent() {
           {/* Camera controls */}
           <CameraControls visible={!inInterior && !simOpen && !dashboardOpen && !vacantInfo} />
 
+          {/* Mini-map */}
+          {!inInterior && !simOpen && !dashboardOpen && <MiniMap />}
+
           {/* First-time hint */}
-          {state.tutorialStep === 1 && !state.rentedLocationId && !inInterior && (
+          {state.tutorialStep === 1 && !state.rentedLocationId && !inInterior && !tutorialDismissed && (
             <TutorialBubble
               text='🏙️ Utforsk byen! Finn et "TIL LEIE"-skilt og klikk på det for å starte virksomheten.'
-              onDismiss={() => {/* will auto-dismiss on rent */}}
+              onDismiss={() => setTutorialDismissed(true)}
             />
           )}
 
@@ -271,17 +281,27 @@ function CameraControls({ visible }: { visible: boolean }) {
   )
 }
 
-function TutorialBubble({ text, onDismiss: _onDismiss }: { text: string; onDismiss: () => void }) {
+function TutorialBubble({ text, onDismiss }: { text: string; onDismiss: () => void }) {
   return (
     <div style={{
       position: 'fixed', top: '50%', left: '50%',
       transform: 'translate(-50%, -50%)',
       background: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(16px)',
       border: '1px solid rgba(0,212,170,0.4)', borderRadius: '1.5rem',
-      padding: '1.5rem 2rem', zIndex: 85, textAlign: 'center',
+      padding: '1.5rem 2.5rem 1.5rem 2rem', zIndex: 85, textAlign: 'center',
       fontFamily: "'Outfit', sans-serif", maxWidth: 400,
-      pointerEvents: 'none',
+      pointerEvents: 'auto',
     }}>
+      <button
+        onClick={onDismiss}
+        style={{
+          position: 'absolute', top: 8, right: 10,
+          background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+          borderRadius: 99, width: 26, height: 26, color: '#94a3b8',
+          cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >✕</button>
       <p style={{ color: '#f1f5f9', fontSize: 15, margin: 0, lineHeight: 1.6 }}>{text}</p>
     </div>
   )

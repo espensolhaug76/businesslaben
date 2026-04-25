@@ -2,7 +2,12 @@ import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
+  GameFlags, BusinessCanvas,
 } from './types'
+import { EMPTY_CANVAS } from './types'
+import { EVENT_POOL } from '../strategies/innovation/eventPool'
+import { getEventsForMonth } from '../strategies/innovation/eventEngine'
+import { updateFlags } from '../strategies/innovation/flagSystem'
 
 // ─── XP thresholds ──────────────────────────────────────────────────────────
 
@@ -19,6 +24,60 @@ const STARTING_MONEY: Record<Industry, number> = {
   fashion: 250_000,
   tech:    300_000,
   sports:  200_000,
+}
+
+// ─── Industry → bransje mapping ─────────────────────────────────────────────
+
+const INDUSTRY_BRANSJE: Record<Industry, GameFlags['bransje']> = {
+  cafe:    'mat',
+  fashion: 'tjeneste',
+  tech:    'tech',
+  sports:  'tjeneste',
+}
+
+// ─── Default game flags ──────────────────────────────────────────────────────
+
+function makeDefaultGameFlags(
+  industry: Industry,
+  finansiering: GameFlags['finansieringStart'] = 'ingen',
+  personlighet: GameFlags['personlighet'] = 'analytisk'
+): GameFlags {
+  return {
+    bransje: INDUSTRY_BRANSJE[industry],
+    finansieringStart: finansiering,
+    personlighet,
+    tookFamilyLoan: finansiering === 'familie',
+    tookBankLoan: finansiering === 'bank',
+    hasInvestor: false,
+    investorOwnership: 0,
+    pivoted: false,
+    pivotCount: 0,
+    hiredFirst: null,
+    totalEmployees: 0,
+    techDebt: 0,
+    hasPatent: false,
+    hasInternational: false,
+    hasMergerTalks: false,
+    differentiation_strategy: false,
+    ignored_competition: false,
+    local_focus: false,
+    overcommitted: finansiering === 'crowdfund',
+    hasMentor: false,
+    family_tension: 'none',
+    burnout_risk: 'none',
+    validationScore: 0,
+    monthlyUsers: 0,
+    monthlyRevenue: 0,
+    burnRate: 0,
+    runwayMonths: 12,
+    reputation: 50,
+    competitorPressure: 20,
+    capital: STARTING_MONEY[industry],
+    totalChoiceCount: 0,
+    triggeredEvents: [],
+    outcome: null,
+    exitValue: 0,
+  }
 }
 
 // ─── Initial state ──────────────────────────────────────────────────────────
@@ -71,7 +130,8 @@ const initialState: GameState = {
   tutorialStep: 1,
 
   businessModel: 'detaljhandel',
-  businessPlan: { description: '', marketResearchDone: false, qualityScore: 0 },
+  businessPlan: { description: '', marketResearchDone: false, qualityScore: 0, canvas: EMPTY_CANVAS },
+  gameFlags: makeDefaultGameFlags('fashion'),
   loans: [],
   totalDebt: 0,
   monthlyLoanPayment: 0,
@@ -94,10 +154,12 @@ const initialState: GameState = {
 
 type Action =
   | { type: 'SET_PHASE'; phase: GamePhase }
-  | { type: 'START_GAME'; companyName: string; industry: Industry; businessModel?: BusinessModel }
+  | { type: 'START_GAME'; companyName: string; industry: Industry; businessModel?: BusinessModel; finansiering?: GameFlags['finansieringStart']; personlighet?: GameFlags['personlighet'] }
   | { type: 'RENT_LOCATION'; id: string; zone: LocationZone; rent: number; capacity: number }
   | { type: 'SET_BUSINESS_MODEL'; model: BusinessModel }
   | { type: 'SAVE_BUSINESS_PLAN'; description: string }
+  | { type: 'SAVE_CANVAS'; canvas: BusinessCanvas }
+  | { type: 'RESOLVE_GAME_EVENT'; eventId: string; choiceId: string; messageId: string }
   | { type: 'BUY_MARKET_RESEARCH' }
   | { type: 'TAKE_LOAN'; loan: Loan }
   | { type: 'SET_PRODUCTS'; products: Product[] }
@@ -124,14 +186,32 @@ type Action =
 
 function calcPlanQuality(state: GameState): number {
   let score = 0
+
+  // 1 stjerne: sammendrag fylt ut
   if (state.businessPlan.description.trim().length > 20) score++
-  if (state.businessPlan.marketResearchDone) score++
+
+  // +1 stjerne: minst 2 av 4 manuelle canvas-ruter fylt ut
+  // +1 stjerne: alle 4 manuelle ruter fylt ut
+  const canvas = state.businessPlan.canvas ?? EMPTY_CANVAS
+  const manualFilled = [canvas.verditilbud, canvas.kundeforhold, canvas.nokkelaktiviteter, canvas.partnere]
+    .filter(v => (v ?? '').trim().length > 10).length
+  if (manualFilled >= 2) score++
+  if (manualFilled >= 4) score++
+
+  // +1 stjerne: minst 3 av 5 auto-ruter har data (fra andre faner)
+  // +1 stjerne: alle 5 auto-ruter har data
   const ta = state.targetAudience
-  if (ta.genders.length > 0 || ta.ageGroups.length > 0) score++
-  if (state.products.length > 0) score++
-  const monthlyCosts = state.monthlyRent + state.monthlyPayroll + state.monthlyLoanPayment
-  const estRevenue = state.products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
-  if (monthlyCosts > 0 && estRevenue > monthlyCosts * 0.8) score++
+  const autoChecks = [
+    ta.genders.length > 0 || ta.ageGroups.length > 0,                    // kundesegmenter
+    state.channels.length > 0,                                             // kanaler
+    state.products.some(p => p.retailPrice > 0),                          // inntektsstrommer
+    state.rentedLocationId !== null || state.employees.length > 0,        // nokkelressurser
+    state.monthlyRent > 0 || state.monthlyPayroll > 0,                    // kostnadsstruktur
+  ]
+  const autoFilled = autoChecks.filter(Boolean).length
+  if (autoFilled >= 3) score++
+  if (autoFilled >= 5) score++
+
   return Math.min(5, score)
 }
 
@@ -152,6 +232,7 @@ function reducer(state: GameState, action: Action): GameState {
         businessModel: action.businessModel ?? 'detaljhandel',
         phase: 'exploring_city',
         tutorialStep: 1,
+        gameFlags: makeDefaultGameFlags(action.industry, action.finansiering, action.personlighet),
         progress: {
           ...initialState.progress,
           industryChosen: true,
@@ -252,6 +333,38 @@ function reducer(state: GameState, action: Action): GameState {
       }
     }
 
+    case 'SAVE_CANVAS': {
+      const updatedBp = { ...state.businessPlan, canvas: action.canvas }
+      const q = calcPlanQuality({ ...state, businessPlan: updatedBp })
+      return { ...state, businessPlan: { ...updatedBp, qualityScore: q } }
+    }
+
+    case 'RESOLVE_GAME_EVENT': {
+      const event = EVENT_POOL.find(e => e.id === action.eventId)
+      if (!event) return state
+      const choice = event.choices.find(c => c.id === action.choiceId)
+      if (!choice) return state
+
+      let gf = updateFlags(state.gameFlags as Parameters<typeof updateFlags>[0], choice.flagUpdates as Partial<Parameters<typeof updateFlags>[0]>)
+      let newMoney = state.money
+      if (choice.capitalDelta) newMoney += choice.capitalDelta
+      let newRep = state.reputation
+      if (choice.reputationDelta) newRep = Math.max(0, Math.min(100, state.reputation + choice.reputationDelta))
+      if (choice.userDelta) gf = { ...gf, monthlyUsers: Math.max(0, gf.monthlyUsers + choice.userDelta) }
+      if (choice.techDebtDelta) gf = { ...gf, techDebt: Math.max(0, Math.min(100, gf.techDebt + choice.techDebtDelta)) }
+      gf = { ...gf, capital: newMoney, totalChoiceCount: gf.totalChoiceCount + 1 }
+
+      const messages = state.messages.map(m => m.id === action.messageId ? { ...m, read: true } : m)
+      return {
+        ...state,
+        money: newMoney,
+        reputation: newRep,
+        gameFlags: gf,
+        messages,
+        unreadCount: messages.filter(m => !m.read).length,
+      }
+    }
+
     case 'BUY_MARKET_RESEARCH': {
       if (state.money < 10_000) return state
       const bp = { ...state.businessPlan, marketResearchDone: true }
@@ -338,9 +451,54 @@ function reducer(state: GameState, action: Action): GameState {
         locationChosen: !!state.rentedLocationId || state.businessModel === 'netthandel',
       }
 
+      const newMoney = state.money + r.profit
+      const monthlyCostsCalc = state.monthlyRent + state.monthlyPayroll + updatedMonthlyLoanPayment
+        + Object.values(state.marketingBudget).reduce((s, v) => s + v, 0) + 2000
+      const netFlow = r.revenue - monthlyCostsCalc
+      const newRunway = netFlow < 0 ? Math.max(0, Math.floor(newMoney / Math.abs(netFlow))) : 12
+
+      // Update game flags with real simulation data
+      const updatedGameFlags: GameFlags = {
+        ...state.gameFlags,
+        monthlyRevenue: r.revenue,
+        burnRate: monthlyCostsCalc,
+        reputation: newReputation,
+        capital: newMoney,
+        totalEmployees: state.employees.length,
+        competitorPressure: Math.min(100, state.gameFlags.competitorPressure + 3),
+        runwayMonths: newRunway,
+        burnout_risk: state.gameFlags.totalChoiceCount > 30 && state.gameFlags.burnout_risk === 'none'
+          ? 'high' : state.gameFlags.burnout_risk,
+        outcome: newMoney < 0 && state.gameFlags.outcome === null ? 'BANKRUPTCY' : state.gameFlags.outcome,
+      }
+
+      // Get innovation events for this month
+      const innovEvents = getEventsForMonth(updatedGameFlags as Parameters<typeof getEventsForMonth>[0], state.currentMonth, 'game')
+      const innovMessages: InboxMessage[] = innovEvents.map(e => ({
+        id: `innov_${e.id}_${Date.now()}`,
+        type: 'game_event' as const,
+        title: `🚀 ${e.title}`,
+        body: e.text,
+        date: `År ${state.currentYear}, Måned ${state.currentMonth}`,
+        read: false,
+        competenceGoal: e.kompetansemaal,
+        choices: e.choices.map(c => ({
+          text: c.label,
+          effect: c.description ?? '',
+          eventId: e.id,
+          choiceId: c.id,
+        })),
+      }))
+
+      // Mark innovation events as triggered
+      const finalGameFlags: GameFlags = {
+        ...updatedGameFlags,
+        triggeredEvents: [...updatedGameFlags.triggeredEvents, ...innovEvents.map(e => e.id)],
+      }
+
       return {
         ...state,
-        money: state.money + r.profit,
+        money: newMoney,
         reputation: newReputation,
         xp: newXp,
         level: newLevel,
@@ -349,8 +507,8 @@ function reducer(state: GameState, action: Action): GameState {
         currentYear: isYearEnd ? state.currentYear + 1 : state.currentYear,
         monthlyResults: [...state.monthlyResults, r],
         phase: isYearEnd ? 'year_end' : 'month_report',
-        messages: [...state.messages, ...pestMessages],
-        unreadCount: state.unreadCount + pestMessages.length,
+        messages: [...state.messages, ...pestMessages, ...innovMessages],
+        unreadCount: state.unreadCount + pestMessages.length + innovMessages.length,
         // Reset p-flags for new month
         p1_complete: state.products.length > 0,
         p2_complete: state.products.some(p => p.retailPrice > 0),
@@ -362,6 +520,7 @@ function reducer(state: GameState, action: Action): GameState {
         monthlyLoanPayment: updatedMonthlyLoanPayment,
         consecutiveNegativeMonths: consNeg,
         progress: newProgress,
+        gameFlags: finalGameFlags,
       }
     }
 
@@ -430,4 +589,4 @@ export function useGame() {
 }
 
 // Re-export types for consumers
-export type { GameState, GamePhase, Product, MonthResult, InboxMessage, PestEvent, Loan, GameProgress, BusinessModel }
+export type { GameState, GamePhase, Product, MonthResult, InboxMessage, PestEvent, Loan, GameProgress, BusinessModel, GameFlags, BusinessCanvas }

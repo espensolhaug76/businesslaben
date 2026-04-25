@@ -99,13 +99,70 @@ export interface PestEvent {
 
 export interface InboxMessage {
   id: string
-  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor'
+  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event'
   title: string
   body: string
   date: string
   read: boolean
   competenceGoal?: string
-  choices?: { text: string; effect: string }[]
+  choices?: { text: string; effect: string; eventId?: string; choiceId?: string }[]
+}
+
+// ── Business Model Canvas ─────────────────────────────────────────────────────
+
+// Kun de 4 manuelle feltene lagres — de 5 øvrige genereres fra state
+export interface BusinessCanvas {
+  verditilbud: string
+  kundeforhold: string
+  nokkelaktiviteter: string
+  partnere: string
+}
+
+export const EMPTY_CANVAS: BusinessCanvas = {
+  verditilbud: '', kundeforhold: '', nokkelaktiviteter: '', partnere: '',
+}
+
+// ── Game Flags (innovation/event tracking) ────────────────────────────────────
+
+export interface GameFlags {
+  // Oppstart
+  bransje: 'tech' | 'baerekraftig' | 'mat' | 'tjeneste' | 'hardware'
+  finansieringStart: 'familie' | 'bank' | 'sparepenger' | 'crowdfund' | 'ingen'
+  personlighet: 'tekniker' | 'selger' | 'kreativ' | 'analytisk' | 'nettverk'
+  // Beslutninger
+  tookFamilyLoan: boolean
+  tookBankLoan: boolean
+  hasInvestor: boolean
+  investorOwnership: number
+  pivoted: boolean
+  pivotCount: number
+  hiredFirst: 'developer' | 'sales' | 'marketing' | null
+  totalEmployees: number
+  techDebt: number
+  hasPatent: boolean
+  hasInternational: boolean
+  hasMergerTalks: boolean
+  differentiation_strategy: boolean
+  ignored_competition: boolean
+  local_focus: boolean
+  overcommitted: boolean
+  hasMentor: boolean
+  family_tension: 'none' | 'high' | 'resolved'
+  burnout_risk: 'none' | 'high' | 'resolved'
+  // Metrikker
+  validationScore: number
+  monthlyUsers: number
+  monthlyRevenue: number
+  burnRate: number
+  runwayMonths: number
+  reputation: number
+  competitorPressure: number
+  capital: number
+  totalChoiceCount: number
+  // Historikk
+  triggeredEvents: string[]
+  outcome: string | null
+  exitValue: number
 }
 
 // ── Game state ───────────────────────────────────────────────────────────────
@@ -182,7 +239,11 @@ export interface GameState {
     description: string
     marketResearchDone: boolean
     qualityScore: number   // 0-5
+    canvas: BusinessCanvas
   }
+
+  // Game flags (event / outcome tracking)
+  gameFlags: GameFlags
 
   // Loans / financing
   loans: Loan[]
