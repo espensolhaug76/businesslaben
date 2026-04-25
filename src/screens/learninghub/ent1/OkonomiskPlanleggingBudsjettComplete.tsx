@@ -7,7 +7,11 @@ export default function OkonomiskPlanleggingBudsjettComplete() {
       moduleIcon="📊"
       retryRoute="/learning/ent1/okonomisk-planlegging-budsjett"
       learningOutcomes={[
-        'Innhold under utvikling — fullt læringsutbytte legges inn når modulen er ferdig',
+        'Du forstår de 3 hovedformålene med budsjettering: forutse, styre, dokumentere',
+'Du kjenner forskjellen på resultatbudsjett (lønnsomhet) og likviditetsbudsjett (cash flow)',
+'Du kan beregne dekningsbidrag, dekningsgrad og break-even punkt',
+'Du forstår skillet på faste og variable kostnader og strategisk betydning',
+'Du ser at god økonomistyring er forskjellen på suksess og konkurs',
       ]}
     />
   )

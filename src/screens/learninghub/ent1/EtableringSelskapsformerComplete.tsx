@@ -7,7 +7,11 @@ export default function EtableringSelskapsformerComplete() {
       moduleIcon="🏛️"
       retryRoute="/learning/ent1/etablering-selskapsformer"
       learningOutcomes={[
-        'Innhold under utvikling — fullt læringsutbytte legges inn når modulen er ferdig',
+        'Du forstår forskjellen på ENK og AS — særlig ansvar og kapitalkrav',
+'Du kjenner registreringsprosessen via Brønnøysund og Altinn',
+'Du behersker grunnleggende skatteregler (mva, skattetrekk, AGA)',
+'Du forstår viktigheten av aksjonæravtale før konflikten oppstår',
+'Du kan velge selskapsform basert på risiko, ambisjon og kapitalbehov',
       ]}
     />
   )
