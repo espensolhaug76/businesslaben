@@ -365,6 +365,18 @@ import PersonaladministrasjonHRMPresentation from './screens/learninghub/present
 import InternasjonalMarkedsforingPresentation from './screens/learninghub/presentations/InternasjonalMarkedsforingPresentation'
 import OkonomistyringKalkulasjonBudsjetteringPresentation from './screens/learninghub/presentations/OkonomistyringKalkulasjonBudsjetteringPresentation'
 import MarkedsplanenPresentation from './screens/learninghub/presentations/MarkedsplanenPresentation'
+
+// ── ENT1 per-kapittel presentasjoner (kap 1–10) ─────────────────────────────
+import InnovatorenOgEntreprenorenPresentation from './screens/learninghub/presentations/InnovatorenOgEntreprenorenPresentation'
+import KreativitetIdeutviklingPresentation from './screens/learninghub/presentations/KreativitetIdeutviklingPresentation'
+import BehovMarkedSegmenteringPresentation from './screens/learninghub/presentations/BehovMarkedSegmenteringPresentation'
+import ForretningsmodellBmcPresentation from './screens/learninghub/presentations/ForretningsmodellBmcPresentation'
+import EtableringSelskapsformerPresentation from './screens/learninghub/presentations/EtableringSelskapsformerPresentation'
+import FinansieringTilskuddPresentation from './screens/learninghub/presentations/FinansieringTilskuddPresentation'
+import OkonomiskPlanleggingBudsjettPresentation from './screens/learninghub/presentations/OkonomiskPlanleggingBudsjettPresentation'
+import MarkedsforingSalgNystartedePresentation from './screens/learninghub/presentations/MarkedsforingSalgNystartedePresentation'
+import LovverkAvtalerHmsPresentation from './screens/learninghub/presentations/LovverkAvtalerHmsPresentation'
+import SamarbeidTeambyggingPresentation from './screens/learninghub/presentations/SamarbeidTeambyggingPresentation'
 import ENT1Presentation from './screens/learninghub/presentations/ENT1Presentation'
 import ENT2Presentation from './screens/learninghub/presentations/ENT2Presentation'
 
@@ -551,6 +563,18 @@ function App() {
           <Route path="/learning/presentations/ml2/internasjonal-markedsforing" element={<InternasjonalMarkedsforingPresentation />} />
           <Route path="/learning/presentations/ml2/okonomistyring-kalkulasjon-budsjettering" element={<OkonomistyringKalkulasjonBudsjetteringPresentation />} />
           <Route path="/learning/presentations/ml2/markedsplanen" element={<MarkedsplanenPresentation />} />
+
+          {/* ── ENT1 per-kapittel presentasjoner (kap 1–10) ─────────────── */}
+          <Route path="/learning/presentations/ent1/innovatoren-og-entreprenoren" element={<InnovatorenOgEntreprenorenPresentation />} />
+          <Route path="/learning/presentations/ent1/kreativitet-ideutvikling" element={<KreativitetIdeutviklingPresentation />} />
+          <Route path="/learning/presentations/ent1/behov-marked-segmentering" element={<BehovMarkedSegmenteringPresentation />} />
+          <Route path="/learning/presentations/ent1/forretningsmodell-bmc" element={<ForretningsmodellBmcPresentation />} />
+          <Route path="/learning/presentations/ent1/etablering-selskapsformer" element={<EtableringSelskapsformerPresentation />} />
+          <Route path="/learning/presentations/ent1/finansiering-tilskudd" element={<FinansieringTilskuddPresentation />} />
+          <Route path="/learning/presentations/ent1/okonomisk-planlegging-budsjett" element={<OkonomiskPlanleggingBudsjettPresentation />} />
+          <Route path="/learning/presentations/ent1/markedsforing-salg-nystartede" element={<MarkedsforingSalgNystartedePresentation />} />
+          <Route path="/learning/presentations/ent1/lovverk-avtaler-hms" element={<LovverkAvtalerHmsPresentation />} />
+          <Route path="/learning/presentations/ent1/samarbeid-teambygging" element={<SamarbeidTeambyggingPresentation />} />
           <Route path="/learning/presentations/ent1" element={<ENT1Presentation />} />
           <Route path="/learning/presentations/ent2" element={<ENT2Presentation />} />
 

@@ -37,6 +37,7 @@ export default function OkonomiskPlanleggingBudsjettModule() {
       intro="Likviditetsbudsjett, resultatbudsjett og break-even — slik holder du styr på pengene fra dag én."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/okonomisk-planlegging-budsjett', description: 'Økonomisk planlegging og budsjett — 10 slides' }}
     />
   );
 }

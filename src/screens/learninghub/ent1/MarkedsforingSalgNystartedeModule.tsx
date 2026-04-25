@@ -37,6 +37,7 @@ export default function MarkedsforingSalgNystartedeModule() {
       intro="Lavbudsjett-markedsføring, første salg og kundeanskaffelse når merkevaren er ukjent."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/markedsforing-salg-nystartede', description: 'Markedsføring og salg for nystartede — 10 slides' }}
     />
   );
 }

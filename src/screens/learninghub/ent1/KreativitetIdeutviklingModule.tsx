@@ -37,6 +37,7 @@ export default function KreativitetIdeutviklingModule() {
       intro="Idémyldring, design thinking og hvordan en god forretningsidé kjennes igjen tidlig."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/kreativitet-ideutvikling', description: 'Kreativitet og idéutvikling — 10 slides' }}
     />
   );
 }

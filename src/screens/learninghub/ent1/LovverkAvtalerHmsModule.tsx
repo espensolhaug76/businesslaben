@@ -37,6 +37,7 @@ export default function LovverkAvtalerHmsModule() {
       intro="Aksjeloven, avtaler med kunder og leverandører, og HMS-krav fra første ansatt."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/lovverk-avtaler-hms', description: 'Lovverk, avtaler og HMS — 10 slides' }}
     />
   );
 }

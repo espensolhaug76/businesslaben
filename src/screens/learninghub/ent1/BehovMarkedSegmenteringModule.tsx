@@ -37,6 +37,7 @@ export default function BehovMarkedSegmenteringModule() {
       intro="Identifiser et reelt kundebehov, beskriv målgruppen og test ideen mot faktisk marked."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/behov-marked-segmentering', description: 'Behov, marked og segmentering — 10 slides' }}
     />
   );
 }

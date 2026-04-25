@@ -37,6 +37,7 @@ export default function SamarbeidTeambyggingModule() {
       intro="Cofoundere, ansvarsfordeling og teamdynamikk — slik unngår dere konflikter som dreper bedriften."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/samarbeid-teambygging', description: 'Samarbeid og teambygging — 10 slides' }}
     />
   );
 }

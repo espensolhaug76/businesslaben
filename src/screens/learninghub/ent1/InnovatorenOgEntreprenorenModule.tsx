@@ -37,6 +37,7 @@ export default function InnovatorenOgEntreprenorenModule() {
       intro="Hvem er entreprenøren, hvilke egenskaper kjennetegner innovatøren, og hva driver folk til å starte for seg selv."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/innovatoren-og-entreprenoren', description: 'Innovatøren og entreprenøren — 10 slides' }}
     />
   );
 }

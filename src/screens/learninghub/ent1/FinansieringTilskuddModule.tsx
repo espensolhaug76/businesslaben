@@ -37,6 +37,7 @@ export default function FinansieringTilskuddModule() {
       intro="Egenkapital, lån, Innovasjon Norge og crowdfunding — finansieringskildene en gründer bør kjenne."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/finansiering-tilskudd', description: 'Finansiering og tilskudd — 10 slides' }}
     />
   );
 }

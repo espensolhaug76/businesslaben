@@ -37,6 +37,7 @@ export default function EtableringSelskapsformerModule() {
       intro="AS, ENK eller ANS? Slik velger du riktig selskapsform og kommer deg gjennom Brønnøysund."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/etablering-selskapsformer', description: 'Etablering og selskapsformer — 10 slides' }}
     />
   );
 }

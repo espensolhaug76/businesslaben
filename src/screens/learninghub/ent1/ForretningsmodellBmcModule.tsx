@@ -37,6 +37,7 @@ export default function ForretningsmodellBmcModule() {
       intro="Business Model Canvas — verktøyet som kondenserer en forretningsidé til ni byggeklosser."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent1/forretningsmodell-bmc', description: 'Forretningsmodellen (BMC) — 10 slides' }}
     />
   );
 }
