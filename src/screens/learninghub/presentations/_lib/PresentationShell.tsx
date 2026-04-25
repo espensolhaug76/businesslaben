@@ -466,6 +466,7 @@ export default function PresentationShell({
 
       <TeacherPresentationEditor
         presentationRoute={PRESENTATION_ROUTE}
+        presentationTitle={presentationName}
         onSlidesChange={setTeacherSlides}
         currentSlide={current}
         slideInfos={slideInfos}

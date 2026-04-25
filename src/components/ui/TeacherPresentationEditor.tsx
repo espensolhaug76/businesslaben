@@ -10,6 +10,9 @@ export interface SlideInfo {
 
 interface Props {
   presentationRoute: string
+  /** Visningsnavn som vises som hovedtittel i editor-headeren. Faller tilbake
+   *  til kun «Rediger presentasjon» hvis ikke gitt. */
+  presentationTitle?: string
   onSlidesChange: (slides: TeacherSlide[]) => void
   currentSlide: number
   slideInfos: SlideInfo[]
@@ -184,6 +187,7 @@ function SlideForm({ type, form, setForm }: SlideFormProps) {
 // ── Main component ───────────────────────────────────────────────────────────
 export default function TeacherPresentationEditor({
   presentationRoute,
+  presentationTitle,
   onSlidesChange,
   currentSlide,
   slideInfos,
@@ -301,24 +305,48 @@ export default function TeacherPresentationEditor({
             }}
           >
             {/* Header */}
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b', margin: 0 }}>Rediger presentasjon</p>
-                <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>
-                  {slideInfos.length} lysbilder totalt · {slides.length} egne
-                  <span style={{ marginLeft: 12 }}>
-                    <span style={{ color: '#38bdf8' }}>● </span>original
-                    <span style={{ color: '#a78bfa', marginLeft: 8 }}>● </span>quiz
-                    <span style={{ color: '#f59e0b', marginLeft: 8 }}>● </span>ditt
-                  </span>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0, gap: 12 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                {presentationTitle ? (
+                  <>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', margin: 0, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {presentationTitle}
+                    </p>
+                    <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 0' }}>
+                      <span style={{ color: '#f59e0b', fontWeight: 600 }}>Rediger presentasjon</span>
+                      <span style={{ color: '#475569' }}> · {slideInfos.length} lysbilder · {slides.length} egne</span>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b', margin: 0 }}>Rediger presentasjon</p>
+                    <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>
+                      {slideInfos.length} lysbilder totalt · {slides.length} egne
+                    </p>
+                  </>
+                )}
+                <p style={{ fontSize: 10, color: '#475569', margin: '4px 0 0' }}>
+                  <span style={{ color: '#38bdf8' }}>● </span>original
+                  <span style={{ color: '#a78bfa', marginLeft: 8 }}>● </span>quiz
+                  <span style={{ color: '#f59e0b', marginLeft: 8 }}>● </span>ditt
                 </p>
               </div>
-              <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: '#475569', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
+              <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: '#475569', fontSize: 22, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
             </div>
 
-            {/* ── Vertical slide list ── */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-
+            {/* ── Vertical slide list (scrollable; add-section sits in its own footer below) ── */}
+            <div
+              style={{
+                maxHeight: 'calc(100vh - 280px)',
+                overflowY: 'auto',
+                padding: '12px 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#38bdf8 transparent',
+              }}
+            >
               {slideInfos.map((info, i) => {
                 const col = KIND_COLORS[info.kind]
                 const isActive = i === currentSlide
@@ -331,7 +359,7 @@ export default function TeacherPresentationEditor({
                   <div
                     key={i}
                     ref={isActive ? activeRef : null}
-                    style={{ borderRadius: 12, overflow: 'hidden', border: isActive ? `2px solid ${col.accent}` : `1px solid ${col.border}`, background: col.bg, opacity: isHidden ? 0.45 : 1, transition: 'all 0.15s' }}
+                    style={{ borderRadius: 12, overflow: 'hidden', border: isActive ? `2px solid ${col.accent}` : `1px solid ${col.border}`, background: col.bg, opacity: isHidden ? 0.45 : 1, transition: 'all 0.15s', minHeight: 64, flexShrink: 0 }}
                   >
                     {/* Slide number bar */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(0,0,0,0.2)', borderBottom: `1px solid ${col.border}` }}>
@@ -381,41 +409,41 @@ export default function TeacherPresentationEditor({
                   </div>
                 )
               })}
+            </div>
 
-              {/* ── Add new slide ── */}
-              <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                {!adding ? (
-                  <>
-                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', margin: '0 0 10px' }}>Legg til lysbilde</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      {SLIDE_TYPES.map(t => (
-                        <button key={t.type} onClick={() => { setAdding(t.type); setEditingId(null); setForm({}) }}
-                          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '14px 8px', color: '#e2e8f0', fontSize: 13, cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(245,158,11,0.5)')}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
-                        >
-                          <span style={{ display: 'block', fontSize: 22, marginBottom: 4 }}>{t.icon}</span>
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b', margin: 0 }}>
-                        {SLIDE_TYPES.find(t => t.type === adding)?.icon} {SLIDE_TYPES.find(t => t.type === adding)?.label}
-                      </p>
-                      <button onClick={() => { setAdding(null); setForm({}) }} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 13 }}>Avbryt</button>
-                    </div>
-                    <SlideForm type={adding} form={form} setForm={setForm} />
-                    <button onClick={addSlide}
-                      style={{ background: '#f59e0b', border: 'none', borderRadius: 8, padding: '10px', color: '#030712', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Legg til lysbilde
-                    </button>
+            {/* ── Add new slide (footer — alltid synlig under den scrollbare lista) ── */}
+            <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0, background: '#0f172a' }}>
+              {!adding ? (
+                <>
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', margin: '0 0 10px' }}>Legg til lysbilde</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {SLIDE_TYPES.map(t => (
+                      <button key={t.type} onClick={() => { setAdding(t.type); setEditingId(null); setForm({}) }}
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '14px 8px', color: '#e2e8f0', fontSize: 13, cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(245,158,11,0.5)')}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
+                      >
+                        <span style={{ display: 'block', fontSize: 22, marginBottom: 4 }}>{t.icon}</span>
+                        {t.label}
+                      </button>
+                    ))}
                   </div>
-                )}
-              </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b', margin: 0 }}>
+                      {SLIDE_TYPES.find(t => t.type === adding)?.icon} {SLIDE_TYPES.find(t => t.type === adding)?.label}
+                    </p>
+                    <button onClick={() => { setAdding(null); setForm({}) }} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 13 }}>Avbryt</button>
+                  </div>
+                  <SlideForm type={adding} form={form} setForm={setForm} />
+                  <button onClick={addSlide}
+                    style={{ background: '#f59e0b', border: 'none', borderRadius: 8, padding: '10px', color: '#030712', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Legg til lysbilde
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
