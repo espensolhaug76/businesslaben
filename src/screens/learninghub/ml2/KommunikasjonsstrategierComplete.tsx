@@ -7,7 +7,11 @@ export default function KommunikasjonsstrategierComplete() {
       moduleIcon="📣"
       retryRoute="/learning/ml2/kommunikasjonsstrategier"
       learningOutcomes={[
-        'Innhold under utvikling — fullt læringsutbytte legges inn når modulen er ferdig',
+        'Du forstår IMC som strategisk koordinering på tvers av alle kommunikasjonskanaler',
+'Du kan strukturere kommunikasjonsmål i hierarki fra kjennskap til handling',
+'Du behersker påvirkningsmiksens 5 verktøy og strategisk vekting',
+'Du kjenner den digitale kundereisen og multi-touchpoint-realiteten',
+'Du kan velge mellom budsjettmetoder og måle effekt med riktige KPI-er',
       ]}
     />
   )
