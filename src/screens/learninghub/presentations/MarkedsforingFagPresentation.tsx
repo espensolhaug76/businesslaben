@@ -255,6 +255,21 @@ const SLIDES: ContentSlide[] = [
   ),
 ]
 
+// Titler for sidepanel-editoren — index 0 = forsiden, 1–10 = innholds-slidene.
+const SLIDE_TITLES: string[] = [
+  'Forside — Markedsføring og ledelse',
+  '1 · Definisjon',
+  '2 · Behov vs. ønsker',
+  '3 · Etterspørsel',
+  '4 · Fagets utvikling',
+  '5 · MANGO-modellen',
+  '6 · Triple Bottom Line',
+  '7 · Byttehandelen',
+  '8 · Ledelsesprosessen',
+  '9 · Case — Tine vs. Q',
+  '10 · Oppsummering',
+]
+
 const QUIZ_SLIDES: QuizQuestion[] = [
   {
     question: 'Hva er forskjellen på et behov og et ønske?',
@@ -301,6 +316,7 @@ export default function MarkedsforingFagPresentation() {
       subtitle="Mer enn salg — å skape verdi for kunden, bygge relasjoner og styre bedriften mot bærekraftige mål."
       contentSlides={SLIDES}
       quizSlides={QUIZ_SLIDES}
+      slideTitles={SLIDE_TITLES}
     />
   )
 }

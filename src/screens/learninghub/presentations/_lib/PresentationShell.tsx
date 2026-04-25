@@ -180,11 +180,15 @@ export interface PresentationShellProps {
   subtitle: string
   contentSlides: ContentSlide[]            // 10 slides etter forsiden
   quizSlides: QuizQuestion[]               // 2-3 quizer
+  /** Optional titles for the original slides (cover + content). Length should
+   *  match ORIGINAL_SLIDES (= contentSlides.length + 1). Used in the editor
+   *  side-panel; falls back to "Lysbilde N" if absent. */
+  slideTitles?: string[]
 }
 
 export default function PresentationShell({
   presentationName, subjectLabel, titleLine1, titleLine2, subtitle,
-  contentSlides, quizSlides,
+  contentSlides, quizSlides, slideTitles,
 }: PresentationShellProps) {
   const navigate = useNavigate()
   const [current, setCurrent] = useState(0)
@@ -215,7 +219,10 @@ export default function PresentationShell({
   const TOTAL_SLIDES_WITH_TEACHER = TOTAL_SLIDES + TEACHER_SLIDE_COUNT
 
   const slideInfos: SlideInfo[] = [
-    ...Array.from({ length: ORIGINAL_SLIDES }, (_, i) => ({ label: `Lysbilde ${i + 1}`, kind: 'original' as const })),
+    ...Array.from({ length: ORIGINAL_SLIDES }, (_, i) => ({
+      label: slideTitles?.[i] ?? `Lysbilde ${i + 1}`,
+      kind: 'original' as const,
+    })),
     ...quizSlides.map(q => ({ label: q.question.slice(0, 18), kind: 'quiz' as const })),
     ...teacherSlides.map(s => ({ label: s.title ?? s.quote ?? s.body ?? 'Eget lysbilde', kind: 'teacher' as const })),
   ]
@@ -226,6 +233,23 @@ export default function PresentationShell({
 
   const show = useCallback((title: string, text: string) => setModal({ title, text }), [])
   const closeModal = useCallback(() => setModal(null), [])
+
+  // Tilbake-navigasjon: gå tilbake i historikken hvis mulig, ellers fallback til /learning.
+  // history.length === 1 betyr at fanen ble åpnet direkte (ingen tidligere side å gå til).
+  const goBack = useCallback(() => {
+    if (window.history.length > 1) navigate(-1)
+    else navigate('/learning')
+  }, [navigate])
+
+  // Avslutt presentasjon: prøv window.close() (bare gyldig hvis fanen ble åpnet via JS).
+  // Hvis nettleseren ignorerer kallet, faller vi tilbake til navigasjon.
+  const closePresentation = useCallback(() => {
+    if ((window as unknown as Record<string, unknown>).__adventureEditorOpen) {
+      if (!window.confirm('Lukk presentasjonen? Åpne endringer vil ikke lagres automatisk.')) return
+    }
+    window.close()
+    setTimeout(() => goBack(), 100)
+  }, [goBack])
 
   function handleHideToggle(idx: number) {
     setHiddenSlides(prev => {
@@ -287,11 +311,11 @@ export default function PresentationShell({
       if (showPinModal) { if (e.key === 'Escape') setShowPinModal(false); return }
       if (e.key === 'ArrowRight') next()
       if (e.key === 'ArrowLeft') prev()
-      if (e.key === 'Escape') navigate(-1)
+      if (e.key === 'Escape') goBack()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [modal, showPinModal, next, prev, closeModal, navigate])
+  }, [modal, showPinModal, next, prev, closeModal, goBack])
 
   const progressPct = ((current + 1) / TOTAL_SLIDES_WITH_TEACHER) * 100
 
@@ -304,7 +328,7 @@ export default function PresentationShell({
       </div>
 
       <button
-        onClick={() => navigate(-1)}
+        onClick={goBack}
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(56,189,248,0.15)'; (e.currentTarget as HTMLElement).style.color = '#fff' }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.color = '#94a3b8' }}
         style={{ position: 'fixed', top: 16, left: 20, zIndex: 100, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.5rem 1rem', borderRadius: 99, color: '#94a3b8', fontSize: 14, cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}
@@ -354,7 +378,7 @@ export default function PresentationShell({
               studentMode={isStudentLive}
               onNext={next}
               isLast={current === TOTAL_SLIDES_WITH_TEACHER - 1 && TEACHER_SLIDE_COUNT === 0}
-              onFinish={() => navigate(-1)}
+              onFinish={goBack}
             />
           )}
           {current >= TOTAL_SLIDES && current < TOTAL_SLIDES_WITH_TEACHER && (
@@ -367,17 +391,15 @@ export default function PresentationShell({
         </motion.div>
       </AnimatePresence>
 
-      <div style={{ position: 'fixed', bottom: 40, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 16, zIndex: 50 }}>
-        <NavBtn onClick={prev} disabled={current === 0}>← Forrige</NavBtn>
-        {current === TOTAL_SLIDES_WITH_TEACHER - 1
-          ? <NavBtn onClick={() => {
-              if ((window as unknown as Record<string, unknown>).__adventureEditorOpen) {
-                if (!window.confirm('Lukk presentasjonen? Åpne endringer vil ikke lagres automatisk.')) return
-              }
-              window.close()
-            }} disabled={false}>Avslutt presentasjon ✓</NavBtn>
-          : <NavBtn onClick={next} disabled={false}>Neste →</NavBtn>}
-      </div>
+      {/* Forrige/Neste skjules på forsiden — der finnes "Start Presentasjon →" som primær handling. */}
+      {current > 0 && (
+        <div style={{ position: 'fixed', bottom: 40, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 16, zIndex: 50 }}>
+          <NavBtn onClick={prev} disabled={false}>← Forrige</NavBtn>
+          {current === TOTAL_SLIDES_WITH_TEACHER - 1
+            ? <NavBtn onClick={closePresentation} disabled={false}>Avslutt presentasjon ✓</NavBtn>
+            : <NavBtn onClick={next} disabled={false}>Neste →</NavBtn>}
+        </div>
+      )}
 
       {/* Term modal */}
       <AnimatePresence>

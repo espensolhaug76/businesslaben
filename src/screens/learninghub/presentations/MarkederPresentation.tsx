@@ -202,6 +202,21 @@ const SLIDES: ContentSlide[] = [
   ),
 ]
 
+// Titler for sidepanel-editoren — index 0 = forsiden, 1–10 = innholds-slidene.
+const SLIDE_TITLES: string[] = [
+  'Forside — Markeder og målgrupper',
+  '1 · Hva er et marked?',
+  '2 · B2C — forbrukermarkedet',
+  '3 · B2B — bedriftsmarkedet',
+  '4 · Mellomhandlere',
+  '5 · Det offentlige marked',
+  '6 · Organisasjonsmarkedet',
+  '7 · Internasjonale markeder',
+  '8 · Globalisering',
+  '9 · Case — Stormberg',
+  '10 · Oppsummering',
+]
+
 const QUIZ_SLIDES: QuizQuestion[] = [
   {
     question: 'Hva kjennetegner et B2B-marked sammenlignet med et B2C-marked?',
@@ -248,6 +263,7 @@ export default function MarkederPresentation() {
       subtitle="Forbrukermarked, bedriftsmarked, mellomhandlere, offentlig sektor, organisasjoner og internasjonale flater — hvert marked har sine egne spilleregler."
       contentSlides={SLIDES}
       quizSlides={QUIZ_SLIDES}
+      slideTitles={SLIDE_TITLES}
     />
   )
 }
