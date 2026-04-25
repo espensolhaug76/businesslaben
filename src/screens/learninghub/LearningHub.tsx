@@ -5,6 +5,12 @@ import { useGameStore } from '../../store/gameStore'
 import ThemeToggle from '../../components/ui/ThemeToggle'
 import GlossaryPopup from '../../components/ui/GlossaryPopup'
 
+export type Level = 'vg1' | 'vg2' | 'vg3'
+export type Subject = 'ssr' | 'ml' | 'ent'
+export type SsrSubject =
+  | 'forretningsdrift' | 'mfi' | 'kultur'      // VG1
+  | 'okonomi' | 'kommunikasjon' | 'hms'        // VG2
+
 export interface ModuleCard {
   icon: string
   title: string
@@ -12,8 +18,9 @@ export interface ModuleCard {
   route: string
   color: string
   storageKey?: string
-  level: 'vg1' | 'vg2' | 'ml1'
-  subject: 'forretningsdrift' | 'mfi' | 'kultur' | 'ml1'
+  level: Level
+  subject: Subject
+  ssrSubject?: SsrSubject
   presentationRoute?: string
 }
 
@@ -27,7 +34,8 @@ const FD_VG1: ModuleCard[] = [
     color: 'from-teal-600/20 to-teal-500/10 border-teal-500/30',
     storageKey: 'learning-organization',
     level: 'vg1',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'forretningsdrift',
     presentationRoute: '/learning/presentations/organisasjon',
   },
   {
@@ -38,7 +46,8 @@ const FD_VG1: ModuleCard[] = [
     color: 'from-cyan-600/20 to-cyan-500/10 border-cyan-500/30',
     storageKey: 'learning-pricing-calculator',
     level: 'vg1',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'forretningsdrift',
     presentationRoute: '/learning/presentations/prissetting',
   },
   {
@@ -49,7 +58,8 @@ const FD_VG1: ModuleCard[] = [
     color: 'from-emerald-600/20 to-emerald-500/10 border-emerald-500/30',
     storageKey: 'learning-budgeting',
     level: 'vg1',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'forretningsdrift',
     presentationRoute: '/learning/presentations/regnskap',
   },
   {
@@ -60,7 +70,8 @@ const FD_VG1: ModuleCard[] = [
     color: 'from-yellow-600/20 to-yellow-500/10 border-yellow-500/30',
     storageKey: 'learning-hms',
     level: 'vg1',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'forretningsdrift',
     presentationRoute: '/learning/presentations/hms',
   },
   {
@@ -71,7 +82,8 @@ const FD_VG1: ModuleCard[] = [
     color: 'from-red-600/20 to-red-500/10 border-red-500/30',
     storageKey: 'learning-contingency',
     level: 'vg1',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'forretningsdrift',
     presentationRoute: '/learning/presentations/beredskapsplaner',
   },
   {
@@ -82,7 +94,8 @@ const FD_VG1: ModuleCard[] = [
     color: 'from-green-600/20 to-green-500/10 border-green-500/30',
     storageKey: 'learning-verdikjeden',
     level: 'vg1',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'forretningsdrift',
     presentationRoute: '/learning/presentations/verdikjeden',
   },
   {
@@ -93,7 +106,8 @@ const FD_VG1: ModuleCard[] = [
     color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30',
     storageKey: 'learning-risikovurdering',
     level: 'vg1',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'forretningsdrift',
     presentationRoute: '/learning/presentations/risikovurdering',
   },
   {
@@ -104,7 +118,8 @@ const FD_VG1: ModuleCard[] = [
     color: 'from-slate-600/20 to-slate-500/10 border-slate-500/30',
     storageKey: 'learning-regler-lovverk',
     level: 'vg1',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'forretningsdrift',
     presentationRoute: '/learning/presentations/regler-lovverk',
   },
 ]
@@ -119,7 +134,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-blue-600/20 to-blue-500/10 border-blue-500/30',
     storageKey: 'learning-mfi-produkt-behov',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/produkt',
   },
   {
@@ -130,7 +146,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',
     storageKey: 'learning-mfi-prisstrategier',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/prissetting',
   },
   {
@@ -141,7 +158,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30',
     storageKey: 'learning-mfi-distribusjon',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/distribusjon',
   },
   {
@@ -152,7 +170,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-pink-600/20 to-pink-500/10 border-pink-500/30',
     storageKey: 'learning-mfi-kommunikasjon-kanaler',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/kampanje',
   },
   {
@@ -163,7 +182,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-violet-600/20 to-violet-500/10 border-violet-500/30',
     storageKey: 'learning-mfi-markedsplan',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/markedsplan',
   },
   {
@@ -174,7 +194,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-indigo-600/20 to-indigo-500/10 border-indigo-500/30',
     storageKey: 'learning-mfi-salgsprosessen',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/salg',
   },
   {
@@ -185,7 +206,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-green-600/20 to-green-500/10 border-green-500/30',
     storageKey: 'learning-mfi-baerekraft-forretningsidee',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/forretningsidee',
   },
   {
@@ -196,7 +218,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-zinc-600/20 to-zinc-500/10 border-zinc-500/30',
     storageKey: 'learning-mfi-administrative-rutiner',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/administrative-funksjoner',
   },
   {
@@ -207,7 +230,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-slate-600/20 to-slate-500/10 border-slate-500/30',
     storageKey: 'learning-mfi-markedsforingsloven',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/regelverk-markedsforing',
   },
   {
@@ -218,7 +242,8 @@ const MFI_VG1: ModuleCard[] = [
     color: 'from-purple-600/20 to-purple-500/10 border-purple-500/30',
     storageKey: 'learning-mfi-teknologi-ki',
     level: 'vg1',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'mfi',
     presentationRoute: '/learning/presentations/teknologi-ki',
   },
 ]
@@ -233,7 +258,8 @@ const KULTUR_VG1: ModuleCard[] = [
     color: 'from-sky-600/20 to-sky-500/10 border-sky-500/30',
     storageKey: 'learning-kultur-kommunikasjon',
     level: 'vg1',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'kultur',
     presentationRoute: '/learning/presentations/kommunikasjon',
   },
   {
@@ -244,7 +270,8 @@ const KULTUR_VG1: ModuleCard[] = [
     color: 'from-rose-600/20 to-rose-500/10 border-rose-500/30',
     storageKey: 'learning-kultur-klagebehandling',
     level: 'vg1',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'kultur',
     presentationRoute: '/learning/presentations/klaghandtering',
   },
   {
@@ -255,7 +282,8 @@ const KULTUR_VG1: ModuleCard[] = [
     color: 'from-fuchsia-600/20 to-fuchsia-500/10 border-fuchsia-500/30',
     storageKey: 'learning-kultur-kulturforstaelse',
     level: 'vg1',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'kultur',
     presentationRoute: '/learning/presentations/relasjonsbygging',
   },
   {
@@ -266,7 +294,8 @@ const KULTUR_VG1: ModuleCard[] = [
     color: 'from-lime-600/20 to-lime-500/10 border-lime-500/30',
     storageKey: 'learning-kultur-etikk',
     level: 'vg1',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'kultur',
     presentationRoute: '/learning/presentations/etikk-baerekraft',
   },
   {
@@ -277,7 +306,8 @@ const KULTUR_VG1: ModuleCard[] = [
     color: 'from-cyan-600/20 to-cyan-500/10 border-cyan-500/30',
     storageKey: 'learning-kultur-teamarbeid',
     level: 'vg1',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'kultur',
     presentationRoute: '/learning/presentations/partene-arbeidslivet',
   },
   {
@@ -288,7 +318,8 @@ const KULTUR_VG1: ModuleCard[] = [
     color: 'from-teal-600/20 to-teal-500/10 border-teal-500/30',
     storageKey: 'learning-kultur-vertskapsrollen',
     level: 'vg1',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'kultur',
     presentationRoute: '/learning/presentations/vertskapsrollen',
   },
   {
@@ -299,7 +330,8 @@ const KULTUR_VG1: ModuleCard[] = [
     color: 'from-red-600/20 to-red-500/10 border-red-500/30',
     storageKey: 'learning-kultur-konflikt-nod',
     level: 'vg1',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'kultur',
     presentationRoute: '/learning/presentations/konflikt-nod',
   },
 ]
@@ -314,7 +346,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-teal-600/20 to-teal-500/10 border-teal-500/30',
     storageKey: 'learning-vg2-forretningsplan',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
     presentationRoute: '/learning/presentations/forretningsidee',
   },
   {
@@ -325,7 +358,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-emerald-600/20 to-emerald-500/10 border-emerald-500/30',
     storageKey: 'learning-vg2-lonn-personalkostnader',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
     presentationRoute: '/learning/presentations/administrative-funksjoner',
   },
   {
@@ -336,7 +370,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-cyan-600/20 to-cyan-500/10 border-cyan-500/30',
     storageKey: 'learning-vg2-regnskapsanalyse',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
     presentationRoute: '/learning/presentations/regnskap',
   },
   {
@@ -347,7 +382,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-red-600/20 to-red-500/10 border-red-500/30',
     storageKey: 'learning-vg2-svinnforebygging',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
     presentationRoute: '/learning/presentations/verdikjeden',
   },
   {
@@ -358,7 +394,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-teal-600/20 to-teal-500/10 border-teal-500/30',
     storageKey: 'learning-vg2-rekrutteringsprosesser',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
   },
   {
     icon: '📊',
@@ -368,7 +405,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-blue-600/20 to-blue-500/10 border-blue-500/30',
     storageKey: 'learning-vg2-nokkeltall-lonnsomhet',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
   },
   {
     icon: '🌍',
@@ -378,7 +416,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-emerald-600/20 to-emerald-500/10 border-emerald-500/30',
     storageKey: 'learning-vg2-baerekraft-verdikjede',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
   },
   {
     icon: '🌱',
@@ -388,7 +427,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-green-600/20 to-green-500/10 border-green-500/30',
     storageKey: 'learning-vg2-trender-forretningsmodeller',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
   },
   {
     icon: '🧮',
@@ -398,7 +438,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-violet-600/20 to-violet-500/10 border-violet-500/30',
     storageKey: 'learning-vg2-pris-og-kalkulasjon',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
   },
   {
     icon: '⚖️',
@@ -408,7 +449,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-slate-600/20 to-slate-500/10 border-slate-500/30',
     storageKey: 'learning-vg2-regelverk-servicebedrifter',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
   },
   {
     icon: '💻',
@@ -418,7 +460,8 @@ const FD_VG2: ModuleCard[] = [
     color: 'from-cyan-600/20 to-cyan-500/10 border-cyan-500/30',
     storageKey: 'learning-vg2-digitale-system-kundeoppfolging',
     level: 'vg2',
-    subject: 'forretningsdrift',
+    subject: 'ssr',
+    ssrSubject: 'okonomi',
   },
 ]
 
@@ -432,7 +475,8 @@ const INNOVASJON_VG2: ModuleCard[] = [
     color: 'from-yellow-600/20 to-yellow-500/10 border-yellow-500/30',
     storageKey: 'learning-vg2-merkevare',
     level: 'vg2',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'kommunikasjon',
     presentationRoute: '/learning/presentations/forretningsidee',
   },
   {
@@ -443,7 +487,8 @@ const INNOVASJON_VG2: ModuleCard[] = [
     color: 'from-blue-600/20 to-blue-500/10 border-blue-500/30',
     storageKey: 'learning-vg2-markedsundersokelse',
     level: 'vg2',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'kommunikasjon',
     presentationRoute: '/learning/presentations/markedsplan',
   },
   {
@@ -454,7 +499,8 @@ const INNOVASJON_VG2: ModuleCard[] = [
     color: 'from-sky-600/20 to-sky-500/10 border-sky-500/30',
     storageKey: 'learning-vg2-reiselivsprodukt',
     level: 'vg2',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'kommunikasjon',
     presentationRoute: '/learning/presentations/vertskapsrollen',
   },
   {
@@ -465,7 +511,8 @@ const INNOVASJON_VG2: ModuleCard[] = [
     color: 'from-violet-600/20 to-violet-500/10 border-violet-500/30',
     storageKey: 'learning-vg2-posisjonering',
     level: 'vg2',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'kommunikasjon',
     presentationRoute: '/learning/presentations/forbrukeratferd',
   },
   {
@@ -476,7 +523,8 @@ const INNOVASJON_VG2: ModuleCard[] = [
     color: 'from-rose-600/20 to-rose-500/10 border-rose-500/30',
     storageKey: 'learning-vg2-markedsforingstrekan',
     level: 'vg2',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'kommunikasjon',
   },
   {
     icon: '💡',
@@ -486,7 +534,8 @@ const INNOVASJON_VG2: ModuleCard[] = [
     color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',
     storageKey: 'learning-vg2-innovasjon-produktutvikling',
     level: 'vg2',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'kommunikasjon',
   },
   {
     icon: '📣',
@@ -496,7 +545,8 @@ const INNOVASJON_VG2: ModuleCard[] = [
     color: 'from-pink-600/20 to-pink-500/10 border-pink-500/30',
     storageKey: 'learning-vg2-markedsforingskampanjer',
     level: 'vg2',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'kommunikasjon',
   },
   {
     icon: '🤝',
@@ -506,7 +556,8 @@ const INNOVASJON_VG2: ModuleCard[] = [
     color: 'from-green-600/20 to-green-500/10 border-green-500/30',
     storageKey: 'learning-vg2-salgsprosessen',
     level: 'vg2',
-    subject: 'mfi',
+    subject: 'ssr',
+    ssrSubject: 'kommunikasjon',
   },
 ]
 
@@ -520,7 +571,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-indigo-600/20 to-indigo-500/10 border-indigo-500/30',
     storageKey: 'learning-vg2-profesjonell-kommunikasjon',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
     presentationRoute: '/learning/presentations/kommunikasjon',
   },
   {
@@ -531,7 +583,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-rose-600/20 to-rose-500/10 border-rose-500/30',
     storageKey: 'learning-vg2-konflikthandtering',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
     presentationRoute: '/learning/presentations/konflikt-nod',
   },
   {
@@ -542,7 +595,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-lime-600/20 to-lime-500/10 border-lime-500/30',
     storageKey: 'learning-vg2-etiske-dilemmaer',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
     presentationRoute: '/learning/presentations/etikk-baerekraft',
   },
   {
@@ -553,7 +607,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',
     storageKey: 'learning-vg2-risikoanalyse',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
     presentationRoute: '/learning/presentations/regler-lovverk',
   },
   {
@@ -564,7 +619,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-fuchsia-600/20 to-fuchsia-500/10 border-fuchsia-500/30',
     storageKey: 'learning-vg2-internasjonale-markeder',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
     presentationRoute: '/learning/presentations/relasjonsbygging',
   },
   {
@@ -575,7 +631,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-zinc-600/20 to-zinc-500/10 border-zinc-500/30',
     storageKey: 'learning-vg2-arbeidslivets-spilleregler',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
     presentationRoute: '/learning/presentations/partene-arbeidslivet',
   },
   {
@@ -586,7 +643,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30',
     storageKey: 'learning-vg2-beredskap',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
   },
   {
     icon: '🚑',
@@ -596,7 +654,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-rose-600/20 to-rose-500/10 border-rose-500/30',
     storageKey: 'learning-vg2-forstehjelp',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
   },
   {
     icon: '🔥',
@@ -606,7 +665,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30',
     storageKey: 'learning-vg2-brannvern',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
   },
   {
     icon: '🦺',
@@ -616,7 +676,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-yellow-600/20 to-yellow-500/10 border-yellow-500/30',
     storageKey: 'learning-vg2-hms-arbeid-roller',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
   },
   {
     icon: '🔒',
@@ -626,7 +687,8 @@ const KULTUR_VG2: ModuleCard[] = [
     color: 'from-slate-600/20 to-slate-500/10 border-slate-500/30',
     storageKey: 'learning-vg2-digital-sikkerhet-personvern',
     level: 'vg2',
-    subject: 'kultur',
+    subject: 'ssr',
+    ssrSubject: 'hms',
   },
 ]
 
@@ -639,8 +701,8 @@ const ML1_MODULES: ModuleCard[] = [
     route: '/learning/ml1/markedsforingfag',
     color: 'from-teal-600/20 to-teal-500/10 border-teal-500/30',
     storageKey: 'learning-ml1-markedsforingfag',
-    level: 'ml1',
-    subject: 'ml1',
+    level: 'vg2',
+    subject: 'ml',
     presentationRoute: '/learning/presentations/forbrukeratferd',
   },
   {
@@ -650,8 +712,8 @@ const ML1_MODULES: ModuleCard[] = [
     route: '/learning/ml1/situasjonsanalyse',
     color: 'from-blue-600/20 to-blue-500/10 border-blue-500/30',
     storageKey: 'learning-ml1-situasjonsanalyse',
-    level: 'ml1',
-    subject: 'ml1',
+    level: 'vg2',
+    subject: 'ml',
     presentationRoute: '/learning/presentations/markedsplan',
   },
   {
@@ -661,8 +723,8 @@ const ML1_MODULES: ModuleCard[] = [
     route: '/learning/ml1/forbrukeratferd',
     color: 'from-purple-600/20 to-purple-500/10 border-purple-500/30',
     storageKey: 'learning-ml1-forbrukeratferd',
-    level: 'ml1',
-    subject: 'ml1',
+    level: 'vg2',
+    subject: 'ml',
     presentationRoute: '/learning/presentations/forbrukeratferd',
   },
   {
@@ -672,8 +734,8 @@ const ML1_MODULES: ModuleCard[] = [
     route: '/learning/ml1/stp',
     color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',
     storageKey: 'learning-ml1-stp',
-    level: 'ml1',
-    subject: 'ml1',
+    level: 'vg2',
+    subject: 'ml',
     presentationRoute: '/learning/presentations/forbrukeratferd',
   },
   {
@@ -683,8 +745,8 @@ const ML1_MODULES: ModuleCard[] = [
     route: '/learning/ml1/produktstrategi',
     color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30',
     storageKey: 'learning-ml1-produktstrategi',
-    level: 'ml1',
-    subject: 'ml1',
+    level: 'vg2',
+    subject: 'ml',
     presentationRoute: '/learning/presentations/konkurransemidlene',
   },
   {
@@ -694,8 +756,8 @@ const ML1_MODULES: ModuleCard[] = [
     route: '/learning/ml1/prisstrategi',
     color: 'from-emerald-600/20 to-emerald-500/10 border-emerald-500/30',
     storageKey: 'learning-ml1-prisstrategi',
-    level: 'ml1',
-    subject: 'ml1',
+    level: 'vg2',
+    subject: 'ml',
     presentationRoute: '/learning/presentations/prissetting',
   },
   {
@@ -705,8 +767,8 @@ const ML1_MODULES: ModuleCard[] = [
     route: '/learning/ml1/distribusjonsstrategi',
     color: 'from-cyan-600/20 to-cyan-500/10 border-cyan-500/30',
     storageKey: 'learning-ml1-distribusjonsstrategi',
-    level: 'ml1',
-    subject: 'ml1',
+    level: 'vg2',
+    subject: 'ml',
     presentationRoute: '/learning/presentations/konkurransemidlene',
   },
   {
@@ -716,55 +778,145 @@ const ML1_MODULES: ModuleCard[] = [
     route: '/learning/ml1/markedskommunikasjon',
     color: 'from-pink-600/20 to-pink-500/10 border-pink-500/30',
     storageKey: 'learning-ml1-markedskommunikasjon',
-    level: 'ml1',
-    subject: 'ml1',
+    level: 'vg2',
+    subject: 'ml',
     presentationRoute: '/learning/presentations/kampanje',
+  },
+  {
+    icon: '🏪',
+    title: 'Markeder',
+    description: 'Markedstyper, mellomledd og struktur — fra B2C og B2B til offentlige og internasjonale markeder.',
+    route: '/learning/ml1/markeder',
+    color: 'from-teal-600/20 to-teal-500/10 border-teal-500/30',
+    storageKey: 'learning-ml1-markeder',
+    level: 'vg2',
+    subject: 'ml',
+  },
+  {
+    icon: '🏛️',
+    title: 'Profesjonelle markeder',
+    description: 'B2B-markeder i dybden — innkjøpsenhet (DMU), anbudsprosesser og langsiktig relasjonsbygging.',
+    route: '/learning/ml1/profesjonelle-markeder',
+    color: 'from-blue-600/20 to-blue-500/10 border-blue-500/30',
+    storageKey: 'learning-ml1-profesjonelle-markeder',
+    level: 'vg2',
+    subject: 'ml',
   },
 ]
 
-export const ALL_MODULES = [...FD_VG1, ...MFI_VG1, ...KULTUR_VG1, ...FD_VG2, ...INNOVASJON_VG2, ...KULTUR_VG2, ...ML1_MODULES]
+// ── ML2 (VG3 Markedsføring og ledelse 2) ─────────────────────────────────────
+const ML2_MODULES: ModuleCard[] = [
+  { icon: '🎯', title: 'Strategisk planlegging',                           description: 'Fra visjon til handling — strategiprosessen som binder sammen marked, organisasjon og økonomi.', route: '/learning/ml2/strategisk-planlegging',                  color: 'from-teal-600/20 to-teal-500/10 border-teal-500/30',     storageKey: 'learning-ml2-strategisk-planlegging',                  level: 'vg3', subject: 'ml' },
+  { icon: '🌟', title: 'Visjon og mål',                                    description: 'Visjon, forretningsidé og SMARTE mål — slik styres en bedrift mot ønsket fremtid.',           route: '/learning/ml2/visjon-og-mal',                            color: 'from-blue-600/20 to-blue-500/10 border-blue-500/30',     storageKey: 'learning-ml2-visjon-og-mal',                            level: 'vg3', subject: 'ml' },
+  { icon: '🔍', title: 'Markeds- og bransjeanalyse',                       description: 'PESTEL, SWOT og Porters fem krefter — verktøyene for å forstå marked og konkurranse på dypt nivå.', route: '/learning/ml2/markeds-og-bransjeanalyse',               color: 'from-violet-600/20 to-violet-500/10 border-violet-500/30', storageKey: 'learning-ml2-markeds-og-bransjeanalyse',                level: 'vg3', subject: 'ml' },
+  { icon: '👤', title: 'Lederens rolle',                                   description: 'Lederstil, motivasjon og endringsledelse — hva som skiller en god leder fra en effektiv leder.', route: '/learning/ml2/lederens-rolle',                          color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',  storageKey: 'learning-ml2-lederens-rolle',                          level: 'vg3', subject: 'ml' },
+  { icon: '🌱', title: 'Samfunnsansvar, bærekraft og omdømme',             description: 'CSR, ESG og Triple Bottom Line — bærekraft som strategisk fortrinn og omdømmebygger.',         route: '/learning/ml2/samfunnsansvar-baerekraft-omdomme',        color: 'from-emerald-600/20 to-emerald-500/10 border-emerald-500/30', storageKey: 'learning-ml2-samfunnsansvar-baerekraft-omdomme',     level: 'vg3', subject: 'ml' },
+  { icon: '⚖️', title: 'Etikk i markedsføringen',                          description: 'Etiske dilemmaer i reklame, salg og dataetikk — grensen mellom påvirkning og manipulasjon.',  route: '/learning/ml2/etikk-i-markedsforingen',                 color: 'from-cyan-600/20 to-cyan-500/10 border-cyan-500/30',     storageKey: 'learning-ml2-etikk-i-markedsforingen',                 level: 'vg3', subject: 'ml' },
+  { icon: '⭐', title: 'Merkevarestrategi',                                description: 'Brand equity, merkevarearkitektur og posisjonering — hvordan sterke merker bygges over tid.',  route: '/learning/ml2/merkevarestrategi',                        color: 'from-pink-600/20 to-pink-500/10 border-pink-500/30',     storageKey: 'learning-ml2-merkevarestrategi',                        level: 'vg3', subject: 'ml' },
+  { icon: '📦', title: 'Produktstrategi (avansert)',                       description: 'PLC, innovasjon og ettermarked — produktledelse på VG3-nivå med fokus på porteføljeteknikk.', route: '/learning/ml2/produktstrategi-avansert',                color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30', storageKey: 'learning-ml2-produktstrategi-avansert',                 level: 'vg3', subject: 'ml' },
+  { icon: '💰', title: 'Prisstrategi (avansert)',                          description: 'Verdibasert prising, dynamiske modeller og prisdiskriminering — pris som strategisk styringsverktøy.', route: '/learning/ml2/prisstrategi-avansert',                color: 'from-teal-600/20 to-teal-500/10 border-teal-500/30',     storageKey: 'learning-ml2-prisstrategi-avansert',                    level: 'vg3', subject: 'ml' },
+  { icon: '🚚', title: 'Distribusjonsstrategi (avansert)',                 description: 'Omnikanal, plattformøkonomi og direct-to-consumer — distribusjon som konkurransefortrinn.',     route: '/learning/ml2/distribusjonsstrategi-avansert',          color: 'from-blue-600/20 to-blue-500/10 border-blue-500/30',     storageKey: 'learning-ml2-distribusjonsstrategi-avansert',           level: 'vg3', subject: 'ml' },
+  { icon: '📣', title: 'Kommunikasjonsstrategier',                         description: 'IMC, digital kundereise og innholdsmarkedsføring — å nå riktig kunde med riktig budskap.',     route: '/learning/ml2/kommunikasjonsstrategier',                color: 'from-violet-600/20 to-violet-500/10 border-violet-500/30', storageKey: 'learning-ml2-kommunikasjonsstrategier',                 level: 'vg3', subject: 'ml' },
+  { icon: '📊', title: 'Markedsmiks og effektmåling',                      description: 'KPI, ROI og ROAS — hvordan måle om markedsføringen faktisk virker, og styre etter data.',      route: '/learning/ml2/markedsmiks-og-effektmaling',             color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',  storageKey: 'learning-ml2-markedsmiks-og-effektmaling',              level: 'vg3', subject: 'ml' },
+  { icon: '🏢', title: 'Organisering og ledelse (strategisk)',             description: 'Organisasjonsstruktur, kultur og endringsledelse — slik støtter organisasjonen strategien.',  route: '/learning/ml2/organisering-og-ledelse-strategisk',      color: 'from-emerald-600/20 to-emerald-500/10 border-emerald-500/30', storageKey: 'learning-ml2-organisering-og-ledelse-strategisk',    level: 'vg3', subject: 'ml' },
+  { icon: '👥', title: 'Personaladministrasjon og HRM',                    description: 'Rekruttering, kompetanseutvikling og lønn — strategisk human resource management i praksis.', route: '/learning/ml2/personaladministrasjon-hrm',              color: 'from-cyan-600/20 to-cyan-500/10 border-cyan-500/30',     storageKey: 'learning-ml2-personaladministrasjon-hrm',               level: 'vg3', subject: 'ml' },
+  { icon: '🌐', title: 'Internasjonal markedsføring',                      description: 'Eksport, kulturforståelse og global merkevarebygging — markedsføring over landegrenser.',     route: '/learning/ml2/internasjonal-markedsforing',             color: 'from-pink-600/20 to-pink-500/10 border-pink-500/30',     storageKey: 'learning-ml2-internasjonal-markedsforing',              level: 'vg3', subject: 'ml' },
+  { icon: '📈', title: 'Økonomistyring, kalkulasjon og budsjettering',     description: 'Bidragskalkyle, selvkost og budsjettoppfølging — økonomistyring som beslutningsgrunnlag.',     route: '/learning/ml2/okonomistyring-kalkulasjon-budsjettering', color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30', storageKey: 'learning-ml2-okonomistyring-kalkulasjon-budsjettering', level: 'vg3', subject: 'ml' },
+  { icon: '📋', title: 'Markedsplanen',                                    description: 'Den helhetlige markedsplanen — slik bindes analyse, mål, strategi, tiltak og budsjett sammen.', route: '/learning/ml2/markedsplanen',                            color: 'from-teal-600/20 to-teal-500/10 border-teal-500/30',     storageKey: 'learning-ml2-markedsplanen',                            level: 'vg3', subject: 'ml' },
+]
 
-const SUBJECT_THUMBNAIL_STYLE: Record<ModuleCard['subject'], string> = {
+// ── ENT1 (VG2 Entreprenørskap 1) ─────────────────────────────────────────────
+const ENT1_MODULES: ModuleCard[] = [
+  { icon: '🧑‍💼', title: 'Innovatøren og entreprenøren',          description: 'Hvem er entreprenøren, hvilke egenskaper kjennetegner innovatøren, og hva driver folk til å starte for seg selv.', route: '/learning/ent1/innovatoren-og-entreprenoren', color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',   storageKey: 'learning-ent1-innovatoren-og-entreprenoren', level: 'vg2', subject: 'ent' },
+  { icon: '💡',     title: 'Kreativitet og idéutvikling',           description: 'Idémyldring, design thinking og hvordan en god forretningsidé kjennes igjen tidlig.',                                  route: '/learning/ent1/kreativitet-ideutvikling',     color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30', storageKey: 'learning-ent1-kreativitet-ideutvikling',     level: 'vg2', subject: 'ent' },
+  { icon: '🎯',     title: 'Behov, marked og segmentering',         description: 'Identifiser et reelt kundebehov, beskriv målgruppen og test ideen mot faktisk marked.',                              route: '/learning/ent1/behov-marked-segmentering',    color: 'from-yellow-600/20 to-yellow-500/10 border-yellow-500/30', storageKey: 'learning-ent1-behov-marked-segmentering',    level: 'vg2', subject: 'ent' },
+  { icon: '🗺️',    title: 'Forretningsmodell og BMC',              description: 'Business Model Canvas — verktøyet som kondenserer en forretningsidé til ni byggeklosser.',                          route: '/learning/ent1/forretningsmodell-bmc',        color: 'from-rose-600/20 to-rose-500/10 border-rose-500/30',     storageKey: 'learning-ent1-forretningsmodell-bmc',        level: 'vg2', subject: 'ent' },
+  { icon: '🏛️',    title: 'Etablering og selskapsformer',          description: 'AS, ENK eller ANS? Slik velger du riktig selskapsform og kommer deg gjennom Brønnøysund.',                          route: '/learning/ent1/etablering-selskapsformer',    color: 'from-fuchsia-600/20 to-fuchsia-500/10 border-fuchsia-500/30', storageKey: 'learning-ent1-etablering-selskapsformer', level: 'vg2', subject: 'ent' },
+  { icon: '💰',     title: 'Finansiering og tilskudd',              description: 'Egenkapital, lån, Innovasjon Norge og crowdfunding — finansieringskildene en gründer bør kjenne.',                  route: '/learning/ent1/finansiering-tilskudd',        color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',   storageKey: 'learning-ent1-finansiering-tilskudd',        level: 'vg2', subject: 'ent' },
+  { icon: '📊',     title: 'Økonomisk planlegging og budsjett',     description: 'Likviditetsbudsjett, resultatbudsjett og break-even — slik holder du styr på pengene fra dag én.',                  route: '/learning/ent1/okonomisk-planlegging-budsjett', color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30', storageKey: 'learning-ent1-okonomisk-planlegging-budsjett', level: 'vg2', subject: 'ent' },
+  { icon: '📣',     title: 'Markedsføring og salg for nystartede',  description: 'Lavbudsjett-markedsføring, første salg og kundeanskaffelse når merkevaren er ukjent.',                                route: '/learning/ent1/markedsforing-salg-nystartede', color: 'from-yellow-600/20 to-yellow-500/10 border-yellow-500/30', storageKey: 'learning-ent1-markedsforing-salg-nystartede', level: 'vg2', subject: 'ent' },
+  { icon: '⚖️',    title: 'Lovverk, avtaler og HMS',               description: 'Aksjeloven, avtaler med kunder og leverandører, og HMS-krav fra første ansatt.',                                     route: '/learning/ent1/lovverk-avtaler-hms',          color: 'from-rose-600/20 to-rose-500/10 border-rose-500/30',     storageKey: 'learning-ent1-lovverk-avtaler-hms',          level: 'vg2', subject: 'ent' },
+  { icon: '🤝',     title: 'Samarbeid og teambygging',              description: 'Cofoundere, ansvarsfordeling og teamdynamikk — slik unngår dere konflikter som dreper bedriften.',                  route: '/learning/ent1/samarbeid-teambygging',        color: 'from-fuchsia-600/20 to-fuchsia-500/10 border-fuchsia-500/30', storageKey: 'learning-ent1-samarbeid-teambygging',     level: 'vg2', subject: 'ent' },
+]
+
+// ── ENT2 (VG3 Entreprenørskap 2) ─────────────────────────────────────────────
+const ENT2_MODULES: ModuleCard[] = [
+  { icon: '📈',  title: 'Strategisk planlegging for vekst',                description: 'Fra etablert drift til skalerbar bedrift — strategisk planlegging i vekstfase.',                              route: '/learning/ent2/strategisk-planlegging-vekst',           color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',   storageKey: 'learning-ent2-strategisk-planlegging-vekst',           level: 'vg3', subject: 'ent' },
+  { icon: '🚀',  title: 'Forretningsutvikling og skalering',               description: 'Pivotering, nye markeder og hvordan skalere uten å miste kvalitet eller kultur.',                              route: '/learning/ent2/forretningsutvikling-skalering',          color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30', storageKey: 'learning-ent2-forretningsutvikling-skalering',          level: 'vg3', subject: 'ent' },
+  { icon: '🔍',  title: 'Markedsanalyse og posisjonering',                 description: 'Avansert markedsanalyse og strategisk posisjonering for vekstbedrifter.',                                       route: '/learning/ent2/markedsanalyse-posisjonering',           color: 'from-yellow-600/20 to-yellow-500/10 border-yellow-500/30', storageKey: 'learning-ent2-markedsanalyse-posisjonering',           level: 'vg3', subject: 'ent' },
+  { icon: '🏢',  title: 'Ledelse og organisasjonskultur',                  description: 'Lederrollen i en voksende bedrift — bygging av kultur som tåler skala.',                                       route: '/learning/ent2/ledelse-organisasjonskultur',            color: 'from-rose-600/20 to-rose-500/10 border-rose-500/30',     storageKey: 'learning-ent2-ledelse-organisasjonskultur',            level: 'vg3', subject: 'ent' },
+  { icon: '👥',  title: 'Personaladministrasjon og HRM (strategisk)',     description: 'Strategisk HRM — rekruttering, utvikling og fastholdelse av nøkkelkompetanse.',                                 route: '/learning/ent2/personaladministrasjon-hrm-strategisk',  color: 'from-fuchsia-600/20 to-fuchsia-500/10 border-fuchsia-500/30', storageKey: 'learning-ent2-personaladministrasjon-hrm-strategisk', level: 'vg3', subject: 'ent' },
+  { icon: '💸',  title: 'Vekstfinansiering og investeringer',              description: 'Venture capital, emisjon og strategiske investorer — finansiering som muliggjør vekst.',                       route: '/learning/ent2/vekstfinansiering-investeringer',        color: 'from-amber-600/20 to-amber-500/10 border-amber-500/30',   storageKey: 'learning-ent2-vekstfinansiering-investeringer',        level: 'vg3', subject: 'ent' },
+  { icon: '🌱',  title: 'CSR og etikk',                                    description: 'Corporate social responsibility, etiske dilemmaer og bærekraftsrapportering for vekstbedrifter.',           route: '/learning/ent2/csr-etikk',                              color: 'from-orange-600/20 to-orange-500/10 border-orange-500/30', storageKey: 'learning-ent2-csr-etikk',                              level: 'vg3', subject: 'ent' },
+  { icon: '🌐',  title: 'Internasjonalisering og eksport',                 description: 'Veien ut av Norge — markedsvalg, eksportstrategier og tilpasning til nye kulturer.',                          route: '/learning/ent2/internasjonalisering-eksport',           color: 'from-yellow-600/20 to-yellow-500/10 border-yellow-500/30', storageKey: 'learning-ent2-internasjonalisering-eksport',           level: 'vg3', subject: 'ent' },
+  { icon: '⚖️', title: 'Jus og tvisteløsning',                            description: 'Avtalerett, immaterielle rettigheter og tvisteløsning når konflikter oppstår.',                                route: '/learning/ent2/jus-tvistelosning',                      color: 'from-rose-600/20 to-rose-500/10 border-rose-500/30',     storageKey: 'learning-ent2-jus-tvistelosning',                      level: 'vg3', subject: 'ent' },
+  { icon: '🎯',  title: 'Avslutning og oppsummering',                      description: 'Sluttvurdering — bind sammen alle 20 kapitlene til et helhetlig syn på entreprenørskap.',                    route: '/learning/ent2/avslutning-oppsummering',                color: 'from-fuchsia-600/20 to-fuchsia-500/10 border-fuchsia-500/30', storageKey: 'learning-ent2-avslutning-oppsummering',             level: 'vg3', subject: 'ent' },
+]
+
+export const ALL_MODULES = [
+  ...FD_VG1, ...MFI_VG1, ...KULTUR_VG1,
+  ...FD_VG2, ...INNOVASJON_VG2, ...KULTUR_VG2,
+  ...ML1_MODULES, ...ENT1_MODULES,
+  ...ML2_MODULES, ...ENT2_MODULES,
+]
+
+// SSR-fag (underfag) har distinkt farge per fag — ML/ENT har én farge per hovedfag.
+const SSR_THUMBNAIL_STYLE: Record<SsrSubject, string> = {
   forretningsdrift: 'linear-gradient(135deg, #e1f5ee, #9fe1cb)',
-  mfi: 'linear-gradient(135deg, #faeeda, #fac775)',
-  kultur: 'linear-gradient(135deg, #eeedfe, #afa9ec)',
-  ml1: 'linear-gradient(135deg, #e6f1fb, #b5d4f4)',
+  mfi:              'linear-gradient(135deg, #faeeda, #fac775)',
+  kultur:           'linear-gradient(135deg, #eeedfe, #afa9ec)',
+  okonomi:          'linear-gradient(135deg, #e1f5ee, #9fe1cb)',
+  kommunikasjon:    'linear-gradient(135deg, #faeeda, #fac775)',
+  hms:              'linear-gradient(135deg, #ffe4e6, #fda4af)',
 }
 
-// const SUBJECT_LABELS: Record<ModuleCard['subject'], string> = {
-//   forretningsdrift: 'Økonomi og administrasjon', // SSR02-01
-//   mfi: 'Markedsføring og innovasjon',
-//   kultur: 'Kultur og samhandling',
-//   ml1: 'Markedsføring og ledelse 1',
-// }
+const SUBJECT_THUMBNAIL_STYLE: Record<Subject, string> = {
+  ssr: 'linear-gradient(135deg, #f3f4f6, #d1d5db)',
+  ml:  'linear-gradient(135deg, #e6f1fb, #b5d4f4)',
+  ent: 'linear-gradient(135deg, #fef3c7, #fcd34d)',
+}
+
+function getThumbnailStyle(mod: ModuleCard): string {
+  if (mod.subject === 'ssr' && mod.ssrSubject) return SSR_THUMBNAIL_STYLE[mod.ssrSubject]
+  return SUBJECT_THUMBNAIL_STYLE[mod.subject]
+}
 
 export interface ModuleSection {
   title: string
   icon: string
-  level: ModuleCard['level']
-  subject: ModuleCard['subject']
+  level: Level
+  subject: Subject
+  ssrSubject?: SsrSubject
 }
 
 export const MODULE_SECTIONS: ModuleSection[] = [
-  { title: 'Forretningsdrift — VG1',                            icon: '📦', level: 'vg1', subject: 'forretningsdrift' },
-  { title: 'Markedsføring og innovasjon — VG1',                 icon: '📣', level: 'vg1', subject: 'mfi' },
-  { title: 'Kultur og samhandling — VG1',                       icon: '🤝', level: 'vg1', subject: 'kultur' },
-  { title: 'Økonomi og administrasjon — VG2',                   icon: '📦', level: 'vg2', subject: 'forretningsdrift' },
-  { title: 'Kommunikasjon og markedsføring — VG2',              icon: '📣', level: 'vg2', subject: 'mfi' },
-  { title: 'Helse, miljø og sikkerhet — VG2',                   icon: '🦺', level: 'vg2', subject: 'kultur' },
-  { title: 'Markedsføring og ledelse 1 — Studiespesialisering', icon: '🎓', level: 'ml1', subject: 'ml1' },
+  // VG1 SSR
+  { title: 'Forretningsdrift — VG1',                            icon: '📦', level: 'vg1', subject: 'ssr', ssrSubject: 'forretningsdrift' },
+  { title: 'Markedsføring og innovasjon — VG1',                 icon: '📣', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
+  { title: 'Kultur og samhandling — VG1',                       icon: '🤝', level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
+  // VG2 SSR
+  { title: 'Økonomi og administrasjon — VG2',                   icon: '📦', level: 'vg2', subject: 'ssr', ssrSubject: 'okonomi' },
+  { title: 'Kommunikasjon og markedsføring — VG2',              icon: '📣', level: 'vg2', subject: 'ssr', ssrSubject: 'kommunikasjon' },
+  { title: 'Helse, miljø og sikkerhet — VG2',                   icon: '🦺', level: 'vg2', subject: 'ssr', ssrSubject: 'hms' },
+  // VG2 Studiespesialisering
+  { title: 'Markedsføring og ledelse 1 — Studiespesialisering', icon: '🎓', level: 'vg2', subject: 'ml' },
+  { title: 'Entreprenørskap 1 — Studiespesialisering',          icon: '🚀', level: 'vg2', subject: 'ent' },
+  // VG3 Studiespesialisering
+  { title: 'Markedsføring og ledelse 2 — VG3',                  icon: '🎓', level: 'vg3', subject: 'ml' },
+  { title: 'Entreprenørskap 2 — VG3',                           icon: '🚀', level: 'vg3', subject: 'ent' },
 ]
 
 // Which LearningHub subjects a student sees based on their classroom subject id
-const STUDENT_SUBJECT_FILTER: Record<string, ModuleCard['subject'][]> = {
-  mfl1:   ['ml1'],
-  ssr_mi: ['forretningsdrift', 'mfi', 'kultur'],
-  ssr_fd: ['forretningsdrift', 'mfi', 'kultur'],
-  ent1:   ['forretningsdrift', 'mfi', 'kultur'],
+const STUDENT_SUBJECT_FILTER: Record<string, Subject[]> = {
+  mfl1:   ['ml'],
+  ssr_mi: ['ssr'],
+  ssr_fd: ['ssr'],
+  ent1:   ['ssr'],
 }
 
-type LevelFilter = 'alle' | 'vg1' | 'vg2' | 'ml1'
-type SubjectFilter = 'alle' | ModuleCard['subject']
+type LevelFilter = 'alle' | Level
+type SubjectFilter = 'alle' | Subject
+type SsrSubjectFilter = 'alle' | SsrSubject
 type SortOrder = 'standard' | 'az' | 'fullfort'
 type AppTheme = 'dark' | 'light' | 'warm' | 'blue' | 'green'
 
@@ -846,7 +998,7 @@ function ModuleCardButton({ mod }: { mod: ModuleCard }) {
       {/* Colored thumbnail 80px */}
       <div
         className="h-20 flex items-center justify-center relative shrink-0"
-        style={{ background: SUBJECT_THUMBNAIL_STYLE[mod.subject] }}
+        style={{ background: getThumbnailStyle(mod) }}
       >
         <span className="text-2xl drop-shadow-sm">{mod.icon}</span>
         {done && (
@@ -906,24 +1058,42 @@ function Section({ title, modules }: { title: string; icon: string; modules: Mod
 function FilterBtn({
   active,
   onClick,
+  disabled = false,
+  comingSoon = false,
   children,
 }: {
   active: boolean
   onClick: () => void
+  disabled?: boolean
+  comingSoon?: boolean
   children: React.ReactNode
 }) {
+  const handleClick = () => { if (!disabled) onClick() }
   return (
     <button
-      onClick={onClick}
-      className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
-        active ? 'text-white' : 'bg-white text-gray-500 hover:text-gray-800'
+      onClick={handleClick}
+      disabled={disabled}
+      className={`relative px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+        disabled
+          ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+          : active
+            ? 'text-white'
+            : 'bg-white text-gray-500 hover:text-gray-800'
       }`}
-      style={active
-        ? { backgroundColor: '#0d9488' }
-        : { border: '0.5px solid rgba(0,0,0,0.12)' }
+      style={
+        disabled
+          ? { border: '0.5px solid rgba(0,0,0,0.06)', opacity: 0.6 }
+          : active
+            ? { backgroundColor: '#0d9488' }
+            : { border: '0.5px solid rgba(0,0,0,0.12)' }
       }
     >
       {children}
+      {comingSoon && (
+        <span className="ml-1 inline-block text-[8px] sm:text-[9px] font-semibold uppercase tracking-wider text-gray-400 align-middle">
+          Kommer
+        </span>
+      )}
     </button>
   )
 }
@@ -936,15 +1106,15 @@ function ProgressDashboard({ modules }: { modules: ModuleCard[] }) {
 
   const vg1Modules = withKey.filter(m => m.level === 'vg1')
   const vg2Modules = withKey.filter(m => m.level === 'vg2')
-  const ml1Modules = withKey.filter(m => m.level === 'ml1')
+  const vg3Modules = withKey.filter(m => m.level === 'vg3')
 
   const vg1Done = vg1Modules.filter(m => getCompletion(m.storageKey)).length
   const vg2Done = vg2Modules.filter(m => getCompletion(m.storageKey)).length
-  const ml1Done = ml1Modules.filter(m => getCompletion(m.storageKey)).length
+  const vg3Done = vg3Modules.filter(m => getCompletion(m.storageKey)).length
 
   const vg1Pct = vg1Modules.length > 0 ? Math.round((vg1Done / vg1Modules.length) * 100) : 0
   const vg2Pct = vg2Modules.length > 0 ? Math.round((vg2Done / vg2Modules.length) * 100) : 0
-  const ml1Pct = ml1Modules.length > 0 ? Math.round((ml1Done / ml1Modules.length) * 100) : 0
+  const vg3Pct = vg3Modules.length > 0 ? Math.round((vg3Done / vg3Modules.length) * 100) : 0
 
   const lastActivity = getLastActivity(modules)
 
@@ -980,7 +1150,7 @@ function ProgressDashboard({ modules }: { modules: ModuleCard[] }) {
           {[
             { label: 'VG1', done: vg1Done, total: vg1Modules.length, pct: vg1Pct, accent: 'text-blue-600', bg: 'bg-blue-50' },
             { label: 'VG2', done: vg2Done, total: vg2Modules.length, pct: vg2Pct, accent: 'text-violet-600', bg: 'bg-violet-50' },
-            { label: 'ML1', done: ml1Done, total: ml1Modules.length, pct: ml1Pct, accent: 'text-amber-600', bg: 'bg-amber-50' },
+            { label: 'VG3', done: vg3Done, total: vg3Modules.length, pct: vg3Pct, accent: 'text-amber-600', bg: 'bg-amber-50' },
           ].map(lvl => (
             <div key={lvl.label} className={`${lvl.bg} rounded-xl p-2 sm:p-3 text-center`}>
               <p className={`text-xs font-medium ${lvl.accent} mb-0.5`}>{lvl.label}</p>
@@ -1013,7 +1183,28 @@ export default function LearningHub() {
 
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('alle')
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('alle')
+  const [ssrSubjectFilter, setSsrSubjectFilter] = useState<SsrSubjectFilter>('alle')
   const [sortOrder, setSortOrder] = useState<SortOrder>('standard')
+
+  // Reset underfag når fag eller trinn endres så valgt SSR-underfag ikke "låner seg" videre
+  const selectLevel = (l: LevelFilter) => { setLevelFilter(l); setSsrSubjectFilter('alle') }
+  const selectSubject = (s: SubjectFilter) => { setSubjectFilter(s); setSsrSubjectFilter('alle') }
+
+  // Hva slags fag/underfag finnes faktisk for valgt trinn? (Brukes til disabled/Kommer-knapper.)
+  const moduleCounts = useMemo(() => {
+    const inLevel = (m: ModuleCard) => levelFilter === 'alle' || m.level === levelFilter
+    return {
+      ssr:           ALL_MODULES.filter(m => inLevel(m) && m.subject === 'ssr').length,
+      ml:            ALL_MODULES.filter(m => inLevel(m) && m.subject === 'ml').length,
+      ent:           ALL_MODULES.filter(m => inLevel(m) && m.subject === 'ent').length,
+      forretningsdrift: ALL_MODULES.filter(m => inLevel(m) && m.ssrSubject === 'forretningsdrift').length,
+      mfi:              ALL_MODULES.filter(m => inLevel(m) && m.ssrSubject === 'mfi').length,
+      kultur:           ALL_MODULES.filter(m => inLevel(m) && m.ssrSubject === 'kultur').length,
+      okonomi:          ALL_MODULES.filter(m => inLevel(m) && m.ssrSubject === 'okonomi').length,
+      kommunikasjon:    ALL_MODULES.filter(m => inLevel(m) && m.ssrSubject === 'kommunikasjon').length,
+      hms:              ALL_MODULES.filter(m => inLevel(m) && m.ssrSubject === 'hms').length,
+    }
+  }, [levelFilter])
 
   // Modules visible to the student (subject filter + teacher per-module overrides)
   const studentBaseModules: ModuleCard[] = useMemo(() => {
@@ -1033,6 +1224,7 @@ export default function LearningHub() {
     let mods = ALL_MODULES.filter((m) => {
       if (levelFilter !== 'alle' && m.level !== levelFilter) return false
       if (subjectFilter !== 'alle' && m.subject !== subjectFilter) return false
+      if (ssrSubjectFilter !== 'alle' && m.ssrSubject !== ssrSubjectFilter) return false
       return true
     })
 
@@ -1047,7 +1239,7 @@ export default function LearningHub() {
     }
 
     return mods
-  }, [studentBaseModules, levelFilter, subjectFilter, sortOrder, isStudentMode])
+  }, [studentBaseModules, levelFilter, subjectFilter, ssrSubjectFilter, sortOrder, isStudentMode])
 
   // Sections: always shown in student mode; teacher mode only in standard sort
   const showSections = isStudentMode || sortOrder === 'standard'
@@ -1058,14 +1250,19 @@ export default function LearningHub() {
         if (isStudentMode) return true
         if (levelFilter !== 'alle' && g.level !== levelFilter) return false
         if (subjectFilter !== 'alle' && g.subject !== subjectFilter) return false
+        if (ssrSubjectFilter !== 'alle' && g.ssrSubject !== ssrSubjectFilter) return false
         return true
       })
       .map((g) => ({
         ...g,
-        modules: filteredAndSorted.filter((m) => m.level === g.level && m.subject === g.subject),
+        modules: filteredAndSorted.filter((m) =>
+          m.level === g.level &&
+          m.subject === g.subject &&
+          (g.ssrSubject ? m.ssrSubject === g.ssrSubject : true)
+        ),
       }))
       .filter((g) => g.modules.length > 0)
-  }, [filteredAndSorted, levelFilter, subjectFilter, isStudentMode])
+  }, [filteredAndSorted, levelFilter, subjectFilter, ssrSubjectFilter, isStudentMode])
 
   // const totalCount = filteredAndSorted.length
 
@@ -1192,34 +1389,56 @@ export default function LearningHub() {
       {!isStudentMode && <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
         <div className="max-w-4xl mx-auto space-y-2 sm:space-y-3">
 
-          {/* Level filter */}
+          {/* Trinn-rad */}
           <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-xs text-gray-400 font-medium uppercase tracking-widest w-12 sm:w-14 shrink-0">Trinn</span>
+            <span className="text-[10px] sm:text-xs text-gray-400 font-medium uppercase tracking-widest w-14 sm:w-16 shrink-0">Trinn</span>
             <div className="flex gap-1.5 sm:gap-2 flex-wrap">
-              <FilterBtn active={levelFilter === 'alle'} onClick={() => setLevelFilter('alle')}>Alle</FilterBtn>
-              <FilterBtn active={levelFilter === 'vg1'} onClick={() => setLevelFilter('vg1')}>VG1</FilterBtn>
-              <FilterBtn active={levelFilter === 'vg2'} onClick={() => setLevelFilter('vg2')}>VG2</FilterBtn>
-              <FilterBtn active={levelFilter === 'ml1'} onClick={() => setLevelFilter('ml1')}>ML1</FilterBtn>
+              <FilterBtn active={levelFilter === 'alle'} onClick={() => selectLevel('alle')}>Alle</FilterBtn>
+              <FilterBtn active={levelFilter === 'vg1'} onClick={() => selectLevel('vg1')}>VG1</FilterBtn>
+              <FilterBtn active={levelFilter === 'vg2'} onClick={() => selectLevel('vg2')}>VG2</FilterBtn>
+              <FilterBtn active={levelFilter === 'vg3'} onClick={() => selectLevel('vg3')}>VG3</FilterBtn>
             </div>
           </div>
 
-          {/* Subject filter + Sort */}
+          {/* Fag-rad — kontekstavhengig basert på trinn-valg.
+              Fag uten innhold for valgt trinn vises som disabled med "Kommer"-badge. */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] sm:text-xs text-gray-400 font-medium uppercase tracking-widest w-12 sm:w-14 shrink-0">Fag</span>
+            <span className="text-[10px] sm:text-xs text-gray-400 font-medium uppercase tracking-widest w-14 sm:w-16 shrink-0">Fag</span>
             <div className="flex gap-1.5 sm:gap-2 flex-wrap flex-1">
-              <FilterBtn active={subjectFilter === 'alle'} onClick={() => setSubjectFilter('alle')}>Alle fag</FilterBtn>
-              <FilterBtn active={subjectFilter === 'forretningsdrift'} onClick={() => setSubjectFilter('forretningsdrift')}>
-                Forretning
-              </FilterBtn>
-              <FilterBtn active={subjectFilter === 'mfi'} onClick={() => setSubjectFilter('mfi')}>
-                Markedsf.
-              </FilterBtn>
-              <FilterBtn active={subjectFilter === 'kultur'} onClick={() => setSubjectFilter('kultur')}>
-                Kultur
-              </FilterBtn>
-              <FilterBtn active={subjectFilter === 'ml1'} onClick={() => setSubjectFilter('ml1')}>
-                ML1
-              </FilterBtn>
+              <FilterBtn active={subjectFilter === 'alle'} onClick={() => selectSubject('alle')}>Alle fag</FilterBtn>
+              {/* SSR vises bare for VG1/VG2 — ikke for VG3 */}
+              {(levelFilter === 'alle' || levelFilter === 'vg1' || levelFilter === 'vg2') && (
+                <FilterBtn
+                  active={subjectFilter === 'ssr'}
+                  onClick={() => selectSubject('ssr')}
+                  disabled={moduleCounts.ssr === 0}
+                  comingSoon={moduleCounts.ssr === 0}
+                >
+                  SSR
+                </FilterBtn>
+              )}
+              {/* M&L: VG2 = M&L1, VG3 = M&L2 */}
+              {(levelFilter === 'alle' || levelFilter === 'vg2' || levelFilter === 'vg3') && (
+                <FilterBtn
+                  active={subjectFilter === 'ml'}
+                  onClick={() => selectSubject('ml')}
+                  disabled={moduleCounts.ml === 0}
+                  comingSoon={moduleCounts.ml === 0}
+                >
+                  {levelFilter === 'vg3' ? 'M&L2' : levelFilter === 'vg2' ? 'M&L1' : 'M&L'}
+                </FilterBtn>
+              )}
+              {/* ENT: VG2 = ENT1, VG3 = ENT2 */}
+              {(levelFilter === 'alle' || levelFilter === 'vg2' || levelFilter === 'vg3') && (
+                <FilterBtn
+                  active={subjectFilter === 'ent'}
+                  onClick={() => selectSubject('ent')}
+                  disabled={moduleCounts.ent === 0}
+                  comingSoon={moduleCounts.ent === 0}
+                >
+                  {levelFilter === 'vg3' ? 'ENT2' : levelFilter === 'vg2' ? 'ENT1' : 'ENT'}
+                </FilterBtn>
+              )}
             </div>
 
             <div className="flex items-center gap-1 ml-auto">
@@ -1250,6 +1469,50 @@ export default function LearningHub() {
               </button>
             </div>
           </div>
+
+          {/* Underfag-rad — vises kun når SSR er valgt. Skiller VG1- og VG2-underfag basert på trinn. */}
+          {subjectFilter === 'ssr' && (levelFilter === 'alle' || levelFilter === 'vg1' || levelFilter === 'vg2') && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] sm:text-xs text-gray-400 font-medium uppercase tracking-widest w-14 sm:w-16 shrink-0">SSR</span>
+              <div className="flex gap-1.5 sm:gap-2 flex-wrap flex-1">
+                <FilterBtn active={ssrSubjectFilter === 'alle'} onClick={() => setSsrSubjectFilter('alle')}>Alle SSR</FilterBtn>
+                {(levelFilter === 'alle' || levelFilter === 'vg1') && <>
+                  <FilterBtn
+                    active={ssrSubjectFilter === 'forretningsdrift'}
+                    onClick={() => setSsrSubjectFilter('forretningsdrift')}
+                    disabled={moduleCounts.forretningsdrift === 0}
+                  >Forretningsdrift</FilterBtn>
+                  <FilterBtn
+                    active={ssrSubjectFilter === 'mfi'}
+                    onClick={() => setSsrSubjectFilter('mfi')}
+                    disabled={moduleCounts.mfi === 0}
+                  >MFI</FilterBtn>
+                  <FilterBtn
+                    active={ssrSubjectFilter === 'kultur'}
+                    onClick={() => setSsrSubjectFilter('kultur')}
+                    disabled={moduleCounts.kultur === 0}
+                  >Kultur</FilterBtn>
+                </>}
+                {(levelFilter === 'alle' || levelFilter === 'vg2') && <>
+                  <FilterBtn
+                    active={ssrSubjectFilter === 'okonomi'}
+                    onClick={() => setSsrSubjectFilter('okonomi')}
+                    disabled={moduleCounts.okonomi === 0}
+                  >Økonomi</FilterBtn>
+                  <FilterBtn
+                    active={ssrSubjectFilter === 'kommunikasjon'}
+                    onClick={() => setSsrSubjectFilter('kommunikasjon')}
+                    disabled={moduleCounts.kommunikasjon === 0}
+                  >Kommunikasjon</FilterBtn>
+                  <FilterBtn
+                    active={ssrSubjectFilter === 'hms'}
+                    onClick={() => setSsrSubjectFilter('hms')}
+                    disabled={moduleCounts.hms === 0}
+                  >HMS</FilterBtn>
+                </>}
+              </div>
+            </div>
+          )}
         </div>
       </div>}
 
@@ -1258,31 +1521,35 @@ export default function LearningHub() {
         <AnimatePresence mode="wait">
           {showSections ? (
             <motion.div key="sections" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              {sectionsToShow.map((s, i) => (
-                <div key={s.title}>
-                  {/* VG2 divider */}
-                  {i > 0 && sectionsToShow[i - 1].level === 'vg1' && s.level === 'vg2' && (isStudentMode || levelFilter === 'alle') && (
-                    <div className="flex items-center gap-4 my-8 sm:my-10">
-                      <div className="flex-1 h-px bg-gray-200" />
-                      <span className="text-xs text-gray-400 font-semibold tracking-widest uppercase px-3 py-1.5 rounded-full border border-gray-200 bg-white">
-                        VG2
-                      </span>
-                      <div className="flex-1 h-px bg-gray-200" />
-                    </div>
-                  )}
-                  {/* ML1 divider */}
-                  {i > 0 && sectionsToShow[i - 1].level !== 'ml1' && s.level === 'ml1' && (isStudentMode || levelFilter === 'alle') && (
-                    <div className="flex items-center gap-4 my-8 sm:my-10">
-                      <div className="flex-1 h-px bg-gray-200" />
-                      <span className="text-xs text-gray-400 font-semibold tracking-widest uppercase px-3 py-1.5 rounded-full border border-gray-200 bg-white">
-                        Studiespesialisering
-                      </span>
-                      <div className="flex-1 h-px bg-gray-200" />
-                    </div>
-                  )}
-                  <Section title={s.title} icon={s.icon} modules={s.modules} />
-                </div>
-              ))}
+              {sectionsToShow.map((s, i) => {
+                const prev = i > 0 ? sectionsToShow[i - 1] : null
+                const showDivider = isStudentMode || levelFilter === 'alle'
+                // Trinn-skifte (VG1 → VG2 → VG3)
+                const levelChanged = prev && prev.level !== s.level
+                // Innen samme trinn: SSR → ML/ENT (studiespesialisering)
+                const subjectChanged = prev && prev.level === s.level && prev.subject !== s.subject
+                let dividerLabel: string | null = null
+                if (showDivider && levelChanged) {
+                  dividerLabel = s.level.toUpperCase()
+                } else if (showDivider && subjectChanged) {
+                  if (s.subject === 'ml')  dividerLabel = 'Studiespesialisering — Markedsføring og ledelse'
+                  if (s.subject === 'ent') dividerLabel = 'Entreprenørskap'
+                }
+                return (
+                  <div key={s.title}>
+                    {dividerLabel && (
+                      <div className="flex items-center gap-4 my-8 sm:my-10">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-xs text-gray-400 font-semibold tracking-widest uppercase px-3 py-1.5 rounded-full border border-gray-200 bg-white">
+                          {dividerLabel}
+                        </span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
+                    )}
+                    <Section title={s.title} icon={s.icon} modules={s.modules} />
+                  </div>
+                )
+              })}
             </motion.div>
           ) : (
             <motion.div
