@@ -37,6 +37,7 @@ export default function MarkedsplanenEtablerteBedrifterModule() {
       intro="Den strategiske markedsplanen — hensikt, innhold, TOWS-matrise, SMART-mål med KPIer, ressursallokering, årshjul og oppfølging."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/markedsplanen-etablerte-bedrifter', description: 'Markedsplanen for etablerte bedrifter — 10 slides' }}
     />
   );
 }

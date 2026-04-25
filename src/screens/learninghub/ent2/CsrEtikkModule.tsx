@@ -37,6 +37,7 @@ export default function CsrEtikkModule() {
       intro="Corporate social responsibility, etiske dilemmaer og bærekraftsrapportering for vekstbedrifter."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/csr-etikk', description: 'CSR og etikk — 10 slides' }}
     />
   );
 }

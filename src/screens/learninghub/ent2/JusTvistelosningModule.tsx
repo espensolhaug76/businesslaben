@@ -37,6 +37,7 @@ export default function JusTvistelosningModule() {
       intro="Avtalerett, immaterielle rettigheter og tvisteløsning når konflikter oppstår."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/jus-tvistelosning', description: 'Jus og tvisteløsning — 10 slides' }}
     />
   );
 }

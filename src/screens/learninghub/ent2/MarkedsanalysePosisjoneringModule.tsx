@@ -37,6 +37,7 @@ export default function MarkedsanalysePosisjoneringModule() {
       intro="Avansert markedsanalyse og strategisk posisjonering for vekstbedrifter."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/markedsanalyse-posisjonering', description: 'Markedsanalyse og posisjonering — 10 slides' }}
     />
   );
 }

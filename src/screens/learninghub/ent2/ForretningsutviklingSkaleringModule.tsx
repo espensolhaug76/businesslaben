@@ -37,6 +37,7 @@ export default function ForretningsutviklingSkaleringModule() {
       intro="Pivotering, nye markeder og hvordan skalere uten å miste kvalitet eller kultur."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/forretningsutvikling-skalering', description: 'Forretningsutvikling og skalering — 10 slides' }}
     />
   );
 }

@@ -37,6 +37,7 @@ export default function LikviditetsstyringFinansrisikoModule() {
       intro="Bedriftens kontantflyt under vekst — arbeidskapital, VC/PE/IPO, lånefinansiering, leasing, kapitalstruktur og valuta-/renterisiko."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/likviditetsstyring-finansrisiko', description: 'Likviditetsstyring og finansrisiko — 10 slides' }}
     />
   );
 }

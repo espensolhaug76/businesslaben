@@ -377,6 +377,19 @@ import OkonomiskPlanleggingBudsjettPresentation from './screens/learninghub/pres
 import MarkedsforingSalgNystartedePresentation from './screens/learninghub/presentations/MarkedsforingSalgNystartedePresentation'
 import LovverkAvtalerHmsPresentation from './screens/learninghub/presentations/LovverkAvtalerHmsPresentation'
 import SamarbeidTeambyggingPresentation from './screens/learninghub/presentations/SamarbeidTeambyggingPresentation'
+
+// ── ENT2 per-kapittel presentasjoner (kap 11–21) ────────────────────────────
+import StrategiskPlanleggingVekstPresentation from './screens/learninghub/presentations/StrategiskPlanleggingVekstPresentation'
+import ForretningsutviklingSkaleringPresentation from './screens/learninghub/presentations/ForretningsutviklingSkaleringPresentation'
+import MarkedsanalysePosisjoneringPresentation from './screens/learninghub/presentations/MarkedsanalysePosisjoneringPresentation'
+import LedelseOrganisasjonskulturPresentation from './screens/learninghub/presentations/LedelseOrganisasjonskulturPresentation'
+import PersonaladministrasjonHrmStrategiskPresentation from './screens/learninghub/presentations/PersonaladministrasjonHrmStrategiskPresentation'
+import InvesteringsanalysePresentation from './screens/learninghub/presentations/InvesteringsanalysePresentation'
+import LikviditetsstyringFinansrisikoPresentation from './screens/learninghub/presentations/LikviditetsstyringFinansrisikoPresentation'
+import CsrEtikkPresentation from './screens/learninghub/presentations/CsrEtikkPresentation'
+import InternasjonaliseringEksportPresentation from './screens/learninghub/presentations/InternasjonaliseringEksportPresentation'
+import JusTvistelosningPresentation from './screens/learninghub/presentations/JusTvistelosningPresentation'
+import MarkedsplanenEtablerteBedrifterPresentation from './screens/learninghub/presentations/MarkedsplanenEtablerteBedrifterPresentation'
 import ENT1Presentation from './screens/learninghub/presentations/ENT1Presentation'
 import ENT2Presentation from './screens/learninghub/presentations/ENT2Presentation'
 
@@ -575,6 +588,19 @@ function App() {
           <Route path="/learning/presentations/ent1/markedsforing-salg-nystartede" element={<MarkedsforingSalgNystartedePresentation />} />
           <Route path="/learning/presentations/ent1/lovverk-avtaler-hms" element={<LovverkAvtalerHmsPresentation />} />
           <Route path="/learning/presentations/ent1/samarbeid-teambygging" element={<SamarbeidTeambyggingPresentation />} />
+
+          {/* ── ENT2 per-kapittel presentasjoner (kap 11–21) ────────────── */}
+          <Route path="/learning/presentations/ent2/strategisk-planlegging-vekst" element={<StrategiskPlanleggingVekstPresentation />} />
+          <Route path="/learning/presentations/ent2/forretningsutvikling-skalering" element={<ForretningsutviklingSkaleringPresentation />} />
+          <Route path="/learning/presentations/ent2/markedsanalyse-posisjonering" element={<MarkedsanalysePosisjoneringPresentation />} />
+          <Route path="/learning/presentations/ent2/ledelse-organisasjonskultur" element={<LedelseOrganisasjonskulturPresentation />} />
+          <Route path="/learning/presentations/ent2/personaladministrasjon-hrm-strategisk" element={<PersonaladministrasjonHrmStrategiskPresentation />} />
+          <Route path="/learning/presentations/ent2/investeringsanalyse" element={<InvesteringsanalysePresentation />} />
+          <Route path="/learning/presentations/ent2/likviditetsstyring-finansrisiko" element={<LikviditetsstyringFinansrisikoPresentation />} />
+          <Route path="/learning/presentations/ent2/csr-etikk" element={<CsrEtikkPresentation />} />
+          <Route path="/learning/presentations/ent2/internasjonalisering-eksport" element={<InternasjonaliseringEksportPresentation />} />
+          <Route path="/learning/presentations/ent2/jus-tvistelosning" element={<JusTvistelosningPresentation />} />
+          <Route path="/learning/presentations/ent2/markedsplanen-etablerte-bedrifter" element={<MarkedsplanenEtablerteBedrifterPresentation />} />
           <Route path="/learning/presentations/ent1" element={<ENT1Presentation />} />
           <Route path="/learning/presentations/ent2" element={<ENT2Presentation />} />
 

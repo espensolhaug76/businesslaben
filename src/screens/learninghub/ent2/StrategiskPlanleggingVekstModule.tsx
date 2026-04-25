@@ -37,6 +37,7 @@ export default function StrategiskPlanleggingVekstModule() {
       intro="Fra etablert drift til skalerbar bedrift — strategisk planlegging i vekstfase."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/strategisk-planlegging-vekst', description: 'Strategisk planlegging og vekst — 10 slides' }}
     />
   );
 }

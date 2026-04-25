@@ -37,6 +37,7 @@ export default function InvesteringsanalyseModule() {
       intro="Beslutningsverktøy for investeringer — tidsverdien av penger, NPV, internrente, payback, risikojustert avkastning og følsomhetsanalyse."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/investeringsanalyse', description: 'Investeringsanalyse og lønnsomhet — 10 slides' }}
     />
   );
 }

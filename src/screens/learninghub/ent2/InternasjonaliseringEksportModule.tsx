@@ -37,6 +37,7 @@ export default function InternasjonaliseringEksportModule() {
       intro="Veien ut av Norge — markedsvalg, eksportstrategier og tilpasning til nye kulturer."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/internasjonalisering-eksport', description: 'Internasjonalisering og eksport — 10 slides' }}
     />
   );
 }

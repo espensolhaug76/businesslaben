@@ -37,6 +37,7 @@ export default function LedelseOrganisasjonskulturModule() {
       intro="Lederrollen i en voksende bedrift — bygging av kultur som tåler skala."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/ledelse-organisasjonskultur', description: 'Ledelse og organisasjonskultur — 10 slides' }}
     />
   );
 }

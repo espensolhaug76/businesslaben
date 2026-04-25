@@ -37,6 +37,7 @@ export default function PersonaladministrasjonHrmStrategiskModule() {
       intro="Strategisk HRM — rekruttering, utvikling og fastholdelse av nøkkelkompetanse."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ent2/personaladministrasjon-hrm-strategisk', description: 'Personaladministrasjon og HRM (strategisk) — 10 slides' }}
     />
   );
 }
