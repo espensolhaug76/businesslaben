@@ -86,6 +86,13 @@ import { PHASES as markedskommunikasjonPhases } from '../ml1/Markedskommunikasjo
 import { phases as markeder_phases_ml1 } from '../ml1/MarkederModule'
 import { phases as profesjonelle_markeder_phases_ml1 } from '../ml1/ProfesjonelleMarkederModule'
 
+// ── ML1 strukturfiks (master kap 11–15) ───────────────────────────────────────
+import { phases as salg_personlig_kommunikasjon_phases_ml1 } from '../ml1/SalgPersonligKommunikasjonModule'
+import { phases as reklame_medieplanlegging_phases_ml1 } from '../ml1/ReklameMedieplanleggingModule'
+import { phases as direkte_markedsforing_internett_phases_ml1 } from '../ml1/DirekteMarkedsforingInternettModule'
+import { phases as markedsforings_lovverk_etikk_phases_ml1 } from '../ml1/MarkedsforingsLovverkEtikkModule'
+import { phases as organisering_markedsforing_phases_ml1 } from '../ml1/OrganiseringMarkedsforingModule'
+
 // ── ML2 (VG3) ─────────────────────────────────────────────────────────────────
 import { phases as strategisk_planlegging_phases_ml2 } from '../ml2/StrategiskPlanleggingModule'
 import { phases as visjon_og_mal_phases_ml2 } from '../ml2/VisjonOgMalModule'
@@ -123,11 +130,13 @@ import { phases as forretningsutvikling_skalering_phases_ent2 } from '../ent2/Fo
 import { phases as markedsanalyse_posisjonering_phases_ent2 } from '../ent2/MarkedsanalysePosisjoneringModule'
 import { phases as ledelse_organisasjonskultur_phases_ent2 } from '../ent2/LedelseOrganisasjonskulturModule'
 import { phases as personaladministrasjon_hrm_strategisk_phases_ent2 } from '../ent2/PersonaladministrasjonHrmStrategiskModule'
-import { phases as vekstfinansiering_investeringer_phases_ent2 } from '../ent2/VekstfinansieringInvesteringerModule'
+// ENT2 strukturfiks: split + ny markedsplan (master kap 16, 17, 18, 19, 20, 21)
+import { phases as investeringsanalyse_phases_ent2 } from '../ent2/InvesteringsanalyseModule'
+import { phases as likviditetsstyring_finansrisiko_phases_ent2 } from '../ent2/LikviditetsstyringFinansrisikoModule'
 import { phases as csr_etikk_phases_ent2 } from '../ent2/CsrEtikkModule'
 import { phases as internasjonalisering_eksport_phases_ent2 } from '../ent2/InternasjonaliseringEksportModule'
 import { phases as jus_tvistelosning_phases_ent2 } from '../ent2/JusTvistelosningModule'
-import { phases as avslutning_oppsummering_phases_ent2 } from '../ent2/AvslutningOppsummeringModule'
+import { phases as markedsplanen_etablerte_bedrifter_phases_ent2 } from '../ent2/MarkedsplanenEtablerteBedrifterModule'
 
 // ── Registry ──────────────────────────────────────────────────────────────────
 
@@ -214,6 +223,13 @@ export const TEACHER_MODULE_PHASES: Record<string, DrawerPhase[]> = {
   '/learning/ml1/markeder':                markeder_phases_ml1 as DrawerPhase[],
   '/learning/ml1/profesjonelle-markeder':  profesjonelle_markeder_phases_ml1 as DrawerPhase[],
 
+  // ML1 strukturfiks (master kap 11–15)
+  '/learning/ml1/salg-personlig-kommunikasjon':     salg_personlig_kommunikasjon_phases_ml1 as DrawerPhase[],
+  '/learning/ml1/reklame-medieplanlegging':         reklame_medieplanlegging_phases_ml1 as DrawerPhase[],
+  '/learning/ml1/direkte-markedsforing-internett':  direkte_markedsforing_internett_phases_ml1 as DrawerPhase[],
+  '/learning/ml1/markedsforings-lovverk-etikk':     markedsforings_lovverk_etikk_phases_ml1 as DrawerPhase[],
+  '/learning/ml1/organisering-markedsforing':       organisering_markedsforing_phases_ml1 as DrawerPhase[],
+
   // ── ML2 (VG3) ────────────────────────────────────────────────────────────────
   '/learning/ml2/strategisk-planlegging':                  strategisk_planlegging_phases_ml2 as DrawerPhase[],
   '/learning/ml2/visjon-og-mal':                            visjon_og_mal_phases_ml2 as DrawerPhase[],
@@ -251,9 +267,10 @@ export const TEACHER_MODULE_PHASES: Record<string, DrawerPhase[]> = {
   '/learning/ent2/markedsanalyse-posisjonering':           markedsanalyse_posisjonering_phases_ent2 as DrawerPhase[],
   '/learning/ent2/ledelse-organisasjonskultur':            ledelse_organisasjonskultur_phases_ent2 as DrawerPhase[],
   '/learning/ent2/personaladministrasjon-hrm-strategisk':  personaladministrasjon_hrm_strategisk_phases_ent2 as DrawerPhase[],
-  '/learning/ent2/vekstfinansiering-investeringer':        vekstfinansiering_investeringer_phases_ent2 as DrawerPhase[],
+  '/learning/ent2/investeringsanalyse':                    investeringsanalyse_phases_ent2 as DrawerPhase[],
+  '/learning/ent2/likviditetsstyring-finansrisiko':        likviditetsstyring_finansrisiko_phases_ent2 as DrawerPhase[],
   '/learning/ent2/csr-etikk':                              csr_etikk_phases_ent2 as DrawerPhase[],
   '/learning/ent2/internasjonalisering-eksport':           internasjonalisering_eksport_phases_ent2 as DrawerPhase[],
   '/learning/ent2/jus-tvistelosning':                      jus_tvistelosning_phases_ent2 as DrawerPhase[],
-  '/learning/ent2/avslutning-oppsummering':                avslutning_oppsummering_phases_ent2 as DrawerPhase[],
+  '/learning/ent2/markedsplanen-etablerte-bedrifter':      markedsplanen_etablerte_bedrifter_phases_ent2 as DrawerPhase[],
 }

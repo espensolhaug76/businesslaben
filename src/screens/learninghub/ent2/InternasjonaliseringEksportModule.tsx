@@ -28,7 +28,7 @@ export const phases = [
 export default function InternasjonaliseringEksportModule() {
   return (
     <DrawerModule
-      moduleCode="ENT2-18"
+      moduleCode="ENT2-19"
       moduleTitle="Internasjonalisering og eksport"
       moduleIcon="🌐"
       storageKey="learning-ent2-internasjonalisering-eksport"

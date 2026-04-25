@@ -28,7 +28,7 @@ export const phases = [
 export default function CsrEtikkModule() {
   return (
     <DrawerModule
-      moduleCode="ENT2-17"
+      moduleCode="ENT2-18"
       moduleTitle="CSR og etikk"
       moduleIcon="🌱"
       storageKey="learning-ent2-csr-etikk"

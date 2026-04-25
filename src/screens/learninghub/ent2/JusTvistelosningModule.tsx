@@ -28,7 +28,7 @@ export const phases = [
 export default function JusTvistelosningModule() {
   return (
     <DrawerModule
-      moduleCode="ENT2-19"
+      moduleCode="ENT2-20"
       moduleTitle="Jus og tvisteløsning"
       moduleIcon="⚖️"
       storageKey="learning-ent2-jus-tvistelosning"

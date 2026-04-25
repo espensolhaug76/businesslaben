@@ -200,6 +200,18 @@ import MarkederComplete from './screens/learninghub/ml1/MarkederComplete'
 import ProfesjonelleMarkederModule from './screens/learninghub/ml1/ProfesjonelleMarkederModule'
 import ProfesjonelleMarkederComplete from './screens/learninghub/ml1/ProfesjonelleMarkederComplete'
 
+// ── ML1 strukturfiks (master kap 11–15) ──────────────────────────────────────
+import SalgPersonligKommunikasjonModule from './screens/learninghub/ml1/SalgPersonligKommunikasjonModule'
+import SalgPersonligKommunikasjonComplete from './screens/learninghub/ml1/SalgPersonligKommunikasjonComplete'
+import ReklameMedieplanleggingModule from './screens/learninghub/ml1/ReklameMedieplanleggingModule'
+import ReklameMedieplanleggingComplete from './screens/learninghub/ml1/ReklameMedieplanleggingComplete'
+import DirekteMarkedsforingInternettModule from './screens/learninghub/ml1/DirekteMarkedsforingInternettModule'
+import DirekteMarkedsforingInternettComplete from './screens/learninghub/ml1/DirekteMarkedsforingInternettComplete'
+import MarkedsforingsLovverkEtikkModule from './screens/learninghub/ml1/MarkedsforingsLovverkEtikkModule'
+import MarkedsforingsLovverkEtikkComplete from './screens/learninghub/ml1/MarkedsforingsLovverkEtikkComplete'
+import OrganiseringMarkedsforingModule from './screens/learninghub/ml1/OrganiseringMarkedsforingModule'
+import OrganiseringMarkedsforingComplete from './screens/learninghub/ml1/OrganiseringMarkedsforingComplete'
+
 // ── ML2 (VG3 Markedsføring og ledelse 2) ─────────────────────────────────────
 import StrategiskPlanleggingModule from './screens/learninghub/ml2/StrategiskPlanleggingModule'
 import StrategiskPlanleggingComplete from './screens/learninghub/ml2/StrategiskPlanleggingComplete'
@@ -269,16 +281,19 @@ import LedelseOrganisasjonskulturModule from './screens/learninghub/ent2/Ledelse
 import LedelseOrganisasjonskulturComplete from './screens/learninghub/ent2/LedelseOrganisasjonskulturComplete'
 import PersonaladministrasjonHrmStrategiskModule from './screens/learninghub/ent2/PersonaladministrasjonHrmStrategiskModule'
 import PersonaladministrasjonHrmStrategiskComplete from './screens/learninghub/ent2/PersonaladministrasjonHrmStrategiskComplete'
-import VekstfinansieringInvesteringerModule from './screens/learninghub/ent2/VekstfinansieringInvesteringerModule'
-import VekstfinansieringInvesteringerComplete from './screens/learninghub/ent2/VekstfinansieringInvesteringerComplete'
+// ENT2 strukturfiks: split + ny markedsplan-modul (master kap 16, 17, 18, 19, 20, 21)
+import InvesteringsanalyseModule from './screens/learninghub/ent2/InvesteringsanalyseModule'
+import InvesteringsanalyseComplete from './screens/learninghub/ent2/InvesteringsanalyseComplete'
+import LikviditetsstyringFinansrisikoModule from './screens/learninghub/ent2/LikviditetsstyringFinansrisikoModule'
+import LikviditetsstyringFinansrisikoComplete from './screens/learninghub/ent2/LikviditetsstyringFinansrisikoComplete'
 import CsrEtikkModule from './screens/learninghub/ent2/CsrEtikkModule'
 import CsrEtikkComplete from './screens/learninghub/ent2/CsrEtikkComplete'
 import InternasjonaliseringEksportModule from './screens/learninghub/ent2/InternasjonaliseringEksportModule'
 import InternasjonaliseringEksportComplete from './screens/learninghub/ent2/InternasjonaliseringEksportComplete'
 import JusTvistelosningModule from './screens/learninghub/ent2/JusTvistelosningModule'
 import JusTvistelosningComplete from './screens/learninghub/ent2/JusTvistelosningComplete'
-import AvslutningOppsummeringModule from './screens/learninghub/ent2/AvslutningOppsummeringModule'
-import AvslutningOppsummeringComplete from './screens/learninghub/ent2/AvslutningOppsummeringComplete'
+import MarkedsplanenEtablerteBedrifterModule from './screens/learninghub/ent2/MarkedsplanenEtablerteBedrifterModule'
+import MarkedsplanenEtablerteBedrifterComplete from './screens/learninghub/ent2/MarkedsplanenEtablerteBedrifterComplete'
 
 // Join live session
 import JoinSessionScreen from './screens/JoinSessionScreen'
@@ -525,6 +540,18 @@ function App() {
           <Route path="/learning/ml1/profesjonelle-markeder" element={<ProfesjonelleMarkederModule />} />
           <Route path="/learning/ml1/profesjonelle-markeder/complete" element={<ProfesjonelleMarkederComplete />} />
 
+          {/* ── ML1 strukturfiks (master kap 11–15) ─────────────────────── */}
+          <Route path="/learning/ml1/salg-personlig-kommunikasjon" element={<SalgPersonligKommunikasjonModule />} />
+          <Route path="/learning/ml1/salg-personlig-kommunikasjon/complete" element={<SalgPersonligKommunikasjonComplete />} />
+          <Route path="/learning/ml1/reklame-medieplanlegging" element={<ReklameMedieplanleggingModule />} />
+          <Route path="/learning/ml1/reklame-medieplanlegging/complete" element={<ReklameMedieplanleggingComplete />} />
+          <Route path="/learning/ml1/direkte-markedsforing-internett" element={<DirekteMarkedsforingInternettModule />} />
+          <Route path="/learning/ml1/direkte-markedsforing-internett/complete" element={<DirekteMarkedsforingInternettComplete />} />
+          <Route path="/learning/ml1/markedsforings-lovverk-etikk" element={<MarkedsforingsLovverkEtikkModule />} />
+          <Route path="/learning/ml1/markedsforings-lovverk-etikk/complete" element={<MarkedsforingsLovverkEtikkComplete />} />
+          <Route path="/learning/ml1/organisering-markedsforing" element={<OrganiseringMarkedsforingModule />} />
+          <Route path="/learning/ml1/organisering-markedsforing/complete" element={<OrganiseringMarkedsforingComplete />} />
+
           {/* ── ML2 (VG3 Markedsføring og ledelse 2) ──────────────────────── */}
           <Route path="/learning/ml2/strategisk-planlegging" element={<StrategiskPlanleggingModule />} />
           <Route path="/learning/ml2/strategisk-planlegging/complete" element={<StrategiskPlanleggingComplete />} />
@@ -594,16 +621,19 @@ function App() {
           <Route path="/learning/ent2/ledelse-organisasjonskultur/complete" element={<LedelseOrganisasjonskulturComplete />} />
           <Route path="/learning/ent2/personaladministrasjon-hrm-strategisk" element={<PersonaladministrasjonHrmStrategiskModule />} />
           <Route path="/learning/ent2/personaladministrasjon-hrm-strategisk/complete" element={<PersonaladministrasjonHrmStrategiskComplete />} />
-          <Route path="/learning/ent2/vekstfinansiering-investeringer" element={<VekstfinansieringInvesteringerModule />} />
-          <Route path="/learning/ent2/vekstfinansiering-investeringer/complete" element={<VekstfinansieringInvesteringerComplete />} />
+          {/* ── ENT2 strukturfiks (master kap 16, 17, 18, 19, 20, 21) ──────── */}
+          <Route path="/learning/ent2/investeringsanalyse" element={<InvesteringsanalyseModule />} />
+          <Route path="/learning/ent2/investeringsanalyse/complete" element={<InvesteringsanalyseComplete />} />
+          <Route path="/learning/ent2/likviditetsstyring-finansrisiko" element={<LikviditetsstyringFinansrisikoModule />} />
+          <Route path="/learning/ent2/likviditetsstyring-finansrisiko/complete" element={<LikviditetsstyringFinansrisikoComplete />} />
           <Route path="/learning/ent2/csr-etikk" element={<CsrEtikkModule />} />
           <Route path="/learning/ent2/csr-etikk/complete" element={<CsrEtikkComplete />} />
           <Route path="/learning/ent2/internasjonalisering-eksport" element={<InternasjonaliseringEksportModule />} />
           <Route path="/learning/ent2/internasjonalisering-eksport/complete" element={<InternasjonaliseringEksportComplete />} />
           <Route path="/learning/ent2/jus-tvistelosning" element={<JusTvistelosningModule />} />
           <Route path="/learning/ent2/jus-tvistelosning/complete" element={<JusTvistelosningComplete />} />
-          <Route path="/learning/ent2/avslutning-oppsummering" element={<AvslutningOppsummeringModule />} />
-          <Route path="/learning/ent2/avslutning-oppsummering/complete" element={<AvslutningOppsummeringComplete />} />
+          <Route path="/learning/ent2/markedsplanen-etablerte-bedrifter" element={<MarkedsplanenEtablerteBedrifterModule />} />
+          <Route path="/learning/ent2/markedsplanen-etablerte-bedrifter/complete" element={<MarkedsplanenEtablerteBedrifterComplete />} />
 
           {/* ── Forretningsdrift (VG1) learning modules (standalone) ───────────── */}
           <Route path="/learning/forretningsdrift/organization" element={<OrganizationModule />} />
