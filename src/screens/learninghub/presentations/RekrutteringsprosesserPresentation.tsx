@@ -182,7 +182,7 @@ function Slide0({ onNext, onStartLiveSession }: { onNext: () => void; onStartLiv
   )
 }
 
-function Slide1({ onShow }: { onShow: (title: string, text: string) => void }) {
+function Slide1({ onShow: _onShow }: { onShow: (title: string, text: string) => void }) {
   return (
     <Glass>
       <div style={twoCol}>
@@ -332,7 +332,7 @@ function Slide6({ onShow }: { onShow: (title: string, text: string) => void }) {
   )
 }
 
-function Slide7({ onShow }: { onShow: (title: string, text: string) => void }) {
+function Slide7({ onShow: _onShow }: { onShow: (title: string, text: string) => void }) {
   return (
     <Glass>
       <div style={twoCol}>

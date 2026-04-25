@@ -304,6 +304,8 @@ export default function HmsArbeidRollerModule() {
       completeRoute="/learning/vg2/hms/hms-arbeid-roller/complete"
       phases={phases}
       intro="Systematisk HMS-arbeid, internkontroll og rollene til arbeidsgiver, arbeidstaker og verneombud."
+      vissteduAt="Alle virksomheter med 10 eller flere ansatte må etter loven ha et verneombud, og fra 50 ansatte kreves også et arbeidsmiljøutvalg (AMU). Internkontrollforskriften gjelder uansett størrelse — fra første ansatt."
+      espenSier="HMS er en syklus: forplikte, kartlegge, planlegge, følge opp. Du kan ikke planlegge tiltak før du vet hva problemene er. Og husk: ansvaret følger myndigheten — daglig leder har myndighet, derfor har daglig leder ansvar."
       presentationLink={{ route: '/learning/presentations/hms-arbeid-roller', description: 'HMS-arbeid og roller — en visuell presentasjon' }}
     />
   )

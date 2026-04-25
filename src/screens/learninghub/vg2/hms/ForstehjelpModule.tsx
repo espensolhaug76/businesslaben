@@ -305,6 +305,8 @@ export default function ForstehjelpModule() {
       completeRoute="/learning/vg2/hms/forstehjelp/complete"
       phases={phases}
       intro="Livreddende førstehjelp og ansvar på et skadested."
+      vissteduAt="Sjansen for å overleve hjertestans dobles hvis HLR startes innen ett minutt og en hjertestarter (AED) brukes innen tre. Hvert minutt uten HLR reduserer overlevelsen med 7–10 %."
+      espenSier="Husk «Se, sjekk, varsle, hjelp» — fire ord som gir deg en mental huskeliste i stressede situasjoner. Du trenger ikke være ekspert; du trenger bare å handle. AED-en er smartere enn deg i det øyeblikket — stol på den."
       presentationLink={{ route: '/learning/presentations/forstehjelp', description: 'Livreddende førstehjelp — en visuell presentasjon' }}
     />
   )

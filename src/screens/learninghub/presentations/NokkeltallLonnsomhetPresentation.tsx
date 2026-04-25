@@ -243,7 +243,7 @@ function Slide7({ onShow }: { onShow: (title: string, text: string) => void }) {
   )
 }
 
-function Slide8({ onShow }: { onShow: (title: string, text: string) => void }) {
+function Slide8({ onShow: _onShow }: { onShow: (title: string, text: string) => void }) {
   return (
     <Glass>
       <div style={twoCol}>
@@ -261,7 +261,7 @@ function Slide8({ onShow }: { onShow: (title: string, text: string) => void }) {
   )
 }
 
-function Slide9({ onShow }: { onShow: (title: string, text: string) => void }) {
+function Slide9({ onShow: _onShow }: { onShow: (title: string, text: string) => void }) {
   return (
     <Glass>
       <div style={twoCol}>
@@ -288,7 +288,7 @@ function Slide10() {
         <h2 style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', fontWeight: 800, marginBottom: 32, lineHeight: 1.2 }}>
           Hvilke nøkkeltall ville du prioritert å følge opp hvis du var daglig leder – og hvorfor?
         </h2>
-        <p style={{ fontSize: 18, color: '#cbd5e1', lineHeight: 1.7, fontSize: 20 } as React.CSSProperties}>
+        <p style={{ color: '#cbd5e1', lineHeight: 1.7, fontSize: 20 } as React.CSSProperties}>
           En bedrift kan ha god rentabilitet men dårlig likviditet. Hvordan henger de fire dimensjonene sammen – og hva sier det om risiko?
         </p>
       </div>

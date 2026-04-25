@@ -304,6 +304,8 @@ export default function DigitaleSystemKundeoppfolgingModule() {
       completeRoute="/learning/vg2/okonomi/digitale-system-kundeoppfolging/complete"
       phases={phases}
       intro="Bruk av digitale system — CRM, booking og kommunikasjonsverktøy — for å følge opp kunder og kollegaer."
+      vissteduAt="Bedrifter som systematisk bruker CRM rapporterer i snitt 25–30 % høyere kundelojalitet enn de som ikke gjør det. Hjertet i CRM er ikke teknologien, men «Relationship» — å forvalte relasjonen over tid."
+      espenSier="Data tilhører bedriften, ikke selgeren. Det er derfor registrering er plikt, ikke valg. Salgstrakten er et diagnoseverktøy — bruk den til å finne hvor kundene faller fra, ikke bare som en rapport på slutten av kvartalet."
       presentationLink={{ route: '/learning/presentations/digitale-system-kundeoppfolging', description: 'Digitale system for kundeoppfølging — en visuell presentasjon' }}
     />
   )

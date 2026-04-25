@@ -304,6 +304,8 @@ export default function RegelverkServicebedrifterModule() {
       completeRoute="/learning/vg2/okonomi/regelverk-servicebedrifter/complete"
       phases={phases}
       intro="Lover og regler som styrer drift av servicebedrifter — fra kontraktsrett til forbrukerrettigheter."
+      vissteduAt="Forbrukerkjøpsloven er preseptorisk — den kan ikke settes til side gjennom avtale. Reklamasjonsfristen er 2 år for forbruksvarer og 5 år for varer som er ment å vare vesentlig lenger (hvitevarer, mobil, møbler)."
+      espenSier="Reklamasjon er loven. Garanti er en bonus fra selger — utløpt garanti betyr ikke at du står på bar bakke, du har fortsatt det loven gir deg. Husk forskjellen, og du unngår de fleste konflikter med kunder."
       presentationLink={{ route: '/learning/presentations/regelverk-servicebedrifter', description: 'Regelverk for servicebedrifter — en visuell presentasjon' }}
     />
   )

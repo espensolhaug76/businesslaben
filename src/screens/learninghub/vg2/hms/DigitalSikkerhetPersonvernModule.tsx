@@ -304,6 +304,8 @@ export default function DigitalSikkerhetPersonvernModule() {
       completeRoute="/learning/vg2/hms/digital-sikkerhet-personvern/complete"
       phases={phases}
       intro="GDPR, personvern og digital sikkerhet — bedriftens ansvar for å beskytte data og ansatte."
+      vissteduAt="Rundt 90 % av alle datainnbrudd skyldes menneskelig feil — ikke avansert hacking. Et klikk på en phishing-lenke eller et gjenbrukt passord er som regel inngangsporten."
+      espenSier="Kulturen er sterkere enn teknologien. Ansatte som er bevisste og opplærte er din beste forsvarslinje — bedre enn enhver brannmur. IT-avdelingen vil aldri be om passord via epost. Aldri."
       presentationLink={{ route: '/learning/presentations/digital-sikkerhet-personvern', description: 'Digital sikkerhet og personvern — en visuell presentasjon' }}
     />
   )

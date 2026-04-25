@@ -304,6 +304,8 @@ export default function TrenderForretningsmodellerModule() {
       completeRoute="/learning/vg2/okonomi/trender-forretningsmodeller/complete"
       phases={phases}
       intro="Utforsk lokale trender og forretningsmodeller, og hvordan disse påvirker bærekraft og miljø."
+      vissteduAt="Åpenhetsloven (2022) krever at norske virksomheter dokumenterer sosiale standarder i leverandørkjeden. «Tredoble bunnlinjen» — folk, planet, profitt — er ikke lenger bare et konsept, men lovpålagt rapportering for mange."
+      espenSier="Tre megatrender henger sammen: digitalisering, demografi og sirkulær økonomi. Digitaliseringen gjør sirkulær økonomi mulig i skala. Spør alltid: «Hva er den underutnyttede ressursen?» — det er der nye forretningsmodeller fødes."
       presentationLink={{ route: '/learning/presentations/trender-forretningsmodeller', description: 'Trender og forretningsmodeller — en visuell presentasjon' }}
     />
   )

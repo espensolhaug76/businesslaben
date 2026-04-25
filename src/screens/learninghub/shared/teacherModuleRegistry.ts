@@ -148,7 +148,6 @@ export const TEACHER_MODULE_PHASES: Record<string, DrawerPhase[]> = {
   // VG2 Helse, miljø og sikkerhet
   '/learning/vg2/hms/konflikthåndtering':           konfliktPhases as DrawerPhase[],
   '/learning/vg2/hms/etiske-dilemmaer':             etiskeDilemmaerPhases as DrawerPhase[],
-  '/learning/vg2/hms/risikoanalyse':                risikoanalysePhases as DrawerPhase[],
   '/learning/vg2/hms/forstehjelp':                    forstehjelpPhases as DrawerPhase[],
   '/learning/vg2/hms/brannvern':                      brannvernPhases as DrawerPhase[],
   '/learning/vg2/hms/hms-arbeid-roller':              hmsArbeidRollerPhases as DrawerPhase[],

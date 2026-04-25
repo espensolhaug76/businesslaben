@@ -304,6 +304,8 @@ export default function BrannvernModule() {
       completeRoute="/learning/vg2/hms/brannvern/complete"
       phases={phases}
       intro="Brannteori og planlegging, gjennomføring og evaluering av brannøving."
+      vissteduAt="Rundt 80 % av branndødsfall i Norge skyldes røykforgiftning, ikke selve flammene. Det er derfor rask evakuering — ikke slokking — er det viktigste tiltaket i brannvern."
+      espenSier="Røyk dreper raskere enn flammer. Rask evakuering er det viktigste du kan gjøre — resten er sekundært. En god brannøving lærer deg å handle på instinkt før hodet rekker å analysere."
       presentationLink={{ route: '/learning/presentations/brannvern', description: 'Brannvern — en visuell presentasjon' }}
     />
   )

@@ -255,7 +255,7 @@ function Slide7({ onShow }: { onShow: (title: string, text: string) => void }) {
   )
 }
 
-function Slide8({ onShow }: { onShow: (title: string, text: string) => void }) {
+function Slide8({ onShow: _onShow }: { onShow: (title: string, text: string) => void }) {
   return (
     <Glass>
       <div style={twoCol}>
