@@ -329,6 +329,23 @@ import BeredskapsplanerPresentation from './screens/learninghub/presentations/Be
 import HMSPresentation from './screens/learninghub/presentations/HMSPresentation'
 import ML1Presentation from './screens/learninghub/presentations/ML1Presentation'
 import ML2Presentation from './screens/learninghub/presentations/ML2Presentation'
+
+// ── ML1 per-kapittel presentasjoner (kap 1–15) ──────────────────────────────
+import MarkedsforingFagPresentation from './screens/learninghub/presentations/MarkedsforingFagPresentation'
+import MarkederPresentation from './screens/learninghub/presentations/MarkederPresentation'
+import ForbrukeratferdMl1Presentation from './screens/learninghub/presentations/ForbrukeratferdMl1Presentation'
+import ProfesjonelleMarkederPresentation from './screens/learninghub/presentations/ProfesjonelleMarkederPresentation'
+import SituasjonsanalyseMl1Presentation from './screens/learninghub/presentations/SituasjonsanalyseMl1Presentation'
+import StpPresentation from './screens/learninghub/presentations/StpPresentation'
+import ProduktstrategiPresentation from './screens/learninghub/presentations/ProduktstrategiPresentation'
+import PrisstrategiMl1Presentation from './screens/learninghub/presentations/PrisstrategiMl1Presentation'
+import DistribusjonsstrategiPresentation from './screens/learninghub/presentations/DistribusjonsstrategiPresentation'
+import MarkedskommunikasjonPresentation from './screens/learninghub/presentations/MarkedskommunikasjonPresentation'
+import SalgPersonligKommunikasjonPresentation from './screens/learninghub/presentations/SalgPersonligKommunikasjonPresentation'
+import ReklameMedieplanleggingPresentation from './screens/learninghub/presentations/ReklameMedieplanleggingPresentation'
+import DirekteMarkedsforingInternettPresentation from './screens/learninghub/presentations/DirekteMarkedsforingInternettPresentation'
+import MarkedsforingsLovverkEtikkPresentation from './screens/learninghub/presentations/MarkedsforingsLovverkEtikkPresentation'
+import OrganiseringMarkedsforingPresentation from './screens/learninghub/presentations/OrganiseringMarkedsforingPresentation'
 import ENT1Presentation from './screens/learninghub/presentations/ENT1Presentation'
 import ENT2Presentation from './screens/learninghub/presentations/ENT2Presentation'
 
@@ -479,6 +496,23 @@ function App() {
           <Route path="/learning/presentations/hms" element={<HMSPresentation />} />
           <Route path="/learning/presentations/ml1" element={<ML1Presentation />} />
           <Route path="/learning/presentations/ml2" element={<ML2Presentation />} />
+
+          {/* ── ML1 per-kapittel presentasjoner (kap 1–15) ─────────────── */}
+          <Route path="/learning/presentations/ml1/markedsforing-fag" element={<MarkedsforingFagPresentation />} />
+          <Route path="/learning/presentations/ml1/markeder" element={<MarkederPresentation />} />
+          <Route path="/learning/presentations/ml1/forbrukeratferd" element={<ForbrukeratferdMl1Presentation />} />
+          <Route path="/learning/presentations/ml1/profesjonelle-markeder" element={<ProfesjonelleMarkederPresentation />} />
+          <Route path="/learning/presentations/ml1/situasjonsanalyse" element={<SituasjonsanalyseMl1Presentation />} />
+          <Route path="/learning/presentations/ml1/stp" element={<StpPresentation />} />
+          <Route path="/learning/presentations/ml1/produktstrategi" element={<ProduktstrategiPresentation />} />
+          <Route path="/learning/presentations/ml1/prisstrategi" element={<PrisstrategiMl1Presentation />} />
+          <Route path="/learning/presentations/ml1/distribusjonsstrategi" element={<DistribusjonsstrategiPresentation />} />
+          <Route path="/learning/presentations/ml1/markedskommunikasjon" element={<MarkedskommunikasjonPresentation />} />
+          <Route path="/learning/presentations/ml1/salg-personlig-kommunikasjon" element={<SalgPersonligKommunikasjonPresentation />} />
+          <Route path="/learning/presentations/ml1/reklame-medieplanlegging" element={<ReklameMedieplanleggingPresentation />} />
+          <Route path="/learning/presentations/ml1/direkte-markedsforing-internett" element={<DirekteMarkedsforingInternettPresentation />} />
+          <Route path="/learning/presentations/ml1/markedsforings-lovverk-etikk" element={<MarkedsforingsLovverkEtikkPresentation />} />
+          <Route path="/learning/presentations/ml1/organisering-markedsforing" element={<OrganiseringMarkedsforingPresentation />} />
           <Route path="/learning/presentations/ent1" element={<ENT1Presentation />} />
           <Route path="/learning/presentations/ent2" element={<ENT2Presentation />} />
 

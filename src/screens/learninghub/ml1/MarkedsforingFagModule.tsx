@@ -459,7 +459,7 @@ export default function MarkedsforingFagModule() {
       intro="Markedsføring er langt mer enn reklame og salgstriks. Det er en helhetlig forretningsfilosofi om å skape, kommunisere og levere verdi til kunder — og å forstå markedet så godt at produktene selger seg selv."
       vissteduAt="84% av markedssjefene mener de leverer god kundeopplevelse. Kun 8% av kundene er enige. Denne &quot;experience gap&quot; koster norske bedrifter milliarder hvert år."
       espenSier="Markedsføring er ikke manipulasjon — det er kommunikasjon av ekte verdi. Den beste markedsføringen er et godt produkt som folk frivillig forteller venner om."
-      presentationLink={{ route: '/learning/presentations/forbrukeratferd', description: 'Forbrukeratferd — en visuell gjennomgang av markedsføring som fag og tankesett' }}
+      presentationLink={{ route: '/learning/presentations/ml1/markedsforing-fag', description: 'Markedsføring som fag og tankesett — 10 slides' }}
     />
   )
 }

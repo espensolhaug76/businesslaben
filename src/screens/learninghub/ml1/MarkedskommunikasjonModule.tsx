@@ -403,7 +403,7 @@ export default function MarkedskommunikasjonModule() {
       intro="Markedskommunikasjon handler om å nå kunden med riktig budskap, på riktig kanal, til riktig tid. Fra TV-reklame til TikTok — prinsippene er de samme, men verktøyene endrer seg."
       vissteduAt="Old Spice sin 'The Man Your Man Could Smell Like'-kampanje (2010) økte salget med 107% på 3 måneder — og kostnadene ble halvert fordi viral spredning erstattet betalt media."
       espenSier="Integrert markedskommunikasjon er ikke et valg — det er en nødvendighet. Kundene møter deg på 8-12 touch points før de kjøper. Hvis ikke alle disse forteller samme historie, mister du dem."
-      presentationLink={{ route: '/learning/presentations/kampanje', description: 'Markedsføringskampanje — en visuell gjennomgang av kanalvalg og IMK' }}
+      presentationLink={{ route: '/learning/presentations/ml1/markedskommunikasjon', description: 'Markedskommunikasjon — 10 slides' }}
     />
   )
 }

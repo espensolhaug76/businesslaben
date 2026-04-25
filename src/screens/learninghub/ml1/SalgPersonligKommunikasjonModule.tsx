@@ -37,6 +37,7 @@ export default function SalgPersonligKommunikasjonModule() {
       intro="Personlig salg som relasjonsbygger — salgsprosessen, behovsanalyse, innvendingsbehandling, ikke-verbal kommunikasjon, mersalg og oppsalg."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml1/salg-personlig-kommunikasjon', description: 'Salg og personlig kommunikasjon — 10 slides' }}
     />
   );
 }

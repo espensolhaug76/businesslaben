@@ -37,6 +37,7 @@ export default function ProfesjonelleMarkederModule() {
       intro="B2B-markeder i dybden — innkjøpsenhet (DMU), anbudsprosesser og langsiktig relasjonsbygging."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml1/profesjonelle-markeder', description: 'Profesjonelle markeder — B2B, DMU og anbud' }}
     />
   );
 }

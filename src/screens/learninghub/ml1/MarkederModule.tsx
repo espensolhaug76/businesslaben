@@ -37,6 +37,7 @@ export default function MarkederModule() {
       intro="Markedstyper, mellomledd og struktur — fra B2C og B2B til offentlige og internasjonale markeder."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml1/markeder', description: 'Markeder — B2C, B2B, offentlig og internasjonalt' }}
     />
   );
 }

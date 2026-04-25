@@ -396,7 +396,7 @@ export default function StpModule() {
       intro="STP — Segmentering, Targeting og Posisjonering — er markedsføringens kjernestrategi. Uten tydelig STP er du ingenting til alle. Med tydelig STP er du alt til noen."
       vissteduAt="Bedrifter med klart definerte personas konverterer 2,5x bedre på digitale flater. HubSpot har vist at markedsføring rettet mot spesifikke personas genererer 18x mer omsetning enn generisk massemarkedsføring."
       espenSier="STP er ikke et akademisk rammeverk — det er en beslutningsprosess. Uten tydelig segment og posisjon er du ingenting til alle. Med tydelig STP er du alt til noen."
-      presentationLink={{ route: '/learning/presentations/forbrukeratferd', description: 'Forbrukeratferd — en visuell gjennomgang av segmentering og personas' }}
+      presentationLink={{ route: '/learning/presentations/ml1/stp', description: 'STP-prosessen — segmentering, målgruppe og posisjonering' }}
     />
   );
 }

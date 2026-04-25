@@ -403,7 +403,7 @@ export default function SituasjonsanalyseModule() {
       intro="Gode beslutninger krever god innsikt. Situasjonsanalyse er verktøykassen for å forstå hvor bedriften står, hvilke krefter som påvirker markedet, og hvilke strategiske valg som er tilgjengelige."
       vissteduAt="NorgesGruppen gjennomfører over 500 000 kundeinteraksjoner daglig — alle data analyseres for å optimere produktsortiment, priser og kampanjer i sanntid."
       espenSier="En god SWOT tar maks 2 timer — men mange bedrifter tar beslutninger uten noen analyse i det hele tatt. Situasjonsanalyse er ikke sikkert å gjøre — det er farlig IKKE å gjøre det."
-      presentationLink={{ route: '/learning/presentations/markedsplan', description: 'Markedsplan — en visuell gjennomgang av situasjonsanalyse og SWOT' }}
+      presentationLink={{ route: '/learning/presentations/ml1/situasjonsanalyse', description: 'Markedsinformasjon og MIS — 10 slides' }}
     />
   );
 }

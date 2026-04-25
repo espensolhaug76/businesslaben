@@ -37,6 +37,7 @@ export default function DirekteMarkedsforingInternettModule() {
       intro="En-til-en-kommunikasjon i digital tidsalder — SEO, SEM, innholdsmarkedsføring, sosiale medier, konvertering (CRO), big data og GDPR."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml1/direkte-markedsforing-internett', description: 'Direkte markedsføring og internett — 10 slides' }}
     />
   );
 }

@@ -398,7 +398,7 @@ export default function PrisstrategiMl1Module() {
       intro="Pris er det eneste elementet i markedsmiksen som genererer inntekt — alt annet er kostnader. Riktig prissetting er derfor den kraftigste enkeltfaktoren for lønnsomhet."
       vissteduAt="Amazon endrer priser 2,5 millioner ganger per dag — i snitt endres en produktpris hvert 10. minutt. En Apple iPhone ble mer enn 40 ganger prisjustert i løpet av lanserings-kvartalet."
       espenSier="Prissetting er den kraftigste og raskeste måten å øke lønnsomheten på — 1 % prisøkning øker fortjenesten mer enn 1 % kostnadsreduksjon. Ikke gå inn i priskonkurranse uten å ha lavest kostnader i bransjen."
-      presentationLink={{ route: '/learning/presentations/prissetting', description: 'Prissetting — en visuell gjennomgang av priselastisitet og prisstrategier' }}
+      presentationLink={{ route: '/learning/presentations/ml1/prisstrategi', description: 'Pris som konkurransemiddel — 10 slides' }}
     />
   );
 }

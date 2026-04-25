@@ -37,6 +37,7 @@ export default function ReklameMedieplanleggingModule() {
       intro="Strategisk synlighet — fra medieplanleggingens faser via dekning og frekvens til digital annonsering, influencer marketing og reklameetikk."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml1/reklame-medieplanlegging', description: 'Reklame og medieplanlegging — 10 slides' }}
     />
   );
 }

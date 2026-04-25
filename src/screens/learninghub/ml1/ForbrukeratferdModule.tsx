@@ -491,7 +491,7 @@ export default function ForbrukeratferdModule() {
       intro="Hvorfor kjøper folk det de kjøper? Forbrukeratferd er studiet av prosessene som leder til kjøpsbeslutninger — og de er langt mer komplekse (og fascinerende) enn &quot;vi ser reklame og kjøper&quot;."
       vissteduAt="71% av forbrukere forventer personalisert kommunikasjon fra bedrifter — og 76% blir frustrert når dette ikke skjer. Personalisering er ikke lenger en fordel, men en forventning."
       espenSier="Neste gang du legger noe i handlekurven på nett — observer din egen kjøpsprosess. Hvilken fase er du i? Hva trigget behovet? Du vil aldri shoppe på autopilot igjen."
-      presentationLink={{ route: '/learning/presentations/forbrukeratferd', description: 'Forbrukeratferd — en visuell gjennomgang av kjøpsprosessen og motivasjon' }}
+      presentationLink={{ route: '/learning/presentations/ml1/forbrukeratferd', description: 'Psykologi og kjøpsatferd — 10 slides' }}
     />
   )
 }

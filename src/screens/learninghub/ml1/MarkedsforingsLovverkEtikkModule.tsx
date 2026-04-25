@@ -37,6 +37,7 @@ export default function MarkedsforingsLovverkEtikkModule() {
       intro="Spillereglene i markedet — markedsføringsloven, angrerettloven, åpenhetsloven, beskyttelse av barn, grønnvasking og samfunnsansvar (CSR)."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml1/markedsforings-lovverk-etikk', description: 'Markedsføringens lovverk og etikk — 10 slides' }}
     />
   );
 }

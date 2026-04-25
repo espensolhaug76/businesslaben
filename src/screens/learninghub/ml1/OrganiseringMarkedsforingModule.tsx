@@ -37,6 +37,7 @@ export default function OrganiseringMarkedsforingModule() {
       intro="Struktur for gjennomføring — funksjonell, produktbasert, markedsbasert og prosjektorganisering, samt bedriftskultur og endringsledelse."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml1/organisering-markedsforing', description: 'Organisering av markedsføringen — 10 slides' }}
     />
   );
 }
