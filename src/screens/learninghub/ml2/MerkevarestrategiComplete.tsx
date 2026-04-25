@@ -7,7 +7,11 @@ export default function MerkevarestrategiComplete() {
       moduleIcon="⭐"
       retryRoute="/learning/ml2/merkevarestrategi"
       learningOutcomes={[
-        'Innhold under utvikling — fullt læringsutbytte legges inn når modulen er ferdig',
+        'Du forstår Brand Equity som målbar verdi navnet tilfører produktet',
+'Du kjenner Aakers 4 pilarer (kjennskap, kvalitet, assosiasjoner, lojalitet)',
+'Du kan velge mellom paraply-, individuelle eller hybrid merkestrategi',
+'Du ser merkeutvidelse som vekststrategi med klare suksesskriterier',
+'Du forstår skiftet til autentisitet, bærekraft og digital merkebygging hos yngre forbrukere',
       ]}
     />
   )

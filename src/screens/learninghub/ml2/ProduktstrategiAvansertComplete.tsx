@@ -7,7 +7,11 @@ export default function ProduktstrategiAvansertComplete() {
       moduleIcon="📦"
       retryRoute="/learning/ml2/produktstrategi-avansert"
       learningOutcomes={[
-        'Innhold under utvikling — fullt læringsutbytte legges inn når modulen er ferdig',
+        'Du kan klassifisere produkter i BCG-matrisen og velge riktig strategi per kvadrant',
+'Du forstår PLC og hvordan tiltak må tilpasses livssyklus-fase',
+'Du kan velge mellom House of Brands og Branded House merkearkitektur',
+'Du kjenner Open Innovation som strategi for å hente ideer utenfra',
+'Du ser ettermarkedet og økosystem-strategi som ofte mer lønnsomme enn førstesalg',
       ]}
     />
   )

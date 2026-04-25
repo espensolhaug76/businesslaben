@@ -7,7 +7,11 @@ export default function EtikkIMarkedsforingenComplete() {
       moduleIcon="⚖️"
       retryRoute="/learning/ml2/etikk-i-markedsforingen"
       learningOutcomes={[
-        'Innhold under utvikling — fullt læringsutbytte legges inn når modulen er ferdig',
+        'Du forstår at etikk er bredere enn jus — lovlig kan likevel være uetisk',
+'Du kan bruke 4-stegs etikk-test (lovlig, rettferdig, offentlig, langsiktig stolt)',
+'Du kjenner etiske dilemmaer i produkt, pris, kommunikasjon og digital data',
+'Du forstår whistleblowing som lovbeskyttet etisk plikt',
+'Du ser etisk kultur som strategisk konkurransefortrinn — ikke kostnad',
       ]}
     />
   )

@@ -7,7 +7,11 @@ export default function MarkedsOgBransjeanalyseComplete() {
       moduleIcon="🔍"
       retryRoute="/learning/ml2/markeds-og-bransjeanalyse"
       learningOutcomes={[
-        'Innhold under utvikling — fullt læringsutbytte legges inn når modulen er ferdig',
+        'Du forstår Porters 5 krefter og hvordan hver kraft påvirker bransjens lønnsomhet',
+'Du kan vurdere om en bransje er attraktiv eller strukturelt ulønnsom',
+'Du kjenner forskjellen på rivalisering, nyetablerere, substitutter, leverandørmakt og kundemakt',
+'Du forstår strategiske grupper og bransjeglidning som dynamiske krefter',
+'Du kan koble bransjeanalyse til konkrete strategiske valg om posisjonering',
       ]}
     />
   )
