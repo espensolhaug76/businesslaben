@@ -7,7 +7,11 @@ export default function StrategiskPlanleggingComplete() {
       moduleIcon="🎯"
       retryRoute="/learning/ml2/strategisk-planlegging"
       learningOutcomes={[
-        'Innhold under utvikling — fullt læringsutbytte legges inn når modulen er ferdig',
+        'Du forstår at strategi handler om langsiktige valg som er vanskelige å reversere',
+'Du kan strukturere en strategiprosess: visjon → analyse → mål → strategi → implementering',
+'Du behersker PESTEL og SWOT som analyseverktøy og kjenner Ansoffs vekstmatrise',
+'Du kan identifisere kritiske suksessfaktorer og koble dem med målbare KPI-er',
+'Du forstår at 70 % av strategier mislykkes på implementering — og hvordan unngå det',
       ]}
     />
   )
