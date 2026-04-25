@@ -202,6 +202,9 @@ export default function TeacherPresentationEditor({
   const [form, setForm] = useState<Partial<TeacherSlide>>({})
   const activeRef = useRef<HTMLDivElement>(null)
 
+  // Skjul editoren helt inntil Firebase auth er på plass — endre til false for å aktivere igjen.
+  const EDITOR_HIDDEN = true
+
   const isTeacher = typeof localStorage !== 'undefined' && !!localStorage.getItem('teacher-classroom-code')
 
   // Expose editor-open state so the presentation close button can check it
@@ -216,6 +219,7 @@ export default function TeacherPresentationEditor({
     setTimeout(() => activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50)
   }, [currentSlide, open])
 
+  if (EDITOR_HIDDEN) return null
   if (!isTeacher) return null
 
   function save(updated: TeacherSlide[]) {
