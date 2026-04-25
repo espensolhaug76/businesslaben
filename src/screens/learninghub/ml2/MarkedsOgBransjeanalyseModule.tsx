@@ -37,6 +37,7 @@ export default function MarkedsOgBransjeanalyseModule() {
       intro="PESTEL, SWOT og Porters fem krefter — verktøyene for å forstå marked og konkurranse på dypt nivå."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/markeds-og-bransjeanalyse', description: 'Markeds- og bransjeanalyse — 10 slides' }}
     />
   );
 }

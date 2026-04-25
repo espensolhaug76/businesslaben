@@ -37,6 +37,7 @@ export default function ProduktstrategiAvansertModule() {
       intro="PLC, innovasjon og ettermarked — produktledelse på VG3-nivå med fokus på porteføljeteknikk."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/produktstrategi-avansert', description: 'Produktstrategi (avansert) — 10 slides' }}
     />
   );
 }

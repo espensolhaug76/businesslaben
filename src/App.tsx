@@ -346,6 +346,25 @@ import ReklameMedieplanleggingPresentation from './screens/learninghub/presentat
 import DirekteMarkedsforingInternettPresentation from './screens/learninghub/presentations/DirekteMarkedsforingInternettPresentation'
 import MarkedsforingsLovverkEtikkPresentation from './screens/learninghub/presentations/MarkedsforingsLovverkEtikkPresentation'
 import OrganiseringMarkedsforingPresentation from './screens/learninghub/presentations/OrganiseringMarkedsforingPresentation'
+
+// ── ML2 per-kapittel presentasjoner (kap 1–17) ──────────────────────────────
+import StrategiskPlanleggingPresentation from './screens/learninghub/presentations/StrategiskPlanleggingPresentation'
+import VisjonOgMalPresentation from './screens/learninghub/presentations/VisjonOgMalPresentation'
+import MarkedsOgBransjeanalysePresentation from './screens/learninghub/presentations/MarkedsOgBransjeanalysePresentation'
+import LederensRollePresentation from './screens/learninghub/presentations/LederensRollePresentation'
+import SamfunnsansvarBaerekraftOmdommePresentation from './screens/learninghub/presentations/SamfunnsansvarBaerekraftOmdommePresentation'
+import EtikkIMarkedsforingenPresentation from './screens/learninghub/presentations/EtikkIMarkedsforingenPresentation'
+import MerkevarestrategiPresentation from './screens/learninghub/presentations/MerkevarestrategiPresentation'
+import ProduktstrategiAvansertPresentation from './screens/learninghub/presentations/ProduktstrategiAvansertPresentation'
+import PrisstrategiAvansertPresentation from './screens/learninghub/presentations/PrisstrategiAvansertPresentation'
+import DistribusjonsstrategiAvansertPresentation from './screens/learninghub/presentations/DistribusjonsstrategiAvansertPresentation'
+import KommunikasjonsstrategierPresentation from './screens/learninghub/presentations/KommunikasjonsstrategierPresentation'
+import MarkedsmiksOgEffektmalingPresentation from './screens/learninghub/presentations/MarkedsmiksOgEffektmalingPresentation'
+import OrganiseringOgLedelseStrategiskPresentation from './screens/learninghub/presentations/OrganiseringOgLedelseStrategiskPresentation'
+import PersonaladministrasjonHRMPresentation from './screens/learninghub/presentations/PersonaladministrasjonHRMPresentation'
+import InternasjonalMarkedsforingPresentation from './screens/learninghub/presentations/InternasjonalMarkedsforingPresentation'
+import OkonomistyringKalkulasjonBudsjetteringPresentation from './screens/learninghub/presentations/OkonomistyringKalkulasjonBudsjetteringPresentation'
+import MarkedsplanenPresentation from './screens/learninghub/presentations/MarkedsplanenPresentation'
 import ENT1Presentation from './screens/learninghub/presentations/ENT1Presentation'
 import ENT2Presentation from './screens/learninghub/presentations/ENT2Presentation'
 
@@ -513,6 +532,25 @@ function App() {
           <Route path="/learning/presentations/ml1/direkte-markedsforing-internett" element={<DirekteMarkedsforingInternettPresentation />} />
           <Route path="/learning/presentations/ml1/markedsforings-lovverk-etikk" element={<MarkedsforingsLovverkEtikkPresentation />} />
           <Route path="/learning/presentations/ml1/organisering-markedsforing" element={<OrganiseringMarkedsforingPresentation />} />
+
+          {/* ── ML2 per-kapittel presentasjoner (kap 1–17) ─────────────── */}
+          <Route path="/learning/presentations/ml2/strategisk-planlegging" element={<StrategiskPlanleggingPresentation />} />
+          <Route path="/learning/presentations/ml2/visjon-og-mal" element={<VisjonOgMalPresentation />} />
+          <Route path="/learning/presentations/ml2/markeds-og-bransjeanalyse" element={<MarkedsOgBransjeanalysePresentation />} />
+          <Route path="/learning/presentations/ml2/lederens-rolle" element={<LederensRollePresentation />} />
+          <Route path="/learning/presentations/ml2/samfunnsansvar-baerekraft-omdomme" element={<SamfunnsansvarBaerekraftOmdommePresentation />} />
+          <Route path="/learning/presentations/ml2/etikk-i-markedsforingen" element={<EtikkIMarkedsforingenPresentation />} />
+          <Route path="/learning/presentations/ml2/merkevarestrategi" element={<MerkevarestrategiPresentation />} />
+          <Route path="/learning/presentations/ml2/produktstrategi-avansert" element={<ProduktstrategiAvansertPresentation />} />
+          <Route path="/learning/presentations/ml2/prisstrategi-avansert" element={<PrisstrategiAvansertPresentation />} />
+          <Route path="/learning/presentations/ml2/distribusjonsstrategi-avansert" element={<DistribusjonsstrategiAvansertPresentation />} />
+          <Route path="/learning/presentations/ml2/kommunikasjonsstrategier" element={<KommunikasjonsstrategierPresentation />} />
+          <Route path="/learning/presentations/ml2/markedsmiks-og-effektmaling" element={<MarkedsmiksOgEffektmalingPresentation />} />
+          <Route path="/learning/presentations/ml2/organisering-og-ledelse-strategisk" element={<OrganiseringOgLedelseStrategiskPresentation />} />
+          <Route path="/learning/presentations/ml2/personaladministrasjon-hrm" element={<PersonaladministrasjonHRMPresentation />} />
+          <Route path="/learning/presentations/ml2/internasjonal-markedsforing" element={<InternasjonalMarkedsforingPresentation />} />
+          <Route path="/learning/presentations/ml2/okonomistyring-kalkulasjon-budsjettering" element={<OkonomistyringKalkulasjonBudsjetteringPresentation />} />
+          <Route path="/learning/presentations/ml2/markedsplanen" element={<MarkedsplanenPresentation />} />
           <Route path="/learning/presentations/ent1" element={<ENT1Presentation />} />
           <Route path="/learning/presentations/ent2" element={<ENT2Presentation />} />
 

@@ -37,6 +37,7 @@ export default function StrategiskPlanleggingModule() {
       intro="Fra visjon til handling — strategiprosessen som binder sammen marked, organisasjon og økonomi."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/strategisk-planlegging', description: 'Strategisk planlegging — 10 slides' }}
     />
   );
 }

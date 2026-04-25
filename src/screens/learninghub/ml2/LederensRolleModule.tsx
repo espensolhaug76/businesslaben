@@ -37,6 +37,7 @@ export default function LederensRolleModule() {
       intro="Lederstil, motivasjon og endringsledelse — hva som skiller en god leder fra en effektiv leder."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/lederens-rolle', description: 'Lederens rolle — 10 slides' }}
     />
   );
 }

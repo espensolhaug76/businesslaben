@@ -37,6 +37,7 @@ export default function OrganiseringOgLedelseStrategiskModule() {
       intro="Organisasjonsstruktur, kultur og endringsledelse — slik støtter organisasjonen strategien."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/organisering-og-ledelse-strategisk', description: 'Organisering og ledelse (strategisk) — 10 slides' }}
     />
   );
 }

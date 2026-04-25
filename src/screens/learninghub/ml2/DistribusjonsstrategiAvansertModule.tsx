@@ -37,6 +37,7 @@ export default function DistribusjonsstrategiAvansertModule() {
       intro="Omnikanal, plattformøkonomi og direct-to-consumer — distribusjon som konkurransefortrinn."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/distribusjonsstrategi-avansert', description: 'Distribusjonsstrategier (avansert) — 10 slides' }}
     />
   );
 }

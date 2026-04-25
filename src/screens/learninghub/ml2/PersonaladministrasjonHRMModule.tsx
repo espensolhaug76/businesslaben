@@ -37,6 +37,7 @@ export default function PersonaladministrasjonHRMModule() {
       intro="Rekruttering, kompetanseutvikling og lønn — strategisk human resource management i praksis."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/personaladministrasjon-hrm', description: 'Personaladministrasjon og HRM — 10 slides' }}
     />
   );
 }

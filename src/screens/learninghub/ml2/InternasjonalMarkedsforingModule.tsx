@@ -37,6 +37,7 @@ export default function InternasjonalMarkedsforingModule() {
       intro="Eksport, kulturforståelse og global merkevarebygging — markedsføring over landegrenser."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/internasjonal-markedsforing', description: 'Internasjonal markedsføring — 10 slides' }}
     />
   );
 }

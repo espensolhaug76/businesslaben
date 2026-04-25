@@ -37,6 +37,7 @@ export default function EtikkIMarkedsforingenModule() {
       intro="Etiske dilemmaer i reklame, salg og dataetikk — grensen mellom påvirkning og manipulasjon."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/etikk-i-markedsforingen', description: 'Etikk i markedsføringen — 10 slides' }}
     />
   );
 }

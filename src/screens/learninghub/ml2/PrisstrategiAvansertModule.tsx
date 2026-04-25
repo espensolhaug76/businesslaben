@@ -37,6 +37,7 @@ export default function PrisstrategiAvansertModule() {
       intro="Verdibasert prising, dynamiske modeller og prisdiskriminering — pris som strategisk styringsverktøy."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/prisstrategi-avansert', description: 'Prisstrategier (avansert) — 10 slides' }}
     />
   );
 }

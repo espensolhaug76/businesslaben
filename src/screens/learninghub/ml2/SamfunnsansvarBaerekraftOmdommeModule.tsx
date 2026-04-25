@@ -37,6 +37,7 @@ export default function SamfunnsansvarBaerekraftOmdommeModule() {
       intro="CSR, ESG og Triple Bottom Line — bærekraft som strategisk fortrinn og omdømmebygger."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/samfunnsansvar-baerekraft-omdomme', description: 'Samfunnsansvar, bærekraft og omdømme — 10 slides' }}
     />
   );
 }

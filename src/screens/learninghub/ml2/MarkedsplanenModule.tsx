@@ -37,6 +37,7 @@ export default function MarkedsplanenModule() {
       intro="Den helhetlige markedsplanen — slik bindes analyse, mål, strategi, tiltak og budsjett sammen."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/markedsplanen', description: 'Markedsplanen — 10 slides' }}
     />
   );
 }

@@ -37,6 +37,7 @@ export default function KommunikasjonsstrategierModule() {
       intro="IMC, digital kundereise og innholdsmarkedsføring — å nå riktig kunde med riktig budskap."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/kommunikasjonsstrategier', description: 'Kommunikasjonsstrategier — 10 slides' }}
     />
   );
 }

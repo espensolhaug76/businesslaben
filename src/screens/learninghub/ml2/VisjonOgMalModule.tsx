@@ -37,6 +37,7 @@ export default function VisjonOgMalModule() {
       intro="Visjon, forretningsidé og SMARTE mål — slik styres en bedrift mot ønsket fremtid."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/visjon-og-mal', description: 'Visjon og mål — 10 slides' }}
     />
   );
 }

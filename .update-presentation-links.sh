@@ -2,31 +2,29 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# Add presentationLink prop to each ML1 module by inserting after the `phases={phases}` line.
-# Mapping: module file → presentation route.
-
 declare -A LINKS=(
-  ["src/screens/learninghub/ml1/MarkedsforingFagModule.tsx"]="/learning/presentations/ml1/markedsforing-fag|Markedsføring som fag og tankesett — 10 slides"
-  ["src/screens/learninghub/ml1/MarkederModule.tsx"]="/learning/presentations/ml1/markeder|Markeder — B2C, B2B, offentlig og internasjonalt"
-  ["src/screens/learninghub/ml1/ForbrukeratferdModule.tsx"]="/learning/presentations/ml1/forbrukeratferd|Psykologi og kjøpsatferd — 10 slides"
-  ["src/screens/learninghub/ml1/ProfesjonelleMarkederModule.tsx"]="/learning/presentations/ml1/profesjonelle-markeder|Profesjonelle markeder — B2B, DMU og anbud"
-  ["src/screens/learninghub/ml1/SituasjonsanalyseModule.tsx"]="/learning/presentations/ml1/situasjonsanalyse|Markedsinformasjon og MIS — 10 slides"
-  ["src/screens/learninghub/ml1/StpModule.tsx"]="/learning/presentations/ml1/stp|STP-prosessen — segmentering, målgruppe og posisjonering"
-  ["src/screens/learninghub/ml1/ProduktstrategiModule.tsx"]="/learning/presentations/ml1/produktstrategi|Produktet som konkurransemiddel — 10 slides"
-  ["src/screens/learninghub/ml1/PrisstrategiMl1Module.tsx"]="/learning/presentations/ml1/prisstrategi|Pris som konkurransemiddel — 10 slides"
-  ["src/screens/learninghub/ml1/DistribusjonsstrategiModule.tsx"]="/learning/presentations/ml1/distribusjonsstrategi|Distribusjon som konkurransemiddel — 10 slides"
-  ["src/screens/learninghub/ml1/MarkedskommunikasjonModule.tsx"]="/learning/presentations/ml1/markedskommunikasjon|Markedskommunikasjon — 10 slides"
-  ["src/screens/learninghub/ml1/SalgPersonligKommunikasjonModule.tsx"]="/learning/presentations/ml1/salg-personlig-kommunikasjon|Salg og personlig kommunikasjon — 10 slides"
-  ["src/screens/learninghub/ml1/ReklameMedieplanleggingModule.tsx"]="/learning/presentations/ml1/reklame-medieplanlegging|Reklame og medieplanlegging — 10 slides"
-  ["src/screens/learninghub/ml1/DirekteMarkedsforingInternettModule.tsx"]="/learning/presentations/ml1/direkte-markedsforing-internett|Direkte markedsføring og internett — 10 slides"
-  ["src/screens/learninghub/ml1/MarkedsforingsLovverkEtikkModule.tsx"]="/learning/presentations/ml1/markedsforings-lovverk-etikk|Markedsføringens lovverk og etikk — 10 slides"
-  ["src/screens/learninghub/ml1/OrganiseringMarkedsforingModule.tsx"]="/learning/presentations/ml1/organisering-markedsforing|Organisering av markedsføringen — 10 slides"
+  ["src/screens/learninghub/ml2/StrategiskPlanleggingModule.tsx"]="/learning/presentations/ml2/strategisk-planlegging|Strategisk planlegging — 10 slides"
+  ["src/screens/learninghub/ml2/VisjonOgMalModule.tsx"]="/learning/presentations/ml2/visjon-og-mal|Visjon og mål — 10 slides"
+  ["src/screens/learninghub/ml2/MarkedsOgBransjeanalyseModule.tsx"]="/learning/presentations/ml2/markeds-og-bransjeanalyse|Markeds- og bransjeanalyse — 10 slides"
+  ["src/screens/learninghub/ml2/LederensRolleModule.tsx"]="/learning/presentations/ml2/lederens-rolle|Lederens rolle — 10 slides"
+  ["src/screens/learninghub/ml2/SamfunnsansvarBaerekraftOmdommeModule.tsx"]="/learning/presentations/ml2/samfunnsansvar-baerekraft-omdomme|Samfunnsansvar, bærekraft og omdømme — 10 slides"
+  ["src/screens/learninghub/ml2/EtikkIMarkedsforingenModule.tsx"]="/learning/presentations/ml2/etikk-i-markedsforingen|Etikk i markedsføringen — 10 slides"
+  ["src/screens/learninghub/ml2/MerkevarestrategiModule.tsx"]="/learning/presentations/ml2/merkevarestrategi|Merkevarestrategi — 10 slides"
+  ["src/screens/learninghub/ml2/ProduktstrategiAvansertModule.tsx"]="/learning/presentations/ml2/produktstrategi-avansert|Produktstrategi (avansert) — 10 slides"
+  ["src/screens/learninghub/ml2/PrisstrategiAvansertModule.tsx"]="/learning/presentations/ml2/prisstrategi-avansert|Prisstrategier (avansert) — 10 slides"
+  ["src/screens/learninghub/ml2/DistribusjonsstrategiAvansertModule.tsx"]="/learning/presentations/ml2/distribusjonsstrategi-avansert|Distribusjonsstrategier (avansert) — 10 slides"
+  ["src/screens/learninghub/ml2/KommunikasjonsstrategierModule.tsx"]="/learning/presentations/ml2/kommunikasjonsstrategier|Kommunikasjonsstrategier — 10 slides"
+  ["src/screens/learninghub/ml2/MarkedsmiksOgEffektmalingModule.tsx"]="/learning/presentations/ml2/markedsmiks-og-effektmaling|Markedsmiks og effektmåling — 10 slides"
+  ["src/screens/learninghub/ml2/OrganiseringOgLedelseStrategiskModule.tsx"]="/learning/presentations/ml2/organisering-og-ledelse-strategisk|Organisering og ledelse (strategisk) — 10 slides"
+  ["src/screens/learninghub/ml2/PersonaladministrasjonHRMModule.tsx"]="/learning/presentations/ml2/personaladministrasjon-hrm|Personaladministrasjon og HRM — 10 slides"
+  ["src/screens/learninghub/ml2/InternasjonalMarkedsforingModule.tsx"]="/learning/presentations/ml2/internasjonal-markedsforing|Internasjonal markedsføring — 10 slides"
+  ["src/screens/learninghub/ml2/OkonomistyringKalkulasjonBudsjetteringModule.tsx"]="/learning/presentations/ml2/okonomistyring-kalkulasjon-budsjettering|Økonomistyring, kalkulasjon og budsjettering — 10 slides"
+  ["src/screens/learninghub/ml2/MarkedsplanenModule.tsx"]="/learning/presentations/ml2/markedsplanen|Markedsplanen — 10 slides"
 )
 
 for file in "${!LINKS[@]}"; do
   IFS='|' read -r route description <<< "${LINKS[$file]}"
   if grep -q "presentationLink=" "$file"; then
-    # Already has a link — replace its route + description
     python3 - "$file" "$route" "$description" <<'PY'
 import re, sys
 fp, route, desc = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -40,7 +38,6 @@ else:
     print(f"  ~ {fp}")
 PY
   else
-    # No link yet — insert before the last `/>` of <DrawerModule …/>
     python3 - "$file" "$route" "$description" <<'PY'
 import re, sys
 fp, route, desc = sys.argv[1], sys.argv[2], sys.argv[3]

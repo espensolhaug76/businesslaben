@@ -37,6 +37,7 @@ export default function OkonomistyringKalkulasjonBudsjetteringModule() {
       intro="Bidragskalkyle, selvkost og budsjettoppfølging — økonomistyring som beslutningsgrunnlag."
       vissteduAt="Modulen er under utvikling. Manus er klart for alle 5 fasene; de legges inn fortløpende."
       espenSier="Stay tuned — innholdet kommer. Inntil da: bruk fag-oversikten i presentasjonen for et raskt overblikk."
+      presentationLink={{ route: '/learning/presentations/ml2/okonomistyring-kalkulasjon-budsjettering', description: 'Økonomistyring, kalkulasjon og budsjettering — 10 slides' }}
     />
   );
 }
