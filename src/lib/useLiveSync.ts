@@ -20,7 +20,7 @@ const EMPTY: LiveSyncState = {
 
 export function useLiveSync(): LiveSyncState {
   const urlCode = new URLSearchParams(window.location.search).get('live-code')
-  const classCode = urlCode ?? sessionStorage.getItem('student-classroom-code')
+  const classCode = urlCode ?? localStorage.getItem('student-classroom-code')
   const isTeacherBigScreen = !!urlCode
 
   const [state, setState] = useState<LiveSyncState>(EMPTY)

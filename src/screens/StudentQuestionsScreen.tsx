@@ -69,7 +69,7 @@ export default function StudentQuestionsScreen() {
   function handleSetCode() {
     const code = classroomCode.trim().toUpperCase()
     if (!code) return
-    sessionStorage.setItem('student-classroom-code', code)
+    localStorage.setItem('student-classroom-code', code)
     // Inherit classroom subject from teacher (same-device usage)
     const classSubject = localStorage.getItem(`adventure-classroom-subject-${code}`)
     if (classSubject) {

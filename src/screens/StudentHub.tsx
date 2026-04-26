@@ -33,7 +33,7 @@ export default function StudentHub() {
     if (!nameInput.trim()) { setCodeError('Skriv inn ditt navn'); return }
     if (!trimmed) { setCodeError('Skriv inn klassekoden'); return }
     const studentName = nameInput.trim()
-    sessionStorage.setItem('student-classroom-code', trimmed)
+    localStorage.setItem('student-classroom-code', trimmed)
     localStorage.setItem('student-name', studentName)
     setCode(trimmed)
     setName(studentName)

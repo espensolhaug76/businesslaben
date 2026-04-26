@@ -880,7 +880,7 @@ export default function TeacherDashboard() {
 
         {/* Tab selector */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-          {(['laeringsinnhold', 'sporsmal', 'spillet', 'elever', 'prover', 'konkurranser', 'live'] as const).map(tab => {
+          {(['live', 'laeringsinnhold', 'sporsmal', 'spillet', 'elever', 'prover', 'konkurranser'] as const).map(tab => {
             const labels: Record<typeof tab, string> = { laeringsinnhold: 'Læringsinnhold', sporsmal: 'Spørsmål', spillet: 'Spillet', elever: 'Klasser', prover: '📝 Prøver', konkurranser: '🏆 Konkurranser', live: 'Live økt' }
             const tooltips: Record<typeof tab, string> = {
               laeringsinnhold: 'Aktiver presentasjoner og minileksjoner for klasser. Følg elevenes fremgang.',
