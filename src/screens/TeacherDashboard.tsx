@@ -289,13 +289,23 @@ function loadClasses(): TeacherClass[] {
 
 function saveClasses(classes: TeacherClass[]) {
   localStorage.setItem('teacher-classes', JSON.stringify(classes))
-  // Keep legacy key in sync with first/active class for backward compat
+  // Keep legacy key in sync with first class as default — caller bør i tillegg
+  // kalle setActiveClassroomCode() når en spesifikk klasse skal være aktiv.
   if (classes[0]) localStorage.setItem('teacher-classroom-code', classes[0].code)
 }
 
-function KlasserTab() {
+function setActiveClassroomCode(code: string) {
+  localStorage.setItem('teacher-classroom-code', code)
+}
+
+function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
   const [classes, setClasses] = useState<TeacherClass[]>(() => loadClasses())
-  const [activeIdx, setActiveIdx] = useState(0)
+  const [activeIdx, setActiveIdx] = useState(() => {
+    const code = localStorage.getItem('teacher-classroom-code') ?? ''
+    const cls = loadClasses()
+    const idx = cls.findIndex(c => c.code === code)
+    return idx >= 0 ? idx : 0
+  })
   const [students, setStudents] = useState<StudentProgress[]>([])
   const [copiedCode, setCopiedCode] = useState('')
   const [editing, setEditing] = useState(false)
@@ -369,6 +379,7 @@ function KlasserTab() {
     setClasses(updated)
     saveClasses(updated)
     setActiveIdx(updated.length - 1)
+    setActiveClassroomCode(newClass.code)
     setAddingClass(false)
     setNewName('')
     setNewSubject('')
@@ -382,7 +393,15 @@ function KlasserTab() {
     const updated = classes.filter((_, i) => i !== idx)
     setClasses(updated)
     saveClasses(updated)
-    setActiveIdx(Math.min(activeIdx, updated.length - 1))
+    const newIdx = Math.min(activeIdx, updated.length - 1)
+    setActiveIdx(newIdx)
+    if (updated[newIdx]) setActiveClassroomCode(updated[newIdx].code)
+  }
+
+  function startLiveOkt() {
+    if (!activeClass) return
+    setActiveClassroomCode(activeClass.code)
+    onStartLiveOkt?.()
   }
 
   const inpStyle: React.CSSProperties = {
@@ -400,7 +419,7 @@ function KlasserTab() {
           return (
             <button
               key={cls.code}
-              onClick={() => { setActiveIdx(i); setEditing(false) }}
+              onClick={() => { setActiveIdx(i); setActiveClassroomCode(cls.code); setEditing(false) }}
               style={{
                 padding: '8px 16px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 border: activeIdx === i ? '2px solid #0d9488' : '1px solid var(--border)',
@@ -492,6 +511,9 @@ function KlasserTab() {
               <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>Elevene går til <strong>businesslaben.no</strong> og skriver inn denne koden</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button onClick={startLiveOkt} style={{ background: '#0d9488', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                ▶ Start live økt
+              </button>
               <button onClick={() => copyCode(activeClass.code)} style={{ background: copiedCode === activeClass.code ? '#dcfce7' : 'var(--accent)', color: copiedCode === activeClass.code ? '#166534' : '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                 {copiedCode === activeClass.code ? '✓ Kopiert!' : 'Kopier kode'}
               </button>
@@ -1661,7 +1683,7 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {activeTab === 'elever' && <KlasserTab />}
+        {activeTab === 'elever' && <KlasserTab onStartLiveOkt={() => setActiveTab('live')} />}
 
         {activeTab === 'prover' && (
           <ProverTab navigate={navigate} />

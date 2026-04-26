@@ -48,10 +48,10 @@ export default function StudentHub() {
   }
 
   function leaveClass() {
+    // Behold navnet — eleven skal kun trenge å skrive ny klassekode
     localStorage.removeItem('student-classroom-code')
-    localStorage.removeItem('student-name')
     setCode('')
-    setName('')
+    setNameInput(name)
   }
 
   // ── Shared styles ──────────────────────────────────────────────────────────

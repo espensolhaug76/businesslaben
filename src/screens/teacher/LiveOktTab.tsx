@@ -74,6 +74,15 @@ export default function LiveOktTab() {
   )
   const [showAllSubjects, setShowAllSubjects] = useState<boolean>(() => !defaultKey)
 
+  // Når aktiv klasse endres (annen kode → annet fag) → nullstill ekspanderte
+  // seksjoner og «Vis alle fag» slik at picker reflekterer den nye klassens fag.
+  useEffect(() => {
+    setExpandedSections(new Set<string>(defaultKey ? [defaultKey] : []))
+    setShowAllSubjects(!defaultKey)
+    setSelectedPresentationId('')
+    setSearch('')
+  }, [classroomCode, defaultKey])
+
   // Group presentations by section
   const grouped = useMemo(() => {
     const filtered = search.trim()
