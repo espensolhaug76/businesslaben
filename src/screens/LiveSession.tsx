@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { ref, set, push, onValue } from 'firebase/database'
 import { db } from '../lib/firebase'
 import { useThemeEffect } from '../components/ui/ThemeToggle'
-import { subscribeToParticipants, type CompetitionParticipant } from '../lib/sharedCompetitions'
 
 interface LiveSessionState {
   active: boolean
@@ -19,7 +18,6 @@ interface LiveSessionState {
   quizCorrect: number | null
   showResults: boolean
   quizStartTime: number
-  lastSharedCompetitionId?: string
 }
 
 interface AnswerRecord {
@@ -53,7 +51,6 @@ export default function LiveSession() {
   const [answersMap, setAnswersMap] = useState<AnswersMap>({})
   const [questionText, setQuestionText] = useState('')
   const [questionSent, setQuestionSent] = useState(false)
-  const [leaderboardParticipants, setLeaderboardParticipants] = useState<CompetitionParticipant[]>([])
 
   const lastQuizStartRef = useRef<number>(0)
 
@@ -83,18 +80,9 @@ export default function LiveSession() {
     if (session?.quizStartTime && session.quizStartTime !== lastQuizStartRef.current) {
       setMyAnswer(null)
       setQuizAnswered(false)
-      setLeaderboardParticipants([])
       lastQuizStartRef.current = session.quizStartTime
     }
   }, [session?.quizStartTime])
-
-  // Når læreren har delt resultatet til nasjonalt leaderboard, abonner på
-  // deltakerne for å regne ut klassens plassering.
-  useEffect(() => {
-    const id = session?.lastSharedCompetitionId
-    if (!id) { setLeaderboardParticipants([]); return }
-    return subscribeToParticipants(id, setLeaderboardParticipants)
-  }, [session?.lastSharedCompetitionId])
 
   // ── Presentation mode — navigate to actual presentation (must be before early returns) ──
   useEffect(() => {
@@ -270,33 +258,6 @@ export default function LiveSession() {
               })}
             </div>
 
-            {/* Motivasjonsmelding når lærer har delt resultatet på nasjonalt leaderboard */}
-            {session.lastSharedCompetitionId && classroomCode && (() => {
-              const sorted = [...leaderboardParticipants].sort((a, b) => b.averageScore - a.averageScore || a.completedAt - b.completedAt)
-              const myEntry = sorted.find(p => p.classroomCode === classroomCode)
-              if (!myEntry || sorted.length === 0) return null
-              const rank = sorted.findIndex(p => p.classroomCode === classroomCode) + 1
-              const total = sorted.length
-              const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🎯'
-              return (
-                <div style={{
-                  marginTop: 24,
-                  padding: '16px 18px',
-                  borderRadius: 14,
-                  background: 'linear-gradient(135deg, rgba(13,148,136,0.12), rgba(99,102,241,0.10))',
-                  border: '1px solid rgba(13,148,136,0.35)',
-                  textAlign: 'center',
-                }}>
-                  <div style={{ fontSize: 32, lineHeight: 1, marginBottom: 6 }}>{medal}</div>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    Klassens snitt: {myEntry.averageScore}%
-                  </p>
-                  <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-                    Dere er på {rank}. plass av {total} {total === 1 ? 'klasse' : 'klasser'} nasjonalt!
-                  </p>
-                </div>
-              )
-            })()}
           </div>
         )}
 

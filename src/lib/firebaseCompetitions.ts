@@ -56,6 +56,8 @@ export async function saveCompetition(c: Competition): Promise<void> {
     questions: c.questions,
     createdAt: c.createdAt,
     canRepeat: c.canRepeat,
+    subject: c.subject ?? '',
+    shareToLeaderboard: c.shareToLeaderboard ?? false,
   }))
 }
 

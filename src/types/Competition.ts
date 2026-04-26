@@ -9,6 +9,10 @@ export interface Competition {
   currentQuestionIndex: number
   createdAt: string
   canRepeat: boolean
+  /** Fag-ID fra MINE_FAG_OPTIONS (ssr_fd_vg1, ml1, ent2, …). Tom = ufaget. */
+  subject?: string
+  /** Opt-in: del klassens snitt på nasjonalt leaderboard når runet er ferdig. */
+  shareToLeaderboard?: boolean
 }
 
 export interface CompetitionQuestion {
@@ -17,6 +21,8 @@ export interface CompetitionQuestion {
   options: string[]
   correct: number
   timeSeconds: number
+  /** Fag-ID som spørsmålet hører til. Ennå ikke utfylt for QUESTION_BANK. */
+  subject?: string
 }
 
 export interface PlayerEntry {

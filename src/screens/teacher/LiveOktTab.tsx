@@ -9,7 +9,6 @@ import {
   type PresentationSection,
 } from '../../lib/presentationRegistry'
 import { normalizeSubjectId, subjectToSectionKey } from '../../lib/teacherSubjects'
-import { submitResult } from '../../lib/sharedCompetitions'
 
 type SessionMode = 'presentation' | 'minileksjon' | 'spill'
 
@@ -68,11 +67,6 @@ export default function LiveOktTab() {
   const [answersMap, setAnswersMap] = useState<QuizAnswersMap>({})
   const [questions, setQuestions] = useState<StudentQuestion[]>([])
   const [search, setSearch] = useState('')
-
-  // Cross-skole leaderboard — opt-in deling av klasse-aggregert quiz-resultat
-  const [shareToLeaderboard, setShareToLeaderboard] = useState(false)
-  const [sharingState, setSharingState] = useState<'idle' | 'sharing' | 'shared' | 'error'>('idle')
-  const [shareError, setShareError] = useState('')
 
   const defaultKey = activeClass ? subjectToSectionKey(activeClass.subject) : null
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() =>
@@ -154,11 +148,6 @@ export default function LiveOktTab() {
     if (!classroomCode || !session || !quizQuestion.trim() || quizOptions.some(o => !o.trim())) return
     remove(ref(db, 'sessions/' + classroomCode + '/answers'))
     setAnswersMap({})
-    setSharingState('idle')
-    setShareError('')
-    // Nullstill evt. tidligere lastSharedCompetitionId i Firebase slik at elever
-    // ikke ser gammel «delt»-melding fra forrige quiz.
-    remove(ref(db, 'sessions/' + classroomCode + '/lastSharedCompetitionId'))
     update(ref(db, 'sessions/' + classroomCode), { quizActive: true, quizQuestion: quizQuestion.trim(), quizOptions: quizOptions.map(o => o.trim()), quizCorrect: null, showResults: false, quizStartTime: Date.now() })
   }
 
@@ -171,37 +160,6 @@ export default function LiveOktTab() {
     remove(ref(db, 'sessions/' + classroomCode + '/answers'))
     setAnswersMap({})
     setShowQuizPanel(false)
-    setShareToLeaderboard(false)
-    setSharingState('idle')
-    setShareError('')
-  }
-
-  async function shareResult() {
-    if (!classroomCode || !session || session.quizCorrect == null || !activeClass) return
-    if (sharingState === 'sharing' || sharingState === 'shared') return
-    const correct = answerCounts[session.quizCorrect] ?? 0
-    const avg = totalAnswers > 0 ? (correct / totalAnswers) * 100 : 0
-    setSharingState('sharing')
-    setShareError('')
-    try {
-      const { competitionId } = await submitResult({
-        title: session.quizQuestion,
-        subject: activeClass.subject,
-        schoolName: activeClass.schoolName?.trim() || 'Ukjent skole',
-        className: activeClass.name?.trim() || 'Ukjent klasse',
-        teacherName: activeClass.teacherName?.trim() || undefined,
-        classroomCode,
-        averageScore: avg,
-        studentCount: totalAnswers,
-      })
-      setSharingState('shared')
-      // La elevene reagere — de lytter til lastSharedCompetitionId i sessions/{code}
-      await update(ref(db, 'sessions/' + classroomCode), { lastSharedCompetitionId: competitionId })
-    } catch (err) {
-      console.error('shareResult failed', err)
-      setShareError(err instanceof Error ? err.message : 'Ukjent feil')
-      setSharingState('error')
-    }
   }
 
   function markQuestionRead(pushId: string) {
@@ -437,25 +395,6 @@ export default function LiveOktTab() {
                   </div>
                 ))}
               </div>
-              {/* Opt-in: del klassens snitt på nasjonalt leaderboard */}
-              <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 8, background: 'var(--bg-secondary, rgba(13,148,136,0.06))', border: '1px solid var(--border)' }}>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-                  <input
-                    type="checkbox"
-                    checked={shareToLeaderboard}
-                    onChange={e => setShareToLeaderboard(e.target.checked)}
-                    style={{ accentColor: '#0d9488', marginTop: 2, flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                    📊 Del klassens resultat på nasjonalt leaderboard
-                  </span>
-                </label>
-                {shareToLeaderboard && (
-                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.5, paddingLeft: 24 }}>
-                    Kun klassens <strong>snitt</strong> og <strong>antall elever</strong> deles — ingen elevnavn eller individuelle svar lagres. Klassens kode brukes for å la dere oppdatere eller slette innsendingen senere.
-                  </p>
-                )}
-              </div>
               <button onClick={sendQuiz} disabled={!quizQuestion.trim() || quizOptions.some(o => !o.trim())} style={{ padding: '9px 20px', borderRadius: 9, border: 'none', background: (!quizQuestion.trim() || quizOptions.some(o => !o.trim())) ? '#d1d5db' : '#6366f1', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Send quiz til elever
               </button>
@@ -496,34 +435,7 @@ export default function LiveOktTab() {
                   ))}
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {shareToLeaderboard && session.quizCorrect != null && totalAnswers > 0 && (
-                    <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(13,148,136,0.08)', border: '1px solid rgba(13,148,136,0.3)' }}>
-                      {sharingState === 'shared' ? (
-                        <p style={{ fontSize: 13, color: '#0d9488', fontWeight: 600, margin: 0 }}>
-                          ✓ Resultat delt på nasjonalt leaderboard ({Math.round((answerCounts[session.quizCorrect] / totalAnswers) * 100)}% snitt)
-                        </p>
-                      ) : (
-                        <>
-                          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.4 }}>
-                            Klassens snitt: <strong style={{ color: 'var(--text-primary)' }}>{Math.round((answerCounts[session.quizCorrect] / totalAnswers) * 100)}%</strong> ({totalAnswers} elever)
-                          </p>
-                          <button
-                            onClick={shareResult}
-                            disabled={sharingState === 'sharing'}
-                            style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: sharingState === 'sharing' ? '#d1d5db' : '#0d9488', color: '#fff', cursor: sharingState === 'sharing' ? 'wait' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
-                          >
-                            {sharingState === 'sharing' ? 'Deler…' : '📊 Del resultat på nasjonalt leaderboard'}
-                          </button>
-                          {sharingState === 'error' && (
-                            <p style={{ fontSize: 11, color: '#ef4444', margin: '6px 0 0' }}>Kunne ikke dele: {shareError}</p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                  <button onClick={closeQuiz} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', alignSelf: 'flex-start' }}>Lukk quiz</button>
-                </div>
+                <button onClick={closeQuiz} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Lukk quiz</button>
               )}
             </div>
           )}

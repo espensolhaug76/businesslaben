@@ -20,6 +20,7 @@ import {
   getPlayerEntry,
   playerId as makePlayerId,
 } from '../../lib/firebaseCompetitions'
+import { subscribeToParticipants, type CompetitionParticipant } from '../../lib/sharedCompetitions'
 
 // ── Option colors (match teacher view) ────────────────────────────────────────
 const OPTION_STYLES = [
@@ -98,6 +99,13 @@ export default function CompetitionJoin() {
   const [questionResult, setQuestionResult] = useState<QuestionResult | null>(null)
   const lastQuestionIdx = useRef<number>(-1)
   const hasAnswered = useRef(false)
+
+  // Nasjonalt leaderboard (kun aktivt etter finished, hvis lærer har delt)
+  const [leaderboardParticipants, setLeaderboardParticipants] = useState<CompetitionParticipant[]>([])
+  useEffect(() => {
+    if (!code || phase !== 'finished') return
+    return subscribeToParticipants(code, setLeaderboardParticipants)
+  }, [code, phase])
 
   // Load competition
   useEffect(() => {
@@ -457,6 +465,34 @@ export default function CompetitionJoin() {
                 <p className="text-5xl font-extrabold text-teal-400">{myEntry?.totalPoints ?? 0}</p>
                 <p className="text-xs text-slate-400">poeng av {competition ? competition.questions.length * 1000 : 0} mulige</p>
               </div>
+
+              {/* Nasjonalt leaderboard — vises hvis lærer har opt-in delt og klassen finnes */}
+              {(() => {
+                if (leaderboardParticipants.length === 0 || !myEntry) return null
+                const sorted = [...leaderboardParticipants].sort(
+                  (a, b) => b.averageScore - a.averageScore || a.completedAt - b.completedAt,
+                )
+                const myClass = sorted.find(p => p.className === myEntry.className)
+                if (!myClass) return null
+                const rank = sorted.findIndex(p => p.className === myEntry.className) + 1
+                const total = sorted.length
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🎯'
+                return (
+                  <div
+                    className="rounded-2xl p-5"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(13,148,136,0.18), rgba(99,102,241,0.14))',
+                      border: '1px solid rgba(13,148,136,0.4)',
+                    }}
+                  >
+                    <div className="text-3xl mb-1">{medal}</div>
+                    <p className="font-bold text-white">Klassens snitt: {myClass.averageScore}%</p>
+                    <p className="text-xs text-slate-200 mt-1">
+                      Dere er på {rank}. plass av {total} {total === 1 ? 'klasse' : 'klasser'} nasjonalt!
+                    </p>
+                  </div>
+                )
+              })()}
 
               <p className="text-sm text-slate-400">Se ledertavlen på skjermen foran.</p>
             </motion.div>

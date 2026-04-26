@@ -8,6 +8,7 @@ import {
 } from '../../types/Competition'
 import type { Competition, CompetitionQuestion } from '../../types/Competition'
 import { saveCompetition as saveCompetitionToFirebase } from '../../lib/firebaseCompetitions'
+import { MINE_FAG_OPTIONS } from '../../lib/teacherSubjects'
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 10)
@@ -44,6 +45,8 @@ export default function CompetitionBuilder() {
   const navigate = useNavigate()
 
   const [title, setTitle] = useState('')
+  const [subject, setSubject] = useState<string>('')
+  const [shareToLeaderboard, setShareToLeaderboard] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [timeSeconds, setTimeSeconds] = useState(20)
   const [createdCode, setCreatedCode] = useState<string | null>(null)
@@ -80,6 +83,8 @@ export default function CompetitionBuilder() {
       currentQuestionIndex: 0,
       createdAt: new Date().toISOString(),
       canRepeat: true,
+      subject: subject || undefined,
+      shareToLeaderboard,
     }
     await saveCompetition(competition)
     setCreatedCode(code)
@@ -146,8 +151,21 @@ export default function CompetitionBuilder() {
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Velg 15 spørsmål og opprett en konkurranse med en unik kode</p>
         </div>
 
-        {/* Title */}
+        {/* Subject + Title */}
         <div className="rounded-2xl p-5 border mb-4" style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+          <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Velg fag</label>
+          <select
+            value={subject}
+            onChange={e => setSubject(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border text-sm mb-4"
+            style={{ background: 'var(--input-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+          >
+            <option value="">— velg fag —</option>
+            {MINE_FAG_OPTIONS.map(opt => (
+              <option key={opt.id} value={opt.id}>{opt.label}</option>
+            ))}
+          </select>
+
           <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Tittel</label>
           <input
             value={title}
@@ -196,6 +214,11 @@ export default function CompetitionBuilder() {
               Velg 15 tilfeldige
             </button>
           </div>
+          {subject && (
+            <div className="px-5 py-2 text-xs" style={{ background: 'rgba(245,158,11,0.08)', color: '#b45309', borderBottom: '1px solid var(--border)' }}>
+              ⚠️ Spørsmålsbanken er ikke fag-tagget ennå — kan inneholde spørsmål utenfor faget ditt.
+            </div>
+          )}
 
           <div className="divide-y divide-[var(--border)]">
             {QUESTION_BANK.map((q, i) => {
@@ -232,6 +255,27 @@ export default function CompetitionBuilder() {
               )
             })}
           </div>
+        </div>
+
+        {/* Cross-skole leaderboard opt-in */}
+        <div className="rounded-2xl p-5 border mb-4" style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={shareToLeaderboard}
+              onChange={e => setShareToLeaderboard(e.target.checked)}
+              className="mt-0.5 shrink-0"
+              style={{ accentColor: '#0d9488' }}
+            />
+            <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+              📊 Del klassens resultat på nasjonalt leaderboard
+            </span>
+          </label>
+          {shareToLeaderboard && (
+            <p className="text-xs mt-2 leading-relaxed pl-7" style={{ color: 'var(--text-muted)' }}>
+              Kun klassens <strong>snitt</strong> og <strong>antall elever</strong> deles — ingen elevnavn eller individuelle svar lagres. Konkurransekoden brukes som ID, så dere kan oppdatere eller slette innsendingen senere.
+            </p>
+          )}
         </div>
 
         {/* Create button */}

@@ -59,8 +59,12 @@ export async function submitResult(args: {
   classroomCode: string
   averageScore: number
   studentCount: number
+  /** Eksplisitt competition-ID. Hvis utelatt, slugifyTitle(title). Bruk
+   *  konkurransekoden (4-sifret) for Konkurranser-systemet slik at flere
+   *  klasser deler samme leaderboard på tvers av skoler. */
+  competitionId?: string
 }): Promise<{ competitionId: string; entryId: string }> {
-  const competitionId = slugifyTitle(args.title)
+  const competitionId = args.competitionId ?? slugifyTitle(args.title)
   const entryId = sanitizeKey(args.classroomCode)
 
   // Opprett meta hvis ikke finnes (idempotent — set() med eksisterende key er trygt

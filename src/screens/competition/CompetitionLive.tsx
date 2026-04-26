@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -18,6 +18,48 @@ import {
   subscribeToEntries,
   markRunFinished,
 } from '../../lib/firebaseCompetitions'
+import { submitResult } from '../../lib/sharedCompetitions'
+
+interface TeacherClassMeta { code: string; name: string; subject?: string; schoolName?: string; teacherName?: string }
+
+function readTeacherClasses(): TeacherClassMeta[] {
+  try { return JSON.parse(localStorage.getItem('teacher-classes') ?? '[]') as TeacherClassMeta[] } catch { return [] }
+}
+
+/**
+ * Når runet ender og lærer har valgt opt-in deling, beregn klassens snitt
+ * og kall submitResult én gang per klasse. ID = konkurransekoden, slik at
+ * alle klasser på tvers av skoler havner i samme leaderboard.
+ *
+ * GDPR: kun klasse-aggregert snitt og antall deles — ingen elevnavn.
+ */
+async function shareRunResults(c: Competition, ents: PlayerEntry[]): Promise<void> {
+  if (!c.shareToLeaderboard || ents.length === 0) return
+  const maxPoints = c.questions.length * 1000
+  const byClass = new Map<string, PlayerEntry[]>()
+  for (const e of ents) {
+    if (!byClass.has(e.className)) byClass.set(e.className, [])
+    byClass.get(e.className)!.push(e)
+  }
+  const teacherClasses = readTeacherClasses()
+  for (const [className, classEntries] of byClass.entries()) {
+    const total = classEntries.reduce((s, e) => s + e.totalPoints, 0)
+    const avg = maxPoints > 0 ? (total / (classEntries.length * maxPoints)) * 100 : 0
+    const matched = teacherClasses.find(tc => tc.name === className)
+    await submitResult({
+      title: c.title,
+      subject: c.subject ?? '',
+      schoolName: matched?.schoolName?.trim() || 'Ukjent skole',
+      className,
+      teacherName: matched?.teacherName,
+      // entryKey-rolle: sikrer én entry per (skole, klasse) i denne konkurransen
+      classroomCode: `${matched?.schoolName ?? 'ukjent'}_${className}`,
+      averageScore: avg,
+      studentCount: classEntries.length,
+      competitionId: c.code,
+    }).catch(err => console.error('shareRunResults failed for', className, err))
+  }
+}
 
 // ── Colors for the 4 answer options ───────────────────────────────────────────
 const OPTION_STYLES = [
@@ -144,6 +186,8 @@ export default function CompetitionLive() {
   const [run, setRun] = useState<CompetitionRun | null>(null)
   const [entries, setEntries] = useState<PlayerEntry[]>([])
   const [timeLeft, setTimeLeft] = useState(0)
+  const sharedForRunId = useRef<string | null>(null)
+  const [shareState, setShareState] = useState<'idle' | 'sharing' | 'shared'>('idle')
 
   // Load competition definition (Firebase first, localStorage fallback)
   useEffect(() => {
@@ -186,7 +230,22 @@ export default function CompetitionLive() {
     const ts = competition.questions[0]?.timeSeconds ?? 20
     await fbStartNewRun(code, competition.id, runId, ts)
     setEntries([])
+    sharedForRunId.current = null
+    setShareState('idle')
   }, [competition, code])
+
+  // Når runet flippes til finished: del klassens snitt på leaderboard hvis opt-in
+  useEffect(() => {
+    if (run?.status !== 'finished' || !competition || !run.runId) return
+    if (sharedForRunId.current === run.runId) return
+    if (!competition.shareToLeaderboard) return
+    if (entries.length === 0) return
+    sharedForRunId.current = run.runId
+    setShareState('sharing')
+    shareRunResults(competition, entries)
+      .then(() => setShareState('shared'))
+      .catch(() => setShareState('idle'))
+  }, [run?.status, run?.runId, competition, entries])
 
   // Auto-start a new run hvis ingen pågår når komponenten åpnes
   useEffect(() => {
@@ -460,6 +519,13 @@ export default function CompetitionLive() {
                   Start ny runde
                 </button>
               </div>
+
+              {competition.shareToLeaderboard && (
+                <p className="text-xs text-slate-400 mt-3">
+                  {shareState === 'sharing' && '📊 Deler klassens snitt på nasjonalt leaderboard…'}
+                  {shareState === 'shared' && '✓ Klassens snitt er delt på nasjonalt leaderboard.'}
+                </p>
+              )}
             </motion.div>
           )}
 
