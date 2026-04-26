@@ -14,6 +14,7 @@ import type { ModuleCard } from './learninghub/LearningHub'
 import { TEACHER_MODULE_PHASES } from './learninghub/shared/teacherModuleRegistry'
 import type { DrawerPhase, DrawerExercise } from './learninghub/shared/DrawerModule'
 import LiveOktTab from './teacher/LiveOktTab'
+import LeaderboardTab from './teacher/LeaderboardTab'
 import { MINE_FAG_OPTIONS, normalizeSubjectId } from '../lib/teacherSubjects'
 
 // ── Teacher custom exercise type ──────────────────────────────────────────────
@@ -651,7 +652,7 @@ export default function TeacherDashboard() {
     navigate('/')
   }
 
-  const [activeTab, setActiveTab] = useState<'laeringsinnhold' | 'sporsmal' | 'spillet' | 'elever' | 'prover' | 'konkurranser' | 'live'>('laeringsinnhold')
+  const [activeTab, setActiveTab] = useState<'laeringsinnhold' | 'sporsmal' | 'spillet' | 'elever' | 'prover' | 'konkurranser' | 'live' | 'leaderboard'>('laeringsinnhold')
   const [hoveredTab, setHoveredTab] = useState<string | null>(null)
   const [liveSessionActive, setLiveSessionActive] = useState(() => localStorage.getItem('live-session-active') === 'true')
 
@@ -943,8 +944,8 @@ export default function TeacherDashboard() {
 
         {/* Tab selector */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-          {(['live', 'laeringsinnhold', 'sporsmal', 'spillet', 'elever', 'prover', 'konkurranser'] as const).map(tab => {
-            const labels: Record<typeof tab, string> = { laeringsinnhold: 'Læringsinnhold', sporsmal: 'Spørsmål', spillet: 'Spillet', elever: 'Klasser', prover: '📝 Prøver', konkurranser: '🏆 Konkurranser', live: 'Live økt' }
+          {(['live', 'laeringsinnhold', 'sporsmal', 'spillet', 'elever', 'prover', 'konkurranser', 'leaderboard'] as const).map(tab => {
+            const labels: Record<typeof tab, string> = { laeringsinnhold: 'Læringsinnhold', sporsmal: 'Spørsmål', spillet: 'Spillet', elever: 'Klasser', prover: '📝 Prøver', konkurranser: '🏆 Konkurranser', live: 'Live økt', leaderboard: '📊 Nasjonalt leaderboard' }
             const tooltips: Record<typeof tab, string> = {
               laeringsinnhold: 'Aktiver presentasjoner og minileksjoner for klasser. Følg elevenes fremgang.',
               sporsmal: 'Se og gi tilbakemelding på svar elevene har sendt inn.',
@@ -953,6 +954,7 @@ export default function TeacherDashboard() {
               prover: 'Lag og distribuer prøver til klassene dine.',
               konkurranser: 'Sett opp konkurranser mellom klasser.',
               live: 'Start en live presentasjon der elevene følger med i sanntid på sine enheter.',
+              leaderboard: 'Se klassens snitt mot andre klasser nasjonalt — kun aggregert data, GDPR-vennlig.',
             }
             const isActive = activeTab === tab
             const isHovered = hoveredTab === tab
@@ -1695,6 +1697,10 @@ export default function TeacherDashboard() {
 
         {activeTab === 'live' && (
           <LiveOktTab />
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <LeaderboardTab />
         )}
       </div>
     </div>
