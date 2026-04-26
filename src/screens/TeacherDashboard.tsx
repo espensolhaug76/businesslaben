@@ -14,6 +14,7 @@ import type { ModuleCard } from './learninghub/LearningHub'
 import { TEACHER_MODULE_PHASES } from './learninghub/shared/teacherModuleRegistry'
 import type { DrawerPhase, DrawerExercise } from './learninghub/shared/DrawerModule'
 import LiveOktTab from './teacher/LiveOktTab'
+import { MINE_FAG_OPTIONS, normalizeSubjectId } from '../lib/teacherSubjects'
 
 // ── Teacher custom exercise type ──────────────────────────────────────────────
 interface TeacherCustomExercise {
@@ -37,26 +38,6 @@ const subjects = [
   { id: 'ent1', name: 'Entrepren\u00F8rskap og bedriftsutvikling 1', short: 'ENT1' },
 ] as const
 
-// ── Mine fag — teacher subject preferences ────────────────────────────────────
-interface MineFagOption {
-  id: string
-  label: string
-  short: string
-  lessonSubject: string | null   // maps to Lesson['subject']
-  moduleKey: string | null       // `${subject}-${level}` for module filtering
-  sporsmalFag: string | null     // value used in sporsmal fag dropdown
-}
-
-const MINE_FAG_OPTIONS: MineFagOption[] = [
-  { id: 'ssr_fd_vg1', label: 'Forretningsdrift VG1 (SSR-FD)', short: 'SSR-FD', lessonSubject: 'ssr_fd', moduleKey: 'forretningsdrift-vg1', sporsmalFag: 'forretningsdrift' },
-  { id: 'ssr_mi_vg1', label: 'Markedsf\u00F8ring og innovasjon VG1 (SSR-MI)', short: 'SSR-MI', lessonSubject: 'ssr_mi', moduleKey: 'mfi-vg1', sporsmalFag: 'mfi' },
-  { id: 'ssr_ks_vg1', label: 'Kultur og samhandling VG1 (SSR-KS)', short: 'SSR-KS', lessonSubject: 'ssr_ks', moduleKey: 'kultur-vg1', sporsmalFag: 'kultur' },
-  { id: 'fd_vg2', label: 'Forretningsdrift VG2', short: 'FD-VG2', lessonSubject: null, moduleKey: 'forretningsdrift-vg2', sporsmalFag: 'forretningsdrift' },
-  { id: 'inn_vg2', label: 'Innovasjon VG2', short: 'INN-VG2', lessonSubject: null, moduleKey: 'mfi-vg2', sporsmalFag: 'mfi' },
-  { id: 'kul_vg2', label: 'Kultur VG2', short: 'KUL-VG2', lessonSubject: null, moduleKey: 'kultur-vg2', sporsmalFag: 'kultur' },
-  { id: 'ml1', label: 'Markedsf\u00F8ring og ledelse 1 (ML1)', short: 'ML1', lessonSubject: 'mfl1', moduleKey: 'ml1-ml1', sporsmalFag: 'ml1' },
-  { id: 'ent1', label: 'Entrepren\u00F8rskap (ENT1)', short: 'ENT1', lessonSubject: 'ent1', moduleKey: null, sporsmalFag: null },
-]
 
 const OPTION_COLORS = ['bg-red-500', 'bg-blue-500', 'bg-amber-500', 'bg-purple-500']
 // const OPTION_COLORS_DIM = ['bg-red-500/20', 'bg-blue-500/20', 'bg-amber-500/20', 'bg-purple-500/20']
@@ -275,7 +256,13 @@ function OpenAnswerList({ qAnswers }: { qAnswers: StudentAnswer[] }) {
 
 // ── KlasserTab ────────────────────────────────────────────────────────────────
 
-interface TeacherClass { code: string; name: string; subject: string }
+interface TeacherClass {
+  code: string
+  name: string
+  subject: string
+  schoolName?: string
+  teacherName?: string
+}
 
 interface StudentProgress {
   studentName: string
@@ -286,13 +273,16 @@ interface StudentProgress {
 function loadClasses(): TeacherClass[] {
   try {
     const saved = JSON.parse(localStorage.getItem('teacher-classes') ?? 'null')
-    if (Array.isArray(saved) && saved.length > 0) return saved
+    if (Array.isArray(saved) && saved.length > 0) {
+      // Normaliser legacy fag-IDer (fd_vg2 → ok_vg2 osv.)
+      return saved.map((c: TeacherClass) => ({ ...c, subject: normalizeSubjectId(c.subject) }))
+    }
   } catch { /* */ }
   // Migrate legacy single code
   const legacy = localStorage.getItem('teacher-classroom-code')
   const code = legacy ?? generateClassroomCode()
   if (!legacy) localStorage.setItem('teacher-classroom-code', code)
-  const classes = [{ code, name: 'Klasse 1', subject: '' }]
+  const classes: TeacherClass[] = [{ code, name: 'Klasse 1', subject: '' }]
   localStorage.setItem('teacher-classes', JSON.stringify(classes))
   return classes
 }
@@ -311,9 +301,13 @@ function KlasserTab() {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editSubject, setEditSubject] = useState('')
+  const [editSchool, setEditSchool] = useState('')
+  const [editTeacher, setEditTeacher] = useState('')
   const [addingClass, setAddingClass] = useState(false)
   const [newName, setNewName] = useState('')
   const [newSubject, setNewSubject] = useState('')
+  const [newSchool, setNewSchool] = useState('')
+  const [newTeacher, setNewTeacher] = useState('')
   const unsubRef = useRef<(() => void) | null>(null)
 
   const activeClass = classes[activeIdx] ?? classes[0]
@@ -342,12 +336,20 @@ function KlasserTab() {
   function startEdit() {
     setEditName(activeClass.name)
     setEditSubject(activeClass.subject ?? '')
+    setEditSchool(activeClass.schoolName ?? '')
+    setEditTeacher(activeClass.teacherName ?? '')
     setEditing(true)
   }
 
   function saveEdit() {
     const updated = classes.map((c, i) => i === activeIdx
-      ? { ...c, name: editName.trim() || c.name, subject: editSubject }
+      ? {
+          ...c,
+          name: editName.trim() || c.name,
+          subject: editSubject,
+          schoolName: editSchool.trim(),
+          teacherName: editTeacher.trim(),
+        }
       : c)
     setClasses(updated)
     saveClasses(updated)
@@ -356,7 +358,13 @@ function KlasserTab() {
 
   function confirmAddClass() {
     if (classes.length >= 4) return
-    const newClass: TeacherClass = { code: generateClassroomCode(), name: newName.trim() || `Klasse ${classes.length + 1}`, subject: newSubject }
+    const newClass: TeacherClass = {
+      code: generateClassroomCode(),
+      name: newName.trim() || `Klasse ${classes.length + 1}`,
+      subject: newSubject,
+      schoolName: newSchool.trim(),
+      teacherName: newTeacher.trim(),
+    }
     const updated = [...classes, newClass]
     setClasses(updated)
     saveClasses(updated)
@@ -364,6 +372,8 @@ function KlasserTab() {
     setAddingClass(false)
     setNewName('')
     setNewSubject('')
+    setNewSchool('')
+    setNewTeacher('')
   }
 
   function deleteClass(idx: number) {
@@ -420,8 +430,16 @@ function KlasserTab() {
           <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>Ny klasse</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Skolenavn (vises på nasjonalt leaderboard)</label>
+              <input value={newSchool} onChange={e => setNewSchool(e.target.value)} placeholder="f.eks. Sentrum VGS, Hamar katedralskole" style={inpStyle} autoFocus />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Lærerens fornavn (frivillig)</label>
+              <input value={newTeacher} onChange={e => setNewTeacher(e.target.value)} placeholder="f.eks. Marte" style={inpStyle} />
+            </div>
+            <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Klassenavn (f.eks. 2STB)</label>
-              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Klassenavn" style={inpStyle} autoFocus />
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Klassenavn" style={inpStyle} />
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Fag</label>
@@ -431,7 +449,15 @@ function KlasserTab() {
               </select>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={confirmAddClass} style={{ background: '#0d9488', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              <button
+                onClick={confirmAddClass}
+                disabled={!newSchool.trim()}
+                style={{
+                  background: newSchool.trim() ? '#0d9488' : '#d1d5db',
+                  color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px',
+                  fontSize: 14, fontWeight: 600, cursor: newSchool.trim() ? 'pointer' : 'not-allowed',
+                }}
+              >
                 Opprett klasse
               </button>
               <button onClick={() => setAddingClass(false)} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 16px', fontSize: 14, color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -457,6 +483,12 @@ function KlasserTab() {
               </div>
               <p style={{ fontSize: 36, fontWeight: 800, letterSpacing: '0.25em', color: 'var(--text-primary)', lineHeight: 1, fontFamily: 'monospace', margin: '0 0 4px' }}>{activeClass.name}</p>
               <p style={{ fontSize: 48, fontWeight: 800, letterSpacing: '0.25em', color: 'var(--text-primary)', lineHeight: 1, fontFamily: 'monospace' }}>{activeClass.code}</p>
+              {(activeClass.schoolName || activeClass.teacherName) && (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 10 }}>
+                  {activeClass.schoolName ? <><strong style={{ color: 'var(--text-primary)' }}>{activeClass.schoolName}</strong>{activeClass.teacherName && ' · '}</> : null}
+                  {activeClass.teacherName && <span>Lærer: {activeClass.teacherName}</span>}
+                </p>
+              )}
               <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>Elevene går til <strong>businesslaben.no</strong> og skriver inn denne koden</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -482,8 +514,16 @@ function KlasserTab() {
           <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>Rediger klasse</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Skolenavn (vises på nasjonalt leaderboard)</label>
+              <input value={editSchool} onChange={e => setEditSchool(e.target.value)} placeholder="f.eks. Sentrum VGS, Hamar katedralskole" style={inpStyle} autoFocus />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Lærerens fornavn (frivillig)</label>
+              <input value={editTeacher} onChange={e => setEditTeacher(e.target.value)} placeholder="f.eks. Marte" style={inpStyle} />
+            </div>
+            <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Klassenavn</label>
-              <input value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEdit()} style={inpStyle} autoFocus />
+              <input value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEdit()} style={inpStyle} />
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Fag</label>
@@ -642,11 +682,12 @@ export default function TeacherDashboard() {
   const [teacherComments, setTeacherComments] = useState<Record<string, string>>({})
   const [showKahoot, setShowKahoot] = useState(false)
 
-  // Mine fag — teacher subject preferences
+  // Mine fag — teacher subject preferences (normalisert mot legacy IDer)
   const [mySubjects, setMySubjects] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('adventure-teacher-subjects')
-      return saved ? JSON.parse(saved) : []
+      const arr: string[] = saved ? JSON.parse(saved) : []
+      return arr.map(normalizeSubjectId).filter(Boolean)
     } catch { return [] }
   })
   const [showMineFagPanel, setShowMineFagPanel] = useState(false)

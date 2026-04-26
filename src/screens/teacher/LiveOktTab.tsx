@@ -8,6 +8,7 @@ import {
   type PresentationEntry,
   type PresentationSection,
 } from '../../lib/presentationRegistry'
+import { normalizeSubjectId, subjectToSectionKey } from '../../lib/teacherSubjects'
 
 type SessionMode = 'presentation' | 'minileksjon' | 'spill'
 
@@ -27,30 +28,16 @@ interface QuizAnswer { answer: number; timestamp: number }
 interface QuizAnswersMap { [studentName: string]: QuizAnswer }
 interface StudentQuestion { id: string; name: string; question: string; timestamp: number; read: boolean }
 
-interface TeacherClass { code: string; name: string; subject: string }
+interface TeacherClass { code: string; name: string; subject: string; schoolName?: string; teacherName?: string }
 
 function getActiveClass(): TeacherClass | null {
   try {
     const classes: TeacherClass[] = JSON.parse(localStorage.getItem('teacher-classes') ?? '[]')
     const activeCode = localStorage.getItem('teacher-classroom-code') ?? ''
-    return classes.find(c => c.code === activeCode) ?? null
+    const found = classes.find(c => c.code === activeCode)
+    if (!found) return null
+    return { ...found, subject: normalizeSubjectId(found.subject) }
   } catch { return null }
-}
-
-// Map TeacherClass.subject id (e.g. 'ssr_fd_vg1', 'ml1') → which PresentationSection
-// to default-expand. Returns null if no clean match (then expand nothing).
-function defaultSectionKey(subjectId: string): string | null {
-  const m: Record<string, string> = {
-    ssr_fd_vg1: 'vg1|ssr|forretningsdrift',
-    ssr_mi_vg1: 'vg1|ssr|mfi',
-    ssr_ks_vg1: 'vg1|ssr|kultur',
-    fd_vg2:     'vg2|ssr|okonomi',
-    inn_vg2:    'vg2|ssr|kommunikasjon',
-    kul_vg2:    'vg2|ssr|hms',
-    ml1:        'vg2|ml|',
-    ent1:       'vg2|ent|',
-  }
-  return m[subjectId] ?? null
 }
 
 function sectionKey(s: PresentationSection): string {
@@ -81,10 +68,11 @@ export default function LiveOktTab() {
   const [questions, setQuestions] = useState<StudentQuestion[]>([])
   const [search, setSearch] = useState('')
 
-  const defaultKey = activeClass ? defaultSectionKey(activeClass.subject) : null
+  const defaultKey = activeClass ? subjectToSectionKey(activeClass.subject) : null
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() =>
     new Set<string>(defaultKey ? [defaultKey] : []),
   )
+  const [showAllSubjects, setShowAllSubjects] = useState<boolean>(() => !defaultKey)
 
   // Group presentations by section
   const grouped = useMemo(() => {
@@ -238,7 +226,20 @@ export default function LiveOktTab() {
         {/* Presentation picker — grouped by section */}
         {selectedMode === 'presentation' && (
           <div style={{ marginBottom: 24 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 10 }}>Velg presentasjon</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', margin: 0 }}>Velg presentasjon</p>
+              {defaultKey && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={showAllSubjects}
+                    onChange={e => setShowAllSubjects(e.target.checked)}
+                    style={{ accentColor: '#0d9488' }}
+                  />
+                  Vis alle fag
+                </label>
+              )}
+            </div>
 
             <input
               type="text"
@@ -253,6 +254,8 @@ export default function LiveOktTab() {
                 const key = sectionKey(section)
                 const items = grouped.get(key) ?? []
                 if (items.length === 0) return null
+                // Hvis defaultKey er satt og "Vis alle fag" er av, skjul alle andre seksjoner
+                if (defaultKey && !showAllSubjects && !isSearching && key !== defaultKey) return null
                 const isOpen = isSearching || expandedSections.has(key)
                 return (
                   <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card-bg)', overflow: 'hidden' }}>
