@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ref, set, update, onValue, remove } from 'firebase/database'
 import { db } from '../../lib/firebase'
-import { getPresentationsForSubject, ALL_PRESENTATIONS, type Presentation } from '../../lib/presentationsData'
+import {
+  ALL_PRESENTATIONS,
+  PRESENTATION_SECTIONS,
+  findPresentation,
+  type PresentationEntry,
+  type PresentationSection,
+} from '../../lib/presentationRegistry'
 
 type SessionMode = 'presentation' | 'minileksjon' | 'spill'
 
@@ -23,13 +29,35 @@ interface StudentQuestion { id: string; name: string; question: string; timestam
 
 interface TeacherClass { code: string; name: string; subject: string }
 
-function getActiveClassSubject(): string {
+function getActiveClass(): TeacherClass | null {
   try {
     const classes: TeacherClass[] = JSON.parse(localStorage.getItem('teacher-classes') ?? '[]')
     const activeCode = localStorage.getItem('teacher-classroom-code') ?? ''
-    const active = classes.find(c => c.code === activeCode)
-    return active?.subject ?? ''
-  } catch { return '' }
+    return classes.find(c => c.code === activeCode) ?? null
+  } catch { return null }
+}
+
+// Map TeacherClass.subject id (e.g. 'ssr_fd_vg1', 'ml1') → which PresentationSection
+// to default-expand. Returns null if no clean match (then expand nothing).
+function defaultSectionKey(subjectId: string): string | null {
+  const m: Record<string, string> = {
+    ssr_fd_vg1: 'vg1|ssr|forretningsdrift',
+    ssr_mi_vg1: 'vg1|ssr|mfi',
+    ssr_ks_vg1: 'vg1|ssr|kultur',
+    fd_vg2:     'vg2|ssr|okonomi',
+    inn_vg2:    'vg2|ssr|kommunikasjon',
+    kul_vg2:    'vg2|ssr|hms',
+    ml1:        'vg2|ml|',
+    ent1:       'vg2|ent|',
+  }
+  return m[subjectId] ?? null
+}
+
+function sectionKey(s: PresentationSection): string {
+  return `${s.level}|${s.subject}|${s.ssrSubject ?? ''}`
+}
+function entryKey(e: PresentationEntry): string {
+  return `${e.level}|${e.subject}|${e.ssrSubject ?? ''}`
 }
 
 const MODE_OPTIONS: { id: SessionMode; icon: string; title: string; desc: string; color: string }[] = [
@@ -40,29 +68,40 @@ const MODE_OPTIONS: { id: SessionMode; icon: string; title: string; desc: string
 
 export default function LiveOktTab() {
   const classroomCode = localStorage.getItem('teacher-classroom-code') ?? ''
-
-  const PRESENTATIONS: Presentation[] = useMemo(() => {
-    const subject = getActiveClassSubject()
-    return subject ? getPresentationsForSubject(subject) : ALL_PRESENTATIONS
-  }, [classroomCode])
+  const activeClass = useMemo(() => getActiveClass(), [classroomCode])
+  const className = activeClass?.name?.trim() || ''
 
   const [session, setSession] = useState<LiveSessionState | null>(null)
   const [selectedMode, setSelectedMode] = useState<SessionMode>('presentation')
-  const [selectedPresentationId, setSelectedPresentationId] = useState(() => PRESENTATIONS[0]?.id ?? '')
+  const [selectedPresentationId, setSelectedPresentationId] = useState('')
   const [showQuizPanel, setShowQuizPanel] = useState(false)
   const [quizQuestion, setQuizQuestion] = useState('')
   const [quizOptions, setQuizOptions] = useState(['', '', '', ''])
   const [answersMap, setAnswersMap] = useState<QuizAnswersMap>({})
   const [questions, setQuestions] = useState<StudentQuestion[]>([])
+  const [search, setSearch] = useState('')
 
-  // Reset selection when subject changes (PRESENTATIONS list changes)
-  useEffect(() => {
-    if (!PRESENTATIONS.find(p => p.id === selectedPresentationId)) {
-      setSelectedPresentationId(PRESENTATIONS[0]?.id ?? '')
+  const defaultKey = activeClass ? defaultSectionKey(activeClass.subject) : null
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(() =>
+    new Set<string>(defaultKey ? [defaultKey] : []),
+  )
+
+  // Group presentations by section
+  const grouped = useMemo(() => {
+    const filtered = search.trim()
+      ? ALL_PRESENTATIONS.filter(p => p.title.toLowerCase().includes(search.trim().toLowerCase()))
+      : ALL_PRESENTATIONS
+    const map = new Map<string, PresentationEntry[]>()
+    for (const p of filtered) {
+      const k = entryKey(p)
+      if (!map.has(k)) map.set(k, [])
+      map.get(k)!.push(p)
     }
-  }, [PRESENTATIONS])
+    return map
+  }, [search])
 
-  const presentation = PRESENTATIONS.find(p => p.id === (session?.presentationId ?? selectedPresentationId)) ?? PRESENTATIONS[0]
+  // Auto-expand all sections when there is an active search query
+  const isSearching = search.trim().length > 0
 
   useEffect(() => {
     if (!classroomCode) return
@@ -86,12 +125,11 @@ export default function LiveOktTab() {
   }, [classroomCode, session?.active])
 
   function startSession() {
-    if (!classroomCode) return
-    const pres = PRESENTATIONS.find(p => p.id === selectedPresentationId)!
+    if (!classroomCode || !selectedPresentationId) return
     set(ref(db, 'sessions/' + classroomCode), {
       active: true,
       mode: selectedMode,
-      presentationId: pres.id,
+      presentationId: selectedPresentationId,
       quizActive: false,
       quizQuestion: '',
       quizOptions: [],
@@ -131,16 +169,29 @@ export default function LiveOktTab() {
     update(ref(db, 'sessions/' + classroomCode + '/questions/' + pushId), { read: true })
   }
 
+  function toggleSection(key: string) {
+    setExpandedSections(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   const answerValues = Object.values(answersMap)
   const answerCounts = [0, 1, 2, 3].map(i => answerValues.filter(a => a.answer === i).length)
   const totalAnswers = answerValues.length
 
   const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }
 
+  const classLabel = className
+    ? <>{className} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(kode: <strong style={{ fontFamily: 'monospace', letterSpacing: '0.1em', color: 'var(--text-primary)' }}>{classroomCode}</strong>)</span></>
+    : <strong style={{ fontFamily: 'monospace', letterSpacing: '0.1em', color: 'var(--text-primary)' }}>{classroomCode}</strong>
+
   // ── Before session ──────────────────────────────────────────────────────────
   if (!session?.active) {
     return (
-      <div style={{ maxWidth: 560 }}>
+      <div style={{ maxWidth: 720 }}>
         {!classroomCode && (
           <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', fontSize: 13, marginBottom: 16 }}>
             Ingen klassekode funnet. Opprett en klasse i Klasser-fanen.
@@ -150,7 +201,7 @@ export default function LiveOktTab() {
         <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Start live økt</h2>
         {classroomCode && (
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
-            Klasse: <strong style={{ fontFamily: 'monospace', letterSpacing: '0.1em', color: 'var(--text-primary)' }}>{classroomCode}</strong>
+            Klasse: {classLabel}
           </p>
         )}
 
@@ -184,37 +235,82 @@ export default function LiveOktTab() {
           })}
         </div>
 
-        {/* Presentation picker — only shown when mode is presentation */}
+        {/* Presentation picker — grouped by section */}
         {selectedMode === 'presentation' && (
           <div style={{ marginBottom: 24 }}>
             <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 10 }}>Velg presentasjon</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {PRESENTATIONS.map(p => {
-                const active = selectedPresentationId === p.id
+
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Søk i presentasjoner…"
+              style={{ ...inp, marginBottom: 12 }}
+            />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {PRESENTATION_SECTIONS.map(section => {
+                const key = sectionKey(section)
+                const items = grouped.get(key) ?? []
+                if (items.length === 0) return null
+                const isOpen = isSearching || expandedSections.has(key)
                 return (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelectedPresentationId(p.id)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '12px 16px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                      border: active ? '2px solid #0d9488' : '1px solid var(--border)',
-                      background: active ? 'rgba(13,148,136,0.08)' : 'var(--card-bg)',
-                    }}
-                  >
-                    <span style={{ fontSize: 14, fontWeight: active ? 600 : 400, color: active ? '#0d9488' : 'var(--text-primary)' }}>{p.title}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.slides.length} slides</span>
-                  </button>
+                  <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card-bg)', overflow: 'hidden' }}>
+                    <button
+                      onClick={() => toggleSection(key)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{section.title}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+                        <span>{items.length}</span>
+                        <span>{isOpen ? '▾' : '▸'}</span>
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border)' }}>
+                        {items.map(p => {
+                          const active = selectedPresentationId === p.id
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => setSelectedPresentationId(p.id)}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                                padding: '10px 14px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                                border: 'none', borderTop: '1px solid var(--border)',
+                                background: active ? 'rgba(13,148,136,0.08)' : 'transparent',
+                              }}
+                            >
+                              <span style={{ fontSize: 14, fontWeight: active ? 600 : 400, color: active ? '#0d9488' : 'var(--text-primary)' }}>{p.title}</span>
+                              {active && <span style={{ fontSize: 12, color: '#0d9488', fontWeight: 700 }}>✓</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )
               })}
+              {grouped.size === 0 && (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '12px 4px', margin: 0 }}>
+                  Ingen presentasjoner matcher «{search}».
+                </p>
+              )}
             </div>
           </div>
         )}
 
         <button
           onClick={startSession}
-          disabled={!classroomCode}
-          style={{ background: classroomCode ? MODE_OPTIONS.find(m => m.id === selectedMode)!.color : '#d1d5db', color: '#fff', border: 'none', padding: '12px 28px', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: classroomCode ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
+          disabled={!classroomCode || (selectedMode === 'presentation' && !selectedPresentationId)}
+          style={{
+            background: classroomCode && (selectedMode !== 'presentation' || selectedPresentationId)
+              ? MODE_OPTIONS.find(m => m.id === selectedMode)!.color
+              : '#d1d5db',
+            color: '#fff', border: 'none', padding: '12px 28px', borderRadius: 10, fontSize: 15, fontWeight: 700,
+            cursor: classroomCode && (selectedMode !== 'presentation' || selectedPresentationId) ? 'pointer' : 'not-allowed',
+            fontFamily: 'inherit',
+          }}
         >
           ▶ Start live økt
         </button>
@@ -222,18 +318,33 @@ export default function LiveOktTab() {
     )
   }
 
-  // ── Active session — mode badge ─────────────────────────────────────────────
+  // ── Active session ──────────────────────────────────────────────────────────
   const modeInfo = MODE_OPTIONS.find(m => m.id === session.mode) ?? MODE_OPTIONS[0]
+  const activePresentation = session.mode === 'presentation' ? findPresentation(session.presentationId) : null
+  const activeRoute = activePresentation?.route ?? `/learning/presentations/${session.presentationId}`
 
   return (
-    <div style={{ maxWidth: 680 }}>
+    <div style={{ maxWidth: 720 }}>
+
+      {/* Header: class + mode */}
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+          Klasse: {classLabel}
+        </p>
+      </div>
 
       {/* Mode indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 16px', borderRadius: 10, background: `${modeInfo.color}14`, border: `1px solid ${modeInfo.color}40` }}>
-        <span style={{ fontSize: 20 }}>{modeInfo.icon}</span>
-        <span style={{ fontWeight: 700, fontSize: 14, color: modeInfo.color }}>{modeInfo.title}</span>
-        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{modeInfo.desc}</span>
-        <button onClick={endSession} style={{ marginLeft: 'auto', padding: '6px 14px', borderRadius: 8, border: '1px solid #ef4444', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: 'inherit' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: `${modeInfo.color}14`, border: `1px solid ${modeInfo.color}40` }}>
+        <span style={{ fontSize: 24, lineHeight: 1, marginTop: 2 }}>{modeInfo.icon}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: modeInfo.color, margin: 0 }}>
+            {session.mode === 'presentation' && activePresentation
+              ? <>Presentasjon: <span style={{ color: 'var(--text-primary)' }}>{activePresentation.title}</span></>
+              : modeInfo.title}
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 0' }}>{modeInfo.desc}</p>
+        </div>
+        <button onClick={endSession} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #ef4444', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 13, fontWeight: 500, flexShrink: 0, fontFamily: 'inherit' }}>
           Avslutt økt
         </button>
       </div>
@@ -242,12 +353,11 @@ export default function LiveOktTab() {
       {session.mode === 'presentation' && (
         <>
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px', marginBottom: 16 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{presentation.title}</span>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: '10px 0 18px' }}>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 18px' }}>
               Trykk «📺 Åpne på storskjerm» for å starte presentasjonen. Naviger med piltastene eller knappene i presentasjonen — elevenes skjerm følger automatisk.
             </p>
             <button
-              onClick={() => window.open(`/learning/presentations/${session.presentationId}?live-code=${classroomCode}`, '_blank')}
+              onClick={() => window.open(`${activeRoute}?live-code=${classroomCode}`, '_blank')}
               style={{ padding: '10px 20px', borderRadius: 8, border: '1.5px solid #0d9488', background: 'transparent', color: '#0d9488', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               📺 Åpne på storskjerm

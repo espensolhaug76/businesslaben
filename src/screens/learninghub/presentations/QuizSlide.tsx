@@ -326,7 +326,10 @@ export default function QuizSlide({ question, options, correct, timeSeconds, pin
         {!revealed && studentMode && selected !== null && (
           <p style={{ color: '#475569', fontSize: 14, margin: 0, alignSelf: 'center' }}>Venter på læreren…</p>
         )}
-        {revealed && !isLast && (
+        {revealed && studentMode && (
+          <p style={{ color: '#475569', fontSize: 14, margin: 0, alignSelf: 'center' }}>Venter på læreren…</p>
+        )}
+        {revealed && !studentMode && !isLast && (
           <button
             onClick={onNext}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#38bdf8'; (e.currentTarget as HTMLElement).style.color = '#030712' }}
@@ -336,7 +339,7 @@ export default function QuizSlide({ question, options, correct, timeSeconds, pin
             Neste slide →
           </button>
         )}
-        {revealed && isLast && (
+        {revealed && !studentMode && isLast && (
           <button
             onClick={onFinish ?? onNext}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#22c55e'; (e.currentTarget as HTMLElement).style.color = '#030712' }}
