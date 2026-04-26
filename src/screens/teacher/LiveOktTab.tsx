@@ -8,10 +8,6 @@ type SessionMode = 'presentation' | 'minileksjon' | 'spill'
 interface LiveSessionState {
   active: boolean
   mode: SessionMode
-  currentSlide: number
-  totalSlides: number
-  slideTitle: string
-  slideContent: string
   presentationId: string
   quizActive: boolean
   quizQuestion: string
@@ -95,10 +91,6 @@ export default function LiveOktTab() {
     set(ref(db, 'sessions/' + classroomCode), {
       active: true,
       mode: selectedMode,
-      currentSlide: 1,
-      totalSlides: pres.slides.length,
-      slideTitle: pres.slides[0].title,
-      slideContent: pres.slides[0].content,
       presentationId: pres.id,
       quizActive: false,
       quizQuestion: '',
@@ -115,19 +107,6 @@ export default function LiveOktTab() {
   function endSession() {
     if (!classroomCode) return
     update(ref(db, 'sessions/' + classroomCode), { active: false })
-  }
-
-  function navigateSlide(dir: 'prev' | 'next') {
-    if (!classroomCode || !session) return
-    const pres = (PRESENTATIONS.find(p => p.id === session.presentationId) ?? ALL_PRESENTATIONS.find(p => p.id === session.presentationId))!
-    const newSlide = dir === 'next'
-      ? Math.min(session.currentSlide + 1, session.totalSlides)
-      : Math.max(session.currentSlide - 1, 1)
-    const slide = pres.slides[newSlide - 1]
-    update(ref(db, 'sessions/' + classroomCode), { currentSlide: newSlide, slideTitle: slide.title, slideContent: slide.content, quizActive: false, showResults: false })
-    remove(ref(db, 'sessions/' + classroomCode + '/answers'))
-    setAnswersMap({})
-    setShowQuizPanel(false)
   }
 
   function sendQuiz() {
@@ -263,22 +242,16 @@ export default function LiveOktTab() {
       {session.mode === 'presentation' && (
         <>
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{presentation.title}</span>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{session.currentSlide} av {session.totalSlides}</span>
-            </div>
-            <h3 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: '8px 0 6px' }}>{session.slideTitle}</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>{session.slideContent}</p>
-            <div style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
-              <button onClick={() => navigateSlide('prev')} disabled={session.currentSlide <= 1} style={{ padding: '8px 20px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'transparent', color: session.currentSlide <= 1 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: session.currentSlide <= 1 ? 'not-allowed' : 'pointer', fontSize: 14, fontFamily: 'inherit' }}>← Forrige</button>
-              <button onClick={() => navigateSlide('next')} disabled={session.currentSlide >= session.totalSlides} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: session.currentSlide >= session.totalSlides ? '#d1d5db' : '#0d9488', color: '#fff', cursor: session.currentSlide >= session.totalSlides ? 'not-allowed' : 'pointer', fontSize: 14, fontFamily: 'inherit' }}>Neste →</button>
-              <button
-                onClick={() => window.open(`/learning/presentations/${session.presentationId}?live-code=${classroomCode}`, '_blank')}
-                style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: 8, border: '1.5px solid #0d9488', background: 'transparent', color: '#0d9488', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                📺 Åpne på storskjerm
-              </button>
-            </div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{presentation.title}</span>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: '10px 0 18px' }}>
+              Trykk «📺 Åpne på storskjerm» for å starte presentasjonen. Naviger med piltastene eller knappene i presentasjonen — elevenes skjerm følger automatisk.
+            </p>
+            <button
+              onClick={() => window.open(`/learning/presentations/${session.presentationId}?live-code=${classroomCode}`, '_blank')}
+              style={{ padding: '10px 20px', borderRadius: 8, border: '1.5px solid #0d9488', background: 'transparent', color: '#0d9488', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              📺 Åpne på storskjerm
+            </button>
           </div>
 
           {/* Quiz */}
