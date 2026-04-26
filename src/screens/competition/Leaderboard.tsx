@@ -3,47 +3,35 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   competitionsKey,
-  competitionRunKey,
-  competitionEntriesKey,
-  competitionHistoryKey,
 } from '../../types/Competition'
 import type {
   Competition,
-  CompetitionRun,
   PlayerEntry,
-  RunHistory,
 } from '../../types/Competition'
+import {
+  getCompetitionDefinition,
+  saveCompetition,
+  subscribeToCurrentRun,
+  subscribeToEntries,
+  subscribeToRuns,
+  type RunSummary,
+} from '../../lib/firebaseCompetitions'
 
-// ── Storage helpers ────────────────────────────────────────────────────────────
-
-function loadCompetition(code: string): Competition | null {
+/**
+ * Hent definisjonen — Firebase først, fall tilbake til localStorage og
+ * migrer ved første åpning.
+ */
+async function loadDefinitionWithMigration(code: string): Promise<Competition | null> {
+  const fromFb = await getCompetitionDefinition(code)
+  if (fromFb) return fromFb
   try {
     const raw = localStorage.getItem(competitionsKey())
     if (!raw) return null
     const list = JSON.parse(raw) as Competition[]
-    return list.find(c => c.code === code) ?? null
+    const found = list.find(c => c.code === code) ?? null
+    if (found) await saveCompetition(found).catch(() => { /* ignore */ })
+    return found
   } catch { return null }
-}
-
-function loadRun(code: string): CompetitionRun | null {
-  try {
-    const raw = localStorage.getItem(competitionRunKey(code))
-    return raw ? (JSON.parse(raw) as CompetitionRun) : null
-  } catch { return null }
-}
-
-function loadEntries(runId: string): PlayerEntry[] {
-  try {
-    const raw = localStorage.getItem(competitionEntriesKey(runId))
-    return raw ? (JSON.parse(raw) as PlayerEntry[]) : []
-  } catch { return [] }
-}
-
-function loadHistory(code: string): RunHistory[] {
-  try {
-    const raw = localStorage.getItem(competitionHistoryKey(code))
-    return raw ? (JSON.parse(raw) as RunHistory[]) : []
-  } catch { return [] }
 }
 
 // ── Medal helpers ──────────────────────────────────────────────────────────────
@@ -54,8 +42,8 @@ const RANK_STYLES: Record<number, { bg: string; text: string; medal: string }> =
   2: { bg: 'linear-gradient(135deg, #a78060, #c8956c)', text: '#fff', medal: '🥉' },
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('nb-NO', {
+function formatDate(ts: number): string {
+  return new Date(ts).toLocaleDateString('nb-NO', {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
@@ -161,35 +149,46 @@ export default function Leaderboard() {
 
   const [competition, setCompetition] = useState<Competition | null>(null)
   const [entries, setEntries] = useState<PlayerEntry[]>([])
-  const [history, setHistory] = useState<RunHistory[]>([])
+  const [runs, setRuns] = useState<RunSummary[]>([])
+  const [currentRunId, setCurrentRunId] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
 
-  // Load static data
+  // Load competition definition (Firebase + localStorage migrasjon)
   useEffect(() => {
     if (!code) return
-    setCompetition(loadCompetition(code))
-    setHistory(loadHistory(code))
+    let cancelled = false
+    loadDefinitionWithMigration(code).then(c => {
+      if (!cancelled) setCompetition(c)
+    })
+    return () => { cancelled = true }
   }, [code])
 
-  // Poll entries from current run
+  // Subscribe to currentRun for å vite hvilket runId vi skal følge
   useEffect(() => {
     if (!code) return
-    const poll = () => {
-      const run = loadRun(code)
-      if (run) {
-        const e = loadEntries(run.runId)
-        setEntries([...e].sort((a, b) => b.totalPoints - a.totalPoints))
-      }
-      setHistory(loadHistory(code))
-    }
-    poll()
-    const interval = setInterval(poll, 1000)
-    return () => clearInterval(interval)
+    return subscribeToCurrentRun(code, run => setCurrentRunId(run?.runId ?? null))
+  }, [code])
+
+  // Subscribe to entries for current run
+  useEffect(() => {
+    if (!code || !currentRunId) { setEntries([]); return }
+    return subscribeToEntries(code, currentRunId, list => {
+      setEntries([...list].sort((a, b) => b.totalPoints - a.totalPoints))
+    })
+  }, [code, currentRunId])
+
+  // Subscribe to all runs (for historikk-seksjonen)
+  useEffect(() => {
+    if (!code) return
+    return subscribeToRuns(code, setRuns)
   }, [code])
 
   const maxPoints = competition ? competition.questions.length * 1000 : 15000
   const top10 = entries.slice(0, 10)
   const bestClasses = calcBestClasses(entries)
+
+  // Vis tidligere runs (alle som ikke er current OG har minst én entry)
+  const history = runs.filter(r => r.runId !== currentRunId && r.entries.length > 0)
 
   if (!competition) {
     return (
@@ -241,7 +240,7 @@ export default function Leaderboard() {
                 <div className="space-y-2">
                   {top10.map((entry, rank) => (
                     <PlayerRow
-                      key={`${entry.studentName}-${entry.runId}`}
+                      key={`${entry.studentName}-${entry.className}-${entry.runId}`}
                       entry={entry}
                       rank={rank}
                       maxPoints={maxPoints}
@@ -297,7 +296,7 @@ export default function Leaderboard() {
                     exit={{ opacity: 0, height: 0 }}
                     className="space-y-4 overflow-hidden"
                   >
-                    {[...history].reverse().map((run, ri) => {
+                    {history.map((run, ri) => {
                       const sorted = [...run.entries].sort((a, b) => b.totalPoints - a.totalPoints)
                       const top3 = sorted.slice(0, 3)
                       return (
@@ -308,11 +307,11 @@ export default function Leaderboard() {
                         >
                           <div className="flex items-center justify-between mb-3">
                             <p className="text-sm font-semibold text-slate-300">Runde {history.length - ri}</p>
-                            <p className="text-xs text-slate-500">{formatDate(run.completedAt)}</p>
+                            <p className="text-xs text-slate-500">{run.finishedAt ? formatDate(run.finishedAt) : formatDate(run.startedAt)}</p>
                           </div>
                           <div className="space-y-1.5">
                             {top3.map((entry, rank) => (
-                              <div key={entry.studentName} className="flex items-center gap-3 text-sm">
+                              <div key={`${entry.studentName}-${entry.className}`} className="flex items-center gap-3 text-sm">
                                 <span className="w-6 text-center text-base">{['🥇', '🥈', '🥉'][rank]}</span>
                                 <span className="flex-1 text-slate-300">{entry.studentName}</span>
                                 <span className="text-xs text-slate-500">{entry.className}</span>

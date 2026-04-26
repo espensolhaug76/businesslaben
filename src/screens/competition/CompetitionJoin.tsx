@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  competitionRunKey,
-  competitionEntriesKey,
+  competitionsKey,
   calcPoints,
 } from '../../types/Competition'
 import type {
@@ -12,7 +11,15 @@ import type {
   PlayerEntry,
   PlayerAnswer,
 } from '../../types/Competition'
-import { competitionsKey } from '../../types/Competition'
+import {
+  getCompetitionDefinition,
+  saveCompetition,
+  subscribeToCurrentRun,
+  joinAsPlayer,
+  submitPlayerAnswer,
+  getPlayerEntry,
+  playerId as makePlayerId,
+} from '../../lib/firebaseCompetitions'
 
 // ── Option colors (match teacher view) ────────────────────────────────────────
 const OPTION_STYLES = [
@@ -22,32 +29,23 @@ const OPTION_STYLES = [
   { bg: '#2563eb', label: 'D' },
 ]
 
-// ── Storage helpers ────────────────────────────────────────────────────────────
-function loadCompetition(code: string): Competition | null {
+/**
+ * Hent definisjonen — Firebase først, fall tilbake til localStorage og
+ * migrer den ved første åpning slik at læreren ser samme entries som elever.
+ */
+async function loadDefinitionWithMigration(code: string): Promise<Competition | null> {
+  const fromFb = await getCompetitionDefinition(code)
+  if (fromFb) return fromFb
   try {
     const raw = localStorage.getItem(competitionsKey())
     if (!raw) return null
     const list = JSON.parse(raw) as Competition[]
-    return list.find(c => c.code === code) ?? null
+    const found = list.find(c => c.code === code) ?? null
+    if (found) {
+      await saveCompetition(found).catch(() => { /* ignore */ })
+    }
+    return found
   } catch { return null }
-}
-
-function loadRun(code: string): CompetitionRun | null {
-  try {
-    const raw = localStorage.getItem(competitionRunKey(code))
-    return raw ? (JSON.parse(raw) as CompetitionRun) : null
-  } catch { return null }
-}
-
-function loadEntries(runId: string): PlayerEntry[] {
-  try {
-    const raw = localStorage.getItem(competitionEntriesKey(runId))
-    return raw ? (JSON.parse(raw) as PlayerEntry[]) : []
-  } catch { return [] }
-}
-
-function saveEntries(runId: string, entries: PlayerEntry[]) {
-  localStorage.setItem(competitionEntriesKey(runId), JSON.stringify(entries))
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -92,6 +90,7 @@ export default function CompetitionJoin() {
   const [studentName, setStudentName] = useState('')
   const [className, setClassName] = useState('')
   const [myEntry, setMyEntry] = useState<PlayerEntry | null>(null)
+  const [pid, setPid] = useState<string>('')
 
   // Question state
   const [timeLeft, setTimeLeft] = useState(0)
@@ -103,37 +102,39 @@ export default function CompetitionJoin() {
   // Load competition
   useEffect(() => {
     if (!code) return
-    const c = loadCompetition(code)
-    setCompetition(c)
+    let cancelled = false
+    loadDefinitionWithMigration(code).then(c => {
+      if (!cancelled) setCompetition(c)
+    })
+    return () => { cancelled = true }
   }, [code])
 
-  // Restore session if returning
+  // Subscribe to currentRun
   useEffect(() => {
     if (!code) return
-    const saved = sessionStorage.getItem(`adventure-student-session-${code}`)
-    if (saved) {
-      const { name, cls, runId } = JSON.parse(saved) as { name: string; cls: string; runId: string }
-      setStudentName(name)
-      setClassName(cls)
-      const entries = loadEntries(runId)
-      const entry = entries.find(e => e.studentName === name && e.runId === runId)
-      if (entry) {
-        setMyEntry(entry)
-        setPhase('waiting')
-      }
-    }
+    return subscribeToCurrentRun(code, setRun)
   }, [code])
 
-  // Poll run state
+  // Restore session if returning (basert på sessionStorage + Firebase entry)
   useEffect(() => {
-    if (!code || phase === 'join') return
-    const interval = setInterval(() => {
-      const updatedRun = loadRun(code)
-      if (!updatedRun) return
-      setRun(updatedRun)
-    }, 800)
-    return () => clearInterval(interval)
-  }, [code, phase])
+    if (!code || !run?.runId) return
+    const saved = sessionStorage.getItem(`adventure-student-session-${code}`)
+    if (!saved) return
+    try {
+      const { name, cls, runId } = JSON.parse(saved) as { name: string; cls: string; runId: string }
+      if (runId !== run.runId) return  // gammelt run, ignorer
+      const restoredPid = makePlayerId(name, cls)
+      getPlayerEntry(code, run.runId, restoredPid).then(entry => {
+        if (entry) {
+          setStudentName(name)
+          setClassName(cls)
+          setMyEntry(entry)
+          setPid(restoredPid)
+          setPhase(prev => (prev === 'join' ? 'waiting' : prev))
+        }
+      }).catch(() => { /* ignore */ })
+    } catch { /* ignore corrupt sessionStorage */ }
+  }, [code, run?.runId])
 
   // React to run state changes
   useEffect(() => {
@@ -142,7 +143,6 @@ export default function CompetitionJoin() {
     if (run.status === 'waiting') {
       setPhase('waiting')
     } else if (run.status === 'question_active') {
-      // New question
       if (run.currentQuestionIndex !== lastQuestionIdx.current) {
         lastQuestionIdx.current = run.currentQuestionIndex
         hasAnswered.current = false
@@ -152,31 +152,26 @@ export default function CompetitionJoin() {
       }
     } else if (run.status === 'showing_results') {
       if (phase === 'answered' || phase === 'question') {
-        // Show result
-        const competition2 = loadCompetition(run.code)
-        if (competition2) {
-          const q = competition2.questions[run.currentQuestionIndex]
-          const entries = loadEntries(run.runId)
-          const entry = entries.find(e => e.studentName === myEntry.studentName && e.runId === run.runId)
-          const answer = entry?.answers.find(a => a.questionId === q.id)
+        // Vis resultatet for current question — basert på myEntry's lokale answers
+        if (competition) {
+          const q = competition.questions[run.currentQuestionIndex]
+          const myAns = myEntry.answers[run.currentQuestionIndex]
           setQuestionResult({
-            correct: answer?.answer === q.correct,
-            pointsEarned: answer?.points ?? 0,
+            correct: myAns?.answer === q.correct,
+            pointsEarned: myAns?.points ?? 0,
             correctOption: q.correct,
-            myAnswer: answer?.answer ?? -1,
+            myAnswer: myAns?.answer ?? -1,
           })
-          if (entry) setMyEntry(entry)
         }
         setPhase('results')
       }
     } else if (run.status === 'finished') {
-      // Final score
-      const entries = loadEntries(run.runId)
-      const entry = entries.find(e => e.studentName === myEntry.studentName && e.runId === run.runId)
-      if (entry) setMyEntry(entry)
       setPhase('finished')
     }
-  }, [run, myEntry, phase])
+  }, [run, myEntry, phase, competition])
+
+  // Re-fetch min entry når lærer går videre i runde (sub gir bare currentRun, ikke entry)
+  // — vi henter den ved svar-innsending; for skjermvisning av poeng følger vi myEntry.
 
   // Countdown timer for question phase
   useEffect(() => {
@@ -195,43 +190,34 @@ export default function CompetitionJoin() {
     return () => clearInterval(interval)
   }, [run]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleJoin() {
-    if (!studentName.trim() || !className.trim() || !code) return
-    const currentRun = loadRun(code)
-    if (!currentRun) {
-      alert('Finner ikke konkurransen. Be læreren om å starte den på nytt.')
+  async function handleJoin() {
+    if (!studentName.trim() || !className.trim() || !code || !run?.runId) {
+      if (!run?.runId) alert('Finner ikke konkurransen. Be læreren om å starte den på nytt.')
       return
     }
-    const entries = loadEntries(currentRun.runId)
+    const newPid = await joinAsPlayer(code, run.runId, studentName.trim(), className.trim())
     const entry: PlayerEntry = {
-      competitionId: currentRun.competitionId,
-      runId: currentRun.runId,
+      competitionId: run.competitionId ?? code,
+      runId: run.runId,
       studentName: studentName.trim(),
       className: className.trim(),
       totalPoints: 0,
       answers: [],
     }
-    const exists = entries.findIndex(e => e.studentName === entry.studentName && e.runId === entry.runId)
-    if (exists >= 0) {
-      entries[exists] = entry
-    } else {
-      entries.push(entry)
-    }
-    saveEntries(currentRun.runId, entries)
     setMyEntry(entry)
-    setRun(currentRun)
+    setPid(newPid)
     sessionStorage.setItem(`adventure-student-session-${code}`, JSON.stringify({
       name: entry.studentName,
       cls: entry.className,
-      runId: currentRun.runId,
+      runId: run.runId,
     }))
     lastQuestionIdx.current = -1
     hasAnswered.current = false
     setPhase('waiting')
   }
 
-  function handleAnswer(answerIndex: number) {
-    if (hasAnswered.current || !run || !competition || !myEntry) return
+  async function handleAnswer(answerIndex: number) {
+    if (hasAnswered.current || !run || !competition || !myEntry || !pid || !code) return
     hasAnswered.current = true
     setSelectedAnswer(answerIndex)
 
@@ -249,15 +235,13 @@ export default function CompetitionJoin() {
       points,
     }
 
-    // Update entry in localStorage
-    const entries = loadEntries(run.runId)
-    const idx = entries.findIndex(e => e.studentName === myEntry.studentName && e.runId === run.runId)
-    if (idx >= 0) {
-      entries[idx].answers.push(answer)
-      entries[idx].totalPoints += points
-      saveEntries(run.runId, entries)
-      setMyEntry({ ...entries[idx] })
-    }
+    const newTotal = myEntry.totalPoints + points
+    // Oppdater Firebase
+    await submitPlayerAnswer(code, run.runId, pid, run.currentQuestionIndex, answer, newTotal).catch(() => { /* ignore */ })
+    // Oppdater lokalt for umiddelbar feedback
+    const nextAnswers = [...myEntry.answers]
+    nextAnswers[run.currentQuestionIndex] = answer
+    setMyEntry({ ...myEntry, answers: nextAnswers, totalPoints: newTotal })
 
     setPhase('answered')
   }

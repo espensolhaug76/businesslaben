@@ -16,6 +16,11 @@ import type { DrawerPhase, DrawerExercise } from './learninghub/shared/DrawerMod
 import LiveOktTab from './teacher/LiveOktTab'
 import LeaderboardTab from './teacher/LeaderboardTab'
 import { MINE_FAG_OPTIONS, normalizeSubjectId } from '../lib/teacherSubjects'
+import {
+  subscribeToAllCompetitions,
+  saveCompetition as saveCompetitionToFirebase,
+} from '../lib/firebaseCompetitions'
+import type { Competition } from '../types/Competition'
 
 // ── Teacher custom exercise type ──────────────────────────────────────────────
 interface TeacherCustomExercise {
@@ -2441,9 +2446,40 @@ interface CompetitionSummary {
 }
 
 function KonkurranserTab({ navigate }: { navigate: (path: string) => void }) {
-  const competitions: CompetitionSummary[] = (() => {
-    try { return JSON.parse(localStorage.getItem('adventure-competitions') ?? '[]') } catch { return [] }
-  })()
+  const [competitions, setCompetitions] = useState<CompetitionSummary[]>(() => {
+    // Initial render fra localStorage som backup-cache for å unngå flash
+    try { return JSON.parse(localStorage.getItem('adventure-competitions') ?? '[]') as CompetitionSummary[] } catch { return [] }
+  })
+
+  // Subscribe til /competitions/ i Firebase (kilde til sannhet)
+  useEffect(() => {
+    return subscribeToAllCompetitions(list => {
+      const summaries: CompetitionSummary[] = list.map(c => ({
+        id: c.id,
+        title: c.title,
+        code: c.code,
+        status: c.status ?? 'waiting',
+        createdAt: c.createdAt,
+        questions: c.questions,
+      }))
+      setCompetitions(summaries)
+    })
+  }, [])
+
+  // Auto-migrer eventuelle localStorage-konkurranser som ikke finnes i Firebase
+  useEffect(() => {
+    if (localStorage.getItem('adventure-competitions-migrated') === 'true') return
+    try {
+      const raw = localStorage.getItem('adventure-competitions')
+      if (!raw) {
+        localStorage.setItem('adventure-competitions-migrated', 'true')
+        return
+      }
+      const local: Competition[] = JSON.parse(raw)
+      Promise.all(local.map(c => saveCompetitionToFirebase(c).catch(() => { /* ignore */ })))
+        .then(() => localStorage.setItem('adventure-competitions-migrated', 'true'))
+    } catch { /* ignore parse errors */ }
+  }, [])
 
   return (
     <div>

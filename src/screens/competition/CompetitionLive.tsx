@@ -3,17 +3,21 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   competitionsKey,
-  competitionRunKey,
-  competitionEntriesKey,
-  competitionHistoryKey,
-  calcPoints,
 } from '../../types/Competition'
 import type {
   Competition,
   CompetitionRun,
   PlayerEntry,
-  RunHistory,
 } from '../../types/Competition'
+import {
+  getCompetitionDefinition,
+  saveCompetition,
+  startNewRun as fbStartNewRun,
+  updateCurrentRun,
+  subscribeToCurrentRun,
+  subscribeToEntries,
+  markRunFinished,
+} from '../../lib/firebaseCompetitions'
 
 // ── Colors for the 4 answer options ───────────────────────────────────────────
 const OPTION_STYLES = [
@@ -27,41 +31,25 @@ function genRunId(): string {
   return Math.random().toString(36).slice(2, 10)
 }
 
-function loadCompetition(code: string): Competition | null {
+/**
+ * Hent definisjonen — først fra Firebase, fall tilbake til localStorage for
+ * konkurranser opprettet før Firebase-flyttingen. Hvis funnet i localStorage
+ * (men ikke Firebase), migrer den ved første opening.
+ */
+async function loadDefinitionWithMigration(code: string): Promise<Competition | null> {
+  const fromFb = await getCompetitionDefinition(code)
+  if (fromFb) return fromFb
   try {
     const raw = localStorage.getItem(competitionsKey())
     if (!raw) return null
     const list = JSON.parse(raw) as Competition[]
-    return list.find(c => c.code === code) ?? null
+    const found = list.find(c => c.code === code) ?? null
+    if (found) {
+      // Auto-migrer
+      await saveCompetition(found).catch(() => { /* ignore */ })
+    }
+    return found
   } catch { return null }
-}
-
-function loadRun(code: string): CompetitionRun | null {
-  try {
-    const raw = localStorage.getItem(competitionRunKey(code))
-    return raw ? (JSON.parse(raw) as CompetitionRun) : null
-  } catch { return null }
-}
-
-function saveRun(run: CompetitionRun) {
-  localStorage.setItem(competitionRunKey(run.code), JSON.stringify(run))
-}
-
-function loadEntries(runId: string): PlayerEntry[] {
-  try {
-    const raw = localStorage.getItem(competitionEntriesKey(runId))
-    return raw ? (JSON.parse(raw) as PlayerEntry[]) : []
-  } catch { return [] }
-}
-
-function archiveRun(code: string, runId: string, entries: PlayerEntry[]) {
-  try {
-    const key = competitionHistoryKey(code)
-    const raw = localStorage.getItem(key)
-    const history: RunHistory[] = raw ? (JSON.parse(raw) as RunHistory[]) : []
-    history.push({ runId, completedAt: new Date().toISOString(), entries })
-    localStorage.setItem(key, JSON.stringify(history))
-  } catch { /* ignore */ }
 }
 
 // ── Countdown circle ───────────────────────────────────────────────────────────
@@ -98,15 +86,17 @@ function AnswerBars({
   options,
   correct,
   entries,
-  questionId,
+  questionIdx,
 }: {
   options: string[]
   correct: number
   entries: PlayerEntry[]
-  questionId: string
+  questionIdx: number
 }) {
-  const counts = options.map((_, i) => entries.filter(e => e.answers.some(a => a.questionId === questionId && a.answer === i)).length)
-  const total = entries.filter(e => e.answers.some(a => a.questionId === questionId)).length
+  const counts = options.map((_, i) =>
+    entries.filter(e => e.answers[questionIdx]?.answer === i).length,
+  )
+  const total = entries.filter(e => e.answers[questionIdx] !== undefined).length
   const maxCount = Math.max(...counts, 1)
 
   return (
@@ -155,136 +145,112 @@ export default function CompetitionLive() {
   const [entries, setEntries] = useState<PlayerEntry[]>([])
   const [timeLeft, setTimeLeft] = useState(0)
 
-  // Load competition
+  // Load competition definition (Firebase first, localStorage fallback)
   useEffect(() => {
     if (!code) return
-    const c = loadCompetition(code)
-    setCompetition(c)
+    let cancelled = false
+    loadDefinitionWithMigration(code).then(c => {
+      if (!cancelled) setCompetition(c)
+    })
+    return () => { cancelled = true }
   }, [code])
 
-  // Poll entries + run state
+  // Subscribe to currentRun
   useEffect(() => {
-    if (!run) return
-    const interval = setInterval(() => {
-      setEntries(loadEntries(run.runId))
-      const updated = loadRun(run.code)
-      if (updated) setRun(updated)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [run])
+    if (!code) return
+    return subscribeToCurrentRun(code, setRun)
+  }, [code])
+
+  // Subscribe to entries når et runId finnes
+  useEffect(() => {
+    if (!code || !run?.runId) { setEntries([]); return }
+    return subscribeToEntries(code, run.runId, setEntries)
+  }, [code, run?.runId])
 
   // Countdown timer
   useEffect(() => {
     if (!run || run.status !== 'question_active' || !run.questionStartedAt) return
-    const elapsed = Math.floor((Date.now() - new Date(run.questionStartedAt).getTime()) / 1000)
-    const remaining = Math.max(0, run.timeSeconds - elapsed)
-    setTimeLeft(remaining)
-    if (remaining === 0) return
-
-    const interval = setInterval(() => {
-      const e = Math.floor((Date.now() - new Date(run.questionStartedAt!).getTime()) / 1000)
-      const r = Math.max(0, run.timeSeconds - e)
-      setTimeLeft(r)
-      if (r === 0) clearInterval(interval)
-    }, 500)
+    const update = () => {
+      const elapsed = Math.floor((Date.now() - new Date(run.questionStartedAt!).getTime()) / 1000)
+      const remaining = Math.max(0, run.timeSeconds - elapsed)
+      setTimeLeft(remaining)
+    }
+    update()
+    const interval = setInterval(update, 500)
     return () => clearInterval(interval)
   }, [run])
 
-  const startNewRound = useCallback(() => {
+  const startNewRound = useCallback(async () => {
     if (!competition || !code) return
     const runId = genRunId()
-    const newRun: CompetitionRun = {
-      runId,
-      competitionId: competition.id,
-      code,
-      status: 'waiting',
-      currentQuestionIndex: 0,
-      questionStartedAt: null,
-      timeSeconds: competition.questions[0]?.timeSeconds ?? 20,
-    }
-    saveRun(newRun)
-    setRun(newRun)
+    const ts = competition.questions[0]?.timeSeconds ?? 20
+    await fbStartNewRun(code, competition.id, runId, ts)
     setEntries([])
   }, [competition, code])
 
-  // Auto-start if no run exists
+  // Auto-start a new run hvis ingen pågår når komponenten åpnes
+  useEffect(() => {
+    if (!competition || !code || !run) {
+      // run kan være null fordi vi ikke har subscription-data ennå —
+      // vi venter en kort stund før vi auto-starter for å unngå race
+      return
+    }
+    if (run.status === 'finished' && competition.canRepeat === false) return
+    // Hvis det ikke finnes et run, eller det forrige er ferdig og kan gjentas,
+    // ikke auto-start — la læreren manuelt starte ny runde
+  }, [competition, code, run])
+
+  // Auto-start hvis ingen run finnes etter at vi har lest fra Firebase
   useEffect(() => {
     if (!competition || !code) return
-    const existing = loadRun(code)
-    if (existing && existing.competitionId === competition.id && existing.status !== 'finished') {
-      setRun(existing)
-      setEntries(loadEntries(existing.runId))
-    } else {
-      startNewRound()
-    }
-  }, [competition, code, startNewRound])
+    let cancelled = false
+    // gi subscriptionen en frame til å levere innhold
+    const t = setTimeout(() => {
+      if (cancelled) return
+      if (!run) {
+        startNewRound()
+      }
+    }, 800)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [competition, code, run, startNewRound])
 
-  function startQuestion() {
-    if (!run || !competition) return
+  async function startQuestion() {
+    if (!run || !competition || !code) return
     const q = competition.questions[run.currentQuestionIndex]
-    const updated: CompetitionRun = {
-      ...run,
+    await updateCurrentRun(code, {
       status: 'question_active',
       questionStartedAt: new Date().toISOString(),
       timeSeconds: q.timeSeconds,
-    }
-    saveRun(updated)
-    setRun(updated)
+    })
     setTimeLeft(q.timeSeconds)
   }
 
-  function showResults() {
-    if (!run) return
-    const updated: CompetitionRun = { ...run, status: 'showing_results' }
-    saveRun(updated)
-    setRun(updated)
-
-    // Award points to entries that answered this question
-    if (competition) {
-      const currentQ = competition.questions[run.currentQuestionIndex]
-      const currentEntries = loadEntries(run.runId)
-      const updatedEntries = currentEntries.map(entry => {
-        const answer = entry.answers.find(a => a.questionId === currentQ.id)
-        if (!answer || answer.points !== 0 || answer.answer !== currentQ.correct) return entry
-        const pts = calcPoints(true, answer.timeUsed)
-        const updatedAnswers = entry.answers.map(a =>
-          a.questionId === currentQ.id ? { ...a, points: pts } : a
-        )
-        return { ...entry, answers: updatedAnswers, totalPoints: entry.totalPoints + pts - (answer.points ?? 0) }
-      })
-      localStorage.setItem(competitionEntriesKey(run.runId), JSON.stringify(updatedEntries))
-      setEntries(updatedEntries)
-    }
+  async function showResults() {
+    if (!run || !code) return
+    await updateCurrentRun(code, { status: 'showing_results' })
   }
 
-  function nextQuestion() {
-    if (!run || !competition) return
+  async function nextQuestion() {
+    if (!run || !competition || !code) return
     const nextIdx = run.currentQuestionIndex + 1
     if (nextIdx >= competition.questions.length) {
-      // Finished
-      const updated: CompetitionRun = { ...run, status: 'finished', currentQuestionIndex: nextIdx }
-      saveRun(updated)
-      setRun(updated)
-      const finalEntries = loadEntries(run.runId)
-      archiveRun(run.code, run.runId, finalEntries)
+      await updateCurrentRun(code, { status: 'finished', currentQuestionIndex: nextIdx })
+      await markRunFinished(code, run.runId)
     } else {
       const nextQ = competition.questions[nextIdx]
-      const updated: CompetitionRun = {
-        ...run,
+      await updateCurrentRun(code, {
         status: 'question_active',
         currentQuestionIndex: nextIdx,
         questionStartedAt: new Date().toISOString(),
         timeSeconds: nextQ.timeSeconds,
-      }
-      saveRun(updated)
-      setRun(updated)
+      })
       setTimeLeft(nextQ.timeSeconds)
     }
   }
 
   // Count how many answered the current question
   const answeredCount = run
-    ? entries.filter(e => e.answers.some(a => a.questionId === competition?.questions[run.currentQuestionIndex]?.id)).length
+    ? entries.filter(e => e.answers[run.currentQuestionIndex] !== undefined).length
     : 0
 
   if (!competition) {
@@ -436,7 +402,7 @@ export default function CompetitionLive() {
                 options={currentQ.options}
                 correct={currentQ.correct}
                 entries={entries}
-                questionId={currentQ.id}
+                questionIdx={run.currentQuestionIndex}
               />
 
               <div className="mt-8 text-center">
@@ -465,11 +431,11 @@ export default function CompetitionLive() {
               <h2 className="text-3xl font-bold">Konkurransen er ferdig!</h2>
 
               {/* Top 3 */}
-              {entries
+              {[...entries]
                 .sort((a, b) => b.totalPoints - a.totalPoints)
                 .slice(0, 3)
                 .map((entry, i) => (
-                  <div key={entry.studentName} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-800 border border-slate-700">
+                  <div key={`${entry.studentName}-${entry.className}`} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-800 border border-slate-700">
                     <span className="text-3xl">{['🥇', '🥈', '🥉'][i]}</span>
                     <div className="flex-1 text-left">
                       <p className="font-bold">{entry.studentName}</p>

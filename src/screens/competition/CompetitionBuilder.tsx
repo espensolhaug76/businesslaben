@@ -7,6 +7,7 @@ import {
   competitionsKey,
 } from '../../types/Competition'
 import type { Competition, CompetitionQuestion } from '../../types/Competition'
+import { saveCompetition as saveCompetitionToFirebase } from '../../lib/firebaseCompetitions'
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 10)
@@ -23,10 +24,17 @@ function loadCompetitions(): Competition[] {
   } catch { return [] }
 }
 
-function saveCompetition(c: Competition) {
-  const list = loadCompetitions()
-  list.push(c)
-  localStorage.setItem(competitionsKey(), JSON.stringify(list))
+/**
+ * Lagrer konkurransen i Firebase (kilden til sannhet for cross-device) og
+ * speiler den til localStorage som backup-cache for rask lokal visning.
+ */
+async function saveCompetition(c: Competition): Promise<void> {
+  await saveCompetitionToFirebase(c)
+  try {
+    const list = loadCompetitions()
+    list.push(c)
+    localStorage.setItem(competitionsKey(), JSON.stringify(list))
+  } catch { /* localStorage full eller blokkert — ignoreres, Firebase er kilden */ }
 }
 
 const TIME_OPTIONS = [10, 20, 30]
@@ -57,7 +65,7 @@ export default function CompetitionBuilder() {
     setSelectedIds(new Set(shuffled.map(q => q.id)))
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!title.trim() || selectedIds.size !== 15) return
     const questions: CompetitionQuestion[] = QUESTION_BANK
       .filter(q => selectedIds.has(q.id))
@@ -73,7 +81,7 @@ export default function CompetitionBuilder() {
       createdAt: new Date().toISOString(),
       canRepeat: true,
     }
-    saveCompetition(competition)
+    await saveCompetition(competition)
     setCreatedCode(code)
   }
 
