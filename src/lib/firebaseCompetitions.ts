@@ -17,12 +17,19 @@
  */
 import { ref, set, get, update, onValue, serverTimestamp } from 'firebase/database'
 import { db } from './firebase'
+import {
+  competitionsKey,
+} from '../types/Competition'
 import type {
   Competition,
   CompetitionRun,
   PlayerAnswer,
   PlayerEntry,
 } from '../types/Competition'
+import {
+  STANDARD_COMPETITIONS,
+  findStandardCompetition,
+} from '../data/standardCompetitions'
 
 function clean<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
   const out: Record<string, unknown> = {}
@@ -58,6 +65,8 @@ export async function saveCompetition(c: Competition): Promise<void> {
     canRepeat: c.canRepeat,
     subject: c.subject ?? '',
     shareToLeaderboard: c.shareToLeaderboard ?? false,
+    isStandard: c.isStandard ?? false,
+    standardParentId: c.standardParentId,
   }))
 }
 
@@ -65,6 +74,73 @@ export async function saveCompetition(c: Competition): Promise<void> {
 export async function getCompetitionDefinition(code: string): Promise<Competition | null> {
   const snap = await get(ref(db, `competitions/${code}/definition`))
   return snap.val() as Competition | null
+}
+
+/** Returner alle 24 standardkonkurranser (statisk array fra koden). */
+export function getStandardCompetitions(): Competition[] {
+  return STANDARD_COMPETITIONS
+}
+
+/**
+ * Sentralisert def-loader brukt av Live/Join/Leaderboard-skjermene.
+ *
+ * Rekkefølge:
+ *  1. Hvis koden starter med «std-», slå opp i STANDARD_COMPETITIONS direkte.
+ *     Standardkonkurranser kan også være lagret som lærer-instanser (egen
+ *     4-sifret kode) — det dekkes av Firebase-treffet under.
+ *  2. Hent fra Firebase (kilde til sannhet for ordinære konkurranser).
+ *  3. Fall tilbake til localStorage for konkurranser opprettet før Firebase-
+ *     flyttingen, og auto-migrer dem ved første treff.
+ */
+export async function loadDefinitionWithMigration(code: string): Promise<Competition | null> {
+  if (code.startsWith('std-')) {
+    const std = findStandardCompetition(code)
+    if (std) return std
+  }
+  const fromFb = await getCompetitionDefinition(code)
+  if (fromFb) return fromFb
+  try {
+    const raw = localStorage.getItem(competitionsKey())
+    if (!raw) return null
+    const list = JSON.parse(raw) as Competition[]
+    const found = list.find(c => c.code === code) ?? null
+    if (found) await saveCompetition(found).catch(() => { /* ignore */ })
+    return found
+  } catch { return null }
+}
+
+/**
+ * Start en lærer-instans av en standardkonkurranse.
+ *
+ * Genererer en ny 4-sifret kode, klone definisjonen til Firebase som en lærer-
+ * instans (med standardParentId-pekere tilbake til standard-IDen for at cross-
+ * school leaderboard skal samle alle lærere på tvers), og starter et nytt run.
+ *
+ * Returnerer den nye 4-sifrete koden — eleven slipper å taste std-IDer.
+ */
+function genCode4(): string {
+  return String(Math.floor(1000 + Math.random() * 9000))
+}
+
+function genRunId(): string {
+  return Math.random().toString(36).slice(2, 10)
+}
+
+export async function startStandardCompetition(stdId: string): Promise<string> {
+  const std = findStandardCompetition(stdId)
+  if (!std) throw new Error(`Ukjent standardkonkurranse: ${stdId}`)
+  const newCode = genCode4()
+  const instance: Competition = {
+    ...std,
+    id: newCode,
+    code: newCode,
+    createdAt: new Date().toISOString(),
+    standardParentId: stdId,
+  }
+  await saveCompetition(instance)
+  const runId = genRunId()
+  await startNewRun(newCode, instance.id, runId, std.questions[0]?.timeSeconds ?? 20)
+  return newCode
 }
 
 /** Subscribe til konkurransedefinisjonen (én kode). Returnerer unsubscribe. */

@@ -1,38 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  competitionsKey,
-} from '../../types/Competition'
 import type {
   Competition,
   PlayerEntry,
 } from '../../types/Competition'
 import {
-  getCompetitionDefinition,
-  saveCompetition,
+  loadDefinitionWithMigration,
   subscribeToCurrentRun,
   subscribeToEntries,
   subscribeToRuns,
   type RunSummary,
 } from '../../lib/firebaseCompetitions'
-
-/**
- * Hent definisjonen — Firebase først, fall tilbake til localStorage og
- * migrer ved første åpning.
- */
-async function loadDefinitionWithMigration(code: string): Promise<Competition | null> {
-  const fromFb = await getCompetitionDefinition(code)
-  if (fromFb) return fromFb
-  try {
-    const raw = localStorage.getItem(competitionsKey())
-    if (!raw) return null
-    const list = JSON.parse(raw) as Competition[]
-    const found = list.find(c => c.code === code) ?? null
-    if (found) await saveCompetition(found).catch(() => { /* ignore */ })
-    return found
-  } catch { return null }
-}
 
 // ── Medal helpers ──────────────────────────────────────────────────────────────
 

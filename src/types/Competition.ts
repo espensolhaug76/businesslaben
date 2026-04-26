@@ -13,6 +13,12 @@ export interface Competition {
   subject?: string
   /** Opt-in: del klassens snitt på nasjonalt leaderboard når runet er ferdig. */
   shareToLeaderboard?: boolean
+  /** True for de 24 ferdiglagde standardkonkurransene (kode-prefikset «std-»). */
+  isStandard?: boolean
+  /** Hvis denne konkurransen er en lærer-instans av en standardkonkurranse, peker
+   *  dette til kilde-IDen («std-…»). Brukes for å samle cross-school leaderboard
+   *  på tvers av alle lærer-instanser. */
+  standardParentId?: string
 }
 
 export interface CompetitionQuestion {
@@ -23,6 +29,10 @@ export interface CompetitionQuestion {
   timeSeconds: number
   /** Fag-ID som spørsmålet hører til. Ennå ikke utfylt for QUESTION_BANK. */
   subject?: string
+  /** Vanskelighetsgrad — kun satt for standardkonkurranser. */
+  difficulty?: 'lett' | 'middels' | 'vanskelig'
+  /** Pedagogisk forklaring som vises etter at riktig svar er avslørt. */
+  explanation?: string
 }
 
 export interface PlayerEntry {

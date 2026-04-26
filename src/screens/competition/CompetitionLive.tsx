@@ -1,17 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  competitionsKey,
-} from '../../types/Competition'
 import type {
   Competition,
   CompetitionRun,
   PlayerEntry,
 } from '../../types/Competition'
 import {
-  getCompetitionDefinition,
-  saveCompetition,
+  loadDefinitionWithMigration,
   startNewRun as fbStartNewRun,
   updateCurrentRun,
   subscribeToCurrentRun,
@@ -56,7 +52,9 @@ async function shareRunResults(c: Competition, ents: PlayerEntry[]): Promise<voi
       classroomCode: `${matched?.schoolName ?? 'ukjent'}_${className}`,
       averageScore: avg,
       studentCount: classEntries.length,
-      competitionId: c.code,
+      // Cross-school: standardkonkurranser samles på std-IDen,
+      // egenopprettede konkurranser samles på sin egen kode.
+      competitionId: c.standardParentId ?? c.code,
     }).catch(err => console.error('shareRunResults failed for', className, err))
   }
 }
@@ -71,27 +69,6 @@ const OPTION_STYLES = [
 
 function genRunId(): string {
   return Math.random().toString(36).slice(2, 10)
-}
-
-/**
- * Hent definisjonen — først fra Firebase, fall tilbake til localStorage for
- * konkurranser opprettet før Firebase-flyttingen. Hvis funnet i localStorage
- * (men ikke Firebase), migrer den ved første opening.
- */
-async function loadDefinitionWithMigration(code: string): Promise<Competition | null> {
-  const fromFb = await getCompetitionDefinition(code)
-  if (fromFb) return fromFb
-  try {
-    const raw = localStorage.getItem(competitionsKey())
-    if (!raw) return null
-    const list = JSON.parse(raw) as Competition[]
-    const found = list.find(c => c.code === code) ?? null
-    if (found) {
-      // Auto-migrer
-      await saveCompetition(found).catch(() => { /* ignore */ })
-    }
-    return found
-  } catch { return null }
 }
 
 // ── Countdown circle ───────────────────────────────────────────────────────────
@@ -463,6 +440,13 @@ export default function CompetitionLive() {
                 entries={entries}
                 questionIdx={run.currentQuestionIndex}
               />
+
+              {currentQ.explanation && (
+                <div className="mt-6 mx-auto max-w-lg rounded-xl p-4" style={{ background: 'rgba(13,148,136,0.10)', border: '1px solid rgba(13,148,136,0.3)' }}>
+                  <p className="text-xs uppercase tracking-wider text-teal-300 mb-1">💡 Forklaring</p>
+                  <p className="text-sm text-slate-100 leading-snug">{currentQ.explanation}</p>
+                </div>
+              )}
 
               <div className="mt-8 text-center">
                 <button

@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  competitionsKey,
   calcPoints,
 } from '../../types/Competition'
 import type {
@@ -12,8 +11,7 @@ import type {
   PlayerAnswer,
 } from '../../types/Competition'
 import {
-  getCompetitionDefinition,
-  saveCompetition,
+  loadDefinitionWithMigration,
   subscribeToCurrentRun,
   joinAsPlayer,
   submitPlayerAnswer,
@@ -29,25 +27,6 @@ const OPTION_STYLES = [
   { bg: '#7c3aed', label: 'C' },
   { bg: '#2563eb', label: 'D' },
 ]
-
-/**
- * Hent definisjonen — Firebase først, fall tilbake til localStorage og
- * migrer den ved første åpning slik at læreren ser samme entries som elever.
- */
-async function loadDefinitionWithMigration(code: string): Promise<Competition | null> {
-  const fromFb = await getCompetitionDefinition(code)
-  if (fromFb) return fromFb
-  try {
-    const raw = localStorage.getItem(competitionsKey())
-    if (!raw) return null
-    const list = JSON.parse(raw) as Competition[]
-    const found = list.find(c => c.code === code) ?? null
-    if (found) {
-      await saveCompetition(found).catch(() => { /* ignore */ })
-    }
-    return found
-  } catch { return null }
-}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type StudentPhase =
@@ -429,6 +408,13 @@ export default function CompetitionJoin() {
               {!questionResult.correct && (
                 <div className="rounded-xl p-3 text-sm" style={{ background: OPTION_STYLES[questionResult.correctOption].bg }}>
                   Riktig svar: <strong>{currentQ.options[questionResult.correctOption]}</strong>
+                </div>
+              )}
+
+              {currentQ.explanation && (
+                <div className="rounded-xl p-3 text-left" style={{ background: 'rgba(13,148,136,0.12)', border: '1px solid rgba(13,148,136,0.3)' }}>
+                  <p className="text-xs uppercase tracking-wider text-teal-300 mb-1">💡 Forklaring</p>
+                  <p className="text-sm text-slate-100 leading-snug">{currentQ.explanation}</p>
                 </div>
               )}
 

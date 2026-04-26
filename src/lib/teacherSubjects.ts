@@ -28,6 +28,9 @@ export const MINE_FAG_OPTIONS: MineFagOption[] = [
   { id: 'ml2',  label: 'Markedsføring og ledelse 2 (ML2)', short: 'ML2',  lessonSubject: null,   moduleKey: 'ml-vg3',  sporsmalFag: null },
   { id: 'ent1', label: 'Entreprenørskap 1 (ENT1)',         short: 'ENT1', lessonSubject: 'ent1', moduleKey: 'ent-vg2', sporsmalFag: null },
   { id: 'ent2', label: 'Entreprenørskap 2 (ENT2)',         short: 'ENT2', lessonSubject: null,   moduleKey: 'ent-vg3', sporsmalFag: null },
+  // Tverrfaglige standardkonkurranser (ikke et reelt fag — brukes for grupperinger på tvers av SSR-fagene)
+  { id: 'tverrfaglig_vg1', label: 'Tverrfaglig VG1 SSR', short: 'TVERR-VG1', lessonSubject: null, moduleKey: null, sporsmalFag: null },
+  { id: 'tverrfaglig_vg2', label: 'Tverrfaglig VG2 SSR', short: 'TVERR-VG2', lessonSubject: null, moduleKey: null, sporsmalFag: null },
 ]
 
 /** Map gamle VG2 SSR-IDer til nye. Brukes ved lesing — ingen Firebase-migrasjon. */
