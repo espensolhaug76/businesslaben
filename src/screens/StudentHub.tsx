@@ -94,9 +94,12 @@ export default function StudentHub() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 16px' }}>
         <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', margin: '0 0 8px' }}>
+          <h1 style={{ fontSize: 30, fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', margin: '0 0 4px', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
             Hva vil du gjøre?
           </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', margin: '0 0 12px' }}>
+            Velg hvordan du vil komme i gang
+          </p>
 
           {/* ── FØLG UNDERVISNINGEN ── */}
           <div style={card}>
@@ -124,7 +127,9 @@ export default function StudentHub() {
                       />
                       <button
                         onClick={joinClass}
-                        style={{ background: '#0d9488', color: '#fff', border: 'none', borderRadius: 12, padding: '9px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}
+                        style={{ background: '#0f766e', color: '#fff', border: 'none', borderRadius: 12, padding: '9px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit', transition: 'background 0.15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#115e59' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#0f766e' }}
                       >
                         Bli med
                       </button>
