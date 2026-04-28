@@ -215,50 +215,54 @@ function LeaderboardMockup() {
   ]
   const medals = ['🥇', '🥈', '🥉']
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-md">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <span>🏆</span> Nasjonalt lederbord
-        </p>
-        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">Live</span>
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden">
+      <div className="bg-slate-900 text-white p-5">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-bold flex items-center gap-2">
+            <span>🏆</span> Nasjonalt lederbord
+          </p>
+          <span className="text-[10px] font-bold text-white bg-rose-500 px-2 py-0.5 rounded">Live</span>
+        </div>
+        <p className="text-xs text-slate-400 mb-3">Markedsføring og innovasjon · April 2026</p>
+        <div className="flex flex-wrap gap-1.5">
+          {['Mitt fag', 'Alle fag', 'Denne måneden', 'Hele året'].map((f, i) => (
+            <span
+              key={f}
+              className={`text-[11px] px-2.5 py-1 rounded-full border ${i === 0 ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-800 text-slate-300 border-slate-700'}`}
+            >
+              {f}
+            </span>
+          ))}
+        </div>
       </div>
-      <p className="text-xs text-slate-500 mb-3">Markedsføring og innovasjon · April 2026</p>
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        {['Mitt fag', 'Alle fag', 'Denne måneden', 'Hele året'].map((f, i) => (
-          <span
-            key={f}
-            className={`text-[11px] px-2.5 py-1 rounded-full border ${i === 0 ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200'}`}
-          >
-            {f}
-          </span>
-        ))}
-      </div>
-      <div className="space-y-1.5">
-        {rows.map(r => (
-          <div
-            key={r.rank}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg ${r.mine ? 'border border-teal-300 bg-teal-50' : 'border border-slate-100 bg-slate-50/50'}`}
-          >
-            <span className="text-base w-6 text-center">{medals[r.rank - 1] ?? r.rank}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-slate-900 flex items-center gap-2 flex-wrap">
-                <span className="truncate">{r.klasse} · {r.school}</span>
-                {r.mine && <span className="text-[9px] font-bold tracking-wider bg-teal-600 text-white px-1.5 py-0.5 rounded">DIN KLASSE</span>}
-              </p>
-              <p className="text-[10px] text-slate-500">{r.students} elever · {r.date}</p>
+      <div className="p-5">
+        <div className="space-y-1.5">
+          {rows.map(r => (
+            <div
+              key={r.rank}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg ${r.mine ? 'border border-teal-300 bg-teal-50' : 'border border-slate-100 bg-slate-50/50'}`}
+            >
+              <span className="text-base w-6 text-center">{medals[r.rank - 1] ?? r.rank}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-slate-900 flex items-center gap-2 flex-wrap">
+                  <span className="truncate">{r.klasse} · {r.school}</span>
+                  {r.mine && <span className="text-[9px] font-bold tracking-wider bg-teal-600 text-white px-1.5 py-0.5 rounded">DIN KLASSE</span>}
+                </p>
+                <p className="text-[10px] text-slate-500">{r.students} elever · {r.date}</p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-sm font-bold text-slate-900">{r.score} <span className="text-[10px] text-slate-400 font-normal">/ 15</span></p>
+                <p className="text-[10px] text-slate-500">{r.pct}%</p>
+              </div>
             </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-sm font-bold text-slate-900">{r.score} <span className="text-[10px] text-slate-400 font-normal">/ 15</span></p>
-              <p className="text-[10px] text-slate-500">{r.pct}%</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="text-center mt-3 text-[10px] text-slate-500">
-        + 47 andre klasser · <span className="text-teal-600 font-semibold">Se hele listen</span>
-      </div>
-      <div className="border-t border-slate-100 mt-3 pt-2 text-center text-[10px] text-slate-500">
-        🔒 Kun aggregerte snitt deles. Ingen individuelle elevdata forlater klasserommet.
+          ))}
+        </div>
+        <div className="text-center mt-3 text-[10px] text-slate-500">
+          + 47 andre klasser · <span className="text-teal-600 font-semibold">Se hele listen</span>
+        </div>
+        <div className="border-t border-slate-100 mt-3 pt-2 text-center text-[10px] text-slate-500">
+          🔒 Kun aggregerte snitt deles. Ingen individuelle elevdata forlater klasserommet.
+        </div>
       </div>
     </div>
   )
