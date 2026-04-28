@@ -11,6 +11,7 @@ import LearningLayout from './components/layout/LearningLayout'
 
 // Landing page
 import LandingPage from './screens/LandingPage'
+import AboutPage from './screens/AboutPage'
 
 // Startup screens
 import StartScreen from './screens/StartScreen'
@@ -450,6 +451,7 @@ function App() {
 
           {/* ── Landing page ─────────────────────────────────────────────── */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/om" element={<AboutPage />} />
 
           {/* ── AdVenture 3.0 Business Simulator ─────────────────────────── */}
           <Route path="/game" element={<GamePage />} />
