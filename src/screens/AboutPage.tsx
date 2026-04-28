@@ -173,7 +173,7 @@ export default function AboutPage() {
             Business<span className="text-teal-700">laben</span>
           </Link>
           <div className="hidden sm:flex items-center gap-7 text-sm text-slate-600">
-            <a href="#problem" className="hover:text-slate-900 transition-colors">Hvorfor</a>
+            <a href="#hvorfor" className="hover:text-slate-900 transition-colors">Hvorfor</a>
             <a href="#funksjoner" className="hover:text-slate-900 transition-colors">Funksjoner</a>
             <a href="#fag" className="hover:text-slate-900 transition-colors">Fagdekning</a>
             <a href="#om" className="hover:text-slate-900 transition-colors">Om</a>
@@ -217,7 +217,7 @@ export default function AboutPage() {
       </section>
 
       {/* Problem / Løsning */}
-      <section id="problem" className="bg-slate-50 border-y border-slate-100">
+      <section id="hvorfor" className="bg-slate-50 border-y border-slate-100">
         <div className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12">
           <div>
             <p className="text-xs font-semibold text-rose-600 uppercase tracking-wide mb-3">Problemet</p>
@@ -299,17 +299,38 @@ export default function AboutPage() {
 
       {/* Konkurranse mot skoler */}
       <section className="bg-slate-50 border-y border-slate-100">
-        <div className="max-w-6xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-14 items-center">
-          <LeaderboardMockup />
-          <div>
-            <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-3">Konkurranse mot andre skoler</p>
-            <h2 className="text-3xl font-bold tracking-tight mb-5">Klasse mot klasse — på tvers av landet</h2>
-            <p className="text-slate-600 leading-relaxed mb-4">
-              24 ferdiglagde konkurranser dekker SSR-FD, SSR-MI, SSR-KS, ØK, KOM, HMS, ML1/ML2 og ENT1/ENT2. Du klikker «Start», elevene blir med via en kode.
+        <div className="max-w-6xl mx-auto px-6 py-24 grid lg:grid-cols-5 gap-14 items-center">
+          <div className="lg:col-span-2">
+            <span className="inline-block bg-teal-700 text-white px-3 py-1 rounded-full text-xs font-semibold mb-4">
+              🏆 NYTT · Cross-school
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-5">
+              Konkurrer mot klasser i hele Norge.
+            </h2>
+            <p className="text-lg text-slate-600 leading-relaxed mb-4">
+              Klassen din kjører en konkurranse på 15 spørsmål — og snittet havner på et nasjonalt lederbord. Hvor ligger 2A på markedsføring? Hvilken skole topper HMS-tabellen denne måneden?
             </p>
-            <p className="text-slate-600 leading-relaxed">
-              Klassens snitt sendes til et nasjonalt leaderboard — kun aggregerte tall, GDPR-vennlig. Elevene ser hvor de havner mot 36 andre klasser uten at noen elevnavn deles.
+            <p className="text-lg text-slate-700 font-medium mb-6">
+              Plutselig blir læring noe man heier på.
             </p>
+            <ul className="space-y-3 text-slate-700">
+              {[
+                { bold: '24 ferdige konkurranser, 360 spørsmål', rest: ' — start med ett klikk' },
+                { bold: 'Aldri elevnavn', rest: ' — kun klassenavn og skole på lederbordet' },
+                { bold: 'Opt-in deling', rest: ' — du velger om resultatet skal deles' },
+                { bold: 'Filter per fag', rest: ', per måned, per landsdel' },
+              ].map(item => (
+                <li key={item.bold} className="flex items-start gap-3">
+                  <span className="mt-1 text-teal-600 flex-shrink-0">✓</span>
+                  <span className="leading-relaxed">
+                    <strong>{item.bold}</strong>{item.rest}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="lg:col-span-3">
+            <LeaderboardMockup />
           </div>
         </div>
       </section>
@@ -323,62 +344,83 @@ export default function AboutPage() {
             {
               icon: '📊',
               title: 'Lærerdashboard',
-              desc: 'Følg klassens fremgang, se elevsvar med kommentarer og styr hva som er synlig per klasse.',
+              desc: 'Se klassene dine, kjør live-økter, opprett konkurranser og prøver, og følg med på resultater — alt på én skjerm. Hver klasse er knyttet til ett fag, så det er aldri tvil om hva som vises for hvem.',
+              bullets: [
+                'Flere klasser per bruker',
+                'Filter på mitt fag',
+                'Bygget i samråd med praktiserende lærere',
+              ],
             },
             {
               icon: '📚',
-              title: 'Læringsmoduler',
-              desc: 'Strukturerte teori-moduler med innebygde øvelser og automatisk vurdering.',
+              title: '43+ læringsmoduler',
+              desc: 'Ferdig pedagogisk innhold strukturert etter kompetansemålene. Hver modul kombinerer teori, norske eksempler, refleksjonsoppgaver og innebygde øvelser. Klare til bruk eller som utgangspunkt for egne tilpasninger.',
+              bullets: [
+                'Hele SSR02-01 (ny læreplan 2026)',
+                'Markedsføring og ledelse 1 og 2',
+                'Entreprenørskap og bedriftsutvikling 1 og 2',
+              ],
             },
             {
-              icon: '🎤',
+              icon: '🎯',
               title: 'Lærerstyrte presentasjoner',
-              desc: 'Ferdige presentasjoner per kompetansemål — start på storskjerm og naviger med piltastene.',
+              desc: '26 ferdige presentasjoner med rene visuelle layout og innebygde quizer. Du presenterer fra din PC; elevene følger med fra sine. Quizer pauser sesjonen, samler svar og viser forklaringen.',
+              bullets: [
+                'Sanntids-synkronisering',
+                'Klikkbare fagbegreper med definisjoner',
+                'Stilrent design som tåler å vises på storskjerm',
+              ],
             },
           ].map(f => (
             <div
               key={f.title}
-              className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
+              className="bg-slate-50 border border-slate-100 rounded-2xl p-8"
             >
-              <div className="text-3xl mb-3">{f.icon}</div>
-              <h3 className="font-bold text-lg tracking-tight text-slate-900 mb-2">{f.title}</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">{f.desc}</p>
+              <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center text-2xl mb-5">
+                {f.icon}
+              </div>
+              <h3 className="text-xl font-semibold mb-2 text-slate-900">{f.title}</h3>
+              <p className="text-slate-600 leading-relaxed mb-4">{f.desc}</p>
+              <ul className="space-y-1.5 text-sm text-slate-500">
+                {f.bullets.map(b => (
+                  <li key={b} className="flex items-start gap-2">
+                    <span className="text-teal-600 mt-0.5">✓</span>
+                    <span>{b}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
       </section>
 
       {/* Slik fungerer det — dark section */}
-      <section className="bg-slate-900 text-slate-100">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <p className="text-xs font-semibold text-teal-400 uppercase tracking-wide text-center mb-3">Slik fungerer det</p>
-          <h2 className="text-3xl font-bold tracking-tight text-center mb-14">Tre steg fra første time til halvtårsprøve</h2>
-          <div className="grid md:grid-cols-3 gap-8">
+      <section className="bg-slate-900 text-white py-24">
+        <div className="max-w-6xl mx-auto px-6">
+          <p className="text-teal-400 uppercase font-semibold text-sm tracking-wide mb-3">Slik fungerer det</p>
+          <h2 className="text-4xl font-bold tracking-tight mb-14">Tre steg fra pålogging til klasserom.</h2>
+          <div className="grid md:grid-cols-3 gap-10">
             {[
               {
-                n: '1',
-                title: 'Opprett en klasse',
-                desc: 'Velg fag, generer kode, del med elevene. Tar 30 sekunder.',
+                n: '01',
+                title: 'Opprett klasse',
+                desc: 'Logg inn med epost. Lag en klasse, koble den til ett fag (f.eks. Markedsføring og ledelse 1), og du får en firesifret klassekode.',
               },
               {
-                n: '2',
-                title: 'Hold timene dine',
-                desc: 'Live-økter, presentasjoner eller la elevene jobbe selvstendig med moduler. Du velger.',
+                n: '02',
+                title: 'Del koden med elevene',
+                desc: 'Elevene går til samme nettside, taster inn klassekoden og fornavnet sitt. Ingen kontoopprettelse. Ingen passord. Ingen epost.',
               },
               {
-                n: '3',
-                title: 'Test og konkurrer',
-                desc: 'Prøvemodus eller standardkonkurranse. Klassens snitt vises både lokalt og nasjonalt.',
+                n: '03',
+                title: 'Start økten',
+                desc: 'Velg en presentasjon, konkurranse eller prøve. Klikk start. Det elevene ser, styres av deg. Sanntids — ingen lag, ingen forsinkelser.',
               },
             ].map(s => (
-              <div key={s.n} className="flex gap-5">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-teal-600 text-white text-xl font-bold flex items-center justify-center">
-                  {s.n}
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg tracking-tight mb-2">{s.title}</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">{s.desc}</p>
-                </div>
+              <div key={s.n}>
+                <div className="text-teal-400 text-5xl font-bold mb-4">{s.n}</div>
+                <h3 className="text-xl font-semibold mb-3">{s.title}</h3>
+                <p className="text-slate-400 leading-relaxed">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -422,31 +464,34 @@ export default function AboutPage() {
 
       {/* AdVenture sneak peek */}
       <section className="bg-gradient-to-br from-teal-600 to-emerald-600 text-white">
-        <div className="max-w-6xl mx-auto px-6 py-24 grid md:grid-cols-[1.2fr_1fr] gap-12 items-center">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-teal-100 mb-3">Kommer snart</p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-5">AdVenture — bedriftssimulator­en</h2>
-            <p className="text-white/90 leading-relaxed mb-4">
-              Elevene driver sin egen butikk i en virtuell by. De setter pris, bemanner skift, kjører kampanjer og ser resultatet i månedsregnskapet — alt knyttet til kompetansemålene.
-            </p>
-            <p className="text-white/90 leading-relaxed">
-              Bygges parallelt med plattformen og rulles ut til pilotskolene utover 2026.
-            </p>
+        <div className="max-w-6xl mx-auto px-6 py-24">
+          <p className="text-xs font-semibold uppercase tracking-wide text-teal-100 mb-3">Kommer snart</p>
+          <div className="inline-flex items-center gap-2 bg-teal-500/20 border border-teal-400/30 text-teal-100 px-3 py-1 rounded-full text-xs font-medium mb-6">
+            <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+            Under utvikling · Lansering 2026
           </div>
-          <div className="bg-white/10 backdrop-blur rounded-2xl border border-white/20 p-6">
-            <div className="grid grid-cols-2 gap-4 text-center">
-              {[
-                { v: '23', l: 'butikker bygget' },
-                { v: '156k', l: 'kr i omsetning' },
-                { v: '8', l: 'måneder spilt' },
-                { v: '4.7★', l: 'kundetilfredshet' },
-              ].map(s => (
-                <div key={s.l} className="bg-white/10 rounded-xl p-4">
-                  <p className="text-2xl font-extrabold tracking-tight">{s.v}</p>
-                  <p className="text-xs text-white/80 mt-1">{s.l}</p>
-                </div>
-              ))}
-            </div>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-5">AdVenture — bedriftssimulatoren</h2>
+          <p className="text-white/90 leading-relaxed mb-4 max-w-3xl">
+            Elevene driver sin egen butikk i en virtuell by. De setter pris, bemanner skift, kjører kampanjer og ser resultatet i månedsregnskapet — alt knyttet til kompetansemålene.
+          </p>
+          <p className="text-white/90 leading-relaxed mb-8 max-w-3xl">
+            Spillet er fortsatt under utvikling og rulles ut til pilotskolene utover 2026. Det som er bestemt så langt:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              'Isometrisk by',
+              '8 startstrategier',
+              '32 hendelser',
+              'Business Model Canvas',
+              'Lærerstyrt tema-fokus',
+            ].map(tag => (
+              <span
+                key={tag}
+                className="bg-white/10 border border-white/20 text-sm rounded-full px-3 py-1.5"
+              >
+                {tag}
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -464,7 +509,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA — bli med i piloten */}
-      <section className="bg-teal-700 text-white">
+      <section id="kontakt" className="bg-teal-700 text-white">
         <div className="max-w-4xl mx-auto px-6 py-24 text-center">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-5">Bli med i piloten</h2>
           <p className="text-white/85 leading-relaxed text-lg mb-8 max-w-2xl mx-auto">
@@ -476,19 +521,36 @@ export default function AboutPage() {
           >
             Send e-post →
           </a>
+          <div className="mt-12 grid md:grid-cols-3 gap-6 text-left text-sm">
+            <div className="bg-teal-800/30 rounded-lg p-4">
+              <div className="font-semibold mb-1">For hvem</div>
+              <div className="text-teal-100">Lærere i SSR, ML eller ENT på videregående</div>
+            </div>
+            <div className="bg-teal-800/30 rounded-lg p-4">
+              <div className="font-semibold mb-1">Pris</div>
+              <div className="text-teal-100">Gratis under pilot. Skoleavtaler fra høsten 2027.</div>
+            </div>
+            <div className="bg-teal-800/30 rounded-lg p-4">
+              <div className="font-semibold mb-1">Personvern</div>
+              <div className="text-teal-100">GDPR-respekterende. Ingen elevnavn deles på tvers.</div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 text-sm">
-        <div className="max-w-6xl mx-auto px-6 py-12 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <span className="font-bold text-white">Business<span className="text-teal-400">laben</span></span>
-            <span className="ml-3 text-slate-500">© 2026 — Bygget av en norsk lærer</span>
+      <footer className="border-t border-slate-100 py-10">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white font-bold text-xs">B</div>
+            <span>Businesslaben · 2026 · Bygget av en norsk lærer</span>
           </div>
-          <div className="flex items-center gap-6">
-            <a href="mailto:espen@businesslaben.no" className="hover:text-white transition-colors">E-post</a>
-            <Link to="/teacher" className="hover:text-white transition-colors">Logg inn</Link>
+          <div className="flex flex-wrap gap-6">
+            <a href="#hvorfor" className="hover:text-teal-700">Hvorfor</a>
+            <a href="#funksjoner" className="hover:text-teal-700">Funksjoner</a>
+            <a href="#fag" className="hover:text-teal-700">Fag</a>
+            <a href="#kontakt" className="hover:text-teal-700">Kontakt</a>
+            <Link to="/login" className="hover:text-teal-700">Logg inn</Link>
           </div>
         </div>
       </footer>
