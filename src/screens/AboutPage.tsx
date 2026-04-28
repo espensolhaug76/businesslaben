@@ -1,10 +1,13 @@
 /**
  * /om — marketing-landingsside for Businesslaben.
  *
- * Tilgjengelig uten innlogging. Bruker kun Tailwind (ingen tema-avhengig
- * styling). Mockups er definert lokalt som funksjons-komponenter.
+ * Tilgjengelig uten innlogging. Mockups er definert lokalt som funksjons-
+ * komponenter. AboutPage.css overstyrer themes.css sine bg-slate-* og
+ * text-white-resets slik at mørke seksjoner forblir mørke uavhengig
+ * av app-tema.
  */
 import { Link } from 'react-router-dom'
+import './AboutPage.css'
 
 // ── Mockup-komponenter ──────────────────────────────────────────────────────
 
@@ -283,7 +286,7 @@ function AdventureMockup() {
 
 export default function AboutPage() {
   return (
-    <div className="bg-white text-slate-900 antialiased scroll-smooth" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="about-page bg-white text-slate-900 antialiased scroll-smooth" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
 
       {/* Sticky nav */}
       <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-100">

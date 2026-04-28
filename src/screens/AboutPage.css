@@ -1,0 +1,35 @@
+/* AboutPage marketing page — bypass app theme overrides fra themes.css.
+ *
+ * Appen overstyrer bg-slate-*, text-slate-*, text-white og text-teal-400
+ * for å støtte 5 temaer. /om er en marketing-side som ALDRI skal følge
+ * tema — den skal alltid være lys hvit med mørke seksjoner. Dobbel
+ * .about-page-klasse gir specificity (0,3,0) som vinner over themes.css
+ * sine [data-theme="light"] .bg-slate-900 (0,2,0).
+ */
+
+.about-page.about-page .bg-slate-900 { background-color: #0f172a !important; }
+.about-page.about-page .bg-slate-800 { background-color: #1e293b !important; }
+.about-page.about-page .bg-slate-700 { background-color: #334155 !important; }
+
+.about-page.about-page .bg-slate-800\/95 { background-color: rgba(30, 41, 59, 0.95) !important; }
+.about-page.about-page .bg-slate-800\/80 { background-color: rgba(30, 41, 59, 0.80) !important; }
+.about-page.about-page .bg-slate-800\/70 { background-color: rgba(30, 41, 59, 0.70) !important; }
+.about-page.about-page .bg-slate-800\/60 { background-color: rgba(30, 41, 59, 0.60) !important; }
+.about-page.about-page .bg-slate-800\/50 { background-color: rgba(30, 41, 59, 0.50) !important; }
+.about-page.about-page .bg-slate-800\/40 { background-color: rgba(30, 41, 59, 0.40) !important; }
+.about-page.about-page .bg-slate-900\/60 { background-color: rgba(15, 23, 42, 0.60) !important; }
+
+.about-page.about-page .text-white       { color: #ffffff !important; }
+.about-page.about-page .text-slate-100   { color: #f1f5f9 !important; }
+.about-page.about-page .text-slate-200   { color: #e2e8f0 !important; }
+.about-page.about-page .text-slate-300   { color: #cbd5e1 !important; }
+.about-page.about-page .text-slate-400   { color: #94a3b8 !important; }
+.about-page.about-page .text-slate-500   { color: #64748b !important; }
+
+.about-page.about-page .text-teal-400    { color: #2dd4bf !important; }
+.about-page.about-page .text-teal-300    { color: #5eead4 !important; }
+.about-page.about-page .text-teal-200    { color: #99f6e4 !important; }
+.about-page.about-page .text-teal-100    { color: #ccfbf1 !important; }
+
+.about-page.about-page .border-slate-800 { border-color: #1e293b !important; }
+.about-page.about-page .border-slate-700 { border-color: #334155 !important; }
