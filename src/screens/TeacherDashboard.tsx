@@ -655,6 +655,14 @@ export default function TeacherDashboard() {
 
   const [activeTab, setActiveTab] = useState<'laeringsinnhold' | 'sporsmal' | 'spillet' | 'elever' | 'prover' | 'konkurranser' | 'live' | 'leaderboard'>('laeringsinnhold')
   const [hoveredTab, setHoveredTab] = useState<string | null>(null)
+
+  // Welcome empty-state: vis hvis ingen klasser er opprettet ennå
+  const noClassesExist = (() => {
+    try {
+      const arr = JSON.parse(localStorage.getItem('teacher-classes') ?? '[]')
+      return Array.isArray(arr) && arr.length === 0
+    } catch { return true }
+  })()
   const [liveSessionActive, setLiveSessionActive] = useState(() => localStorage.getItem('live-session-active') === 'true')
 
   useEffect(() => {
@@ -944,6 +952,41 @@ export default function TeacherDashboard() {
             </AnimatePresence>
           </div>
         </div>
+
+        {/* Velkommen-state for nye lærere uten klasser */}
+        {noClassesExist && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(13,148,136,0.08), rgba(99,102,241,0.06))',
+            border: '1px solid rgba(13,148,136,0.25)',
+            borderRadius: 16,
+            padding: '28px 24px',
+            marginBottom: 24,
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>👋</div>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px', letterSpacing: '-0.01em' }}>
+              Velkommen til Businesslaben!
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 18px', lineHeight: 1.5 }}>
+              La oss komme i gang. Opprett din første klasse for å koble den til et fag.
+            </p>
+            <button
+              onClick={() => setActiveTab('elever')}
+              style={{
+                background: '#0d9488', color: '#fff', border: 'none',
+                borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#0f766e' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#0d9488' }}
+            >
+              Opprett første klasse →
+            </button>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '14px 0 0' }}>
+              Eller utforsk plattformen først via <button onClick={() => setActiveTab('laeringsinnhold')} style={{ background: 'none', border: 'none', color: '#0d9488', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>Læringsinnhold-fanen</button>.
+            </p>
+          </div>
+        )}
 
         {/* Tab selector */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
