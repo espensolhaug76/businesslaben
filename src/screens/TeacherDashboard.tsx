@@ -889,23 +889,25 @@ export default function TeacherDashboard() {
 
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Page heading row */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '28px' }}>
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>Lærer-dashboard</h1>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Aktiver innhold og følg elevenes fremgang</p>
+            <h1 style={{ fontSize: '30px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px', letterSpacing: '-0.02em', lineHeight: 1.15 }}>Lærer-dashboard</h1>
+            <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.5 }}>Aktiver innhold og følg elevenes fremgang</p>
           </div>
           {/* Mine fag pill */}
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowMineFagPanel(v => !v)}
-              style={{ background: 'var(--card-bg)', border: '0.5px solid #e5e7eb', borderRadius: '20px', padding: '6px 14px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+              style={{ background: '#ccfbf1', border: '1px solid #99f6e4', borderRadius: '999px', padding: '7px 14px', fontSize: '13px', color: '#0f766e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', fontWeight: 500, transition: 'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#a7f3d0' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#ccfbf1' }}
             >
-              <span style={{ color: '#0d9488', fontWeight: 500 }}>Mine fag:</span>
+              <span style={{ fontWeight: 600 }}>Mine fag:</span>
               {mySubjects.length > 0
                 ? MINE_FAG_OPTIONS.filter(o => mySubjects.includes(o.id)).map(o => o.short).join(', ')
-                : <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Alle fag</span>
+                : <span style={{ opacity: 0.75 }}>Alle fag</span>
               }
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>✏️</span>
+              <span style={{ fontSize: '11px', opacity: 0.6 }}>✏️</span>
             </button>
             <AnimatePresence>
               {showMineFagPanel && (
