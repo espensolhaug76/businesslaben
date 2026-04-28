@@ -671,10 +671,10 @@ export default function AboutPage() {
       </section>
 
       {/* AdVenture sneak peek */}
-      <section id="adventure" className="bg-gradient-to-br from-teal-700 via-teal-800 to-emerald-900 text-white relative overflow-hidden">
+      <section id="adventure" className="bg-slate-900 text-white relative overflow-hidden">
         <div
-          className="absolute inset-0 opacity-10 pointer-events-none"
-          style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4) 0%, transparent 50%)' }}
+          className="absolute inset-0 opacity-[0.08] pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, rgba(45,212,191,0.6) 0%, transparent 50%)' }}
         />
         <div className="relative max-w-6xl mx-auto px-6 py-24 grid lg:grid-cols-2 gap-12 items-center">
           <div>
