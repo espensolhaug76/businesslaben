@@ -1,0 +1,268 @@
+{
+  "_meta": {
+    "_comment": "Edit this file to add new building instances or types. The slash-command /asset and scripts/generate-asset.sh both read from here. The companion ASSET_STYLE_GUIDE.md is documentation only. Per-asset entries set `style_variant` to 'modern' (default) or 'legacy' to pick which base block applies — modern commercial vs Norwegian heritage.",
+    "base_style": "3D-rendered miniature diorama, like a high-end architectural maquette photographed from a 30-degree isometric angle. Hay Day / Township / Animal Crossing aesthetic — physically modeled, volumetrically lit, NOT 2D illustration, NOT digital painting, NOT cel-shaded cartoon, NOT manga or anime. Strong ambient occlusion in all crevices and contact points. Material-specific surface rendering: brick has individual brick geometry with mortar shadows; wood shows grain depth and warm under-lighting; glass has multi-layer reflections, refractions, and subtle blue-green tinting; metal shows clear specular highlights; concrete has aggregate texture and weathering. Vegetation: hedges and bushes show many individual leaf clusters with depth and color variation. Soft, defined contact shadows. Muted naturalistic palette — NOT cartoon saturation. If the result looks like a drawing, the prompt has failed. Subject: a modern Norwegian small-town commercial building with flat or low-pitched roof, glass storefront windows with warm interior lighting visible, light concrete / white painted wood / brick facade, single-story or low two-story scale. NO text, NO signage, NO letters, NO writing, NO numbers, NO logos, NO flags unless specified. Soft daytime lighting. ABSOLUTE FRAMING REQUIREMENTS — failure to comply means the image is unusable: 1) The building's solid structural footprint (roof + walls + foundation) MUST fill 85-92% of the canvas width AND 85-92% of the canvas height. Only ~5% margin on each edge. 2) The building must be perfectly geometrically centered in the canvas. The structural center of mass of the building MUST coincide with the canvas geometric center on both X and Y axes. 3) ABSOLUTELY NO bushes, hedges, shrubs, trees, plants, or any vegetation positioned OUTSIDE the building's wall plane. NO landscaping in front of, beside, or behind the building. The ONLY vegetation allowed is INTEGRAL to the wall (a narrow window-box planter mounted directly on the wall surface). If you would be tempted to add a bush at the corner or a hedge along the side — DO NOT. 4) NO sidewalk. NO ground plane extension. NO ground shadow extending outside the building footprint. The base of the walls must rest directly on transparent canvas, not on a depicted patch of ground. 5) The background must be pure solid white #FFFFFF — no checkerboard, no gradient, no soft drop-shadow blur on the ground.",
+    "base_style_legacy": "3D-rendered miniature diorama, like a high-end architectural maquette photographed from a 30-degree isometric angle. Hay Day / Township aesthetic — physically modeled, volumetrically lit, NOT 2D illustration, NOT digital painting, NOT cel-shaded cartoon, NOT manga or anime. Strong ambient occlusion. Material-specific surface rendering: stone has individual block geometry with mortar shadows and subtle weathering; timber and painted wood show plank seams and grain depth with warm under-lighting; slate or red clay tile roofing shows individual unit geometry and slight irregularity; metal trim shows clear specular highlights. Vegetation: hedges and shrubs show many individual leaf clusters with depth and color variation. Soft, defined contact shadows. Muted naturalistic heritage palette — aged whites, warm cream, dusty rose stone, weathered timber. NOT cartoon saturation. If the result looks like a drawing, the prompt has failed. Subject: a traditional Norwegian heritage civic building, late-1800s / early-1900s Kongsvinger small-town vernacular. Pitched roof in dark slate or red tile, stone or painted-timber clad facade, tall narrow windows with white trim, prominent symmetric entrance, modest decorative cornices. NO modern glass storefront. NO flat roof. NO text, NO signage, NO letters, NO writing, NO numbers, NO logos, NO flags unless specified. Soft daytime lighting. ABSOLUTE FRAMING REQUIREMENTS — failure to comply means the image is unusable: 1) The building's solid structural footprint (roof + walls + foundation) MUST fill 85-92% of the canvas width AND 85-92% of the canvas height. Only ~5% margin on each edge. 2) The building must be perfectly geometrically centered in the canvas. The structural center of mass of the building MUST coincide with the canvas geometric center on both X and Y axes. 3) ABSOLUTELY NO bushes, hedges, shrubs, trees, plants, or any vegetation positioned OUTSIDE the building's wall plane. NO landscaping in front of, beside, or behind the building. The ONLY vegetation allowed is INTEGRAL to the wall (a narrow window-box planter mounted directly on the wall surface). 4) NO sidewalk. NO ground plane extension. NO ground shadow extending outside the building footprint. The base of the walls must rest directly on transparent canvas. 5) The background must be pure solid white #FFFFFF — no checkerboard, no gradient, no soft drop-shadow blur on the ground.",
+    "base_style_storefront": "3D-rendered miniature diorama, like a high-end architectural maquette photographed FRONTALLY straight head-on at street-level eye height, zero rotation, zero tilt, parallel projection, no perspective vanishing point. Hay Day / Township / Animal Crossing aesthetic — physically modeled, volumetrically lit, NOT 2D illustration, NOT digital painting, NOT cel-shaded cartoon, NOT manga or anime. Strong ambient occlusion in all crevices and contact points. Material-specific surface rendering: brick has individual brick geometry with mortar shadows; wood shows grain depth and warm under-lighting; glass has multi-layer reflections, refractions, and subtle blue-green tinting; metal shows clear specular highlights; concrete has aggregate texture and weathering. Vegetation: hedges and bushes show many individual leaf clusters with depth and color variation. Soft, defined contact shadows. Muted naturalistic palette — NOT cartoon saturation. If the result looks like a drawing, the prompt has failed. Subject: a flat frontal facade of a modern Norwegian small-town commercial storefront, viewed head-on from the street as if standing directly in front of the entrance. The facade shows: a large storefront window occupying the LEFT half of the ground floor, an entrance door on the RIGHT half of the ground floor, a BLANK rectangular sign panel above the storefront (no text, no letters - text will be added later as an overlay), and a subtle building sockel/base at the very bottom. The wall area BETWEEN the sign panel and the storefront row MUST be plain unbroken facade (no awning, no markise, no overhang - awning will be added as a separate layer). NO text, NO signage, NO letters, NO writing, NO numbers, NO logos, NO flags unless specified. Soft daytime lighting. ABSOLUTE FRAMING REQUIREMENTS — failure to comply means the image is unusable: 1) The facade MUST fill 85-92% of the canvas width. Only ~5% margin on left and right edges. 2) The facade vertically spans from ~y=128 (roof line, top 10% margin is transparent sky) down to y=1280 (sockel touches absolute bottom edge of canvas, no bottom margin). 3) The sign panel BLANK rectangle must be located in the upper-middle area (canvas y=256 to y=512). 4) The storefront window (left) and door (right) must be located in the lower area (canvas y=608 to y=1152). 5) The row between sign and storefront (y=512 to y=608) MUST be plain unbroken facade wall - NO awning, NO overhang, NO decorative banner. 6) ABSOLUTELY NO bushes, hedges, shrubs, trees, or vegetation positioned outside the building's wall plane. NO sidewalk extension beyond canvas edges. NO ground plane. The sockel rests directly on the bottom edge of the transparent canvas. 7) The background must be pure solid white #FFFFFF — no checkerboard, no gradient, no perspective vanishing point.",
+    "size_variants": {
+      "small": "Compact single-story footprint, corner-shop scale.",
+      "medium": "Low two-story scale, modest street presence.",
+      "large": "Wide multi-story scale with a prominent street presence."
+    },
+    "render_override": "RENDER STYLE OVERRIDE: 3D miniature diorama, photographic quality, not illustration, not painting, not anime."
+  },
+  "_building_defaults": {
+    "bakery": "Floor-to-ceiling glass storefront with bread and pastries arranged on minimalist wooden display shelves; subtle wheat motif on the facade; clean white-painted wood cladding with a slim dark canopy over the entrance; small wall-mounted herb planter integrated into the facade beside the door.",
+    "cafe": "Large glass storefront, warm interior with espresso bar and a few small bistro tables visible inside; light brick or concrete facade; slim modern awning over the entrance.",
+    "hairsalon": "Clean modern salon with floor-to-ceiling glass front, two or three minimalist styling chairs and large round mirrors visible inside; matte white painted wood facade with a thin dark trim.",
+    "sportsshop": "Wide glass storefront with running shoes and sportswear arranged on wall displays inside; light concrete or brick facade with slim metal trim; clean modern look without large signage.",
+    "gym": "Large floor-to-ceiling windows showing treadmills, weight racks and dumbbells inside; light grey concrete or brick facade; recessed entrance under a flat canopy; modern industrial-clean look.",
+    "techshop": "Sleek minimalist electronics storefront with floor-to-ceiling glass display; computers, smartphones, tablets and small accessories arranged on clean wall-mounted shelves and pedestals; slim metal trim with dark accents on a white painted wood or light concrete facade.",
+    "fashionshop": "Modern clothing boutique with large floor-to-ceiling display windows; one or two well-dressed mannequins in stylish contemporary outfits; soft warm interior lighting revealing minimalist clothing racks and display fixtures; clean white painted wood or light concrete facade with slim dark trim.",
+    "radhus": "Late-1800s / early-1900s Kongsvinger heritage town hall: three-story stone-and-plaster facade with rusticated ground floor and tall narrow upper windows with white trim; pitched dark-slate roof with a central clock face or symmetric pediment over the main entrance; broad symmetric ceremonial entrance reached by stone steps; modest decorative cornices and corner quoins.",
+    "kirke": "Traditional white-painted wooden Norwegian small-town church: single-nave plan with a steeply pitched dark-slate roof; modest central steeple capped with a small spire and a dark cross; tall narrow arched windows with white trim along the long sides; symmetric front facade with double wooden doors above two or three stone steps. Just the building, no surrounding cemetery or fenced churchyard.",
+    "school": "Contemporary low two-story Norwegian school building with rhythmic classroom windows along the facade revealing rows of desks and whiteboards; light concrete or white painted wood cladding with warm wood accents around the entrance; recessed main entrance under a flat canopy.",
+    "library": "Modern small-town library with a prominent floor-to-ceiling glass front revealing tall bookshelves and reading nooks with warm interior lighting; light concrete or pale brick facade with a slim canopy over the entrance.",
+    "police": "Compact modern civic building, single-story or low two-story; light concrete facade with a recessed entrance; subtle blue accent stripe along the canopy or doorframe, no text or signage.",
+    "firestation": "Compact modern fire station with one wide red roller-style garage door for a fire truck on the ground floor; light concrete or pale brick facade; flat canopy over a separate personnel entrance to one side. NO large lettering or signage above the garage door, NO 'BRANNSTASJON' text on the facade.",
+    "trainstation": "Wide low contemporary small-town train station building with a large glass concourse facade revealing a clean ticketing and waiting area; light concrete or pale brick facade with a slim modern canopy along the front; hint of a platform behind one side.",
+    "kiosk": "Compact single-story modern Norwegian convenience kiosk with a large floor-to-ceiling glass storefront revealing a wall of magazines and newspapers, a chilled drinks cooler glowing softly, and a small counter with snack racks; minimalist white painted wood and light concrete facade with a slim flat canopy over the entrance.",
+    "pharmacy": "Small modern Norwegian pharmacy, single-story, with a wide floor-to-ceiling glass storefront revealing clean white shelving stocked with neutral health and personal-care product boxes inside; pristine white painted wood facade with a subtle muted green accent trim along the canopy and door frame; professional clinical clean look. NO text, NO logo, NO cross symbol, NO 'APOTEK' lettering.",
+    "grocery": "Modern Norwegian small-town supermarket, single-story with a wide flat canopy spanning the entrance; large floor-to-ceiling glass storefront revealing rows of product shelves, refrigerated cases glowing inside, and a hint of checkout lanes; light concrete or white painted wood facade. NO text, NO logo, NO brand lettering on the facade.",
+    "restaurant": "Modern Norwegian sit-down restaurant, single-story with low-pitched roof; warm interior lighting visible through large windows showing tables set with linen and place-settings, a bar counter at the back; dark stained wood facade with brass-trimmed window frames and a slim canopy.",
+    "fastfood": "Compact modern fast-food / quick-serve restaurant, single-story; bright warm interior lighting through floor-to-ceiling windows showing a clean counter with menu boards (no readable text) and a few small fixed bench seats; light concrete facade with a flat canopy and a slim accent stripe.",
+    "brewpub": "Modern Norwegian brewpub / craft-beer bar, single-story with industrial-style floor-to-ceiling windows revealing copper brewing tanks and a long wood bar counter inside; dark grey concrete facade with charcoal-stained timber accents and Edison-bulb pendant lights warmly visible through the glass.",
+    "bookstore": "Modern Norwegian small-town bookstore, single-story; wide floor-to-ceiling glass front revealing tall warm-lit wooden bookshelves packed with books and a small reading nook with an armchair near the window; cream painted wood facade with a slim dark canopy.",
+    "bank": "Compact modern bank branch, single-story or low two-story; sober minimalist facade in light grey concrete with brushed-metal trim around tall narrow windows; recessed entrance with a flat canopy; subtle brass kick-plate at the door. NO text, NO logo on the facade.",
+    "postoffice": "Compact modern Norwegian post office, single-story; pale concrete facade with a subtle muted yellow-orange accent stripe along the canopy; wide floor-to-ceiling glass front revealing a neutral counter area and parcel shelves inside.",
+    "florist": "Compact modern Norwegian flower shop, single-story; wide floor-to-ceiling glass storefront revealing tall vases of cut flowers in muted pastels arranged on tiered wooden display tables inside; pale painted wood facade with a slim canopy. NO outdoor flower buckets on the sidewalk — all flowers must be INSIDE the shop visible through the glass.",
+    "optician": "Compact modern Norwegian optician, single-story; floor-to-ceiling glass front revealing rows of designer eyeglass frames mounted on a clean white wall display, a small fitting station with a mirror; minimalist white painted wood facade with brushed-metal trim and a slim canopy.",
+    "doctorsoffice": "Compact modern Norwegian medical clinic / GP office, single-story; muted blue-grey painted wood facade with a recessed entrance under a flat canopy; tall narrow frosted-glass windows for privacy with warm interior lighting glowing through; clean professional appearance.",
+    "dentist": "Compact modern Norwegian dental clinic, single-story; pale white painted wood facade with brushed-metal trim; floor-to-ceiling glass front revealing a clean reception area with light-wood furniture and a hint of a treatment chair deeper inside; recessed entrance under a flat canopy.",
+    "hotel": "Modest contemporary Norwegian small-town hotel, three-story; light concrete or pale brick facade with rhythmic balconies and tall slim windows on the upper floors; ground-floor lobby visible through wide glass with a reception counter and warm lounge seating; subtle dark canopy over the main entrance.",
+    "cinema": "Compact modern Norwegian small-town cinema, low two-story with a wide flat upper-facade; ground floor has a glass entrance lobby revealing ticket counters and a softly-lit interior; upper facade is clean dark grey concrete; slim modern canopy over the entrance. NO marquee text, NO movie posters with readable text, NO 'CINEMA' lettering.",
+    "hospital_complex": "Modern Norwegian hospital complex, multi-wing structure with two or three connected blocks of varying height (3-4 stories), light grey concrete and white-painted wood facades with rhythmic strip windows, a glass entrance hall on one wing under a wide covered drop-off canopy, and a clearly distinct emergency entrance with a separate canopy on another wing; clean professional clinical appearance. NO text, NO logos, NO red cross symbol, NO 'SYKEHUS' or 'AHUS' lettering anywhere.",
+    "theater": "Compact modern Norwegian municipal theater, single-story or low two-story with a slightly raised central performance hall behind the entrance block; classical-modern hybrid architecture with a prominent symmetric entrance under a curved or flat ornamental canopy; light cream or pale concrete facade with subtle decorative pilasters or relief details; tall narrow windows with white trim flanking the entrance; warm interior lighting visible through the foyer glass.",
+    "pool_facility": "Modern Norwegian indoor swimming pool facility, single-story or low two-story; large floor-to-ceiling glass facade revealing a hint of the blue water and tile interior; light concrete or white-painted wood structure with subtle muted-blue accent stripes along the canopy; wide welcoming entrance under a flat canopy; clean modern public-facility look.",
+    "gas_station": "Modern Norwegian fuel station, compact convenience-store building with attached pump canopy; single-story shop in light concrete or white-painted wood, slim metal columns supporting a wide flat canopy over two pump islands with two pumps each; clean utilitarian design; visible glass storefront on the shop revealing snack and drinks shelves inside. NO brand logos, NO text on canopy or facade, NO 'ESSO' or fuel-brand lettering anywhere.",
+    "butcher_shop": "Small traditional-leaning Norwegian butcher shop with modern touches, single-story; warm dark-stained wooden plank facade with white window trim; a large floor-to-ceiling display window revealing a glass counter with cuts of meat, hanging sausages, and a brass-rail backbar inside; slim awning over the central wooden door; modest corner-shop scale."
+  },
+  "bakery_kongsvinger": {
+    "building_type": "bakery",
+    "interior_hint": "shelves with bread loaves and pastries clearly visible through the glass",
+    "size_variant": "small",
+    "location_specific": "small Norwegian flag on a pole beside the entrance, Kongsvinger town-center variant"
+  },
+  "cafe": {
+    "building_type": "cafe",
+    "interior_hint": "espresso bar with chrome machine and a couple of small two-top tables visible through the glass",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "hair_salon": {
+    "building_type": "hairsalon",
+    "interior_hint": "two minimalist styling chairs facing large round mirrors, clean white walls",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "sports_shop": {
+    "building_type": "sportsshop",
+    "interior_hint": "running shoes lined up on a back wall and sportswear on minimalist display fixtures clearly visible through the glass",
+    "size_variant": "medium",
+    "location_specific": ""
+  },
+  "gym": {
+    "building_type": "gym",
+    "interior_hint": "row of treadmills in the foreground and weight racks and dumbbells deeper inside, all clearly visible through floor-to-ceiling windows",
+    "size_variant": "large",
+    "location_specific": ""
+  },
+  "tech_shop": {
+    "building_type": "techshop",
+    "interior_hint": "laptops, smartphones, tablets and small tech accessories arranged on clean wall-mounted shelves and pedestals visible through the glass",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "fashion_shop": {
+    "building_type": "fashionshop",
+    "interior_hint": "one or two well-dressed mannequins and minimalist clothing racks visible through the large display windows",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "radhus": {
+    "building_type": "radhus",
+    "interior_hint": "tall arched entrance hinting at a ceremonial hall inside",
+    "size_variant": "large",
+    "location_specific": "Norwegian flag flying from a central flagpole on the facade",
+    "style_variant": "legacy"
+  },
+  "kirke": {
+    "building_type": "kirke",
+    "interior_hint": "",
+    "size_variant": "medium",
+    "location_specific": "",
+    "style_variant": "legacy"
+  },
+  "sentrum_vgs": {
+    "building_type": "school",
+    "interior_hint": "rows of classrooms with student desks and whiteboards subtly visible through the windows",
+    "size_variant": "medium",
+    "location_specific": ""
+  },
+  "bibliotek": {
+    "building_type": "library",
+    "interior_hint": "tall bookshelves and reading nooks with warm interior lighting clearly visible through the glass",
+    "size_variant": "medium",
+    "location_specific": ""
+  },
+  "politi": {
+    "building_type": "police",
+    "interior_hint": "compact reception area subtly visible through the windows",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "brannstasjon": {
+    "building_type": "firestation",
+    "interior_hint": "hint of a fire truck silhouette behind the garage door",
+    "size_variant": "medium",
+    "location_specific": ""
+  },
+  "jernbanestasjon": {
+    "building_type": "trainstation",
+    "interior_hint": "ticketing counters and seating area visible through the glass concourse",
+    "size_variant": "large",
+    "location_specific": ""
+  },
+  "kiosk": {
+    "building_type": "kiosk",
+    "interior_hint": "wall of newspapers and magazines, glowing chilled drinks cooler, snack racks on a small counter, all clearly visible through the glass",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "apotek1": {
+    "building_type": "pharmacy",
+    "interior_hint": "rows of clean white shelving stocked with neutral health-product boxes visible through the glass",
+    "size_variant": "small",
+    "location_specific": "subtle muted green accent stripe along the entrance canopy"
+  },
+  "kiwi": {
+    "building_type": "grocery",
+    "interior_hint": "rows of grocery shelves and a glowing refrigerated case visible through the glass",
+    "size_variant": "medium",
+    "location_specific": "bright lime-green accent stripe along the entrance canopy"
+  },
+  "coop_mega": {
+    "building_type": "grocery",
+    "interior_hint": "rows of grocery shelves and checkout lanes visible through the wide glass storefront",
+    "size_variant": "large",
+    "location_specific": "deep red accent stripe along the entrance canopy"
+  },
+  "rema": {
+    "building_type": "grocery",
+    "interior_hint": "no-frills warehouse-style aisles with palletized goods visible through the glass front",
+    "size_variant": "medium",
+    "location_specific": "sky-blue accent stripe along the entrance canopy"
+  },
+  "restaurant_modern": {
+    "building_type": "restaurant",
+    "interior_hint": "set tables with linen, a bar counter at the back, warm pendant lights",
+    "size_variant": "medium",
+    "location_specific": ""
+  },
+  "fast_food": {
+    "building_type": "fastfood",
+    "interior_hint": "clean counter with bright menu boards and a few fixed bench seats visible through the glass",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "brewpub": {
+    "building_type": "brewpub",
+    "interior_hint": "copper brewing tanks behind the bar and Edison-bulb pendant lights visible through the industrial-style windows",
+    "size_variant": "medium",
+    "location_specific": ""
+  },
+  "bokhandel": {
+    "building_type": "bookstore",
+    "interior_hint": "tall warm-lit wooden bookshelves and a small reading nook with an armchair visible through the glass",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "bank": {
+    "building_type": "bank",
+    "interior_hint": "sober reception counter subtly visible through the tall narrow windows",
+    "size_variant": "medium",
+    "location_specific": ""
+  },
+  "post": {
+    "building_type": "postoffice",
+    "interior_hint": "neutral counter area and parcel shelves visible through the glass",
+    "size_variant": "small",
+    "location_specific": "subtle muted yellow-orange accent stripe along the entrance canopy"
+  },
+  "florist": {
+    "building_type": "florist",
+    "interior_hint": "tall vases of cut flowers in muted pastels arranged on tiered wooden display tables visible through the glass",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "optician": {
+    "building_type": "optician",
+    "interior_hint": "rows of designer eyeglass frames mounted on a clean white wall display visible through the glass",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "legekontor": {
+    "building_type": "doctorsoffice",
+    "interior_hint": "warm interior glow through frosted-glass windows hinting at a clinical reception",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "dentist": {
+    "building_type": "dentist",
+    "interior_hint": "clean reception area with light-wood furniture and a hint of a treatment chair deeper inside, visible through the glass",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "hotel": {
+    "building_type": "hotel",
+    "interior_hint": "ground-floor lobby with a reception counter and warm lounge seating visible through wide glass",
+    "size_variant": "large",
+    "location_specific": ""
+  },
+  "cinema": {
+    "building_type": "cinema",
+    "interior_hint": "softly-lit lobby with ticket counters visible through the glass entrance",
+    "size_variant": "medium",
+    "location_specific": ""
+  },
+  "sykehuset": {
+    "building_type": "hospital_complex",
+    "interior_hint": "multi-wing modern Norwegian hospital, large glass entrance hall with covered drop-off, separate emergency entrance on a different wing, multiple stories, hospital signage subdued",
+    "size_variant": "large",
+    "location_specific": ""
+  },
+  "radhusteateret": {
+    "building_type": "theater",
+    "interior_hint": "warm foyer with a hint of seating and a chandelier visible through the entrance glass",
+    "size_variant": "small",
+    "location_specific": ""
+  },
+  "kongsbadet": {
+    "building_type": "pool_facility",
+    "interior_hint": "blue water and tile interior subtly visible through the wide glass facade",
+    "size_variant": "medium",
+    "location_specific": "subtle muted-blue accent stripes along the entrance canopy"
+  },
+  "esso": {
+    "building_type": "gas_station",
+    "interior_hint": "small convenience-store interior with snack and drinks shelves visible through the shop glass",
+    "size_variant": "medium",
+    "location_specific": "no ESSO logo, no fuel brand text, generic fuel station only"
+  },
+  "peders": {
+    "building_type": "butcher_shop",
+    "interior_hint": "glass counter with cuts of meat, hanging sausages, and a brass-rail backbar visible through the display window",
+    "size_variant": "small",
+    "location_specific": ""
+  }
+}
