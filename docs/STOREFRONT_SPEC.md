@@ -1,7 +1,7 @@
 # STOREFRONT_SPEC.md
 
-**Versjon:** 1.1
-**Dato:** 21.05.2026
+**Versjon:** 1.2
+**Dato:** 22.05.2026
 **Status:** Aktiv kontrakt — KLAR FOR ASSET-GENERERING
 
 Dette dokumentet er den autoritative kontrakten mellom asset-pipeline (Nano Banana → rembg) og kode (Phaser StorefrontScene). Alle facade-assets MÅ følge denne spesifikasjonen. All kode i StorefrontScene MÅ anta denne spesifikasjonen.
@@ -185,7 +185,7 @@ Gjelder ALLE assets (facader, bakgrunner, nabobygg, awnings):
 
 Disse fem prinsippene MÅ gjelde for hver generert asset:
 
-1. **Rendered 2D illustration** — ikke fotorealistisk, ikke pixel art. Tegnet med tydelige kanter og volumetrisk skygge.
+1. **3D-rendered miniature diorama, photographed frontally at eye level** — bruker ny `base_style_storefront` i `ASSET_PROMPTS.json`. Output skal se ut som et screenshot av en 3D-modell sett rett forfra — IKKE en 2D-tegning, IKKE digital maling, IKKE cel-shaded cartoon, IKKE anime.
 2. **Supercell/Hay Day kvalitet** — clean, fargerik, lett karikert. Materialer skal være lesbare på avstand.
 3. **Modern Norwegian commercial architecture** — flate eller lett skrå tak, store storefront-vinduer, blanding av treverk/glass/murstein.
 4. **Konsistens på tvers** — alle assets ser ut som de tilhører samme verden (samme lyssetting, samme stylization-nivå, samme detaljgrad).
@@ -198,6 +198,11 @@ Disse fem prinsippene MÅ gjelde for hver generert asset:
 - ❌ Sjekkermønster transparency (rembg løser dette)
 - ❌ Gemini-vannmerke (fjernes manuelt før commit)
 - ❌ Tekst på skiltet (Phaser legger til tekst dynamisk)
+- ❌ 2D illustration / drawn appearance
+- ❌ Digital painting
+- ❌ Cel-shaded cartoon
+- ❌ Anime/manga
+- ❌ Flat illustrated facade
 
 ---
 
@@ -285,38 +290,7 @@ Disse promptene legges inn i `docs/ASSET_PROMPTS.json` under `_meta.storefront_*
 
 ### 8.1 Base-prompt for FACADER
 
-```
-A 2D illustrated storefront facade of a [INDUSTRY] in modern Norwegian
-commercial style, viewed head-on from street level at eye height,
-straight frontal perspective with no rotation or tilt.
-
-LAYOUT (MUST be respected exactly):
-- Top 10% of canvas: empty sky/margin (transparent)
-- Roof line band across the top
-- Sign banner area (rows 3-4): MUST be a BLANK sign panel ready for text overlay
-  — do NOT generate any text or letters on the sign
-- AWNING ROW (row 5, y=512-608): MUST BE EMPTY — leave this area as plain
-  facade wall. An awning will be added as a separate overlay layer.
-- Large storefront window on the LEFT half of ground floor
-- Entrance door on the RIGHT half of ground floor
-- Subtle building sockel/base at the very bottom
-
-STYLE:
-- Supercell Hay Day art quality, rendered 2D illustration
-- Volumetric shading with clear ambient occlusion
-- Soft Nordic overcast daylight from upper-left (45° from top, 30° from left)
-- Materials clearly readable: brick, wood paneling, glass, metal trim
-- Slight stylization, NOT photorealistic, NOT pixel art
-
-CONSTRAINTS (absolute):
-- Transparent background (full alpha)
-- NO people, NO cars, NO trees outside planters
-- NO neighboring buildings, NO street context beyond the sockel
-- NO checkerboard transparency pattern
-- NO text or letters on the sign panel
-- NO awning, fabric covering, or overhang on row 5
-- Isolated facade only, centered in 1024x1280 portrait frame
-```
+Storefront facades genereres med ny `_meta.base_style_storefront`-blokk i `ASSET_PROMPTS.json` + per-asset entry. Asset-entries følger samme struktur som eksisterende iso-bygg, men setter `style_variant: "storefront"` for å trigge frontal-baseren. Per-asset legger til `subject_detail` med bransje-spesifikke karakteristikker (materialvalg, vindusdisplay-hint, dør-stil, fargepalett).
 
 ### 8.2 Base-prompt for SONE-BAKGRUNNER
 
@@ -619,3 +593,4 @@ Under facaden vises 4 status-badges (rating, kunder/dag, omsetning, ansatte). Di
 |---|---|---|
 | 1.0 | 21.05.2026 | Initial spec basert på mockup-validering |
 | 1.1 | 21.05.2026 | Beslutninger lukket: dynamisk skalering, per-sone bakgrunn, separate nabobygg, separate awning-lag. Lagt til Phaser-kode-eksempel. |
+| 1.2 | 22.05.2026 | Align med `base_style_storefront`-formelen i `ASSET_PROMPTS.json`. §6 prinsipp 1 omformulert til 3D-rendered diorama (frontal), anti-pattern-listen utvidet med eksplisitte 2D/maling/cartoon/anime-negativer, §8.1 prompt-template erstattet med henvisning til `base_style_storefront` + `style_variant: "storefront"`. §10-kontrakt uendret (hotspot-koordinater og scene-kode uavhengig av prompt-formel). |
