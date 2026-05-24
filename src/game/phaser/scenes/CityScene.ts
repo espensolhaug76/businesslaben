@@ -20,6 +20,9 @@ function dk(c: number, f: number): number {
 const _A=0,_B=1,_C=2,_D=3,_E=4,_F=5,_G=6,_H=7,_I=8,_J=9,_L=11
 const _M=12,_N=13,_O=14,_P=15,_Q=16,_R=17,_S=18,_T=19,_U=20,_V=21
 const _W=22,_X=23,_Y=24,_Z=25,_AA=26,_AB=27,_AC=28,_AD=29,_AE=30,_AF=31,_AG=32
+// East-expansion columns (Bydel Øst + Stasjonsbyen eastern edge). _K is
+// intentionally skipped in the naming convention; column 10 has no _ alias.
+const _AH=33,_AI=34,_AJ=35,_AK=36,_AL=37,_AM=38,_AN=39,_AO=40
 
 // ── Road data ─────────────────────────────────────────────────────────────────
 interface HR{row:number;c1:number;c2:number;color:number;dash:boolean;lbl:string;rail?:boolean;boulevard?:boolean}
@@ -35,6 +38,18 @@ const HROADS:HR[]=[
   {row:17,c1:_A,c2:_AG,color:0x666666,dash:false,lbl:'Jernbane',rail:true},
   {row:19,c1:_A,c2:_AG,color:0xc0c0c0,dash:true,lbl:'Jernbanegata'},
   {row:23,c1:_X,c2:_AE,color:0xc0c0c0,dash:false,lbl:''},
+  // ── Bydel Øst (cols _AH–_AO) — eastern road grid ────────────────────────
+  // Boulevard extension east through Bydel Øst.
+  {row:16,c1:_AH,c2:_AO,color:0xb8b8b8,dash:false,lbl:'',boulevard:true},
+  // Local east-west streets between the new east-side blocks.
+  {row:8, c1:_AH,c2:_AO,color:0xc0c0c0,dash:true,lbl:''},
+  {row:12,c1:_AH,c2:_AO,color:0xc0c0c0,dash:true,lbl:''},
+  {row:17,c1:_AH,c2:_AO,color:0xc0c0c0,dash:true,lbl:''},
+  {row:20,c1:_AH,c2:_AO,color:0xc0c0c0,dash:true,lbl:''},
+  {row:23,c1:_AH,c2:_AO,color:0xc0c0c0,dash:true,lbl:''},
+  // ── Stasjonsbyen (rader 27–34) — main rail line + southern street ──────
+  {row:27,c1:_A, c2:_AO,color:0x666666,dash:false,lbl:'Jernbane Sør',rail:true},
+  {row:33,c1:_A, c2:_AO,color:0xc0c0c0,dash:true,lbl:''},
 ]
 interface VR{col:number;r1:number;r2:number;color:number;dash:boolean;lbl:string}
 const VROADS:VR[]=[
@@ -46,6 +61,11 @@ const VROADS:VR[]=[
   {col:_V,r1:11,r2:11,color:0xc0c0c0,dash:false,lbl:''},
   {col:_X,r1:19,r2:23,color:0xc0c0c0,dash:true,lbl:''},
   {col:_AE,r1:19,r2:23,color:0xc0c0c0,dash:true,lbl:''},
+  // Bydel Øst north-south spine (rader 4–22).
+  {col:_AK,r1:4, r2:22,color:0xc0c0c0,dash:true,lbl:''},
+  // Stasjonsbyen — separates pedestrian street from east block, and bank from grocery.
+  {col:_S, r1:28,r2:34,color:0xc0c0c0,dash:true,lbl:''},
+  {col:_AA,r1:28,r2:34,color:0xc0c0c0,dash:true,lbl:''},
 ]
 const ROAD_SINGLES=[{col:_S,row:12}]
 
@@ -92,7 +112,7 @@ const B:BD[]=[
   {ca:_V,ra:13,cb:_V,rb:13,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'hovedgata',rent:25000,traffic:'Middels',sqm:45,cap:75},
   {ca:_V,ra:18,cb:_V,rb:18,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'utkant',rent:10000,traffic:'Lav',sqm:30,cap:40},
   {ca:_AE,ra:18,cb:_AG,rb:18,fill:0xd8e0f0,border:0x4060a0,bw:3,name:'SSB'},
-  {ca:_AA,ra:18,cb:_AC,rb:18,fill:0xe8d8f8,border:0x6040a0,name:'🚉 Stasjon'},
+  {ca:_AA,ra:18,cb:_AC,rb:18,fill:0xe8d8f8,border:0x6040a0,name:'🚉 Lokalstasjon'},
   {ca:_W,ra:21,cb:_W,rb:21,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'utkant',rent:10000,traffic:'Lav',sqm:32,cap:42},
   {ca:_W,ra:22,cb:_W,rb:22,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'utkant',rent:10000,traffic:'Lav',sqm:32,cap:42},
   {ca:_Y,ra:20,cb:_AD,rb:20,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:6,rows:1,units:['V','V','V','V','V','V']},zone:'utkant',rent:14000,traffic:'Lav',sqm:40,cap:55},
@@ -136,6 +156,37 @@ const B:BD[]=[
   {ca:_I,ra:15,cb:10,rb:15,fill:0xffe0b0,border:0xe8a020,fl:1,name:'Butikk'},
   {ca:_V,ra:15,cb:_Y,rb:15,fill:0xd8e0f0,border:0x4060a0,fl:3,name:'Kontor'},
   {ca:_AA,ra:15,cb:_AC,rb:15,fill:0xf0e8d8,border:0xa08860,fl:4,name:'Leilighet'},
+  // ── Bydel Øst (cols _AH–_AO, rader 4–22) ─────────────────────────────────
+  // Skole anker + idrettsanlegg + tennisbaner + bolig-mix (rekkehus/eneboliger/tomannsboliger).
+  {ca:_AH,ra:4, cb:_AJ,rb:7, fill:0xe8e8d8,border:0xa09080,fl:3,name:'Sentrum ungdomsskole'},
+  {ca:_AH,ra:9, cb:_AJ,rb:11,fill:0xc0d8e0,border:0x6090a0,fl:2,name:'Sentrum idrettshall'},
+  {ca:_AK,ra:9, cb:_AO,rb:13,fill:0xc0a070,border:0x806040,plaza:true,fl:0,name:'Friidrettsanlegg'},
+  {ca:_AK,ra:14,cb:_AM,rb:16,fill:0x4a7050,border:0x305030,plaza:true,fl:0,name:'Tennisbaner'},
+  {ca:_AH,ra:18,cb:_AI,rb:19,fill:0xd8b888,border:0xa08060,fl:1,name:'Rekkehus'},
+  {ca:_AJ,ra:18,cb:_AK,rb:19,fill:0xd8b888,border:0xa08060,fl:1,name:'Rekkehus'},
+  {ca:_AL,ra:18,cb:_AM,rb:19,fill:0xe8d8c8,border:0xb09080,fl:1,name:'Enebolig'},
+  {ca:_AN,ra:18,cb:_AO,rb:19,fill:0xe8d8c8,border:0xb09080,fl:1,name:'Enebolig'},
+  {ca:_AH,ra:21,cb:_AJ,rb:22,fill:0xc8b898,border:0x907060,fl:2,name:'Tomannsbolig'},
+  {ca:_AL,ra:21,cb:_AO,rb:22,fill:0xc8b898,border:0x907060,fl:2,name:'Tomannsbolig'},
+  // ── Stasjonsbyen (rader 27–34) ───────────────────────────────────────────
+  // Hovedstasjonen + gågate-butikker (nord rad 29, sør rad 32) + bank + dagligvare + boligkompleks.
+  // NOTE: Hovedstasjonen footprint _M–_R overlaps rad-29 butikker per spec
+  // (Restaurant _L–_M, Butikk _N–_O, Kafé _P–_R). Both kept literally; depth-sort
+  // decides render order. Espen iterates visually if needed.
+  {ca:_M, ra:28,cb:_R, rb:29,fill:0xd8d8c8,border:0xa09080,fl:2,name:'Hovedstasjonen'},
+  {ca:_G, ra:29,cb:_H, rb:29,fill:0xf0d8a8,border:0xa08850,fl:1,name:'Butikk'},
+  {ca:_I, ra:29,cb:_J, rb:29,fill:0xe8c898,border:0x986830,fl:1,name:'Butikk'},
+  {ca:_L, ra:29,cb:_M, rb:29,fill:0xd8a878,border:0x884818,fl:1,name:'Restaurant'},
+  {ca:_N, ra:29,cb:_O, rb:29,fill:0xf0d8a8,border:0xa08850,fl:1,name:'Butikk'},
+  {ca:_P, ra:29,cb:_R, rb:29,fill:0xc89868,border:0x785820,fl:2,name:'Kafé'},
+  {ca:_G, ra:32,cb:_H, rb:32,fill:0xe8c898,border:0x986830,fl:1,name:'Butikk'},
+  {ca:_I, ra:32,cb:_J, rb:32,fill:0xd8b8b8,border:0xa08080,fl:1,name:'Boutique'},
+  {ca:_L, ra:32,cb:_M, rb:32,fill:0xc8b898,border:0x907060,fl:1,name:'Bokhandel'},
+  {ca:_N, ra:32,cb:_O, rb:32,fill:0xe8d8a8,border:0xa09060,fl:1,name:'Butikk'},
+  {ca:_P, ra:32,cb:_R, rb:32,fill:0xd8d8e8,border:0xa0a0c0,fl:1,name:'Apotek'},
+  {ca:_T, ra:30,cb:_V, rb:31,fill:0xc8d0d8,border:0x808890,fl:3,name:'Sparebanken'},
+  {ca:_X, ra:30,cb:_Z, rb:31,fill:0x88c060,border:0x508030,fl:1,name:'Kiwi'},
+  {ca:_AB,ra:30,cb:_AE,rb:33,fill:0xd8c8b8,border:0x988878,fl:5,name:'Stasjonsparken'},
 ]
 
 const GAGATE={c1:_Y,c2:_AD,row:21}
@@ -175,8 +226,10 @@ export default class CityScene extends Phaser.Scene{
     this.cameras.main.setBackgroundColor(0x4a8030)
     this.buildRoadSet()
     this.drawGround()
+    this.drawZoneOverlays()
     this.drawBoulevard()
     this.drawPark()
+    this.drawPedestrianStreet()
     this.drawBuildings()
     this.spawnCars()
     this.spawnPeds()
@@ -229,7 +282,7 @@ export default class CityScene extends Phaser.Scene{
   // ── Draw ground (all rows; boulevard + central park rendered as overlays) ─
   private drawGround(){
     const g=this.add.graphics().setDepth(0)
-    for(let c=0;c<=_AG;c++)for(let r=1;r<=26;r++){
+    for(let c=0;c<=_AO;c++)for(let r=1;r<=34;r++){
       const p=iso(c,r),col=this.slotColor(c,r)
       g.fillStyle(col,1);g.beginPath()
       g.moveTo(p.x,p.y);g.lineTo(p.x+TW/2,p.y+TH/2);g.lineTo(p.x,p.y+TH);g.lineTo(p.x-TW/2,p.y+TH/2)
@@ -261,13 +314,13 @@ export default class CityScene extends Phaser.Scene{
     const bg=this.add.graphics().setDepth(2)
     // Median stripe — diagonal polyline along row-16 cell centres.
     bg.lineStyle(3,0x9a9a9a,1);bg.beginPath()
-    for(let c=0;c<=_AG;c++){
+    for(let c=0;c<=_AO;c++){
       const p=isoC(c,16)
       if(c===0)bg.moveTo(p.x,p.y); else bg.lineTo(p.x,p.y)
     }
     bg.strokePath()
     // Tree row along the median — every other column for breathing room.
-    for(let c=1;c<=_AG;c+=2){
+    for(let c=1;c<=_AO;c+=2){
       const p=isoC(c,16)
       bg.fillStyle(0x5a3a1a,1);bg.fillRect(p.x-1,p.y-6,2,7)
       bg.fillStyle(0x2a7a3e,1);bg.fillCircle(p.x,p.y-10,4)
@@ -304,6 +357,61 @@ export default class CityScene extends Phaser.Scene{
       pg.fillStyle(0x4a9030,.5);pg.fillCircle(p.x+3,p.y-22,5)
     }
     this.add.text(isoC(_R,15).x,isoC(_R,15).y-5,'Sentralparken 🌳',{fontSize:'8px',fontFamily:'Outfit,sans-serif',color:'#2a5a18',fontStyle:'italic'}).setOrigin(.5).setDepth(3)
+  }
+
+  // ── Zone overlays (Bydel Øst + Stasjonsbyen) + Hovedstasjonen platform ───
+  // Subtle pastel tints over non-road cells, drawn between ground (depth 0)
+  // and boulevard/park/pedestrian overlays (depth 2). Platform stripe sits at
+  // depth 1; the Hovedstasjonen building (depth ~460) will cover most of it —
+  // it's a soft hint, not a strong visual.
+  private drawZoneOverlays(){
+    const zg=this.add.graphics().setDepth(1)
+    const diamond=(c:number,r:number)=>{
+      const p=iso(c,r)
+      zg.beginPath()
+      zg.moveTo(p.x,p.y);zg.lineTo(p.x+TW/2,p.y+TH/2);zg.lineTo(p.x,p.y+TH);zg.lineTo(p.x-TW/2,p.y+TH/2)
+      zg.closePath();zg.fillPath()
+    }
+    // Bydel Øst — warm pastel, rader 4–22 cols _AH–_AO
+    zg.fillStyle(0xfff0e0,0.18)
+    for(let c=_AH;c<=_AO;c++)for(let r=4;r<=22;r++){
+      if(this.roadSet.has(`${c},${r}`))continue
+      diamond(c,r)
+    }
+    // Stasjonsbyen — cool pastel, rader 27–34 all cols
+    zg.fillStyle(0xe8eaf0,0.20)
+    for(let c=_A;c<=_AO;c++)for(let r=27;r<=34;r++){
+      if(this.roadSet.has(`${c},${r}`))continue
+      diamond(c,r)
+    }
+    // Hovedstasjonen platform stripe — light tile under the station front row.
+    zg.fillStyle(0xeeeede,1)
+    for(let c=_M;c<=_R;c++)diamond(c,28)
+    // Zone labels — subtle, italic, depth 3 to sit above overlays.
+    this.add.text(isoC((_AH+_AO)/2,5).x,isoC((_AH+_AO)/2,5).y-5,'Bydel Øst',{fontSize:'9px',fontFamily:'Outfit,sans-serif',color:'#a06840',fontStyle:'italic'}).setOrigin(.5).setDepth(3)
+    this.add.text(isoC((_A+_AO)/2,27).x,isoC((_A+_AO)/2,27).y-10,'Stasjonsbyen',{fontSize:'9px',fontFamily:'Outfit,sans-serif',color:'#506080',fontStyle:'italic'}).setOrigin(.5).setDepth(3)
+  }
+
+  // ── Pedestrian street (Gågata) on rad 30–31 cols _G–_R ────────────────────
+  // Stone-tile base + scattered café-table circles + label. Drawn at depth 2
+  // (same layer as boulevard/park overlays). Skips any road cells.
+  private drawPedestrianStreet(){
+    const pg=this.add.graphics().setDepth(2)
+    pg.fillStyle(0xe0d8c8,1)
+    for(let c=_G;c<=_R;c++)for(let r=30;r<=31;r++){
+      if(this.roadSet.has(`${c},${r}`))continue
+      const p=iso(c,r)
+      pg.beginPath()
+      pg.moveTo(p.x,p.y);pg.lineTo(p.x+TW/2,p.y+TH/2);pg.lineTo(p.x,p.y+TH);pg.lineTo(p.x-TW/2,p.y+TH/2)
+      pg.closePath();pg.fillPath()
+    }
+    // Café tables along the centre between the two pedestrian rows.
+    for(let c=_G;c<=_R;c+=2){
+      const p=isoC(c+.5,30.5)
+      pg.fillStyle(0x8a6030,1);pg.fillCircle(p.x,p.y,3)
+      pg.fillStyle(0xb89060,1);pg.fillCircle(p.x,p.y,2)
+    }
+    this.add.text(isoC((_G+_R)/2,30.5).x,isoC((_G+_R)/2,30.5).y,'Gågata 🚶',{fontSize:'8px',fontFamily:'Outfit,sans-serif',color:'#5a4030',fontStyle:'italic'}).setOrigin(.5).setDepth(3)
   }
 
   // ── Draw iso box ──────────────────────────────────────────────────────────
@@ -372,10 +480,15 @@ export default class CityScene extends Phaser.Scene{
 
   // ── Cars ──────────────────────────────────────────────────────────────────
   private spawnCars(){
-    const cc=[0xe74c3c,0x3498db,0x2ecc71,0xf1c40f,0x9b59b6,0xe67e22,0x1abc9c,0x34495e,0xc0392b,0x2980b9,0x27ae60,0xf39c12,0x8e44ad,0xd35400]
-    for(let i=0;i<6;i++){const s=isoC(i*5,16);this.mkCar(s.x,s.y,16,cc[i],0,_AG)}
+    const cc=[0xe74c3c,0x3498db,0x2ecc71,0xf1c40f,0x9b59b6,0xe67e22,0x1abc9c,0x34495e,0xc0392b,0x2980b9,0x27ae60,0xf39c12,0x8e44ad,0xd35400,0x16a085,0x2c3e50,0x95a5a6,0xbdc3c7]
+    for(let i=0;i<6;i++){const s=isoC(i*5,16);this.mkCar(s.x,s.y,16,cc[i],0,_AO)}
     for(let i=0;i<4;i++){const s=isoC(i*5,11);this.mkCar(s.x,s.y,11,cc[6+i],0,_U)}
     for(let i=0;i<4;i++){const s=isoC(_U,2+i*4);this.mkCarV(s.x,s.y,_U,cc[10+i%4],1,20)}
+    // Bydel Øst + Stasjonsbyen — 4 additional cars (~30% more total).
+    {const s=isoC(_AH,8); this.mkCar(s.x,s.y,8,cc[14],_AH,_AO)}
+    {const s=isoC(_AH,23);this.mkCar(s.x,s.y,23,cc[15],_AH,_AO)}
+    {const s=isoC(_AK,4); this.mkCarV(s.x,s.y,_AK,cc[16],4,22)}
+    {const s=isoC(0,33);  this.mkCar(s.x,s.y,33,cc[17],_A,_AO)}
   }
   private mkCar(px:number,py:number,row:number,color:number,c1:number,c2:number){
     const g=this.add.graphics().setDepth(500);g.fillStyle(color,1);g.fillRoundedRect(-8,-5,16,10,2);g.fillStyle(0xffffff,.25);g.fillRect(5,-3,2,6);g.setPosition(px,py)

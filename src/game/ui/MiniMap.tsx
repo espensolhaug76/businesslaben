@@ -1,11 +1,11 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { HROADS, VROADS, ROAD_SINGLES, B, GAGATE, PARK, _AG, _S } from '../phaser/scenes/CityScene'
+import { HROADS, VROADS, ROAD_SINGLES, B, GAGATE, PARK, _AO, _S } from '../phaser/scenes/CityScene'
 
 const SLOT_PX = 4 // 1 slot = 4px on minimap
-const COLS = _AG + 1 // 33
-const ROWS = 26
-const MW = COLS * SLOT_PX // 132
-const MH = ROWS * SLOT_PX // 104
+const COLS = _AO + 1 // 41 (grid expanded east to _AO)
+const ROWS = 34 // grid expanded south to row 34
+const MW = COLS * SLOT_PX // 164
+const MH = ROWS * SLOT_PX // 136
 const PAD = 6
 
 interface CamState { scrollX: number; scrollY: number; zoom: number; width: number; height: number }
@@ -48,8 +48,8 @@ export default function MiniMap() {
       let color = '#b0b0b0'
       for (const h of HROADS) {
         if (h.row === r && c >= h.c1 && c <= h.c2) {
-          if (h.river) color = '#5b9fd4'
-          else if (h.rail) color = '#555'
+          if (h.rail) color = '#555'
+          else if (h.boulevard) color = '#b8b8b8'
           break
         }
       }
