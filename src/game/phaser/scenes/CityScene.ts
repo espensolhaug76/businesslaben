@@ -193,7 +193,7 @@ const GAGATE={c1:_Y,c2:_AD,row:21}
 const PARK={ca:_W,ra:2,cb:_Y,rb:3}
 
 // Exported for MiniMap
-export { HROADS, VROADS, ROAD_SINGLES, B, GAGATE, PARK, _AG, _S, _H, _U, iso, isoC, toGrid }
+export { HROADS, VROADS, ROAD_SINGLES, B, GAGATE, PARK, _AG, _AO, _S, _H, _U, iso, isoC, toGrid }
 export type { BD, HR, VR }
 
 interface VE{id:string;zone:string;rent:number;footTraffic:string;capacity:number;sqm:number
