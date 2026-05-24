@@ -2,8 +2,6 @@ import Phaser from 'phaser'
 
 // ── Isometric constants ───────────────────────────────────────────────────────
 const TW = 128, TH = 64, FH = 24 // floor height reduced 40% (was 40)
-const RIVER_DEPTH = 32 // Glomma sinks 32px below ground
-const E16_DEPTH = 16   // Glommengata sinks 16px below ground
 
 function iso(c: number, r: number) {
   const ri = r - 1
@@ -24,23 +22,25 @@ const _M=12,_N=13,_O=14,_P=15,_Q=16,_R=17,_S=18,_T=19,_U=20,_V=21
 const _W=22,_X=23,_Y=24,_Z=25,_AA=26,_AB=27,_AC=28,_AD=29,_AE=30,_AF=31,_AG=32
 
 // ── Road data ─────────────────────────────────────────────────────────────────
-interface HR{row:number;c1:number;c2:number;color:number;dash:boolean;lbl:string;river?:boolean;rail?:boolean}
+interface HR{row:number;c1:number;c2:number;color:number;dash:boolean;lbl:string;rail?:boolean;boulevard?:boolean}
 const HROADS:HR[]=[
   {row:1,c1:_U,c2:_AB,color:0xc0c0c0,dash:false,lbl:'Markedsveien'},
   {row:4,c1:_A,c2:_AG,color:0xc0c0c0,dash:true,lbl:'Parkvegen'},
   {row:7,c1:_C,c2:_S,color:0xc0c0c0,dash:true,lbl:'Fjellgata'},
   {row:11,c1:_A,c2:_U,color:0xc0c0c0,dash:true,lbl:'Brugata'},
-  {row:15,c1:_A,c2:_AG,color:0x3a7abf,dash:false,lbl:'Glomma',river:true},
-  {row:16,c1:_A,c2:_AG,color:0xc0c0c0,dash:true,lbl:'Glommengata'},
+  // Row 15 (Glomma) removed — replaced by central park + flanking buildings.
+  // Row 16: was 'Glommengata' road alongside the river; now widened to a
+  // boulevard ('Sentralgata') with median and tree-row, lighter asphalt.
+  {row:16,c1:_A,c2:_AG,color:0xb8b8b8,dash:false,lbl:'Sentralgata',boulevard:true},
   {row:17,c1:_A,c2:_AG,color:0x666666,dash:false,lbl:'Jernbane',rail:true},
   {row:19,c1:_A,c2:_AG,color:0xc0c0c0,dash:true,lbl:'Jernbanegata'},
   {row:23,c1:_X,c2:_AE,color:0xc0c0c0,dash:false,lbl:''},
 ]
-interface VR{col:number;r1:number;r2:number;color:number;dash:boolean;lbl:string;bridge?:number}
+interface VR{col:number;r1:number;r2:number;color:number;dash:boolean;lbl:string}
 const VROADS:VR[]=[
-  {col:_U,r1:1,r2:26,color:0xc0c0c0,dash:true,lbl:'Storgata',bridge:15},
+  {col:_U,r1:1,r2:26,color:0xc0c0c0,dash:true,lbl:'Storgata'},
   {col:_N,r1:4,r2:11,color:0xc0c0c0,dash:true,lbl:'Tommelstads'},
-  {col:_H,r1:4,r2:17,color:0xc0c0c0,dash:true,lbl:'Eidemsgate',bridge:15},
+  {col:_H,r1:4,r2:17,color:0xc0c0c0,dash:true,lbl:'Eidemsgate'},
   {col:_C,r1:4,r2:13,color:0xc0c0c0,dash:true,lbl:''},
   {col:_S,r1:8,r2:10,color:0xc0c0c0,dash:true,lbl:''},
   {col:_V,r1:11,r2:11,color:0xc0c0c0,dash:false,lbl:''},
@@ -125,6 +125,17 @@ const B:BD[]=[
   {ca:_I,ra:18,cb:_L,rb:18,fill:0xf0e8d8,border:0xa08860,fl:2,name:'Boliger',grid:{cols:4,rows:1,units:['🏠','🏠','🏠','🏠']}},
   {ca:_A,ra:20,cb:_D,rb:22,fill:0xf0e8d8,border:0xa08860,fl:2,name:'Boliger',grid:{cols:4,rows:3,units:['🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠']}},
   {ca:_I,ra:20,cb:_L,rb:22,fill:0xf0e8d8,border:0xa08860,fl:2,name:'Boliger',grid:{cols:4,rows:3,units:['🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠']}},
+  // ── Row 15 — buildings flanking the central park (replaces Glomma) ──────
+  // West side: leilighet (3F) / kontor (2F) / butikk (1F).
+  // Centre cols _O–_U are the new park — no buildings there.
+  // East side: kontor (3F) / leilighet (4F).
+  // cb:10 on the Butikk spans _I–col10; _K is intentionally skipped in the
+  // column-constant table so col 10 has no _ name.
+  {ca:_A,ra:15,cb:_C,rb:15,fill:0xf0e8d8,border:0xa08860,fl:3,name:'Bolig'},
+  {ca:_E,ra:15,cb:_G,rb:15,fill:0xd8e0f0,border:0x4060a0,fl:2,name:'Kontor'},
+  {ca:_I,ra:15,cb:10,rb:15,fill:0xffe0b0,border:0xe8a020,fl:1,name:'Butikk'},
+  {ca:_V,ra:15,cb:_Y,rb:15,fill:0xd8e0f0,border:0x4060a0,fl:3,name:'Kontor'},
+  {ca:_AA,ra:15,cb:_AC,rb:15,fill:0xf0e8d8,border:0xa08860,fl:4,name:'Leilighet'},
 ]
 
 const GAGATE={c1:_Y,c2:_AD,row:21}
@@ -141,9 +152,6 @@ interface VE{id:string;zone:string;rent:number;footTraffic:string;capacity:numbe
 function getfl(b:BD):number{
   if(b.fl!==undefined)return b.fl; if(b.header)return 2; if(b.plaza)return 0; return 1
 }
-
-// Bridge columns (vertical roads crossing Glomma row 15)
-const BRIDGE_COLS = [_H, _U]
 
 // Global xray toggle shared with React HUD
 declare global { interface Window { __CITY_XRAY__: boolean } }
@@ -167,7 +175,8 @@ export default class CityScene extends Phaser.Scene{
     this.cameras.main.setBackgroundColor(0x4a8030)
     this.buildRoadSet()
     this.drawGround()
-    this.drawGlomma()
+    this.drawBoulevard()
+    this.drawPark()
     this.drawBuildings()
     this.spawnCars()
     this.spawnPeds()
@@ -212,16 +221,15 @@ export default class CityScene extends Phaser.Scene{
       return 0x7ec850
     }
     for(const h of HROADS)if(h.row===r&&c>=h.c1&&c<=h.c2){
-      if(h.river)return 0x3a7abf;if(h.rail)return 0x555555;return 0xb0b0b0}
+      if(h.boulevard)return 0xb8b8b8;if(h.rail)return 0x555555;return 0xb0b0b0}
     if(c===_S&&r===7)return 0xc8a830
     return 0xb0b0b0
   }
 
-  // ── Draw ground (with Glomma at normal level, drawn separately) ───────────
+  // ── Draw ground (all rows; boulevard + central park rendered as overlays) ─
   private drawGround(){
     const g=this.add.graphics().setDepth(0)
     for(let c=0;c<=_AG;c++)for(let r=1;r<=26;r++){
-      if(r===15||r===16)continue // Glomma + Glommengata drawn separately in drawGlomma
       const p=iso(c,r),col=this.slotColor(c,r)
       g.fillStyle(col,1);g.beginPath()
       g.moveTo(p.x,p.y);g.lineTo(p.x+TW/2,p.y+TH/2);g.lineTo(p.x,p.y+TH);g.lineTo(p.x-TW/2,p.y+TH/2)
@@ -245,82 +253,57 @@ export default class CityScene extends Phaser.Scene{
     this.add.text(isoC(_X,3).x,isoC(_X,3).y-5,'Byparken 🌳',{fontSize:'8px',fontFamily:'Outfit,sans-serif',color:'#2a5a18',fontStyle:'italic'}).setOrigin(.5).setDepth(3)
   }
 
-  // ── Glomma (row15, sunken 32px) + Glommengata (row16, sunken 16px) + bridges
-  private drawGlomma(){
-    const rg=this.add.graphics().setDepth(1)
-    const RD=RIVER_DEPTH, ED=E16_DEPTH
-
+  // ── Boulevard overlay on row 16 (Sentralgata) ────────────────────────────
+  // Diagonal median stripe + tree row along the central east-west axis.
+  // Replaces the old Glomma/Glommengata rendering; row 16 is now a wider
+  // boulevard styled via a lighter asphalt + this overlay (median + trees).
+  private drawBoulevard(){
+    const bg=this.add.graphics().setDepth(2)
+    // Median stripe — diagonal polyline along row-16 cell centres.
+    bg.lineStyle(3,0x9a9a9a,1);bg.beginPath()
     for(let c=0;c<=_AG;c++){
-      const isBridge=BRIDGE_COLS.includes(c)
-      const p15=iso(c,15)
-      const p16=iso(c,16)
-
-      // ── Row 14→15 slope: ground level down to river ──
-      // Left slope (NW-facing bank)
-      rg.fillStyle(0x5a8040,1);rg.beginPath()
-      rg.moveTo(p15.x-TW/2,p15.y+TH/2);rg.lineTo(p15.x,p15.y+TH)
-      rg.lineTo(p15.x,p15.y+TH+RD);rg.lineTo(p15.x-TW/2,p15.y+TH/2+RD)
-      rg.closePath();rg.fillPath()
-      // Right slope (NE-facing bank)
-      rg.fillStyle(0x4a7030,1);rg.beginPath()
-      rg.moveTo(p15.x+TW/2,p15.y+TH/2);rg.lineTo(p15.x,p15.y+TH)
-      rg.lineTo(p15.x,p15.y+TH+RD);rg.lineTo(p15.x+TW/2,p15.y+TH/2+RD)
-      rg.closePath();rg.fillPath()
-
-      // ── Row 16→17 slope: Glommengata level up to ground ──
-      // Left slope
-      rg.fillStyle(0x5a8040,1);rg.beginPath()
-      rg.moveTo(p16.x-TW/2,p16.y+TH/2+ED);rg.lineTo(p16.x,p16.y+TH+ED)
-      rg.lineTo(p16.x,p16.y+TH);rg.lineTo(p16.x-TW/2,p16.y+TH/2)
-      rg.closePath();rg.fillPath()
-      // Right slope
-      rg.fillStyle(0x4a7030,1);rg.beginPath()
-      rg.moveTo(p16.x+TW/2,p16.y+TH/2+ED);rg.lineTo(p16.x,p16.y+TH+ED)
-      rg.lineTo(p16.x,p16.y+TH);rg.lineTo(p16.x+TW/2,p16.y+TH/2)
-      rg.closePath();rg.fillPath()
-
-      if(isBridge){
-        // ── Bridge over row 15 (Glomma) ──
-        // Deck at ground level
-        rg.fillStyle(0xaaaaaa,1);rg.beginPath()
-        rg.moveTo(p15.x,p15.y);rg.lineTo(p15.x+TW/2,p15.y+TH/2);rg.lineTo(p15.x,p15.y+TH);rg.lineTo(p15.x-TW/2,p15.y+TH/2)
-        rg.closePath();rg.fillPath()
-        // Pillars down to river
-        rg.fillStyle(0x777777,1)
-        rg.fillRect(p15.x-TW/4-3,p15.y+TH/2,6,RD+6)
-        rg.fillRect(p15.x+TW/4-3,p15.y+TH/2,6,RD+6)
-        // Railings
-        rg.lineStyle(2,0x888888,1)
-        rg.beginPath();rg.moveTo(p15.x-TW/2,p15.y+TH/2-2);rg.lineTo(p15.x,p15.y-2);rg.strokePath()
-        rg.beginPath();rg.moveTo(p15.x+TW/2,p15.y+TH/2-2);rg.lineTo(p15.x,p15.y+TH-2);rg.strokePath()
-
-        // ── Bridge over row 16 (Glommengata) ──
-        rg.fillStyle(0xaaaaaa,1);rg.beginPath()
-        rg.moveTo(p16.x,p16.y);rg.lineTo(p16.x+TW/2,p16.y+TH/2);rg.lineTo(p16.x,p16.y+TH);rg.lineTo(p16.x-TW/2,p16.y+TH/2)
-        rg.closePath();rg.fillPath()
-        // Pillars down to E16 level
-        rg.fillStyle(0x777777,1)
-        rg.fillRect(p16.x-TW/4-3,p16.y+TH/2,6,ED+4)
-        rg.fillRect(p16.x+TW/4-3,p16.y+TH/2,6,ED+4)
-        // Railings
-        rg.lineStyle(2,0x888888,1)
-        rg.beginPath();rg.moveTo(p16.x-TW/2,p16.y+TH/2-2);rg.lineTo(p16.x,p16.y-2);rg.strokePath()
-        rg.beginPath();rg.moveTo(p16.x+TW/2,p16.y+TH/2-2);rg.lineTo(p16.x,p16.y+TH-2);rg.strokePath()
-      } else {
-        // ── Sunken Glomma water tile (row 15) ──
-        rg.fillStyle(0x3a7abf,1);rg.beginPath()
-        rg.moveTo(p15.x,p15.y+RD);rg.lineTo(p15.x+TW/2,p15.y+TH/2+RD);rg.lineTo(p15.x,p15.y+TH+RD);rg.lineTo(p15.x-TW/2,p15.y+TH/2+RD)
-        rg.closePath();rg.fillPath()
-        // Water reflections
-        rg.lineStyle(1,0x5b9fd4,.4)
-        rg.beginPath();rg.moveTo(p15.x-20,p15.y+TH/2+RD);rg.lineTo(p15.x,p15.y+TH/2+RD-4);rg.lineTo(p15.x+20,p15.y+TH/2+RD);rg.strokePath()
-
-        // ── Sunken Glommengata road tile (row 16) ──
-        rg.fillStyle(0xb0b0b0,1);rg.beginPath()
-        rg.moveTo(p16.x,p16.y+ED);rg.lineTo(p16.x+TW/2,p16.y+TH/2+ED);rg.lineTo(p16.x,p16.y+TH+ED);rg.lineTo(p16.x-TW/2,p16.y+TH/2+ED)
-        rg.closePath();rg.fillPath()
-      }
+      const p=isoC(c,16)
+      if(c===0)bg.moveTo(p.x,p.y); else bg.lineTo(p.x,p.y)
     }
+    bg.strokePath()
+    // Tree row along the median — every other column for breathing room.
+    for(let c=1;c<=_AG;c+=2){
+      const p=isoC(c,16)
+      bg.fillStyle(0x5a3a1a,1);bg.fillRect(p.x-1,p.y-6,2,7)
+      bg.fillStyle(0x2a7a3e,1);bg.fillCircle(p.x,p.y-10,4)
+      bg.fillStyle(0x3cb868,.5);bg.fillCircle(p.x+1,p.y-12,2)
+    }
+  }
+
+  // ── Central park on row 15, cols _O–_U (replaces Glomma's central span) ──
+  // Dark-green base + east-west path + scattered trees + label. Skips cells
+  // that are part of a vertical road (Storgata _U) so the road shows through.
+  private drawPark(){
+    const pg=this.add.graphics().setDepth(2)
+    // Dark-green base over the 7 park cells (skipping road overlap).
+    pg.fillStyle(0x4a8030,1)
+    for(let c=_O;c<=_U;c++){
+      if(this.roadSet.has(`${c},15`))continue
+      const p=iso(c,15)
+      pg.beginPath()
+      pg.moveTo(p.x,p.y);pg.lineTo(p.x+TW/2,p.y+TH/2);pg.lineTo(p.x,p.y+TH);pg.lineTo(p.x-TW/2,p.y+TH/2)
+      pg.closePath();pg.fillPath()
+    }
+    // East-west path through park cell centres.
+    pg.lineStyle(3,0xd0d0d0,1);pg.beginPath()
+    for(let c=_O;c<=_U;c++){
+      const p=isoC(c,15)
+      if(c===_O)pg.moveTo(p.x,p.y); else pg.lineTo(p.x,p.y)
+    }
+    pg.strokePath()
+    // Scattered trees — darker green than the boulevard trees.
+    for(const[fx,fy] of [[_O+.3,15.2],[_P+.7,15.6],[_Q+.4,15.3],[_R+.6,15.7],[_S+.2,15.2],[_T+.7,15.6],[_U+.3,15.4]]){
+      const p=isoC(fx,fy)
+      pg.fillStyle(0x5a3a1a,1);pg.fillRect(p.x-2,p.y-12,4,14)
+      pg.fillStyle(0x3a7020,1);pg.fillCircle(p.x,p.y-18,8)
+      pg.fillStyle(0x4a9030,.5);pg.fillCircle(p.x+3,p.y-22,5)
+    }
+    this.add.text(isoC(_R,15).x,isoC(_R,15).y-5,'Sentralparken 🌳',{fontSize:'8px',fontFamily:'Outfit,sans-serif',color:'#2a5a18',fontStyle:'italic'}).setOrigin(.5).setDepth(3)
   }
 
   // ── Draw iso box ──────────────────────────────────────────────────────────
