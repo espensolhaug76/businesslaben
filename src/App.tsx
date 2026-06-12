@@ -454,7 +454,11 @@ function App() {
           <Route path="/om" element={<AboutPage />} />
 
           {/* ── AdVenture 3.0 Business Simulator ─────────────────────────── */}
+          {/* Bybilde-arkitektur: master (/game) → bydel (/game/d/:id) →
+              lokale (/game/d/:id/l/:id). Samme GamePage leser URL-params. */}
           <Route path="/game" element={<GamePage />} />
+          <Route path="/game/d/:districtId" element={<GamePage />} />
+          <Route path="/game/d/:districtId/l/:lokaleId" element={<GamePage />} />
 
 
           {/* ── Startup flow ─────────────────────────────────────────────── */}

@@ -1,8 +1,8 @@
 {
   "_meta": {
     "_comment": "Edit this file to add new building instances or types. The slash-command /asset and scripts/generate-asset.sh both read from here. The companion ASSET_STYLE_GUIDE.md is documentation only. Per-asset entries set `style_variant` to 'modern' (default) or 'legacy' to pick which base block applies — modern commercial vs Norwegian heritage.",
-    "base_style": "3D-rendered miniature diorama, like a high-end architectural maquette photographed from a 30-degree isometric angle. Hay Day / Township / Animal Crossing aesthetic — physically modeled, volumetrically lit, NOT 2D illustration, NOT digital painting, NOT cel-shaded cartoon, NOT manga or anime. Strong ambient occlusion in all crevices and contact points. Material-specific surface rendering: brick has individual brick geometry with mortar shadows; wood shows grain depth and warm under-lighting; glass has multi-layer reflections, refractions, and subtle blue-green tinting; metal shows clear specular highlights; concrete has aggregate texture and weathering. Vegetation: hedges and bushes show many individual leaf clusters with depth and color variation. Soft, defined contact shadows. Muted naturalistic palette — NOT cartoon saturation. If the result looks like a drawing, the prompt has failed. Subject: a modern Norwegian small-town commercial building with flat or low-pitched roof, glass storefront windows with warm interior lighting visible, light concrete / white painted wood / brick facade, single-story or low two-story scale. NO text, NO signage, NO letters, NO writing, NO numbers, NO logos, NO flags unless specified. Soft daytime lighting. ABSOLUTE FRAMING REQUIREMENTS — failure to comply means the image is unusable: 1) The building's solid structural footprint (roof + walls + foundation) MUST fill 85-92% of the canvas width AND 85-92% of the canvas height. Only ~5% margin on each edge. 2) The building must be perfectly geometrically centered in the canvas. The structural center of mass of the building MUST coincide with the canvas geometric center on both X and Y axes. 3) ABSOLUTELY NO bushes, hedges, shrubs, trees, plants, or any vegetation positioned OUTSIDE the building's wall plane. NO landscaping in front of, beside, or behind the building. The ONLY vegetation allowed is INTEGRAL to the wall (a narrow window-box planter mounted directly on the wall surface). If you would be tempted to add a bush at the corner or a hedge along the side — DO NOT. 4) NO sidewalk. NO ground plane extension. NO ground shadow extending outside the building footprint. The base of the walls must rest directly on transparent canvas, not on a depicted patch of ground. 5) The background must be pure solid white #FFFFFF — no checkerboard, no gradient, no soft drop-shadow blur on the ground.",
-    "base_style_legacy": "3D-rendered miniature diorama, like a high-end architectural maquette photographed from a 30-degree isometric angle. Hay Day / Township aesthetic — physically modeled, volumetrically lit, NOT 2D illustration, NOT digital painting, NOT cel-shaded cartoon, NOT manga or anime. Strong ambient occlusion. Material-specific surface rendering: stone has individual block geometry with mortar shadows and subtle weathering; timber and painted wood show plank seams and grain depth with warm under-lighting; slate or red clay tile roofing shows individual unit geometry and slight irregularity; metal trim shows clear specular highlights. Vegetation: hedges and shrubs show many individual leaf clusters with depth and color variation. Soft, defined contact shadows. Muted naturalistic heritage palette — aged whites, warm cream, dusty rose stone, weathered timber. NOT cartoon saturation. If the result looks like a drawing, the prompt has failed. Subject: a traditional Norwegian heritage civic building, late-1800s / early-1900s Kongsvinger small-town vernacular. Pitched roof in dark slate or red tile, stone or painted-timber clad facade, tall narrow windows with white trim, prominent symmetric entrance, modest decorative cornices. NO modern glass storefront. NO flat roof. NO text, NO signage, NO letters, NO writing, NO numbers, NO logos, NO flags unless specified. Soft daytime lighting. ABSOLUTE FRAMING REQUIREMENTS — failure to comply means the image is unusable: 1) The building's solid structural footprint (roof + walls + foundation) MUST fill 85-92% of the canvas width AND 85-92% of the canvas height. Only ~5% margin on each edge. 2) The building must be perfectly geometrically centered in the canvas. The structural center of mass of the building MUST coincide with the canvas geometric center on both X and Y axes. 3) ABSOLUTELY NO bushes, hedges, shrubs, trees, plants, or any vegetation positioned OUTSIDE the building's wall plane. NO landscaping in front of, beside, or behind the building. The ONLY vegetation allowed is INTEGRAL to the wall (a narrow window-box planter mounted directly on the wall surface). 4) NO sidewalk. NO ground plane extension. NO ground shadow extending outside the building footprint. The base of the walls must rest directly on transparent canvas. 5) The background must be pure solid white #FFFFFF — no checkerboard, no gradient, no soft drop-shadow blur on the ground.",
+    "base_style": "3D-rendered miniature diorama, like a high-end architectural maquette photographed from a 30-degree isometric angle. True isometric view, building rotated 45 degrees, camera elevation 30 degrees, front-left and front-right facades equally visible, building base edges parallel to a diamond ground plane. Hay Day / Township / Animal Crossing aesthetic — physically modeled, volumetrically lit, NOT 2D illustration, NOT digital painting, NOT cel-shaded cartoon, NOT manga or anime. Strong ambient occlusion in all crevices and contact points. Material-specific surface rendering: brick has individual brick geometry with mortar shadows; wood shows grain depth and warm under-lighting; glass has multi-layer reflections, refractions, and subtle blue-green tinting; metal shows clear specular highlights; concrete has aggregate texture and weathering. Vegetation: hedges and bushes show many individual leaf clusters with depth and color variation. Soft, defined contact shadows. Muted naturalistic palette — NOT cartoon saturation. If the result looks like a drawing, the prompt has failed. Subject: a modern Norwegian small-town commercial building with flat or low-pitched roof, glass storefront windows with warm interior lighting visible, light concrete / white painted wood / brick facade, single-story or low two-story scale. NO text, NO signage, NO letters, NO writing, NO numbers, NO logos, NO flags unless specified. Soft daytime lighting. ABSOLUTE FRAMING REQUIREMENTS — failure to comply means the image is unusable: 1) The building's solid structural footprint (roof + walls + foundation) MUST fill 85-92% of the canvas width AND 85-92% of the canvas height. Only ~5% margin on each edge. 2) The building must be perfectly geometrically centered in the canvas. The structural center of mass of the building MUST coincide with the canvas geometric center on both X and Y axes. 3) ABSOLUTELY NO bushes, hedges, shrubs, trees, plants, or any vegetation positioned OUTSIDE the building's wall plane. NO landscaping in front of, beside, or behind the building. The ONLY vegetation allowed is INTEGRAL to the wall (a narrow window-box planter mounted directly on the wall surface). If you would be tempted to add a bush at the corner or a hedge along the side — DO NOT. 4) NO sidewalk. NO ground plane extension. NO ground shadow extending outside the building footprint. The base of the walls must rest directly on transparent canvas, not on a depicted patch of ground. 5) The background must be pure solid white #FFFFFF — no checkerboard, no gradient, no soft drop-shadow blur on the ground.",
+    "base_style_legacy": "3D-rendered miniature diorama, like a high-end architectural maquette photographed from a 30-degree isometric angle. True isometric view, building rotated 45 degrees, camera elevation 30 degrees, front-left and front-right facades equally visible, building base edges parallel to a diamond ground plane. Hay Day / Township aesthetic — physically modeled, volumetrically lit, NOT 2D illustration, NOT digital painting, NOT cel-shaded cartoon, NOT manga or anime. Strong ambient occlusion. Material-specific surface rendering: stone has individual block geometry with mortar shadows and subtle weathering; timber and painted wood show plank seams and grain depth with warm under-lighting; slate or red clay tile roofing shows individual unit geometry and slight irregularity; metal trim shows clear specular highlights. Vegetation: hedges and shrubs show many individual leaf clusters with depth and color variation. Soft, defined contact shadows. Muted naturalistic heritage palette — aged whites, warm cream, dusty rose stone, weathered timber. NOT cartoon saturation. If the result looks like a drawing, the prompt has failed. Subject: a traditional Norwegian heritage civic building, late-1800s / early-1900s Kongsvinger small-town vernacular. Pitched roof in dark slate or red tile, stone or painted-timber clad facade, tall narrow windows with white trim, prominent symmetric entrance, modest decorative cornices. NO modern glass storefront. NO flat roof. NO text, NO signage, NO letters, NO writing, NO numbers, NO logos, NO flags unless specified. Soft daytime lighting. ABSOLUTE FRAMING REQUIREMENTS — failure to comply means the image is unusable: 1) The building's solid structural footprint (roof + walls + foundation) MUST fill 85-92% of the canvas width AND 85-92% of the canvas height. Only ~5% margin on each edge. 2) The building must be perfectly geometrically centered in the canvas. The structural center of mass of the building MUST coincide with the canvas geometric center on both X and Y axes. 3) ABSOLUTELY NO bushes, hedges, shrubs, trees, plants, or any vegetation positioned OUTSIDE the building's wall plane. NO landscaping in front of, beside, or behind the building. The ONLY vegetation allowed is INTEGRAL to the wall (a narrow window-box planter mounted directly on the wall surface). 4) NO sidewalk. NO ground plane extension. NO ground shadow extending outside the building footprint. The base of the walls must rest directly on transparent canvas. 5) The background must be pure solid white #FFFFFF — no checkerboard, no gradient, no soft drop-shadow blur on the ground.",
     "base_style_storefront": "3D-rendered miniature diorama, like a high-end architectural maquette photographed FRONTALLY straight head-on at street-level eye height, zero rotation, zero tilt, parallel projection, no perspective vanishing point. Hay Day / Township / Animal Crossing aesthetic — physically modeled, volumetrically lit, NOT 2D illustration, NOT digital painting, NOT cel-shaded cartoon, NOT manga or anime. Strong ambient occlusion in all crevices and contact points. Material-specific surface rendering: brick has individual brick geometry with mortar shadows; wood shows grain depth and warm under-lighting; glass has multi-layer reflections, refractions, and subtle blue-green tinting; metal shows clear specular highlights; concrete has aggregate texture and weathering. Vegetation: hedges and bushes show many individual leaf clusters with depth and color variation. Soft, defined contact shadows. Muted naturalistic palette — NOT cartoon saturation. If the result looks like a drawing, the prompt has failed. Subject: a flat frontal facade of a modern Norwegian small-town commercial storefront, viewed head-on from the street as if standing directly in front of the entrance. The facade shows: a large storefront window occupying the LEFT half of the ground floor, an entrance door on the RIGHT half of the ground floor, a BLANK rectangular sign panel above the storefront (no text, no letters - text will be added later as an overlay), and a subtle building sockel/base at the very bottom. The wall area BETWEEN the sign panel and the storefront row MUST be plain unbroken facade (no awning, no markise, no overhang - awning will be added as a separate layer). NO text, NO signage, NO letters, NO writing, NO numbers, NO logos, NO flags unless specified. Soft daytime lighting. ABSOLUTE FRAMING REQUIREMENTS — failure to comply means the image is unusable: 1) The facade MUST fill 85-92% of the canvas width. Only ~5% margin on left and right edges. 2) The facade vertically spans from ~y=128 (roof line, top 10% margin is transparent sky) down to y=1280 (sockel touches absolute bottom edge of canvas, no bottom margin). 3) The sign panel BLANK rectangle must be located in the upper-middle area (canvas y=256 to y=512). 4) The storefront window (left) and door (right) must be located in the lower area (canvas y=608 to y=1152). 5) The row between sign and storefront (y=512 to y=608) MUST be plain unbroken facade wall - NO awning, NO overhang, NO decorative banner. 6) ABSOLUTELY NO bushes, hedges, shrubs, trees, or vegetation positioned outside the building's wall plane. NO sidewalk extension beyond canvas edges. NO ground plane. The sockel rests directly on the bottom edge of the transparent canvas. 7) The background must be pure solid white #FFFFFF — no checkerboard, no gradient, no perspective vanishing point.",
     "size_variants": {
       "small": "Compact single-story footprint, corner-shop scale.",
@@ -45,7 +45,19 @@
     "theater": "Compact modern Norwegian municipal theater, single-story or low two-story with a slightly raised central performance hall behind the entrance block; classical-modern hybrid architecture with a prominent symmetric entrance under a curved or flat ornamental canopy; light cream or pale concrete facade with subtle decorative pilasters or relief details; tall narrow windows with white trim flanking the entrance; warm interior lighting visible through the foyer glass.",
     "pool_facility": "Modern Norwegian indoor swimming pool facility, single-story or low two-story; large floor-to-ceiling glass facade revealing a hint of the blue water and tile interior; light concrete or white-painted wood structure with subtle muted-blue accent stripes along the canopy; wide welcoming entrance under a flat canopy; clean modern public-facility look.",
     "gas_station": "Modern Norwegian fuel station, compact convenience-store building with attached pump canopy; single-story shop in light concrete or white-painted wood, slim metal columns supporting a wide flat canopy over two pump islands with two pumps each; clean utilitarian design; visible glass storefront on the shop revealing snack and drinks shelves inside. NO brand logos, NO text on canopy or facade, NO 'ESSO' or fuel-brand lettering anywhere.",
-    "butcher_shop": "Small traditional-leaning Norwegian butcher shop with modern touches, single-story; warm dark-stained wooden plank facade with white window trim; a large floor-to-ceiling display window revealing a glass counter with cuts of meat, hanging sausages, and a brass-rail backbar inside; slim awning over the central wooden door; modest corner-shop scale."
+    "butcher_shop": "Small traditional-leaning Norwegian butcher shop with modern touches, single-story; warm dark-stained wooden plank facade with white window trim; a large floor-to-ceiling display window revealing a glass counter with cuts of meat, hanging sausages, and a brass-rail backbar inside; slim awning over the central wooden door; modest corner-shop scale.",
+    "apartment_low": "Modern Norwegian low apartment block, two-story; painted wood cladding with visible plank seams; rhythmic residential windows with white trim; one or two small balconies with slim metal railings; recessed entrance with a modest canopy; flat or very low-pitched roof. Residential character: normal residential window proportions, NO floor-to-ceiling storefront glazing, NOT a shop.",
+    "apartment_high": "Modern Norwegian mid-rise apartment block, three-to-four stories; light concrete and painted wood facade; rhythmic balconies with glass or slim metal railings; flat roof; ground-floor entrance with a modest canopy; warm light glowing in a few windows. Residential character: normal residential window proportions, NO floor-to-ceiling storefront glazing, NOT a shop. CRITICAL: the building MUST be three or four stories tall, with multiple stacked floors of balconies — NOT a single-story building.",
+    "office_block": "Modern Norwegian office building, two-to-three stories; facade with a regular grid of large windows and brushed-metal trim; recessed glass entrance under a flat canopy; flat roof; clean professional look; hint of desks and shelving visible through ground-floor glass.",
+    "rowhouse": "Norwegian rowhouse strip: three identical attached single-family units, story-and-a-half; painted wood cladding; small pitched roofs in dark tile; each unit with its own front door and a homely window with white trim; warm domestic look. Residential character: normal residential window proportions, NO floor-to-ceiling storefront glazing, NOT a shop. CRITICAL: three clearly separate attached units each with its own entrance door, small PITCHED roofs in dark tile — NOT a flat-roof modern pavilion, NOT one open glass volume. Background pure solid white.",
+    "detached_house": "Norwegian detached family house, story-and-a-half; painted wood cladding; modest pitched roof in dark tile; small covered entrance porch; homely windows with white trim; a slim chimney. Residential character: normal residential window proportions, NO floor-to-ceiling storefront glazing, NOT a shop. CRITICAL: every single wall surface is the specified painted horizontal wood cladding - absolutely no brick, no concrete, no natural wood sections anywhere; one continuous dark pitched roof over the whole house. NOT a shop, NOT a modern pavilion, NO flat roof, NO storefront glass.",
+    "duplex": "Norwegian semi-detached duplex: two mirrored two-story units sharing a central wall; painted wood cladding; single pitched roof spanning both units; two front doors side by side near the middle; white window trim. Residential character: normal residential window proportions, NO floor-to-ceiling storefront glazing, NOT a shop. CRITICAL: NOT a shop, NO flat roof, NO storefront glass, NO brick walls, NO concrete walls; one single continuous pitched roof spanning both units.",
+    "generic_storefront": "Small generic Norwegian commercial unit, single-story; plain glass storefront with an EMPTY neutral interior (bare floor and walls, no products, no mannequins, no furniture); light facade; slim canopy over the door; blank fascia panel above the storefront. NO text, NO signage.",
+    "sports_hall": "Modern Norwegian sports hall: one large single-volume box, two stories tall; light concrete lower walls with a continuous band of high clerestory windows; flat or gently curved roof; wide entrance under a flat canopy; faint hint of an indoor court through the glass. CRITICAL: ONE large single-volume rectangular box with a continuous high clerestory glass band under the roofline - NOT a commercial storefront building, NO ground-floor shop windows.",
+    "parking_garage": "Compact modern multi-storey parking garage, two-to-three open decks; exposed light concrete structure with wide horizontal openings revealing a hint of parked cars; low entrance barrier; utilitarian clean design. NO text, NO signs.",
+    "kvartal_rekke": "Row of 3-4 connected Norwegian small-town buildings sharing walls, continuous facade, varied heights two and three floors, varied facade colors (white, ochre, brick red, grey), ground-floor shop fronts with awnings and display windows, traditional Scandinavian town architecture. The ground floor is a row of 3-4 distinct shop fronts with display windows and awnings; upper floors are residential/office with regular windows, NOT shops. CRITICAL: the buildings are attached side by side in ONE continuous straight row along a single street line, each building two or three stories tall, pitched or flat roofs of slightly varied height.",
+    "kvartal_rekke_smal": "Row of exactly 2 connected Norwegian small-town buildings sharing one wall, continuous facade, varied heights two and three floors, two different facade colors, ground-floor shop fronts with awnings and display windows, traditional Scandinavian town architecture. The ground floor is two distinct shop fronts with display windows and awnings; upper floors are residential/office with regular windows, NOT shops. CRITICAL: exactly two buildings attached side by side in ONE continuous row, each two or three stories tall.",
+    "shopping_mall": "Large modern Norwegian small-town shopping mall: ONE single connected low two-story volume with a flat roof spanning the entire footprint; continuous band of glass display windows along the whole ground floor, broad recessed glass main entrance under a wide canopy, light concrete facade with warm wood accent panels. CRITICAL: ONE single connected building mass, NOT a row of separate shops, NO gaps between sections. NO text, NO logos."
   },
   "bakery_kongsvinger": {
     "building_type": "bakery",
@@ -263,6 +275,200 @@
     "building_type": "butcher_shop",
     "interior_hint": "glass counter with cuts of meat, hanging sausages, and a brass-rail backbar visible through the display window",
     "size_variant": "small",
+    "location_specific": ""
+  },
+  "boligblokk_lav_a": {
+    "building_type": "apartment_low",
+    "interior_hint": "",
+    "size_variant": "medium",
+    "location_specific": "the ENTIRE facade is uniformly white-painted wood cladding — every wall white, no brick sections, no natural wood sections"
+  },
+  "boligblokk_lav_b": {
+    "building_type": "apartment_low",
+    "interior_hint": "",
+    "size_variant": "medium",
+    "location_specific": "the ENTIRE facade is uniformly warm ochre-yellow painted wood cladding — no brick sections, no natural wood sections"
+  },
+  "boligblokk_lav_c": {
+    "building_type": "apartment_low",
+    "interior_hint": "",
+    "size_variant": "medium",
+    "location_specific": "the ENTIRE facade is uniformly muted sage-green painted wood cladding — no brick sections, no natural wood sections"
+  },
+  "boligblokk_hoy_a": {
+    "building_type": "apartment_high",
+    "interior_hint": "",
+    "size_variant": "large",
+    "location_specific": "light concrete with white wood accent panels"
+  },
+  "boligblokk_hoy_b": {
+    "building_type": "apartment_high",
+    "interior_hint": "",
+    "size_variant": "large",
+    "location_specific": "warm brick-red accent panels between the balconies"
+  },
+  "boligblokk_hoy_c": {
+    "building_type": "apartment_high",
+    "interior_hint": "",
+    "size_variant": "large",
+    "location_specific": "dusty blue-grey accent panels between the balconies"
+  },
+  "kontorbygg_a": {
+    "building_type": "office_block",
+    "interior_hint": "hint of desks and monitors through the ground-floor glass",
+    "size_variant": "medium",
+    "location_specific": "light grey concrete facade"
+  },
+  "kontorbygg_b": {
+    "building_type": "office_block",
+    "interior_hint": "hint of desks and monitors through the ground-floor glass",
+    "size_variant": "medium",
+    "location_specific": "warm sand-beige facade panels"
+  },
+  "kontorbygg_c": {
+    "building_type": "office_block",
+    "interior_hint": "hint of desks and monitors through the ground-floor glass",
+    "size_variant": "medium",
+    "location_specific": "charcoal-grey facade panels with light metal trim"
+  },
+  "rekkehus_a": {
+    "building_type": "rowhouse",
+    "interior_hint": "",
+    "size_variant": "medium",
+    "location_specific": "the ENTIRE facade is uniformly nordic red-painted wood cladding on all three units"
+  },
+  "rekkehus_b": {
+    "building_type": "rowhouse",
+    "interior_hint": "",
+    "size_variant": "medium",
+    "location_specific": "the ENTIRE facade is uniformly white-painted wood cladding on all three units"
+  },
+  "enebolig_a": {
+    "building_type": "detached_house",
+    "interior_hint": "",
+    "size_variant": "small",
+    "location_specific": "the ENTIRE facade is uniformly white-painted wood, dark slate roof"
+  },
+  "enebolig_b": {
+    "building_type": "detached_house",
+    "interior_hint": "",
+    "size_variant": "small",
+    "location_specific": "the ENTIRE facade is uniformly warm yellow-painted wood, dark tile roof"
+  },
+  "enebolig_c": {
+    "building_type": "detached_house",
+    "interior_hint": "",
+    "size_variant": "small",
+    "location_specific": "the ENTIRE facade is uniformly nordic red-painted wood, dark tile roof"
+  },
+  "tomannsbolig_a": {
+    "building_type": "duplex",
+    "interior_hint": "",
+    "size_variant": "small",
+    "location_specific": "the ENTIRE facade is uniformly white-painted wood cladding"
+  },
+  "tomannsbolig_b": {
+    "building_type": "duplex",
+    "interior_hint": "",
+    "size_variant": "small",
+    "location_specific": "the ENTIRE facade is uniformly grey-blue painted wood cladding"
+  },
+  "butikklokale_a": {
+    "building_type": "generic_storefront",
+    "interior_hint": "",
+    "size_variant": "small",
+    "location_specific": "the ENTIRE facade is white painted wood"
+  },
+  "butikklokale_b": {
+    "building_type": "generic_storefront",
+    "interior_hint": "",
+    "size_variant": "small",
+    "location_specific": "the ENTIRE facade is light brick"
+  },
+  "butikklokale_c": {
+    "building_type": "generic_storefront",
+    "interior_hint": "",
+    "size_variant": "small",
+    "location_specific": "the ENTIRE facade is pale grey concrete"
+  },
+  "skolebygg_a": {
+    "building_type": "school",
+    "interior_hint": "rows of classroom windows with desks subtly visible",
+    "size_variant": "large",
+    "location_specific": ""
+  },
+  "idrettshall_a": {
+    "building_type": "sports_hall",
+    "interior_hint": "faint hint of an indoor sports court through the clerestory glass",
+    "size_variant": "large",
+    "location_specific": "subtle muted-blue accent stripe along the entrance canopy"
+  },
+  "parkeringshus_a": {
+    "building_type": "parking_garage",
+    "interior_hint": "hint of parked cars in the open decks",
+    "size_variant": "medium",
+    "location_specific": ""
+  },
+  "kvartal_a": {
+    "building_type": "kvartal_rekke",
+    "interior_hint": "warm light in a few shop windows and upper-floor windows",
+    "size_variant": "large",
+    "location_specific": "the leftmost building white, middle ochre-yellow, rightmost brick red",
+    "style_variant": "legacy"
+  },
+  "kvartal_b": {
+    "building_type": "kvartal_rekke",
+    "interior_hint": "warm light in a few shop windows and upper-floor windows",
+    "size_variant": "large",
+    "location_specific": "the leftmost building brick red, middle white, rightmost warm grey",
+    "style_variant": "legacy"
+  },
+  "kvartal_c": {
+    "building_type": "kvartal_rekke",
+    "interior_hint": "warm light in a few shop windows and upper-floor windows",
+    "size_variant": "large",
+    "location_specific": "the leftmost building ochre-yellow, middle dusty rose, rightmost white",
+    "style_variant": "legacy"
+  },
+  "kvartal_d": {
+    "building_type": "kvartal_rekke",
+    "interior_hint": "warm light in a few shop windows and upper-floor windows",
+    "size_variant": "large",
+    "location_specific": "the leftmost building warm grey, middle brick red, rightmost cream white",
+    "style_variant": "legacy"
+  },
+  "kvartal_e": {
+    "building_type": "kvartal_rekke",
+    "interior_hint": "warm light in a few shop windows and upper-floor windows",
+    "size_variant": "large",
+    "location_specific": "the leftmost building cream white, middle warm grey, rightmost ochre-yellow",
+    "style_variant": "legacy"
+  },
+  "kvartal_f": {
+    "building_type": "kvartal_rekke",
+    "interior_hint": "warm light in a few shop windows and upper-floor windows",
+    "size_variant": "large",
+    "location_specific": "the leftmost building dusty rose, middle white, rightmost brick red",
+    "style_variant": "legacy"
+  },
+  "kvartal_smal_a": {
+    "building_type": "kvartal_rekke_smal",
+    "interior_hint": "warm light in the shop windows",
+    "size_variant": "medium",
+    "location_specific": "left building white, right building ochre-yellow",
+    "style_variant": "legacy"
+  },
+  "kvartal_smal_b": {
+    "building_type": "kvartal_rekke_smal",
+    "interior_hint": "warm light in the shop windows",
+    "size_variant": "medium",
+    "location_specific": "left building brick red, right building cream white",
+    "style_variant": "legacy"
+  },
+  "kjopesenter": {
+    "building_type": "shopping_mall",
+    "interior_hint": "hint of a bright mall corridor with shop displays through the entrance glass",
+    "size_variant": "large",
     "location_specific": ""
   }
 }

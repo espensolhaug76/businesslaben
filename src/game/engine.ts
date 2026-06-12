@@ -98,7 +98,9 @@ function priceModifier(retailPrice: number, recommendedPrice: number): number {
   return 0.35
 }
 
-function marketingModifier(totalBudget: number): number {
+// Exported: gjenbrukes av kundestrøm-animasjonen i bydelsvisningen
+// (LEVENDE BY) så visuell tetthet og simulering bruker SAMME kurver.
+export function marketingModifier(totalBudget: number): number {
   if (totalBudget <= 0)      return 0.70
   if (totalBudget < 5_000)   return 0.88
   if (totalBudget < 15_000)  return 1.00
@@ -116,7 +118,7 @@ function locationModifier(zone: string | null): number {
   }
 }
 
-function reputationModifier(rep: number): number {
+export function reputationModifier(rep: number): number {
   return 0.60 + (rep / 100) * 0.70  // 0.60–1.30
 }
 

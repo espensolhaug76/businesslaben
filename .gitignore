@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 __pycache__/
 .gen-*.py
+# Claude Code personal overrides
+.claude/settings.local.json

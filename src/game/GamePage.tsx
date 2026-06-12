@@ -1,13 +1,27 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { GameProvider, useGame } from './GameContext'
-import PhaserGame from './PhaserGame'
 import HUD from './ui/HUD'
 import SimulationModal from './ui/SimulationModal'
 import DashboardOverlay from './ui/DashboardOverlay'
 import YearEndOverlay from './ui/YearEndOverlay'
 import RentPanel from './ui/panels/RentPanel'
 import StartupScreen from './screens/StartupScreen'
-import MiniMap from './ui/MiniMap'
+import CityMapView from './city/CityMapView'
+import DistrictView, { type LokaleClick } from './city/DistrictView'
+import StorefrontView from './city/StorefrontView'
+import { districtOfLokale } from '../data/districts'
+
+// ── BYBILDE-ARKITEKTUR ────────────────────────────────────────────────────────
+// /game er nå bildebasert: master-kart → bydel → lokale (URL-styrt).
+// Phaser-byen (PhaserGame/CityScene/MiniMap/CameraControls) er PARKERT —
+// koden ligger urørt i src/game/phaser/ men ruten bruker den ikke lenger.
+// All spillogikk (GameContext, økonomi, RENT_LOCATION, dashboards) er uendret.
+
+const IS_DEV_SKIP =
+  import.meta.env.DEV &&
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('skip') === '1'
 
 interface VacantInfo {
   id: string
@@ -21,11 +35,12 @@ interface VacantInfo {
   worldY: number
 }
 
-/** Open/close the global overlay flag so CityScene can skip input */
+/** Bevart fra Phaser-flyten (KRAV): flagget + syntetisk pointerup gjør at en
+ *  eventuelt gjenopplivet CityScene aldri blir stående i drag-state. Ufarlig
+ *  uten canvas. */
 function setOverlay(open: boolean) {
   window.__OVERLAY_OPEN__ = open
   if (!open) {
-    // Dispatch a synthetic pointerup so Phaser never gets stuck in drag state
     document.querySelector('canvas')?.dispatchEvent(
       new PointerEvent('pointerup', { bubbles: true })
     )
@@ -33,252 +48,160 @@ function setOverlay(open: boolean) {
 }
 
 function GameContent() {
-  const { state } = useGame()
-  const [simOpen, setSimOpen]           = useState(false)
+  const { state, dispatch } = useGame()
+  const navigate = useNavigate()
+  const { districtId, lokaleId } = useParams<{ districtId?: string; lokaleId?: string }>()
+  const [simOpen, setSimOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [dashboardTab, setDashboardTab] = useState<string>('oversikt')
-  const [vacantInfo, setVacantInfo]     = useState<VacantInfo | null>(null)
-  const [phaserReady, setPhaserReady]   = useState(false)
-  const [inInterior, setInInterior]     = useState(false)
+  const [vacantInfo, setVacantInfo] = useState<VacantInfo | null>(null)
   const [tutorialDismissed, setTutorialDismissed] = useState(false)
 
-  // Notify CityScene when a location gets rented (update building appearance)
+  // Dev shortcut: ?skip=1 seeds defaults and skips the StartupScreen wizard.
   useEffect(() => {
-    if (state.rentedLocationId) {
-      window.dispatchEvent(new CustomEvent('game:locationRented', {
-        detail: { id: state.rentedLocationId, companyName: state.companyName },
-      }))
-    }
-  }, [state.rentedLocationId])
-
-  useEffect(() => {
-    function onVacant(e: Event) {
-      setVacantInfo((e as CustomEvent<VacantInfo>).detail)
-      setOverlay(true)
-    }
-    function onDashboard() {
-      setDashboardTab('oversikt')
-      setDashboardOpen(true)
-      setOverlay(true)
-    }
-    function onBank() {
-      setDashboardTab('okonomi')
-      setDashboardOpen(true)
-      setOverlay(true)
-    }
-    function onExitInterior() {
-      setInInterior(false)
-    }
-    function onSimulate() {
-      setSimOpen(true)
-      setOverlay(true)
-    }
-    window.addEventListener('phaser:vacantClicked', onVacant)
-    window.addEventListener('phaser:open-dashboard', onDashboard)
-    window.addEventListener('phaser:open-bank', onBank)
-    window.addEventListener('phaser:exitInterior', onExitInterior)
-    window.addEventListener('phaser:simulate', onSimulate)
-    return () => {
-      window.removeEventListener('phaser:vacantClicked', onVacant)
-      window.removeEventListener('phaser:open-dashboard', onDashboard)
-      window.removeEventListener('phaser:open-bank', onBank)
-      window.removeEventListener('phaser:exitInterior', onExitInterior)
-      window.removeEventListener('phaser:simulate', onSimulate)
-    }
-  }, [])
+    if (!IS_DEV_SKIP) return
+    if (state.phase !== 'startup') return
+    dispatch({
+      type: 'START_GAME',
+      companyName: 'DevCo',
+      industry: 'cafe',
+      businessModel: 'detaljhandel',
+      finansiering: 'bank',
+      personlighet: 'analytisk',
+    })
+    // Demo-sortiment med full/lav/tom lagerstatus så vindusutstillingen
+    // (lager-barometeret) kan itereres uten å klikke gjennom 4P-løypa.
+    dispatch({
+      type: 'SET_PRODUCTS',
+      products: [
+        { id: 'dev_kaffe', name: 'Kaffe', icon: '☕', tier: 'standard', costPrice: 12, retailPrice: 45, recommendedPrice: 45, stock: 40, quality: 70, sustainability: 60, maxDemandPerMonth: 40 },
+        { id: 'dev_croissant', name: 'Croissant', icon: '🥐', tier: 'standard', costPrice: 9, retailPrice: 35, recommendedPrice: 35, stock: 6, quality: 70, sustainability: 55, maxDemandPerMonth: 30 },
+        { id: 'dev_muffins', name: 'Muffins', icon: '🧁', tier: 'budget', costPrice: 7, retailPrice: 29, recommendedPrice: 29, stock: 0, quality: 60, sustainability: 50, maxDemandPerMonth: 25 },
+      ],
+    })
+    console.log('[DEV] StartupScreen skipped, seeded defaults + demo-sortiment')
+  }, [state.phase, dispatch])
 
   if (state.phase === 'startup') {
+    if (IS_DEV_SKIP) return null
     return <StartupScreen />
   }
 
-  function handleEnterShop() {
-    setInInterior(true)
-    window.dispatchEvent(new CustomEvent('game:enterInterior', {
-      detail: {
-        shopName: state.companyName,
-        industry: state.industry,
-        totalStock: state.products.reduce((s, p) => s + p.stock, 0),
-        storageCapacity: state.storageCapacity,
-      },
-    }))
+  function closeSim() { setSimOpen(false); setOverlay(false) }
+  function closeDashboard() { setDashboardOpen(false); setOverlay(false) }
+  function closeRentPanel() { setVacantInfo(null); setOverlay(false) }
+
+  function onVacantClick({ district, lokale, rent }: LokaleClick) {
+    setVacantInfo({
+      id: lokale.id,
+      label: lokale.navn,
+      zone: district.zone,
+      rent,
+      footTraffic: district.trafikk,
+      sqm: lokale.sqm,
+      capacity: lokale.kapasitet,
+      worldX: 0, worldY: 0,
+    })
+    setOverlay(true)
   }
 
-  function closeSim() {
-    setSimOpen(false)
-    setOverlay(false)
-  }
-  function closeDashboard() {
-    setDashboardOpen(false)
-    setOverlay(false)
-  }
-  function closeRentPanel() {
-    setVacantInfo(null)
-    setOverlay(false)
+  /** Etter leie (eller «gå til butikken»): naviger til lokalets storefront. */
+  function gotoOwnStorefront(rentedId?: string) {
+    const id = rentedId ?? state.rentedLocationId
+    if (!id) return
+    const d = districtOfLokale(id)
+    if (d) navigate(`/game/d/${d.id}/l/${id}`)
   }
 
   const allPs = state.p1_complete && state.p2_complete && state.p3_complete && state.p4_complete
+  const onMaster = !districtId
 
   return (
     <>
-      <PhaserGame onReady={() => setPhaserReady(true)} />
+      {/* Aktivt visningsnivå (URL-styrt) */}
+      {lokaleId && districtId
+        ? <StorefrontView
+            districtId={districtId}
+            lokaleId={lokaleId}
+            onOpenPanel={tab => { setDashboardTab(tab); setDashboardOpen(true); setOverlay(true) }}
+          />
+        : districtId
+          ? <DistrictView districtId={districtId} onVacantClick={onVacantClick} />
+          : <CityMapView />}
 
-      {phaserReady && (
-        <>
-          <HUD />
+      <HUD />
 
-          {/* Camera controls */}
-          <CameraControls visible={!inInterior && !simOpen && !dashboardOpen && !vacantInfo} />
+      {/* Førstegangshint på masterkartet */}
+      {onMaster && state.tutorialStep === 1 && !state.rentedLocationId && !tutorialDismissed && (
+        <TutorialBubble
+          text="🏙️ Velg en bydel på kartet! I sentrum finner du ledige lokaler med «TIL LEIE»-skilt."
+          onDismiss={() => setTutorialDismissed(true)}
+        />
+      )}
 
-          {/* Mini-map */}
-          {!inInterior && !simOpen && !dashboardOpen && <MiniMap />}
-
-          {/* First-time hint */}
-          {state.tutorialStep === 1 && !state.rentedLocationId && !inInterior && !tutorialDismissed && (
-            <TutorialBubble
-              text='🏙️ Utforsk byen! Finn et "TIL LEIE"-skilt og klikk på det for å starte virksomheten.'
-              onDismiss={() => setTutorialDismissed(true)}
-            />
+      {/* Snarveier nederst til høyre når man leier */}
+      {state.rentedLocationId && !simOpen && !dashboardOpen && !vacantInfo && (
+        <div style={{
+          position: 'fixed', bottom: 30, right: 24, zIndex: 92,
+          display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end',
+          fontFamily: "'Outfit', sans-serif",
+        }}>
+          {!lokaleId && (
+            <button onClick={() => gotoOwnStorefront()} style={pillStyle('linear-gradient(135deg, #0d9488, #0f766e)', 'rgba(14,165,141,0.4)')}>
+              🏪 Gå til butikken
+            </button>
           )}
+          <button
+            onClick={() => { setDashboardTab('oversikt'); setDashboardOpen(true); setOverlay(true) }}
+            style={pillStyle('linear-gradient(135deg, #334155, #1e293b)', 'rgba(148,163,184,0.3)')}
+          >
+            🖥️ Dashbord
+          </button>
+        </div>
+      )}
 
-          {/* Enter shop button */}
-          {state.rentedLocationId && !inInterior && !simOpen && !dashboardOpen && (
-            <div style={{
-              position: 'fixed', bottom: 90, right: 24, zIndex: 92,
-              fontFamily: "'Outfit', sans-serif",
-            }}>
-              <button onClick={handleEnterShop} style={{
-                background: 'linear-gradient(135deg, #0d9488, #0f766e)',
-                border: 'none', borderRadius: 99, padding: '0.75rem 1.5rem',
-                color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                fontFamily: 'inherit', boxShadow: '0 0 20px rgba(14,165,141,0.4)',
-              }}>
-                🏪 Gå inn i butikken
-              </button>
-            </div>
-          )}
+      {/* Simuler måneden — når alle 4P er fullført */}
+      {allPs && state.rentedLocationId && !simOpen && !dashboardOpen && (
+        <div style={{
+          position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 92, fontFamily: "'Outfit', sans-serif",
+        }}>
+          <button
+            onClick={() => { setSimOpen(true); setOverlay(true) }}
+            style={{
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              border: 'none', borderRadius: 99, padding: '0.9rem 2.5rem',
+              color: '#fff', fontWeight: 800, fontSize: 16, cursor: 'pointer',
+              fontFamily: 'inherit', boxShadow: '0 0 24px rgba(34,197,94,0.4)',
+            }}
+          >
+            ▶ Simuler måneden
+          </button>
+        </div>
+      )}
 
-          {/* Simulate button — only when all 4P done */}
-          {allPs && state.rentedLocationId && !inInterior && !simOpen && !dashboardOpen && (
-            <div style={{
-              position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-              zIndex: 92, fontFamily: "'Outfit', sans-serif",
-            }}>
-              <button
-                onClick={() => { setSimOpen(true); setOverlay(true) }}
-                style={{
-                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                  border: 'none', borderRadius: 99, padding: '0.9rem 2.5rem',
-                  color: '#fff', fontWeight: 800, fontSize: 16, cursor: 'pointer',
-                  fontFamily: 'inherit', boxShadow: '0 0 24px rgba(34,197,94,0.4)',
-                }}
-              >
-                ▶ Simuler måneden
-              </button>
-            </div>
-          )}
+      <SimulationModal open={simOpen} onClose={closeSim} />
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} initialTab={dashboardTab as any} />
+      <YearEndOverlay />
 
-          <SimulationModal open={simOpen} onClose={closeSim} />
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} initialTab={dashboardTab as any} />
-          <YearEndOverlay />
-
-          {vacantInfo && (
-            <RentPanel
-              info={vacantInfo}
-              onClose={closeRentPanel}
-              onEnterShop={handleEnterShop}
-            />
-          )}
-        </>
+      {vacantInfo && (
+        <RentPanel
+          info={vacantInfo}
+          onClose={closeRentPanel}
+          onEnterShop={() => gotoOwnStorefront(vacantInfo.id)}
+        />
       )}
     </>
   )
 }
 
-// ─── Camera arrow buttons ────────────────────────────────────────────────────
-
-const KEY_MAP: Record<string, { key: string; code: string; keyCode: number }> = {
-  up:    { key: 'ArrowUp',    code: 'ArrowUp',    keyCode: 38 },
-  down:  { key: 'ArrowDown',  code: 'ArrowDown',  keyCode: 40 },
-  left:  { key: 'ArrowLeft',  code: 'ArrowLeft',  keyCode: 37 },
-  right: { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 },
-}
-
-function CameraControls({ visible }: { visible: boolean }) {
-  const held = useRef<string | null>(null)
-
-  const startPan = useCallback((dir: string) => {
-    if (held.current === dir) return
-    if (held.current) {
-      const prev = KEY_MAP[held.current]
-      window.dispatchEvent(new KeyboardEvent('keyup', { ...prev, bubbles: true, cancelable: true }))
-    }
-    held.current = dir
-    const k = KEY_MAP[dir]
-    window.dispatchEvent(new KeyboardEvent('keydown', { ...k, bubbles: true, cancelable: true }))
-  }, [])
-
-  const stopPan = useCallback(() => {
-    if (!held.current) return
-    const k = KEY_MAP[held.current]
-    window.dispatchEvent(new KeyboardEvent('keyup', { ...k, bubbles: true, cancelable: true }))
-    held.current = null
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener('pointerup', stopPan)
-    return () => window.removeEventListener('pointerup', stopPan)
-  }, [stopPan])
-
-  if (!visible) return null
-
-  const btnStyle = (_dir: string): React.CSSProperties => ({
-    width: 40, height: 40,
-    background: 'rgba(255,255,255,0.15)',
-    backdropFilter: 'blur(8px)',
-    border: '1px solid rgba(255,255,255,0.25)',
-    borderRadius: 8,
-    color: '#fff', fontSize: 16, cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    userSelect: 'none', touchAction: 'none',
-  })
-
-  return (
-    <div style={{
-      position: 'fixed', bottom: 90, left: 20, zIndex: 91,
-      display: 'grid', gridTemplateColumns: '40px 40px 40px',
-      gridTemplateRows: '40px 40px 40px', gap: 4,
-    }}>
-      {/* Row 1: up */}
-      <div />
-      <button
-        style={btnStyle('up')}
-        onPointerDown={e => { e.preventDefault(); startPan('up') }}
-        onPointerLeave={stopPan}
-      >▲</button>
-      <div />
-      {/* Row 2: left / blank / right */}
-      <button
-        style={btnStyle('left')}
-        onPointerDown={e => { e.preventDefault(); startPan('left') }}
-        onPointerLeave={stopPan}
-      >◀</button>
-      <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 8 }} />
-      <button
-        style={btnStyle('right')}
-        onPointerDown={e => { e.preventDefault(); startPan('right') }}
-        onPointerLeave={stopPan}
-      >▶</button>
-      {/* Row 3: down */}
-      <div />
-      <button
-        style={btnStyle('down')}
-        onPointerDown={e => { e.preventDefault(); startPan('down') }}
-        onPointerLeave={stopPan}
-      >▼</button>
-      <div />
-    </div>
-  )
+function pillStyle(background: string, glow: string): React.CSSProperties {
+  return {
+    background, border: 'none', borderRadius: 99, padding: '0.75rem 1.5rem',
+    color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+    fontFamily: 'inherit', boxShadow: `0 0 20px ${glow}`,
+  }
 }
 
 function TutorialBubble({ text, onDismiss }: { text: string; onDismiss: () => void }) {

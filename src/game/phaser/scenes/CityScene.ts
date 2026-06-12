@@ -72,12 +72,19 @@ const ROAD_SINGLES=[{col:_S,row:12}]
 // ── Building data ─────────────────────────────────────────────────────────────
 interface BD{ca:number;ra:number;cb:number;rb:number;fill:number;border:number;bw?:number;dashed?:boolean
   name?:string;symbol?:string;header?:string;plaza?:boolean;fl?:number
+  // Texture key from BootScene's MODERN_BUILDING_ASSETS. When set (and the
+  // texture exists in cache) the building renders as a sprite; the procedural
+  // box is only a fallback. Assignments follow docs/CITY_SLOT_REGISTRY.md.
+  asset?:string
+  // Manual facing override ('SE'|'SW'); default derived from adjacent streets
+  // by facingOf() — see docs/ROTATION_AUDIT.md.
+  facing?:Facing
   grid?:{cols:number;rows:number;units:string[]};zone?:string;rent?:number;traffic?:string;sqm?:number;cap?:number}
 
 const B:BD[]=[
-  {ca:_V,ra:2,cb:_V,rb:3,fill:0xffe8c0,border:0xd08020,name:'Hotell 🏨',fl:3},
+  {ca:_V,ra:2,cb:_V,rb:3,fill:0xffe8c0,border:0xd08020,name:'Hotell 🏨',fl:3,asset:'hotel'},
   {ca:_T,ra:2,cb:_T,rb:3,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:2,units:['V','V']},zone:'gagata',rent:36000,traffic:'Middels',sqm:50,cap:110},
-  {ca:_A,ra:5,cb:_B,rb:8,fill:0xd0e8f8,border:0x378add,bw:3,name:'Sykehuset 🏥',fl:3},
+  {ca:_A,ra:5,cb:_B,rb:8,fill:0xd0e8f8,border:0x378add,bw:3,name:'Sykehuset 🏥',fl:3,asset:'sykehuset'},
   {ca:_D,ra:5,cb:_G,rb:6,fill:0xf0e8d8,border:0xa08860,fl:2,name:'Boliger',grid:{cols:4,rows:2,units:['🏠','🏠','🏠','🏠','🏠','🏠','🏠','🏠']}},
   {ca:_I,ra:6,cb:_L,rb:6,fill:0xf0e8d8,border:0xa08860,fl:2,name:'Boliger',grid:{cols:4,rows:1,units:['🏠','🏠','🏠','🏠']}},
   {ca:_I,ra:8,cb:_M,rb:8,fill:0xf0e8d8,border:0xa08860,fl:2,name:'Boliger',grid:{cols:5,rows:1,units:['🏠','🏠','🏠','🏠','🏠']}},
@@ -86,24 +93,24 @@ const B:BD[]=[
   {ca:_O,ra:5,cb:_Q,rb:6,fill:0xfff0f0,border:0xcc2020,grid:{cols:3,rows:2,units:['V','V','V','V','V','V']},zone:'gagata',rent:55000,traffic:'Høy',sqm:80,cap:180},
   {ca:_R,ra:5,cb:_T,rb:6,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:3,rows:2,units:['V','V','V','V','V','V']},zone:'gagata',rent:50000,traffic:'Høy',sqm:75,cap:170},
   {ca:_V,ra:5,cb:_V,rb:5,fill:0xb8e0f8,border:0x3182bd,symbol:'⛲',name:'⛲',fl:0},
-  {ca:_W,ra:5,cb:_W,rb:5,fill:0xf0e8d0,border:0xa08040,symbol:'🎭',name:'🎭',fl:1},
-  {ca:_V,ra:6,cb:_W,rb:7,fill:0xddd8c0,border:0xa09060,name:'Rådhuset 🏛️',fl:3},
-  {ca:_Z,ra:5,cb:_AA,rb:6,fill:0xb8e8ff,border:0x2080c0,name:'Kongsbadet 🏊',fl:2},
-  {ca:_E,ra:8,cb:_G,rb:9,fill:0xfff0d0,border:0xe08000,name:'⛽ ESSO',fl:1},
+  {ca:_W,ra:5,cb:_W,rb:5,fill:0xf0e8d0,border:0xa08040,symbol:'🎭',name:'🎭',fl:1,asset:'radhusteateret'},
+  {ca:_V,ra:6,cb:_W,rb:7,fill:0xddd8c0,border:0xa09060,name:'Rådhuset 🏛️',fl:3,asset:'radhus'},
+  {ca:_Z,ra:5,cb:_AA,rb:6,fill:0xb8e8ff,border:0x2080c0,name:'Kongsbadet 🏊',fl:2,asset:'kongsbadet'},
+  {ca:_E,ra:8,cb:_G,rb:9,fill:0xfff0d0,border:0xe08000,name:'⛽ ESSO',fl:1,asset:'esso'},
   {ca:_O,ra:8,cb:_R,rb:8,fill:0xf0f8ff,border:0x6040a0,grid:{cols:4,rows:1,units:['V','V','V','Græb']},zone:'hovedgata',rent:28000,traffic:'Middels',sqm:55,cap:85},
-  {ca:_V,ra:8,cb:_Y,rb:9,fill:0x888888,border:0x666666,plaza:true,name:'Rådhusplassen',fl:0},
-  {ca:_Y,ra:7,cb:_Z,rb:7,fill:0xe8e0f8,border:0x6050b0,name:'📚 Bibliotek',fl:2},
-  {ca:_AA,ra:8,cb:_AB,rb:9,fill:0xd0e8f8,border:0x378add,name:'Sentrum VGS 🏫',fl:2},
-  {ca:_Q,ra:9,cb:_Q,rb:9,fill:0xe8d8f0,border:0x9060b0,name:'Øyeklinikk'},
-  {ca:_R,ra:9,cb:_R,rb:9,fill:0xffd8b0,border:0xc06000,name:'Peders'},
+  {ca:_V,ra:8,cb:_Y,rb:9,fill:0xcfc6b4,border:0xa89c84,plaza:true,name:'Rådhusplassen',fl:0},
+  {ca:_Y,ra:7,cb:_Z,rb:7,fill:0xe8e0f8,border:0x6050b0,name:'📚 Bibliotek',fl:2,asset:'bibliotek'},
+  {ca:_AA,ra:8,cb:_AB,rb:9,fill:0xd0e8f8,border:0x378add,name:'Sentrum VGS 🏫',fl:2,asset:'sentrum_vgs'},
+  {ca:_Q,ra:9,cb:_Q,rb:9,fill:0xe8d8f0,border:0x9060b0,name:'Øyeklinikk',asset:'legekontor'},
+  {ca:_R,ra:9,cb:_R,rb:9,fill:0xffd8b0,border:0xc06000,name:'Peders',asset:'peders'},
   {ca:_O,ra:9,cb:_P,rb:10,fill:0xf0f0ff,border:0x4060c0,grid:{cols:2,rows:2,units:['V','V','V','V']},zone:'hovedgata',rent:24000,traffic:'Middels',sqm:50,cap:80},
-  {ca:_Q,ra:10,cb:_Q,rb:10,fill:0xffe0b0,border:0xe8a020,name:'Specsavers'},
+  {ca:_Q,ra:10,cb:_Q,rb:10,fill:0xffe0b0,border:0xe8a020,name:'Specsavers',asset:'optician'},
   {ca:_R,ra:10,cb:_R,rb:10,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'hovedgata',rent:26000,traffic:'Middels',sqm:48,cap:78},
   {ca:_T,ra:9,cb:_T,rb:9,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'hovedgata',rent:26000,traffic:'Middels',sqm:48,cap:78},
   {ca:_T,ra:10,cb:_T,rb:10,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'hovedgata',rent:26000,traffic:'Middels',sqm:48,cap:78},
   {ca:_V,ra:10,cb:_Y,rb:10,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:4,rows:1,units:['V','V','V','V']},zone:'gagata',rent:45000,traffic:'Høy',sqm:65,cap:150},
   {ca:_J,ra:10,cb:_L,rb:10,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:3,rows:1,units:['V','V','V']},zone:'hovedgata',rent:22000,traffic:'Middels',sqm:42,cap:70},
-  {ca:_A,ra:12,cb:_A,rb:13,fill:0xe8f8e0,border:0x40a020,name:'KIWI 🛒'},
+  {ca:_A,ra:12,cb:_A,rb:13,fill:0xe8f8e0,border:0x40a020,name:'KIWI 🛒',asset:'kiwi'},
   {ca:_D,ra:12,cb:_G,rb:14,fill:0xfff8e8,border:0xc08000,bw:3,header:'KONGSSENTERET',fl:2,grid:{cols:2,rows:3,units:['Elkjøp','Normal','Nille','V','Lindex','KappAhl']},zone:'hovedgata',rent:30000,traffic:'Middels',sqm:60,cap:90},
   {ca:_I,ra:12,cb:_N,rb:13,fill:0xfff8e8,border:0xc08000,bw:3,header:'KONGSSENTERET',fl:2,grid:{cols:6,rows:2,units:['V','H&M','Norli','Cubus','Kicks','Intersport','Dressmann','XXL','Vita','Europris','V','Søstrene G']},zone:'hovedgata',rent:32000,traffic:'Middels',sqm:65,cap:100},
   {ca:_O,ra:12,cb:_R,rb:13,fill:0xfff8e8,border:0xc08000,bw:3,header:'KONGSSENTERET',fl:2,grid:{cols:4,rows:2,units:['C.Ohlson','Power','Vinmonopolet','V','Jernia','Nille','Apotek 1','V']},zone:'hovedgata',rent:34000,traffic:'Middels',sqm:70,cap:105},
@@ -112,7 +119,7 @@ const B:BD[]=[
   {ca:_V,ra:13,cb:_V,rb:13,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'hovedgata',rent:25000,traffic:'Middels',sqm:45,cap:75},
   {ca:_V,ra:18,cb:_V,rb:18,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'utkant',rent:10000,traffic:'Lav',sqm:30,cap:40},
   {ca:_AE,ra:18,cb:_AG,rb:18,fill:0xd8e0f0,border:0x4060a0,bw:3,name:'SSB'},
-  {ca:_AA,ra:18,cb:_AC,rb:18,fill:0xe8d8f8,border:0x6040a0,name:'🚉 Lokalstasjon'},
+  {ca:_AA,ra:18,cb:_AC,rb:18,fill:0xe8d8f8,border:0x6040a0,name:'🚉 Lokalstasjon',asset:'jernbanestasjon'},
   {ca:_W,ra:21,cb:_W,rb:21,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'utkant',rent:10000,traffic:'Lav',sqm:32,cap:42},
   {ca:_W,ra:22,cb:_W,rb:22,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:1,rows:1,units:['V']},zone:'utkant',rent:10000,traffic:'Lav',sqm:32,cap:42},
   {ca:_Y,ra:20,cb:_AD,rb:20,fill:0xffe8e8,border:0xcc2020,dashed:true,grid:{cols:6,rows:1,units:['V','V','V','V','V','V']},zone:'utkant',rent:14000,traffic:'Lav',sqm:40,cap:55},
@@ -187,6 +194,10 @@ const B:BD[]=[
   {ca:_T, ra:30,cb:_V, rb:31,fill:0xc8d0d8,border:0x808890,fl:3,name:'Sparebanken'},
   {ca:_X, ra:30,cb:_Z, rb:31,fill:0x88c060,border:0x508030,fl:1,name:'Kiwi'},
   {ca:_AB,ra:30,cb:_AE,rb:33,fill:0xd8c8b8,border:0x988878,fl:5,name:'Stasjonsparken'},
+  // ── Re-added per docs/CITY_SLOT_REGISTRY.md (slot #3) ────────────────────
+  // Kirke at _R,2→_S,3 was lost in an earlier city rewrite; the lot has been
+  // empty since. Appended last so existing registry indices stay stable.
+  {ca:_R,ra:2,cb:_S,rb:3,fill:0xfff8f0,border:0xb0a090,fl:2,name:'⛪ Kirke',asset:'kirke'},
 ]
 
 const GAGATE={c1:_Y,c2:_AD,row:21}
@@ -204,9 +215,170 @@ function getfl(b:BD):number{
   if(b.fl!==undefined)return b.fl; if(b.header)return 2; if(b.plaza)return 0; return 1
 }
 
+// ── Sprite sizing (DEL 2) — single source of truth, no per-asset numbers ────
+// Width-fit against the plot diamond, height-clamped so elongated slots
+// (4×1, 6×2 …) don't blow a ~square texture up into a tower.
+const SPRITE_FILL=0.82      // sprite width as fraction of plot-diamond width
+// scripts/trim-assets.py crops every raw PNG to its alpha bbox, so the wall
+// base now touches the image bottom — origin y 1.0 puts it exactly on the
+// plot centroid (bottom-center anchor).
+const SPRITE_BASE_Y=1.0
+const SPRITE_MAX_EXTRA_H=5*FH
+function spriteScale(imgW:number,imgH:number,fw:number,fh:number):number{
+  return Math.min(fw*SPRITE_FILL/imgW,(fh+SPRITE_MAX_EXTRA_H)/imgH)
+}
+
+// ── Filler wiring (DEL 6) — fallback sprite pools keyed by BD name ──────────
+// Explicit b.asset always wins. A name maps to a pool of colour variants;
+// pickVariant hashes plot coords so the choice is stable across reloads.
+// Missing texture ⇒ procedural box remains as the emergency fallback.
+// Grid BDs (Boliger/TIL LEIE/Kongssenteret) render one sprite PER CELL —
+// cells are ~square so the shared scaling stays distortion-free; cells with
+// no pool of their own use the generic storefront pool ('Butikk').
+const FILLER:Record<string,string[]>={
+  'Boliger':['boligblokk_lav_a','boligblokk_lav_b','boligblokk_lav_c'],
+  '🏠':['enebolig_a','enebolig_b','enebolig_c'],
+  'Bolig':['boligblokk_hoy_a'],
+  'Leilighet':['boligblokk_hoy_b'],
+  'Stasjonsparken':['boligblokk_hoy_c'],
+  'Kontor':['kontorbygg_a','kontorbygg_b'],
+  'SSB':['kontorbygg_c'],
+  'Rekkehus':['rekkehus_a','rekkehus_b'],
+  'Enebolig':['enebolig_a','enebolig_b','enebolig_c'],
+  'Tomannsbolig':['tomannsbolig_a','tomannsbolig_b'],
+  'Butikk':['butikklokale_a','butikklokale_b','butikklokale_c'],
+  'Boutique':['fashion_shop'],
+  'Restaurant':['restaurant_modern'],
+  'Kafé':['cafe'],
+  'Bokhandel':['bokhandel'],
+  'Apotek':['apotek1'],
+  'Sparebanken':['bank'],
+  'Kiwi':['kiwi'],
+  'Coop Mega 🛒':['coop_mega'],
+  'Hovedstasjonen':['jernbanestasjon'],
+  'Sentrum ungdomsskole':['skolebygg_a'],
+  'Sentrum idrettshall':['idrettshall_a'],
+  'P':['parkeringshus_a'],
+}
+function pickVariant(pool:string[],a:number,b:number):string{
+  return pool[Math.abs(((a*31+b*17)|0))%pool.length]
+}
+
+// ── Kvartaler (KVARTALSBY) ───────────────────────────────────────────────────
+// Sentrum-BDs grouped into Norwegian town blocks. Each kvartal renders ONE
+// shared facade sprite over the combined footprint; member BDs (matched by
+// footprint containment) draw no building of their own — their V-units
+// become TIL LEIE hotspots at street level on the kvartal facade, with
+// rent/sqm/capacity untouched from the slot data. Zone classification and
+// this table are mirrored in docs/CITY_SLOT_REGISTRY.md. Missing texture ⇒
+// members fall back to their normal filler/box rendering.
+interface KV{id:string;ca:number;ra:number;cb:number;rb:number;asset:string}
+const KVARTALER:KV[]=[
+  {id:'K01',ca:_M,ra:5, cb:_M,rb:6, asset:'kvartal_smal_a'},
+  {id:'K02',ca:_O,ra:5, cb:_Q,rb:6, asset:'kvartal_a'},
+  {id:'K03',ca:_R,ra:5, cb:_T,rb:6, asset:'kvartal_b'},
+  {id:'K04',ca:_T,ra:2, cb:_T,rb:3, asset:'kvartal_smal_b'},
+  {id:'K05',ca:_O,ra:8, cb:_R,rb:8, asset:'kvartal_c'},
+  {id:'K06',ca:_O,ra:9, cb:_P,rb:10,asset:'kvartal_d'},
+  {id:'K07',ca:_T,ra:9, cb:_T,rb:10,asset:'kvartal_smal_a'},
+  {id:'K08',ca:_V,ra:10,cb:_Y,rb:10,asset:'kvartal_e'},
+  {id:'K09',ca:_J,ra:10,cb:_L,rb:10,asset:'kvartal_f'},
+  {id:'K10',ca:_V,ra:12,cb:_V,rb:13,asset:'kvartal_smal_b'},
+  // Kongssenteret: ONE shared kjopesenter texture, one sprite per block —
+  // the three blocks are split by real streets (Eidemsgate m.fl.), so a
+  // single sprite across all of them would paint over the road. Tenant
+  // labels stay as text overlays on the facade.
+  {id:'K11',ca:_D,ra:12,cb:_G,rb:14,asset:'kjopesenter'},
+  {id:'K12',ca:_I,ra:12,cb:_N,rb:13,asset:'kjopesenter'},
+  {id:'K13',ca:_O,ra:12,cb:_R,rb:13,asset:'kjopesenter'},
+]
+function kvartalOf(b:BD):KV|undefined{
+  return KVARTALER.find(k=>b.ca>=k.ca&&b.cb<=k.cb&&b.ra>=k.ra&&b.rb<=k.rb)
+}
+
+// ── Facing (ORIENTERINGS-PASS) ───────────────────────────────────────────────
+// The camera shows a building's SE (screen down-right) and SW (down-left)
+// faces. facingOf() derives which one the facade should use from adjacent
+// streets — rail rows excluded, named plazas/torg count as streets. The
+// renderer then mirrors the sprite (flipX) when the asset's built-in facing
+// (ASSET_BASE_FACING, default 'SE') disagrees. Streets on the NE/NW sides
+// can NOT be faced with a mirror — those are flagged 'avvik-*' and listed
+// in docs/ROTATION_AUDIT.md for a future NE/NW render pass.
+type Facing='SE'|'SW'
+interface FacingResult{facing:Facing;gate:string;source:string}
+const FACING_TARGETS:Map<string,string>=(()=>{
+  const m=new Map<string,string>()
+  for(const r of HROADS){if(r.rail)continue;for(let c=r.c1;c<=r.c2;c++)m.set(`${c},${r.row}`,r.lbl||`vei rad ${r.row}`)}
+  for(const v of VROADS)for(let row=v.r1;row<=v.r2;row++)m.set(`${v.col},${row}`,v.lbl||`vei kol ${v.col}`)
+  for(const s of ROAD_SINGLES)m.set(`${s.col},${s.row}`,'vei')
+  m.set(`${_S},7`,'Fjellgata')
+  for(const b of B)if(b.plaza&&b.name)for(let c=b.ca;c<=b.cb;c++)for(let r=b.ra;r<=b.rb;r++)m.set(`${c},${r}`,b.name)
+  return m
+})()
+function facingOf(ca:number,ra:number,cb:number,rb:number):FacingResult{
+  const look=(cells:[number,number][]):string|null=>{
+    for(const[c,r]of cells){const g=FACING_TARGETS.get(`${c},${r}`);if(g)return g}
+    return null
+  }
+  const side=(which:Facing,dist:number):string|null=>{
+    const cells:[number,number][]=[]
+    if(which==='SW')for(let c=ca;c<=cb;c++)cells.push([c,rb+dist])
+    else for(let r=ra;r<=rb;r++)cells.push([cb+dist,r])
+    return look(cells)
+  }
+  // 1) Direct street contact on a camera-visible side (SW wins ties — the
+  //    east-west hovedgater are the dominant street lines).
+  for(const f of['SW','SE'] as Facing[]){const g=side(f,1);if(g)return{facing:f,gate:g,source:'gate'}}
+  // 2) Street only on the back (NE/NW) — flipX cannot face it; flag it.
+  const ne=look(Array.from({length:cb-ca+1},(_,i)=>[ca+i,ra-1] as [number,number]))
+  const nw=look(Array.from({length:rb-ra+1},(_,i)=>[ca-1,ra+i] as [number,number]))
+  if(ne)return{facing:'SW',gate:ne,source:'avvik-NE'}
+  if(nw)return{facing:'SE',gate:nw,source:'avvik-NW'}
+  // 3) No contact at all: inherit the nearest street within 4 tiles.
+  for(let d=2;d<=4;d++)for(const f of['SW','SE'] as Facing[]){const g=side(f,d);if(g)return{facing:f,gate:g,source:'arvet'}}
+  return{facing:'SW',gate:'(ingen)',source:'arvet'}
+}
+// Assets whose built-in facade faces SW (entrance/shopfront on the screen
+// down-LEFT face). Everything else is assumed SE. Visually assessed
+// 2026-06-12 — see docs/ROTATION_AUDIT.md; corner blocks (kvartal_a/d/e,
+// kvartal_smal_*, boligblokk_hoy_b) are symmetric and never need a flip,
+// they are left at the SE default.
+const ASSET_BASE_FACING:Record<string,Facing>={
+  kvartal_b:'SW',
+  kontorbygg_a:'SW',kontorbygg_b:'SW',kontorbygg_c:'SW',
+  rekkehus_a:'SW',rekkehus_b:'SW',
+  enebolig_a:'SW',enebolig_b:'SW',enebolig_c:'SW',
+  tomannsbolig_a:'SW',tomannsbolig_b:'SW',
+  boligblokk_lav_b:'SW',boligblokk_lav_c:'SW',boligblokk_hoy_c:'SW',
+  skolebygg_a:'SW',idrettshall_a:'SW',parkeringshus_a:'SW',
+}
+function flipFor(key:string,f:Facing):boolean{
+  return f!==(ASSET_BASE_FACING[key]??'SE')
+}
+
 // Global xray toggle shared with React HUD
 declare global { interface Window { __CITY_XRAY__: boolean } }
 if (typeof window !== 'undefined' && window.__CITY_XRAY__ === undefined) window.__CITY_XRAY__ = false
+
+// ── Global colour grade (DEL 3) ───────────────────────────────────────────────
+// Full-scene PostFX: slightly warmer tones, +12% saturation, soft vignette.
+// WebGL only; disabled with ?nofx=1 for A/B comparison.
+const GRADE_FRAG=`
+precision mediump float;
+uniform sampler2D uMainSampler;
+varying vec2 outTexCoord;
+void main(){
+  vec4 c=texture2D(uMainSampler,outTexCoord);
+  vec3 col=c.rgb*vec3(1.05,1.00,0.93);
+  float l=dot(col,vec3(0.2126,0.7152,0.0722));
+  col=mix(vec3(l),col,1.12);
+  float d=distance(outTexCoord,vec2(0.5));
+  col*=1.0-0.22*smoothstep(0.45,0.85,d);
+  gl_FragColor=vec4(clamp(col,0.0,1.0),c.a);
+}`
+class CityGradePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline{
+  constructor(game:Phaser.Game){super({game,name:'CityGrade',fragShader:GRADE_FRAG})}
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 export default class CityScene extends Phaser.Scene{
@@ -216,6 +388,7 @@ export default class CityScene extends Phaser.Scene{
   private pLabel:Phaser.GameObjects.Text|null=null
   private dragging=false;private dsx=0;dsy=0;csx=0;csy=0;private vid=0
   private roadSet=new Set<string>()
+  private railSet=new Set<string>()
   // Central list of ALL building graphics+texts for xray toggle
   private allBuildings:Phaser.GameObjects.GameObject[]=[]
   private xrayActive=false
@@ -224,17 +397,38 @@ export default class CityScene extends Phaser.Scene{
 
   create(){
     this.cameras.main.setBackgroundColor(0x4a8030)
+    // DEL 3: colour grade on the whole scene unless ?nofx=1 (Canvas renderer
+    // has no post pipelines — skip silently there).
+    if(new URLSearchParams(window.location.search).get('nofx')!=='1'&&this.game.renderer.type===Phaser.WEBGL){
+      const r=this.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer
+      r.pipelines.addPostPipeline('CityGrade',CityGradePipeline)
+      this.cameras.main.setPostPipeline(CityGradePipeline)
+      console.log('[CityScene] colour grade ON (disable with ?nofx=1)')
+    }
     this.buildRoadSet()
     this.drawGround()
+    this.drawCurbs()
     this.drawZoneOverlays()
     this.drawBoulevard()
     this.drawPark()
     this.drawPedestrianStreet()
+    this.drawKvartaler()
     this.drawBuildings()
     this.spawnCars()
     this.spawnPeds()
     this.setupCamera()
     this.setupInput()
+    // Facing-audit (ORIENTERINGS-PASS DEL 1) — consumed by dev tooling to
+    // produce docs/ROTATION_AUDIT.md. Cheap to compute; always exposed.
+    ;(window as unknown as Record<string,unknown>).__FACING_AUDIT__={
+      bds:B.map((b,i)=>{
+        const base=b.plaza?{facing:'-',gate:'-',source:'plaza'}
+          :b.facing?{facing:b.facing,gate:'(manuell)',source:'manuell'}
+          :facingOf(b.ca,b.ra,b.cb,b.rb)
+        return{i:i+1,name:b.name??b.header??(b.grid?'TIL LEIE':'?'),ca:b.ca,ra:b.ra,cb:b.cb,rb:b.rb,...base}
+      }),
+      kvartaler:KVARTALER.map(k=>({id:k.id,asset:k.asset,flip:flipFor(k.asset,facingOf(k.ca,k.ra,k.cb,k.rb).facing),...facingOf(k.ca,k.ra,k.cb,k.rb)})),
+    }
     // Emit minimap data
     window.dispatchEvent(new CustomEvent('phaser:mapReady'))
     window.addEventListener('game:enterInterior',this.onEnter)
@@ -261,17 +455,24 @@ export default class CityScene extends Phaser.Scene{
 
   // ── Road set ──────────────────────────────────────────────────────────────
   private buildRoadSet(){
-    for(const r of HROADS)for(let c=r.c1;c<=r.c2;c++)this.roadSet.add(`${c},${r.row}`)
+    for(const r of HROADS)for(let c=r.c1;c<=r.c2;c++){
+      this.roadSet.add(`${c},${r.row}`)
+      if(r.rail)this.railSet.add(`${c},${r.row}`)
+    }
     for(const r of VROADS)for(let row=r.r1;row<=r.r2;row++)this.roadSet.add(`${r.col},${row}`)
     for(const s of ROAD_SINGLES)this.roadSet.add(`${s.col},${s.row}`)
     this.roadSet.add(`${_S},7`)
   }
 
+  // Grass tone variation: 3 greens within ±3% brightness picked by a
+  // deterministic tile hash — texture without a visible checkerboard at
+  // normal zoom (DEL 7 dampened the original ±6% spread).
+  private static GRASS=[0x7ec850,0x7ac24e,0x82cd52]
   private slotColor(c:number,r:number):number{
     const k=`${c},${r}`
     if(!this.roadSet.has(k)){
       if(r===GAGATE.row&&c>=GAGATE.c1&&c<=GAGATE.c2)return 0xc8b898
-      return 0x7ec850
+      return CityScene.GRASS[(c*7+r*13+((c*r)>>2))%3]
     }
     for(const h of HROADS)if(h.row===r&&c>=h.c1&&c<=h.c2){
       if(h.boulevard)return 0xb8b8b8;if(h.rail)return 0x555555;return 0xb0b0b0}
@@ -304,6 +505,34 @@ export default class CityScene extends Phaser.Scene{
       pg.fillStyle(0x3cb868,.5);pg.fillCircle(p.x+3,p.y-22,5)
     }
     this.add.text(isoC(_X,3).x,isoC(_X,3).y-5,'Byparken 🌳',{fontSize:'8px',fontFamily:'Outfit,sans-serif',color:'#2a5a18',fontStyle:'italic'}).setOrigin(.5).setDepth(3)
+  }
+
+  // ── Sidewalk curbs (DEL 2) ────────────────────────────────────────────────
+  // Warm-cream sidewalk band (base_style_legacy palette: aged white / warm
+  // cream) inside every non-road tile along edges shared with a road tile,
+  // plus a darker curb line on the road edge itself. Rail edges get no curb.
+  private drawCurbs(){
+    const g=this.add.graphics().setDepth(1)
+    const isRoad=(c:number,r:number)=>c>=0&&c<=_AO&&r>=1&&r<=34&&this.roadSet.has(`${c},${r}`)&&!this.railSet.has(`${c},${r}`)
+    const K=0.26 // band depth, fraction of edge→tile-centre distance
+    for(let c=0;c<=_AO;c++)for(let r=1;r<=34;r++){
+      if(this.roadSet.has(`${c},${r}`))continue
+      const p=iso(c,r)
+      const T={x:p.x,y:p.y},R={x:p.x+TW/2,y:p.y+TH/2},Bt={x:p.x,y:p.y+TH},L={x:p.x-TW/2,y:p.y+TH/2}
+      const C={x:p.x,y:p.y+TH/2}
+      const edges:[boolean,{x:number,y:number},{x:number,y:number}][]=[
+        [isRoad(c,r-1),T,R],[isRoad(c+1,r),R,Bt],[isRoad(c,r+1),L,Bt],[isRoad(c-1,r),T,L],
+      ]
+      for(const[hit,p1,p2]of edges){
+        if(!hit)continue
+        const q1={x:p1.x+(C.x-p1.x)*K,y:p1.y+(C.y-p1.y)*K},q2={x:p2.x+(C.x-p2.x)*K,y:p2.y+(C.y-p2.y)*K}
+        g.fillStyle(0xd9d2c2,1);g.beginPath()
+        g.moveTo(p1.x,p1.y);g.lineTo(p2.x,p2.y);g.lineTo(q2.x,q2.y);g.lineTo(q1.x,q1.y)
+        g.closePath();g.fillPath()
+        g.lineStyle(2,0xa49c8c,.9)
+        g.beginPath();g.moveTo(p1.x,p1.y);g.lineTo(p2.x,p2.y);g.strokePath()
+      }
+    }
   }
 
   // ── Boulevard overlay on row 16 (Sentralgata) ────────────────────────────
@@ -433,19 +662,125 @@ export default class CityScene extends Phaser.Scene{
     g.lineStyle(1,dk(top,.7),.3);g.strokePath()
   }
 
+  // ── Global drop shadow (DEL 1, justert) ──────────────────────────────────
+  // Soft ellipse under every building mass. w ≈ visual footprint width +10%,
+  // peak opacity ~0.16 — same offset everywhere (sun in NW).
+  private drawShadow(cx:number,cy:number,w:number,depth:number){
+    const g=this.add.graphics().setDepth(depth)
+    const h=w*0.5,ox=4,oy=2
+    g.fillStyle(0x000000,0.06);g.fillEllipse(cx+ox,cy+oy,w,h)
+    g.fillStyle(0x000000,0.10);g.fillEllipse(cx+ox,cy+oy,w*0.78,h*0.78)
+    this.allBuildings.push(g)
+  }
+
+  // ── Baseplate (DEL 1) — procedural plot under every sprite building ───────
+  // Fills the WHOLE slot diamond: light grey-beige paving with a thin curb,
+  // clearly offset from the surrounding grass. Sits between terrain and the
+  // building's shadow/sprite.
+  private drawPlate(ca:number,ra:number,cb:number,rb:number,depth:number){
+    const nw=iso(ca,ra),ne=iso(cb+1,ra),se=iso(cb+1,rb+1),sw=iso(ca,rb+1)
+    const g=this.add.graphics().setDepth(depth)
+    g.fillStyle(0xd8d2c4,1);g.beginPath()
+    g.moveTo(nw.x,nw.y);g.lineTo(ne.x,ne.y);g.lineTo(se.x,se.y);g.lineTo(sw.x,sw.y)
+    g.closePath();g.fillPath()
+    g.lineStyle(2,0xb0a896,1);g.strokePath()
+    this.allBuildings.push(g)
+  }
+
+  // ── Pad (ORIENTERINGS-PASS DEL 3) — plot under the FOOTPRINT only ─────────
+  // Small diamond under the building mass + a narrow rim, instead of paving
+  // the whole slot. Grass dominates between buildings again.
+  private drawPad(cx:number,cy:number,w:number,depth:number){
+    const h=w/2,by=cy+w*0.05 // bottom vertex slightly in front of the facade
+    const g=this.add.graphics().setDepth(depth)
+    g.fillStyle(0xd8d2c4,1);g.beginPath()
+    g.moveTo(cx,by);g.lineTo(cx-w/2,by-h/2);g.lineTo(cx,by-h);g.lineTo(cx+w/2,by-h/2)
+    g.closePath();g.fillPath()
+    g.lineStyle(2,0xb0a896,1);g.strokePath()
+    this.allBuildings.push(g)
+  }
+
+  // One sprite, bottom-center anchored on the plot centroid, scaled by the
+  // shared spriteScale(). flipX mirrors the facade toward the slot's street
+  // (DEL 2); shadow and pad are symmetric and unaffected by the flip. Pads
+  // are skipped for kvartal sprites — the kvartal draws its own shared plate.
+  private placeSprite(key:string,cx:number,cy:number,fw:number,fh:number,depth:number,flip=false,pad=true):Phaser.GameObjects.Image{
+    const img=this.add.image(cx,cy,key)
+    img.setScale(spriteScale(img.width,img.height,fw,fh)).setOrigin(0.5,SPRITE_BASE_Y).setDepth(depth)
+    img.setFlipX(flip)
+    if(pad)this.drawPad(cx,cy,img.displayWidth*1.12,depth-2)
+    this.drawShadow(cx,cy,img.displayWidth*1.1,depth-1)
+    this.allBuildings.push(img)
+    return img
+  }
+
+  // ── Kvartaler (KVARTALSBY DEL 3) ──────────────────────────────────────────
+  // One plate + one shared facade sprite per kvartal, spanning the combined
+  // member footprint — same plate/scale/shadow pipeline as single buildings.
+  private drawKvartaler(){
+    for(const k of KVARTALER){
+      if(!this.textures.exists(k.asset))continue
+      const nw=iso(k.ca,k.ra),se=iso(k.cb+1,k.rb+1),sw=iso(k.ca,k.rb+1),ne=iso(k.cb+1,k.ra)
+      const cx=(nw.x+se.x)/2,cy=(nw.y+se.y)/2
+      const fw=ne.x-sw.x,fh=se.y-nw.y
+      const depth=(k.cb+(k.rb-1))*10+2*5+10
+      this.drawPlate(k.ca,k.ra,k.cb,k.rb,depth-2)
+      const facing=facingOf(k.ca,k.ra,k.cb,k.rb).facing
+      this.placeSprite(k.asset,cx,cy,fw,fh,depth,flipFor(k.asset,facing),false)
+    }
+  }
+
   // ── Draw buildings (depth sorted, ALL registered in allBuildings) ───────────
   private drawBuildings(){
     const sorted=[...B].sort((a,b)=>(a.cb+a.rb)-(b.cb+b.rb))
     for(const b of sorted){
       const floors=getfl(b)
       const depth=(b.cb+(b.rb-1))*10+floors*5+10
-      const g=this.add.graphics().setDepth(depth)
-      this.drawBox(g,b.ca,b.ra,b.cb,b.rb,floors,b.fill,dk(b.fill,.82),dk(b.fill,.65))
-      this.allBuildings.push(g)
+      // Footprint metrics: iso() is linear, so the diamond centroid is the
+      // midpoint of nw/se. fw/fh = pixel size of the footprint diamond.
+      const nw=iso(b.ca,b.ra),se=iso(b.cb+1,b.rb+1),sw=iso(b.ca,b.rb+1),ne=iso(b.cb+1,b.ra)
+      const cx=(nw.x+se.x)/2,cy=(nw.y+se.y)/2
+      const fw=ne.x-sw.x,fh=se.y-nw.y
+      // KVARTALSBY: BDs inside a kvartal envelope draw no building of their
+      // own — the shared kvartal facade (drawKvartaler) covers them.
+      const kv=kvartalOf(b)
+      const inKvartal=!!(kv&&this.textures.exists(kv.asset))
+      // Sprite resolution: explicit asset > FILLER name pool > none.
+      const pool=b.asset?[b.asset]:(b.name?FILLER[b.name]:undefined)
+      const envKey=!b.grid&&pool&&!inKvartal?pickVariant(pool,b.ca,b.ra):null
+      const useSprite=!!(envKey&&this.textures.exists(envKey))
+      // Grid BDs render per-cell sprites instead of one stretched envelope.
+      const cellPool=b.grid&&!inKvartal?((b.name&&FILLER[b.name])||FILLER['Butikk']):null
+      const cellSprites=!!(cellPool&&cellPool.some(k=>this.textures.exists(k)))
+      // Facing toward the slot's street (DEL 1/2); manual override wins.
+      const facing=b.facing??facingOf(b.ca,b.ra,b.cb,b.rb).facing
+      let img:Phaser.GameObjects.Image|null=null
+      if(useSprite){
+        img=this.placeSprite(envKey!,cx,cy,fw,fh,depth,flipFor(envKey!,facing))
+      }else if(b.plaza){
+        // Plaza/torg: per-tile alternating stone diamonds instead of one flat
+        // box — reads as paving (DEL 2).
+        const g=this.add.graphics().setDepth(depth)
+        for(let c=b.ca;c<=b.cb;c++)for(let r=b.ra;r<=b.rb;r++){
+          const p=iso(c,r)
+          g.fillStyle(((c+r)&1)===0?b.fill:dk(b.fill,.92),1)
+          g.beginPath()
+          g.moveTo(p.x,p.y);g.lineTo(p.x+TW/2,p.y+TH/2);g.lineTo(p.x,p.y+TH);g.lineTo(p.x-TW/2,p.y+TH/2)
+          g.closePath();g.fillPath()
+        }
+        this.allBuildings.push(g)
+      }else if(!cellSprites&&!inKvartal){
+        // Emergency fallback only: no sprite wired or texture file missing.
+        this.drawShadow(cx,cy,fw*1.05,depth-1)
+        const g=this.add.graphics().setDepth(depth)
+        this.drawBox(g,b.ca,b.ra,b.cb,b.rb,floors,b.fill,dk(b.fill,.82),dk(b.fill,.65))
+        this.allBuildings.push(g)
+      }
       const center=isoC((b.ca+b.cb+1)/2,(b.ra+b.rb+1)/2)
-      const ly=center.y-floors*FH
+      // Labels sit on the box roof — or just above the sprite's top edge.
+      const ly=img?cy-img.displayHeight*SPRITE_BASE_Y-6:center.y-floors*FH
       if(b.header){const t=this.add.text(center.x,ly-4,b.header,{fontSize:'7px',fontFamily:'Outfit,sans-serif',color:'#6a4800',fontStyle:'bold',stroke:'#fff',strokeThickness:1}).setOrigin(.5).setDepth(depth+1);this.allBuildings.push(t)}
-      if(b.symbol){const t=this.add.text(center.x,ly+(b.name&&b.name.length>2?-6:0),b.symbol,{fontSize:'14px'}).setOrigin(.5).setDepth(depth+1);this.allBuildings.push(t)}
+      if(b.symbol&&!useSprite){const t=this.add.text(center.x,ly+(b.name&&b.name.length>2?-6:0),b.symbol,{fontSize:'14px'}).setOrigin(.5).setDepth(depth+1);this.allBuildings.push(t)}
       if(b.name&&!b.grid&&!b.symbol&&!b.header){const t=this.add.text(center.x,ly,b.name,{fontSize:'7px',fontFamily:'Outfit,sans-serif',color:'#3a3020',fontStyle:'bold',stroke:'#fff',strokeThickness:1}).setOrigin(.5).setDepth(depth+1);this.allBuildings.push(t)}
       if(b.name&&b.symbol&&b.name.length>2){const t=this.add.text(center.x,ly+8,b.name.replace(/[⛲🎭]/g,'').trim(),{fontSize:'5px',fontFamily:'Outfit,sans-serif',color:'#3a3020',fontStyle:'bold',stroke:'#fff',strokeThickness:1}).setOrigin(.5).setDepth(depth+1);this.allBuildings.push(t)}
       if(b.grid){
@@ -453,7 +788,20 @@ export default class CityScene extends Phaser.Scene{
         for(let i=0;i<b.grid.units.length;i++){
           const gc=i%b.grid.cols,gr=Math.floor(i/b.grid.cols)
           const uca=b.ca+gc*cw,ucb=b.ca+(gc+1)*cw,ura=b.ra+gr*rh,urb=b.ra+(gr+1)*rh
-          const uc=isoC((uca+ucb)/2,(ura+urb)/2),uy=uc.y-floors*FH
+          const uc=isoC((uca+ucb)/2,(ura+urb)/2)
+          // Kvartal members: TIL LEIE signs and tenant labels sit on the
+          // facade at street level (DEL 4), not on a roof.
+          let uy=inKvartal?uc.y-6:uc.y-floors*FH
+          if(cellSprites){
+            const key=pickVariant(cellPool!,Math.round(uca*7)+i,Math.round(ura*13))
+            if(this.textures.exists(key)){
+              // Cell centroid + cell diamond size; same shared scaling.
+              const cc=iso((uca+ucb)/2,(ura+urb)/2)
+              const cfw=((ucb-uca)+(urb-ura))*TW/2
+              const s=this.placeSprite(key,cc.x,cc.y,cfw,cfw/2,depth+(gc+gr)*0.01,flipFor(key,facing))
+              uy=cc.y-s.displayHeight*SPRITE_BASE_Y-4
+            }
+          }
           if(b.grid.units[i]==='V')this.mkV(uc.x,uy,uca,ura,ucb,urb,depth,b.zone!,b.rent!,b.traffic!,b.sqm!,b.cap!)
           else if(!b.grid.units[i].startsWith('🏠')){
             const t=this.add.text(uc.x,uy,b.grid.units[i],{fontSize:'6px',fontFamily:'Outfit,sans-serif',color:'#4a4030',stroke:'#fff',strokeThickness:1}).setOrigin(.5).setDepth(depth+1);this.allBuildings.push(t)

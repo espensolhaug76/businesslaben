@@ -1,0 +1,55 @@
+/* ── LEVENDE BY — keyframes for ambient- og UI-lagene ─────────────────────────
+   Kun transform/opacity animeres (GPU-komposittering, ingen layout-thrash).
+   Pausing: container får .anim-paused ved visibilitychange. */
+
+.anim-paused * {
+  animation-play-state: paused !important;
+}
+
+/* Skyskygger — animasjonen ligger på en wrapper som dekker hele stagen, så
+   translate-% er scene-relativ. Start/slutt er helt utenfor bildet → sømløs
+   loop uten synlig hopp. */
+@keyframes cloud-drift {
+  from { transform: translate(-55%, -18%); }
+  to   { transform: translate(110%, 30%); }
+}
+
+/* Fugleflokk — wrapper-basert kryssing av øvre del. */
+@keyframes bird-cross {
+  from { transform: translate(-8%, 0); }
+  to   { transform: translate(106%, 5%); }
+}
+
+/* Røykpartikkel — stiger, driver sidelengs, vokser og dør. */
+@keyframes smoke-rise {
+  0%   { transform: translate(0, 0) scale(0.5); opacity: 0; }
+  15%  { opacity: 0.4; }
+  100% { transform: translate(var(--smoke-drift, 14px), -64px) scale(1.7); opacity: 0; }
+}
+
+/* Fugl — to-frames vingeflapp. */
+@keyframes bird-flap {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(0.35); }
+}
+
+/* TIL LEIE-badge — subtil sway (±2°, langsom). Posisjonering ligger på
+   wrapperen; span-en roterer bare, hengslet litt over egen topp. */
+@keyframes badge-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50%      { transform: rotate(2deg); }
+}
+.badge-sway {
+  animation: badge-sway 4.2s ease-in-out infinite;
+  transform-origin: 50% -120%;
+}
+
+/* Pin på elevens lokale — myk puls. */
+@keyframes pin-pulse {
+  0%, 100% { transform: translate(-50%, -100%) scale(1); }
+  50%      { transform: translate(-50%, -100%) scale(1.14); }
+}
+.pin-pulse {
+  animation: pin-pulse 2.4s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
