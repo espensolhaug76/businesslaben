@@ -4,7 +4,8 @@ import { useGame } from '../GameContext'
 import { getDistrict, getLokale, STOREFRONT_HOTSPOTS, STOREFRONT_DISPLAY_ZONES, spriteForProduct } from '../../data/districts'
 import type { Product } from '../types'
 import { BackButton } from './DistrictView'
-import DevCoordHelper, { IS_DEV_COORDS } from './DevCoordHelper'
+import { IS_DEV_COORDS } from './DevCoordHelper'
+import ZoneTracer from './ZoneTracer'
 
 // ── StorefrontView (STOREFRONT-NIVÅ) — fasadescene med 4P-hotspots ───────────
 // Fasadebildet (storefront_pilot.png, 1024×1280 per STOREFRONT_SPEC v1.2)
@@ -39,15 +40,26 @@ export default function StorefrontView({
   const { state } = useGame()
   const [hover, setHover] = useState<string | null>(null)
   const [imgFailed, setImgFailed] = useState(false)
+  // Re-render når ZoneTracer skriver nye sone-verdier i runtime (?dev=1).
+  const [, setZoneRev] = useState(0)
   const district = getDistrict(districtId)
   const lokale = getLokale(districtId, lokaleId)
   const mine = state.rentedLocationId === lokaleId
 
-  // Vindus-miniatyrer: inntil 3 produkter fra elevens sortiment — de med
-  // lager først, så resten.
-  const windowProducts = [...state.products]
+  // VINDUSLOGIKK: kun utstillingsegnede produkter (windowDisplay ≠ false)
+  // vises i vinduet. Hovedproduktet (mainProductId) får disk-flaten, størst
+  // og fremst — via plakat-stedfortreder hvis det ikke er utstillingsegnet
+  // (f.eks. kaffe i pappkopp). Maks 3 typer som før; resten + ikke-egnede
+  // teller i «+N i butikken».
+  const mainProduct = state.products.find(p => p.id === state.mainProductId) ?? null
+  const displayable = state.products.filter(p => p.windowDisplay !== false)
+  const support = displayable
+    .filter(p => p.id !== mainProduct?.id)
     .sort((a, b) => (b.stock > 0 ? 1 : 0) - (a.stock > 0 ? 1 : 0))
-    .slice(0, 3)
+  const diskProduct = mainProduct ?? support[0] ?? null
+  const shelfProducts = support.filter(p => p.id !== diskProduct?.id).slice(0, 2)
+  const shownCount = (diskProduct ? 1 : 0) + shelfProducts.length
+  const extraCount = Math.max(0, state.products.length - shownCount)
 
   return (
     <div style={{
@@ -102,7 +114,7 @@ export default function StorefrontView({
           }}>
             <span style={{
               fontFamily: "'Outfit', sans-serif", fontWeight: 800,
-              fontSize: 'min(3.6vh, 3.2vw)', letterSpacing: '0.12em',
+              fontSize: 'min(2.9vh, 2.5vw)', letterSpacing: '0.12em',
               color: '#2e2a24', textShadow: '0 1px 0 rgba(255,255,255,0.35)',
               whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '100%',
               textOverflow: 'ellipsis', textTransform: 'uppercase',
@@ -153,56 +165,39 @@ export default function StorefrontView({
               </div>
             </div>
           )}
-          {mine && Math.max(0, state.products.length - windowProducts.length) > 0 && (
+          {mine && extraCount > 0 && (
             <span style={{
               position: 'absolute', right: '4%', bottom: '5%',
               background: 'rgba(10,14,26,0.75)', color: '#f1f5f9', borderRadius: 99,
               fontSize: 11, fontWeight: 800, padding: '1px 7px',
-            }}>+{state.products.length - windowProducts.length}</span>
+            }}>+{extraCount} i butikken</span>
           )}
         </div>
 
-        {/* Utstillingsflater: sprites står på de fotograferte flatene
-            (disk / bakvegg / venstre hylle) — fasade-koordinater, ?dev=1 */}
+        {/* Utstillingsflater: disk (sone 0) = hovedprodukt/beste produkt,
+            hyllene (sone 1–2) = støtteprodukter. Tom utstilling (ingen
+            egnede produkter, intet hovedprodukt) rendrer ingenting. */}
         {mine && STOREFRONT_DISPLAY_ZONES.map((zone, zi) => {
-          const product = windowProducts[zi]
+          const product = zi === 0 ? diskProduct : shelfProducts[zi - 1]
           if (!product) return null
           const [zx, zy, zw, zh] = zone.rect
+          const isMain = product.id === mainProduct?.id
+          const placard = isMain && product.windowDisplay === false
           return (
             <div key={zone.id} style={{
               position: 'absolute', left: `${zx}%`, top: `${zy}%`, width: `${zw}%`, height: `${zh}%`,
               pointerEvents: 'none',
             }}>
-              <DisplayUnits product={product} size={zone.size} zoneW={zw} />
+              {placard
+                ? <MainProductPlacard product={product} />
+                : <DisplayUnits product={product} size={zone.size * (isMain ? 1.3 : 1)} zoneW={zw} />}
             </div>
           )
         })}
 
-        {/* ?dev=1: synlige soner — hotspots (cyan) + utstillingsflater
-            (oransje, med flatekanten markert) for kalibrering */}
-        {IS_DEV_COORDS && (
-          <>
-            {Object.entries(STOREFRONT_HOTSPOTS).map(([id, [x, y, w, h]]) => (
-              <div key={id} style={{
-                position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`,
-                border: '1px dashed rgba(80,220,255,0.9)', pointerEvents: 'none', zIndex: 49,
-              }}>
-                <span style={{ position: 'absolute', left: 2, top: 0, fontSize: 10, fontFamily: 'monospace', color: '#50dcff', background: 'rgba(0,0,0,0.6)', padding: '0 3px' }}>{id}</span>
-              </div>
-            ))}
-            {STOREFRONT_DISPLAY_ZONES.map(z => (
-              <div key={z.id} style={{
-                position: 'absolute', left: `${z.rect[0]}%`, top: `${z.rect[1]}%`,
-                width: `${z.rect[2]}%`, height: `${z.rect[3]}%`,
-                border: '1px solid rgba(255,160,60,0.9)',
-                borderBottom: '2px solid rgba(255,160,60,1)', // flatekanten
-                pointerEvents: 'none', zIndex: 49,
-              }}>
-                <span style={{ position: 'absolute', left: 2, top: -14, fontSize: 10, fontFamily: 'monospace', color: '#ffa03c', background: 'rgba(0,0,0,0.6)', padding: '0 3px' }}>{z.id}</span>
-              </div>
-            ))}
-          </>
-        )}
+        {/* ?dev=1: SONE-TRACING — dra rektangler, «Bruk» skriver sonene
+            live (ZoneTracer tegner også alle eksisterende soner) */}
+        {IS_DEV_COORDS && <ZoneTracer onApply={() => setZoneRev(r => r + 1)} />}
 
         {/* Hotspots (kun eget lokale) */}
         {mine && HOTSPOTS.map(h => {
@@ -238,8 +233,7 @@ export default function StorefrontView({
           )
         })}
 
-        {/* ?dev=1: koordinatkryss for hotspot-kalibrering (prosent av fasaden) */}
-        {IS_DEV_COORDS && <DevCoordHelper />}
+        {/* (koordinatkrysset er erstattet av ZoneTracer over) */}
       </div>
 
       {/* (vindusutstillingen er definert i WindowDisplay nederst i fila) */}
@@ -273,17 +267,46 @@ function unitsFor(p: Product): number {
   return 1
 }
 
-// Enhetsbredde i % av FASADEN: 4,0 % × dybde × spriteskala. Med vindu på
-// 33 % av fasaden gir det maks ≈ 4,8 % fasade ≈ 14,5 % av vindusbredden.
-const UNIT_FACADE_W = 4.0
+// Enhetsbredde i % av FASADEN: 3,4 % × dybde × spriteskala. Med det
+// trace-te vinduet på 28,9 % av fasaden gir det maks ≈ 4,1 % fasade
+// ≈ 14 % av vindusbredden (under 15 %-taket).
+const UNIT_FACADE_W = 3.4
+
+/** Stedfortreder på disken når hovedproduktet ikke er utstillingsegnet
+ *  (VINDUSLOGIKK pkt. 6): enkel stående plakat med produktets emoji. */
+function MainProductPlacard({ product }: { product: Product }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }}>
+      <div style={{
+        background: '#f7f1e2', border: '2px solid #b0a080',
+        borderBottom: '4px solid #8a7a5c', // antydet plakatfot
+        borderRadius: 5, transform: 'rotate(-2deg)',
+        padding: '3px 9px 4px', textAlign: 'center',
+        boxShadow: '0 3px 6px rgba(0,0,0,0.35)',
+        fontFamily: "'Outfit', sans-serif", lineHeight: 1.15,
+      }}>
+        <div style={{ fontSize: 'min(22px, 2.2vh)' }}>{product.icon}</div>
+        <div style={{ fontSize: 'min(9px, 1vh)', fontWeight: 800, color: '#7a5a30', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+          {product.name}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function DisplayUnits({ product, size, zoneW }: { product: Product; size: number; zoneW: number }) {
   const sprite = spriteForProduct(product.name)
   const units = unitsFor(product)
   const soldOut = product.stock <= 0
   // Bredde i % av SONEN (sonene er fasade-%): enheter bunnjustert mot
-  // flatekanten = sonens bunn.
-  const unitW = (UNIT_FACADE_W * size * (sprite?.scale ?? 1)) / zoneW * 100
+  // flatekanten = sonens bunn. Gruppe-tilpasning: på smale flater klemmes
+  // enhetsbredden så HELE gruppen (med 18 % overlapp) får plass i sonen.
+  const idealW = (UNIT_FACADE_W * size * (sprite?.scale ?? 1)) / zoneW * 100
+  const groupFactor = units - (units - 1) * 0.18 // effektive bredder i gruppa
+  const unitW = Math.min(idealW, 100 / Math.max(1, groupFactor))
 
   const unit = (k: number, gray: boolean) => sprite ? (
     <img

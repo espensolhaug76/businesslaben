@@ -98,6 +98,7 @@ const initialState: GameState = {
   storageCapacity: 0,
 
   products: [],
+  mainProductId: null,
   channels: ['physicalStore'],
   marketingBudget: { socialMedia: 0, google: 0, influencer: 0, print: 0, tv: 0 },
   appealType: null,
@@ -163,6 +164,7 @@ type Action =
   | { type: 'BUY_MARKET_RESEARCH' }
   | { type: 'TAKE_LOAN'; loan: Loan }
   | { type: 'SET_PRODUCTS'; products: Product[] }
+  | { type: 'SET_MAIN_PRODUCT'; id: string }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   | { type: 'SET_MARKETING'; budget: GameState['marketingBudget'] }
   | { type: 'SET_APPEAL'; appealType: GameState['appealType'] }
@@ -271,6 +273,14 @@ function reducer(state: GameState, action: Action): GameState {
         ...state,
         products: action.products,
         p1_complete: action.products.length > 0,
+      }
+
+    case 'SET_MAIN_PRODUCT':
+      // VINDUSLOGIKK TILLEGG: hovedprodukt for vindu/kampanjer. Klikk paa
+      // samme produkt igjen fjerner valget. Ingen demand-effekter.
+      return {
+        ...state,
+        mainProductId: state.mainProductId === action.id ? null : action.id,
       }
 
     case 'ORDER_PRODUCT': {

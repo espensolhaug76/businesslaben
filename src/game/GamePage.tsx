@@ -74,11 +74,14 @@ function GameContent() {
     dispatch({
       type: 'SET_PRODUCTS',
       products: [
-        { id: 'dev_kaffe', name: 'Kaffe', icon: '☕', tier: 'standard', costPrice: 12, retailPrice: 45, recommendedPrice: 45, stock: 40, quality: 70, sustainability: 60, maxDemandPerMonth: 40 },
-        { id: 'dev_croissant', name: 'Croissant', icon: '🥐', tier: 'standard', costPrice: 9, retailPrice: 35, recommendedPrice: 35, stock: 6, quality: 70, sustainability: 55, maxDemandPerMonth: 30 },
-        { id: 'dev_muffins', name: 'Muffins', icon: '🧁', tier: 'budget', costPrice: 7, retailPrice: 29, recommendedPrice: 29, stock: 0, quality: 60, sustainability: 50, maxDemandPerMonth: 25 },
+        { id: 'dev_kaffe', name: 'Kaffe', icon: '☕', tier: 'standard', costPrice: 12, retailPrice: 45, recommendedPrice: 45, stock: 40, quality: 70, sustainability: 60, maxDemandPerMonth: 40, windowDisplay: false },
+        { id: 'dev_croissant', name: 'Croissant', icon: '🥐', tier: 'standard', costPrice: 9, retailPrice: 35, recommendedPrice: 35, stock: 6, quality: 70, sustainability: 55, maxDemandPerMonth: 30, windowDisplay: true },
+        { id: 'dev_muffins', name: 'Muffins', icon: '🧁', tier: 'budget', costPrice: 7, retailPrice: 29, recommendedPrice: 29, stock: 0, quality: 60, sustainability: 50, maxDemandPerMonth: 25, windowDisplay: true },
       ],
     })
+    // Kaffe (windowDisplay: false) som hovedprodukt demonstrerer
+    // plakat-stedfortrederen på disken.
+    dispatch({ type: 'SET_MAIN_PRODUCT', id: 'dev_kaffe' })
     console.log('[DEV] StartupScreen skipped, seeded defaults + demo-sortiment')
   }, [state.phase, dispatch])
 

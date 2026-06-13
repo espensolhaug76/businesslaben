@@ -1266,13 +1266,34 @@ function ProdukterTab() {
           borderRadius: '1rem', padding: '0.75rem 1rem', marginBottom: '1.25rem',
           display: 'flex', flexWrap: 'wrap', gap: '0.75rem',
         }}>
-          {state.products.map(p => (
-            <div key={p.id} style={{ fontSize: 12, color: '#94a3b8' }}>
-              <span style={{ fontSize: 16 }}>{p.icon}</span>{' '}
-              <span style={{ fontWeight: 700, color: '#f1f5f9' }}>{p.name}</span>{' '}
-              <span style={{ color: '#00d4aa' }}>{p.stock} stk</span>
-            </div>
-          ))}
+          {state.products.map(p => {
+            const isMain = state.mainProductId === p.id
+            return (
+              <div key={p.id} style={{
+                fontSize: 12, color: '#94a3b8',
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: isMain ? 'rgba(255,215,0,0.08)' : undefined,
+                border: isMain ? '1px solid rgba(255,215,0,0.35)' : '1px solid transparent',
+                borderRadius: 8, padding: '2px 8px',
+              }}>
+                <span style={{ fontSize: 16 }}>{p.icon}</span>
+                <span style={{ fontWeight: 700, color: '#f1f5f9' }}>{isMain && '⭐ '}{p.name}</span>
+                <span style={{ color: '#00d4aa' }}>{p.stock} stk</span>
+                <button
+                  onClick={() => dispatch({ type: 'SET_MAIN_PRODUCT', id: p.id })}
+                  title={isMain ? 'Fjern som hovedprodukt' : 'Vises størst i butikkvinduet'}
+                  style={{
+                    background: isMain ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.06)',
+                    border: `1px solid ${isMain ? '#ffd70066' : 'rgba(255,255,255,0.15)'}`,
+                    borderRadius: 6, padding: '1px 7px', fontSize: 10, fontWeight: 700,
+                    color: isMain ? '#ffd700' : '#94a3b8', cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  {isMain ? 'Hovedprodukt' : 'Sett som hovedprodukt'}
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
 

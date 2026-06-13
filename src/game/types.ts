@@ -57,6 +57,9 @@ export interface Product {
   quality: number
   sustainability: number
   maxDemandPerMonth: number
+  /** Egnet for vindusutstilling (VINDUSLOGIKK). Utelatt/true = vises i
+   *  vinduet; false (f.eks. kaffe i pappkopp) = kun i «+N i butikken». */
+  windowDisplay?: boolean
 }
 
 // ── Staff ────────────────────────────────────────────────────────────────────
@@ -187,6 +190,9 @@ export interface GameState {
 
   // Products & selling
   products: Product[]
+  /** Hovedprodukt (VINDUSLOGIKK TILLEGG): vises størst/fremst i vinduet;
+   *  brukes av kampanje-/scenariosystemet senere. Ingen demand-effekt. */
+  mainProductId: string | null
   channels: DistributionChannel[]
   marketingBudget: {
     socialMedia: number

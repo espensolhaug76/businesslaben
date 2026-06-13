@@ -11,6 +11,9 @@ export interface IndustryCatalogItem {
   maxDemandPerMonth: number // at recommended price + middels location
   quality: number        // 1-10
   sustainability: number // 1-10
+  /** Egnet for vindusutstilling — utelatt = true. Drikkevarer i kopp/glass
+   *  (kaffe, smoothie, te) er false: urealistisk i et butikkvindu. */
+  windowDisplay?: boolean
   tiers: {
     premium:  { costPrice: number; recommendedPrice: number }
     standard: { costPrice: number; recommendedPrice: number }
@@ -48,17 +51,17 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
       tiers: { premium: { costPrice: 700, recommendedPrice: 1899}, standard: { costPrice: 400, recommendedPrice: 999 }, budget: { costPrice: 180, recommendedPrice: 499 } } },
   ],
   cafe: [
-    { id: 'coffee',    name: 'Kaffe',       icon: '☕', maxDemandPerMonth: 600, quality: 8, sustainability: 7,
+    { id: 'coffee',    name: 'Kaffe',       icon: '☕', maxDemandPerMonth: 600, quality: 8, sustainability: 7, windowDisplay: false,
       tiers: { premium: { costPrice: 25, recommendedPrice: 59  }, standard: { costPrice: 15, recommendedPrice: 39  }, budget: { costPrice: 8,  recommendedPrice: 25  } } },
     { id: 'pastry',    name: 'Bakevarer',   icon: '🥐', maxDemandPerMonth: 400, quality: 8, sustainability: 6,
       tiers: { premium: { costPrice: 35, recommendedPrice: 79  }, standard: { costPrice: 20, recommendedPrice: 49  }, budget: { costPrice: 10, recommendedPrice: 29  } } },
-    { id: 'smoothie',  name: 'Smoothie',    icon: '🥤', maxDemandPerMonth: 200, quality: 9, sustainability: 8,
+    { id: 'smoothie',  name: 'Smoothie',    icon: '🥤', maxDemandPerMonth: 200, quality: 9, sustainability: 8, windowDisplay: false,
       tiers: { premium: { costPrice: 30, recommendedPrice: 75  }, standard: { costPrice: 18, recommendedPrice: 45  }, budget: { costPrice: 10, recommendedPrice: 29  } } },
     { id: 'sandwich',  name: 'Sandwich',    icon: '🥪', maxDemandPerMonth: 250, quality: 8, sustainability: 7,
       tiers: { premium: { costPrice: 40, recommendedPrice: 89  }, standard: { costPrice: 25, recommendedPrice: 59  }, budget: { costPrice: 12, recommendedPrice: 35  } } },
     { id: 'cake',      name: 'Kake',        icon: '🍰', maxDemandPerMonth: 150, quality: 9, sustainability: 6,
       tiers: { premium: { costPrice: 45, recommendedPrice: 99  }, standard: { costPrice: 28, recommendedPrice: 65  }, budget: { costPrice: 14, recommendedPrice: 39  } } },
-    { id: 'tea',       name: 'Te / Spesial',icon: '🍵', maxDemandPerMonth: 180, quality: 8, sustainability: 8,
+    { id: 'tea',       name: 'Te / Spesial',icon: '🍵', maxDemandPerMonth: 180, quality: 8, sustainability: 8, windowDisplay: false,
       tiers: { premium: { costPrice: 20, recommendedPrice: 49  }, standard: { costPrice: 12, recommendedPrice: 29  }, budget: { costPrice: 6,  recommendedPrice: 19  } } },
   ],
   sports: [
@@ -98,6 +101,7 @@ export function catalogToProduct(item: IndustryCatalogItem, tier: Product['tier'
     stock: 0,
     quality: tier === 'premium' ? Math.min(10, item.quality + 1) : tier === 'budget' ? Math.max(1, item.quality - 2) : item.quality,
     sustainability: item.sustainability,
+    windowDisplay: item.windowDisplay !== false,
     maxDemandPerMonth: tier === 'premium'
       ? Math.round(item.maxDemandPerMonth * 0.5)
       : tier === 'budget'

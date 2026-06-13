@@ -269,11 +269,16 @@ export const NO_GO: Record<string, [number, number, number, number][]> = {
  *  markisen ~y 49–56 %, stort vindu nede til venstre, dør i midten).
  *  Justerbare med ?dev=1-krysset på storefront-visningen.
  *  [x, y, bredde, høyde]. */
+/** Trace-t av Espen mot glasskantene i fasadebildet (SONE-TRACING ?dev=1). */
 export const STOREFRONT_HOTSPOTS: Record<'skilt' | 'vindu' | 'dor', [number, number, number, number]> = {
-  skilt: [8, 49, 84, 7],
-  vindu: [6, 68, 33, 25],
-  dor: [43, 66, 18, 28],
+  skilt: [17.6, 49.3, 65.6, 4.3],
+  vindu: [17.3, 65.9, 28.9, 16.2],
+  dor: [55.1, 67, 8.3, 15.7],
 }
+
+/** Høyre vindu — kampanjeflate (fremtidig markedsførings-visning).
+ *  Trace-t av Espen. */
+export const STOREFRONT_KAMPANJE: [number, number, number, number] = [73, 66, 12.1, 19.1]
 
 /** Produkt-sprites (VINDUSHUD) — klippet fra bakery_assets.png
  *  (scripts/cut-pedestrians.py, 3×3 --smart). Matches mot produktNAVN
@@ -301,13 +306,14 @@ export function spriteForProduct(name: string): ProductSprite | undefined {
  *  system som STOREFRONT_HOTSPOTS, kalibrerbare med ?dev=1). Bunnen av
  *  rektangelet = flaten varene står på. `size` = relativ enhetsstørrelse
  *  (dybde: disk i front størst, bakvegg minst). */
-/** Kalibrert mot det rammeløse 3:4-interiøret (896×1200): cover bunn-ankret
- *  i vindussonen viser nederste ~71 % av bildet. Bunnen av hvert rektangel
- *  = flaten varene står på (disk-toppen / hylleplatene). Synlige i ?dev=1. */
+/** Trace-t av Espen mot de synlige flatene i fasaden (SONE-TRACING ?dev=1):
+ *  disk = diskflaten i vinduet (bred, hovedflate for hovedproduktet),
+ *  bakvegg = hyllene øverst, hylle_venstre = flaten i full vindusbredde
+ *  nederst. Bunnen av rektangelet = flaten varene står på. */
 export const STOREFRONT_DISPLAY_ZONES: { id: 'disk' | 'bakvegg' | 'hylle_venstre'; rect: [number, number, number, number]; size: number }[] = [
-  { id: 'disk', rect: [16, 79, 13, 4], size: 1.0 },
-  { id: 'bakvegg', rect: [19, 74.5, 15, 3], size: 0.62 },
-  { id: 'hylle_venstre', rect: [8.6, 75, 6.6, 3], size: 0.55 },
+  { id: 'disk', rect: [19.9, 78.8, 22.4, 1.9], size: 1.0 },
+  { id: 'bakvegg', rect: [20.8, 66.1, 22.8, 8.9], size: 0.62 },
+  { id: 'hylle_venstre', rect: [17.5, 75.6, 27.1, 5.5], size: 0.55 },
 ]
 
 export function lokaleRent(d: District, l: Lokale): number {
