@@ -6,6 +6,7 @@ import type { Product } from '../types'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer from './ZoneTracer'
+import { WindowDisplayLayer } from './WindowDisplay'
 
 // ── StorefrontView (STOREFRONT-NIVÅ) — fasadescene med 4P-hotspots ───────────
 // Fasadebildet (storefront_pilot.png, 1024×1280 per STOREFRONT_SPEC v1.2)
@@ -16,8 +17,14 @@ import ZoneTracer from './ZoneTracer'
 // på skiltpanelet + produktikoner i vinduet, fra spillstate. Ikke leid ⇒
 // gråtonet fasade med TIL LEIE-plakat og deaktiverte hotspots.
 
-const FACADE_IMG = '/assets/city/storefront_pilot.png'
+export const FACADE_IMG = '/assets/city/storefront_pilot.png'
 const ASPECT = 1024 / 1280
+
+// Mens den manuelle WindowDisplayLayer valideres skal den stå ALENE i
+// vindussonen. Sett til true for å vise det gamle automatiske lager-
+// barometeret (DisplayUnits over STOREFRONT_DISPLAY_ZONES) igjen — koden er
+// urørt, kun render er gated. Trivielt reversibelt.
+const SHOW_AUTO_DISPLAY = false
 
 export type PanelTab = 'markedsforing' | 'produkter' | 'oversikt'
 
@@ -177,7 +184,7 @@ export default function StorefrontView({
         {/* Utstillingsflater: disk (sone 0) = hovedprodukt/beste produkt,
             hyllene (sone 1–2) = støtteprodukter. Tom utstilling (ingen
             egnede produkter, intet hovedprodukt) rendrer ingenting. */}
-        {mine && STOREFRONT_DISPLAY_ZONES.map((zone, zi) => {
+        {SHOW_AUTO_DISPLAY && mine && STOREFRONT_DISPLAY_ZONES.map((zone, zi) => {
           const product = zi === 0 ? diskProduct : shelfProducts[zi - 1]
           if (!product) return null
           const [zx, zy, zw, zh] = zone.rect
@@ -194,6 +201,21 @@ export default function StorefrontView({
             </div>
           )
         })}
+
+        {/* MANUELL VINDUSUTSTILLING (DEL 4): elevens frie plassering fra
+            dashbordets Utstilling-fane, lest tilbake og rendret mot den ekte
+            vindussonen. Tom liste = ingenting (nøytralt). Kun eget lokale.
+            pointerEvents none så vindu-hotspoten under fortsatt er klikkbar. */}
+        {mine && state.windowDisplayLayout.length > 0 && (
+          <div style={{
+            position: 'absolute',
+            left: `${STOREFRONT_HOTSPOTS.vindu[0]}%`, top: `${STOREFRONT_HOTSPOTS.vindu[1]}%`,
+            width: `${STOREFRONT_HOTSPOTS.vindu[2]}%`, height: `${STOREFRONT_HOTSPOTS.vindu[3]}%`,
+            overflow: 'hidden', pointerEvents: 'none',
+          }}>
+            <WindowDisplayLayer items={state.windowDisplayLayout} products={state.products} />
+          </div>
+        )}
 
         {/* ?dev=1: SONE-TRACING — dra rektangler, «Bruk» skriver sonene
             live (ZoneTracer tegner også alle eksisterende soner) */}

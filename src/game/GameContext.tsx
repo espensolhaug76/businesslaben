@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
-  GameFlags, BusinessCanvas,
+  GameFlags, BusinessCanvas, WindowDisplayItem,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import { EVENT_POOL } from '../strategies/innovation/eventPool'
@@ -100,6 +100,7 @@ const initialState: GameState = {
   products: [],
   mainProductId: null,
   channels: ['physicalStore'],
+  windowDisplayLayout: [],
   marketingBudget: { socialMedia: 0, google: 0, influencer: 0, print: 0, tv: 0 },
   appealType: null,
 
@@ -165,6 +166,7 @@ type Action =
   | { type: 'TAKE_LOAN'; loan: Loan }
   | { type: 'SET_PRODUCTS'; products: Product[] }
   | { type: 'SET_MAIN_PRODUCT'; id: string }
+  | { type: 'SET_WINDOW_DISPLAY'; items: WindowDisplayItem[] }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   | { type: 'SET_MARKETING'; budget: GameState['marketingBudget'] }
   | { type: 'SET_APPEAL'; appealType: GameState['appealType'] }
@@ -282,6 +284,11 @@ function reducer(state: GameState, action: Action): GameState {
         ...state,
         mainProductId: state.mainProductId === action.id ? null : action.id,
       }
+
+    case 'SET_WINDOW_DISPLAY':
+      // Manuell vindusutstilling (fri plassering). Hele lista erstattes ved
+      // hver endring fra editoren — ingen egen lagre-knapp nødvendig.
+      return { ...state, windowDisplayLayout: action.items }
 
     case 'ORDER_PRODUCT': {
       const totalCost = action.product.costPrice * action.quantity
@@ -599,4 +606,4 @@ export function useGame() {
 }
 
 // Re-export types for consumers
-export type { GameState, GamePhase, Product, MonthResult, InboxMessage, PestEvent, Loan, GameProgress, BusinessModel, GameFlags, BusinessCanvas }
+export type { GameState, GamePhase, Product, MonthResult, InboxMessage, PestEvent, Loan, GameProgress, BusinessModel, GameFlags, BusinessCanvas, WindowDisplayItem }

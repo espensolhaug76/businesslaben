@@ -62,6 +62,32 @@ export interface Product {
   windowDisplay?: boolean
 }
 
+// ── Vindusutstilling (fri plassering) ─────────────────────────────────────────
+
+/** Ett element i den manuelt byggede vindusutstillingen.
+ *
+ *  Koordinatsystemet er BRØK (0–1) relativt til VINDUSSONEN
+ *  (`STOREFRONT_HOTSPOTS.vindu` i districts.ts), ikke piksler — slik overlever
+ *  plasseringen re-kalibrering av sonen og rendres korrekt på fasaden i en
+ *  annen skala. `x`/`y` er senterpunktet til elementet.
+ *
+ *  `z` = lagrekkefølge. Beregnes automatisk fra `y` ved hver endring (lavere i
+ *  vinduet = høyere y = nærmere glasset = foran = høyere z), men persisteres
+ *  for stabil opptegning.
+ *
+ *  Skjemaet er bevisst flatt og lett å utvide: en senere simulering kan legge
+ *  til f.eks. `attraction`/`relevance`-score som valgfrie felt UTEN å bryte
+ *  eksisterende lagrede utstillinger. */
+export interface WindowDisplayItem {
+  productId: string
+  /** Senter-x som brøk 0–1 av vindussonens bredde. */
+  x: number
+  /** Senter-y som brøk 0–1 av vindussonens høyde. */
+  y: number
+  /** Lagrekkefølge (avledet av y, persistert). Lavere = bakerst. */
+  z: number
+}
+
 // ── Staff ────────────────────────────────────────────────────────────────────
 
 export interface Employee {
@@ -194,6 +220,9 @@ export interface GameState {
    *  brukes av kampanje-/scenariosystemet senere. Ingen demand-effekt. */
   mainProductId: string | null
   channels: DistributionChannel[]
+  /** Manuelt bygget vindusutstilling (fri plassering). Tom liste = tomt
+   *  vindu. Se WindowDisplayItem. */
+  windowDisplayLayout: WindowDisplayItem[]
   marketingBudget: {
     socialMedia: number
     google: number

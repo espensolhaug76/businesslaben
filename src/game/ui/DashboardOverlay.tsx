@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
+import WindowDisplayEditor from '../city/WindowDisplay'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import type { Product, DistributionChannel } from '../types'
 import type { Loan } from '../types'
@@ -9,12 +10,13 @@ import type { Loan } from '../types'
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
-type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter' | 'innboks'
+type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter' | 'innboks'
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'oversikt',        label: 'Oversikt',         emoji: '📊' },
   { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋' },
   { id: 'produkter',       label: 'Produkter',         emoji: '📦' },
+  { id: 'utstilling',      label: 'Utstilling',        emoji: '🪟' },
   { id: 'malgruppe',       label: 'Målgruppe',         emoji: '🎯' },
   { id: 'okonomi',         label: 'Økonomi',           emoji: '💰' },
   { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍' },
@@ -130,6 +132,7 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                   {activeTab === 'oversikt'        && <OversiktTab onNavigate={setActiveTab} />}
                   {activeTab === 'forretningsplan' && <ForretningsplanTab onNavigate={setActiveTab} />}
                   {activeTab === 'produkter'       && <ProdukterTab />}
+                  {activeTab === 'utstilling'      && <WindowDisplayEditor />}
                   {activeTab === 'malgruppe'       && <MalgruppeTab />}
                   {activeTab === 'okonomi'         && <OkonomiTab />}
                   {activeTab === 'lokasjon'        && <LokasjonTab />}
