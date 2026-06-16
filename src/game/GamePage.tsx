@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { GameProvider, useGame } from './GameContext'
 import HUD from './ui/HUD'
 import SimulationModal from './ui/SimulationModal'
 import DashboardOverlay from './ui/DashboardOverlay'
+import SalesScenarioOverlay from './ui/SalesScenarioOverlay'
 import YearEndOverlay from './ui/YearEndOverlay'
 import RentPanel from './ui/panels/RentPanel'
 import StartupScreen from './screens/StartupScreen'
 import CityMapView from './city/CityMapView'
 import DistrictView, { type LokaleClick } from './city/DistrictView'
 import StorefrontView from './city/StorefrontView'
+import InteriorView from './city/InteriorView'
 import { districtOfLokale } from '../data/districts'
 
 // ── BYBILDE-ARKITEKTUR ────────────────────────────────────────────────────────
@@ -51,11 +53,18 @@ function GameContent() {
   const { state, dispatch } = useGame()
   const navigate = useNavigate()
   const { districtId, lokaleId } = useParams<{ districtId?: string; lokaleId?: string }>()
+  // Interiørnivå: samme lokale-rute med /inne-suffiks (midlertidig stillas).
+  const isInterior = useLocation().pathname.endsWith('/inne')
   const [simOpen, setSimOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [dashboardTab, setDashboardTab] = useState<string>('oversikt')
   const [vacantInfo, setVacantInfo] = useState<VacantInfo | null>(null)
   const [tutorialDismissed, setTutorialDismissed] = useState(false)
+  // Salgssituasjon-overlay (DEL 4: midlertidig dev-inngang via CustomEvent fra
+  // dashbordet). Den ekte inngangen — klikk på kunde i interiørscenen —
+  // kommer i neste fase.
+  const [salesOpen, setSalesOpen] = useState(false)
+  const [salesScenarioId, setSalesScenarioId] = useState('morgenkunden')
 
   // Dev shortcut: ?skip=1 seeds defaults and skips the StartupScreen wizard.
   useEffect(() => {
@@ -85,6 +94,19 @@ function GameContent() {
     console.log('[DEV] StartupScreen skipped, seeded defaults + demo-sortiment')
   }, [state.phase, dispatch])
 
+  // DEL 4: lytt etter dev-trigger fra dashbordet («Øv salg»). Åpner
+  // salgssituasjon-overlayet oppå et evt. åpent dashbord.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail?.scenarioId ?? 'morgenkunden'
+      setSalesScenarioId(id)
+      setSalesOpen(true)
+      setOverlay(true)
+    }
+    window.addEventListener('dev:openSalesScenario', handler)
+    return () => window.removeEventListener('dev:openSalesScenario', handler)
+  }, [])
+
   if (state.phase === 'startup') {
     if (IS_DEV_SKIP) return null
     return <StartupScreen />
@@ -93,6 +115,13 @@ function GameContent() {
   function closeSim() { setSimOpen(false); setOverlay(false) }
   function closeDashboard() { setDashboardOpen(false); setOverlay(false) }
   function closeRentPanel() { setVacantInfo(null); setOverlay(false) }
+  // Lukk salgsoverlayet; behold __OVERLAY_OPEN__ hvis dashbordet fortsatt er åpent under.
+  // Varsle scenen (InteriorView) så kunden kan forlate butikken etter runden.
+  function closeSales() {
+    setSalesOpen(false)
+    setOverlay(dashboardOpen)
+    window.dispatchEvent(new CustomEvent('sales:closed'))
+  }
 
   function onVacantClick({ district, lokale, rent }: LokaleClick) {
     setVacantInfo({
@@ -123,11 +152,13 @@ function GameContent() {
     <>
       {/* Aktivt visningsnivå (URL-styrt) */}
       {lokaleId && districtId
-        ? <StorefrontView
-            districtId={districtId}
-            lokaleId={lokaleId}
-            onOpenPanel={tab => { setDashboardTab(tab); setDashboardOpen(true); setOverlay(true) }}
-          />
+        ? (isInterior
+            ? <InteriorView districtId={districtId} lokaleId={lokaleId} />
+            : <StorefrontView
+                districtId={districtId}
+                lokaleId={lokaleId}
+                onOpenPanel={tab => { setDashboardTab(tab); setDashboardOpen(true); setOverlay(true) }}
+              />)
         : districtId
           ? <DistrictView districtId={districtId} onVacantClick={onVacantClick} />
           : <CityMapView />}
@@ -186,6 +217,7 @@ function GameContent() {
       <SimulationModal open={simOpen} onClose={closeSim} />
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} initialTab={dashboardTab as any} />
+      <SalesScenarioOverlay open={salesOpen} onClose={closeSales} scenarioId={salesScenarioId} />
       <YearEndOverlay />
 
       {vacantInfo && (

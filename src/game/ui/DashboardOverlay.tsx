@@ -177,6 +177,27 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
 
   return (
     <div>
+      {/* DEV (midlertidig): trigg salgssituasjon-rollespillet. Den ekte
+          inngangen blir å klikke på en kunde i interiørscenen (neste fase). */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem',
+        background: 'rgba(168,85,247,0.08)', border: '1px dashed rgba(168,85,247,0.4)',
+        borderRadius: 12, padding: '0.6rem 0.9rem',
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#c084fc', letterSpacing: '0.05em' }}>DEV</span>
+        <span style={{ fontSize: 12, color: '#94a3b8', flex: 1 }}>Test salgssituasjon-motoren</span>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: 'morgenkunden' } }))}
+          style={{
+            background: 'linear-gradient(135deg,#a855f7,#7c3aed)', border: 'none', borderRadius: 99,
+            padding: '0.45rem 1.1rem', color: '#fff', fontWeight: 700, fontSize: 13,
+            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+          }}
+        >
+          🛎️ Øv salg
+        </button>
+      </div>
+
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         <KpiCard label="Kontanter"       value={formatKr(money)}       color="#22c55e" icon="💰" />

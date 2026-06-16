@@ -26,3 +26,6 @@ __pycache__/
 .gen-*.py
 # Claude Code personal overrides
 .claude/settings.local.json
+
+# Windows NTFS "mark of the web" artifacts (created on WSL from Windows files)
+*:Zone.Identifier

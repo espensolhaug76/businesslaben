@@ -31,7 +31,7 @@ export type PanelTab = 'markedsforing' | 'produkter' | 'oversikt'
 const HOTSPOTS: { id: keyof typeof STOREFRONT_HOTSPOTS; label: string; tab: PanelTab }[] = [
   { id: 'skilt', label: 'Markedsføring', tab: 'markedsforing' },
   { id: 'vindu', label: 'Sortiment', tab: 'produkter' },
-  { id: 'dor', label: 'Drift', tab: 'oversikt' },
+  { id: 'dor', label: 'Gå inn', tab: 'oversikt' },
 ]
 
 export default function StorefrontView({
@@ -228,7 +228,9 @@ export default function StorefrontView({
           return (
             <div
               key={h.id}
-              onClick={() => onOpenPanel(h.tab)}
+              onClick={() => h.id === 'dor'
+                ? navigate(`/game/d/${districtId}/l/${lokaleId}/inne`)   // døra → interiørscenen (midlertidig)
+                : onOpenPanel(h.tab)}
               onMouseEnter={() => setHover(h.id)}
               onMouseLeave={() => setHover(cur => (cur === h.id ? null : cur))}
               style={{

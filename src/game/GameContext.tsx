@@ -5,6 +5,7 @@ import type {
   GameFlags, BusinessCanvas, WindowDisplayItem,
 } from './types'
 import { EMPTY_CANVAS } from './types'
+import type { SaleLine } from './sales/types'
 import { EVENT_POOL } from '../strategies/innovation/eventPool'
 import { getEventsForMonth } from '../strategies/innovation/eventEngine'
 import { updateFlags } from '../strategies/innovation/flagSystem'
@@ -167,6 +168,7 @@ type Action =
   | { type: 'SET_PRODUCTS'; products: Product[] }
   | { type: 'SET_MAIN_PRODUCT'; id: string }
   | { type: 'SET_WINDOW_DISPLAY'; items: WindowDisplayItem[] }
+  | { type: 'RESOLVE_SALES_SCENARIO'; sales: SaleLine[]; reputationDelta: number; xpEarned: number }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   | { type: 'SET_MARKETING'; budget: GameState['marketingBudget'] }
   | { type: 'SET_APPEAL'; appealType: GameState['appealType'] }
@@ -289,6 +291,44 @@ function reducer(state: GameState, action: Action): GameState {
       // Manuell vindusutstilling (fri plassering). Hele lista erstattes ved
       // hver endring fra editoren — ingen egen lagre-knapp nødvendig.
       return { ...state, windowDisplayLayout: action.items }
+
+    case 'RESOLVE_SALES_SCENARIO': {
+      // Salgssituasjon-motor: skriver resultatet til EKSISTERENDE felt —
+      // money (salg), products[].stock (varelager), reputation (rykte) og
+      // xp/level (med samme level-up-løype som APPLY_MONTH_RESULT). Ingen nye
+      // state-felt. Salg klemmes mot faktisk lager.
+      const reqByProduct = new Map<string, number>()
+      for (const l of action.sales) reqByProduct.set(l.productId, (reqByProduct.get(l.productId) ?? 0) + l.qty)
+
+      let revenue = 0
+      const products = state.products.map(p => {
+        const req = reqByProduct.get(p.id) ?? 0
+        if (req <= 0) return p
+        const sold = Math.min(req, p.stock)
+        revenue += sold * p.retailPrice
+        return sold > 0 ? { ...p, stock: p.stock - sold } : p
+      })
+
+      const reputation = Math.max(0, Math.min(100, state.reputation + action.reputationDelta))
+
+      const newXp = state.xp + action.xpEarned
+      let newLevel = state.level
+      let xpToNext = state.xpToNextLevel
+      while (newXp >= xpForLevel(newLevel) && newLevel < 12) {
+        newLevel++
+        xpToNext = xpForLevel(newLevel)
+      }
+
+      return {
+        ...state,
+        products,
+        money: state.money + revenue,
+        reputation,
+        xp: newXp,
+        level: newLevel,
+        xpToNextLevel: xpToNext,
+      }
+    }
 
     case 'ORDER_PRODUCT': {
       const totalCost = action.product.costPrice * action.quantity

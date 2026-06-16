@@ -316,6 +316,13 @@ export const STOREFRONT_DISPLAY_ZONES: { id: 'disk' | 'bakvegg' | 'hylle_venstre
   { id: 'hylle_venstre', rect: [17.5, 75.6, 27.1, 5.5], size: 0.55 },
 ]
 
+/** Kunde-soner i interiøret (INTERIØR-NIVÅ) — prosent av interiørbildet
+ *  [x, y, b, h]. Trace-t av Espen med ?dev=1 på /inne. ENESTE kilde til
+ *  kunde-plasseringen: SPAWN = der kunden dukker opp (bakerst), STAND =
+ *  ståplassen hun går fram til. All plassering i InteriorView leser herfra. */
+export const INTERIOR_CUSTOMER_SPAWN: [number, number, number, number] = [46.1, 23.8, 8, 31]
+export const INTERIOR_CUSTOMER_STAND: [number, number, number, number] = [41.9, 57, 17.6, 15.6]
+
 export function lokaleRent(d: District, l: Lokale): number {
   return Math.round((d.leieniva * l.rentFactor) / 100) * 100
 }

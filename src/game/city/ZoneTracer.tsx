@@ -12,16 +12,28 @@ import { STOREFRONT_DISPLAY_ZONES, STOREFRONT_HOTSPOTS, STOREFRONT_KAMPANJE } fr
 //   cyan = vindusone (interiør)   blå = skilt/dør-hotspots
 //   oransje = utstillingsflater   grønn = kampanjeflate (høyre vindu)
 
-type Rect = [number, number, number, number]
+export type Rect = [number, number, number, number]
 
-interface Target {
+export interface Target {
   id: string
   label: string
   get: () => Rect
   set: (r: Rect) => void
 }
 
-const TARGETS: Target[] = [
+/** En sone som tegnes som referanse-rektangel i traceren. */
+export interface DrawZone {
+  rect: Rect
+  color: string
+  label: string
+  id?: string
+  dashed?: boolean
+  surface?: boolean
+}
+
+// Standard (fasade): mål + referanse-soner. Brukes når props ikke er gitt, så
+// StorefrontView-bruken er uendret.
+const FACADE_TARGETS: Target[] = [
   { id: 'vindu', label: 'vindu (interiør)', get: () => STOREFRONT_HOTSPOTS.vindu, set: r => { STOREFRONT_HOTSPOTS.vindu = r } },
   { id: 'skilt', label: 'skilt', get: () => STOREFRONT_HOTSPOTS.skilt, set: r => { STOREFRONT_HOTSPOTS.skilt = r } },
   { id: 'dor', label: 'dør', get: () => STOREFRONT_HOTSPOTS.dor, set: r => { STOREFRONT_HOTSPOTS.dor = r } },
@@ -37,9 +49,28 @@ const TARGETS: Target[] = [
   },
 ]
 
+/** Referanse-sonene som tegnes på fasaden (live fra districts-objektene). */
+function facadeDrawZones(): DrawZone[] {
+  return [
+    { rect: STOREFRONT_HOTSPOTS.vindu, color: '#50dcff', label: 'vindu' },
+    { rect: STOREFRONT_HOTSPOTS.skilt, color: '#7da8ff', label: 'skilt', dashed: true },
+    { rect: STOREFRONT_HOTSPOTS.dor, color: '#7da8ff', label: 'dør', dashed: true },
+    ...STOREFRONT_DISPLAY_ZONES.map(z => ({ rect: z.rect, color: '#ffa03c', label: z.id, id: z.id, surface: true })),
+    { rect: STOREFRONT_KAMPANJE, color: '#50e08c', label: 'kampanje', dashed: true },
+  ]
+}
+
 const fmt = (r: Rect) => `[${r.map(v => Math.round(v * 10) / 10).join(', ')}]`
 
-export default function ZoneTracer({ onApply }: { onApply: () => void }) {
+// targets/drawZones er valgfrie: utelatt ⇒ fasade-oppsettet (uendret bruk).
+// Interiørscenen sender egne soner/mål.
+export default function ZoneTracer({ onApply, targets, drawZones }: {
+  onApply: () => void
+  targets?: Target[]
+  drawZones?: DrawZone[]
+}) {
+  const tgts = targets ?? FACADE_TARGETS
+  const zones = drawZones ?? facadeDrawZones()
   const [drag, setDrag] = useState<{ sx: number; sy: number; cx: number; cy: number } | null>(null)
   const [last, setLast] = useState<Rect | null>(null)
   const [, bump] = useState(0) // re-tegn etikettene etter «Bruk»
@@ -93,11 +124,7 @@ export default function ZoneTracer({ onApply }: { onApply: () => void }) {
       style={{ position: 'absolute', inset: 0, zIndex: 55, cursor: 'crosshair', touchAction: 'none' }}
     >
       {/* Eksisterende soner i hver sin farge */}
-      {zoneBox(STOREFRONT_HOTSPOTS.vindu, '#50dcff', 'vindu')}
-      {zoneBox(STOREFRONT_HOTSPOTS.skilt, '#7da8ff', 'skilt', true)}
-      {zoneBox(STOREFRONT_HOTSPOTS.dor, '#7da8ff', 'dør', true)}
-      {STOREFRONT_DISPLAY_ZONES.map(z => zoneBox(z.rect, '#ffa03c', z.id, false, true, z.id))}
-      {zoneBox(STOREFRONT_KAMPANJE, '#50e08c', 'kampanje', true)}
+      {zones.map(z => zoneBox(z.rect, z.color, z.label, z.dashed, z.surface, z.id ?? z.label))}
 
       {/* Live/siste rektangel */}
       {(live ?? last) && (
@@ -146,7 +173,7 @@ export default function ZoneTracer({ onApply }: { onApply: () => void }) {
           >Kopier sone</button>
           <div style={{ color: '#94a3b8', fontSize: 10, marginTop: 2 }}>Bruk siste på:</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {TARGETS.map(t => (
+            {tgts.map(t => (
               <button key={t.id} style={{ ...btnStyle, padding: '2px 7px', fontSize: 10 }} onClick={() => apply(t)}>
                 {t.label}
               </button>
