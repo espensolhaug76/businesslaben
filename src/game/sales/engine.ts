@@ -28,7 +28,12 @@ export function buildSalesResult(
   picks: ScoredPick[],
   sales: SaleLine[],
   personaMatch: boolean,
+  opts: { costs?: number; outcomeKind?: 'sale' | 'service' } = {},
 ): SalesResult {
+  const outcomeKind = opts.outcomeKind ?? 'sale'
+  const service = outcomeKind === 'service'
+  const cost = Math.max(0, Math.round(opts.costs ?? 0))
+
   const good = picks.filter(p => p.quality === 'good').length
   const warn = picks.filter(p => p.quality === 'warn').length
   const bad = picks.filter(p => p.quality === 'bad').length
@@ -42,31 +47,49 @@ export function buildSalesResult(
 
   const revenue = sales.reduce((s, l) => s + l.price * l.qty, 0)
 
-  // Rykte-delta er mildt: et middels møte er nøytralt, et godt løfter litt.
-  const reputationDelta =
-    satisfaction >= 85 ? 3 :
-    satisfaction >= 65 ? 2 :
-    satisfaction >= 45 ? 1 :
-    satisfaction >= 30 ? 0 : -1
+  // Rykte-delta. For service/klage er rykte HOVEDmetrikken, så utslaget er
+  // tydeligere (en god håndtering løfter mer, en dårlig svir mer) — det gjør
+  // avveiningen «kostnad vs. rykte» reell.
+  const reputationDelta = service
+    ? (satisfaction >= 85 ? 4 : satisfaction >= 65 ? 2 : satisfaction >= 45 ? 0 : satisfaction >= 30 ? -2 : -4)
+    : (satisfaction >= 85 ? 3 : satisfaction >= 65 ? 2 : satisfaction >= 45 ? 1 : satisfaction >= 30 ? 0 : -1)
 
   // XP er alltid ikke-negativ — eleven skal sitte igjen med mestringsfølelse.
+  // For service teller god håndtering (ikke salg).
   const xpEarned =
     20 + good * 8 + warn * 3 +
-    (sales.some(l => l.qty > 0) ? 15 : 0) +
+    (service ? 0 : sales.some(l => l.qty > 0) ? 15 : 0) +
     (behovstreff ? 10 : 0) +
     (personaMatch ? 10 : 0)
 
   return {
-    sales, revenue, satisfaction, reputationDelta, xpEarned,
-    personaMatch, behovstreff, summary: buildSummary({ satisfaction, behovstreff, revenue, bad, personaMatch }),
+    sales, revenue, cost, primaryMetric: service ? 'reputation' : 'sale',
+    satisfaction, reputationDelta, xpEarned,
+    personaMatch, behovstreff,
+    summary: buildSummary({ satisfaction, behovstreff, revenue, cost, bad, personaMatch, service }),
     good, warn, bad,
   }
 }
 
 function buildSummary(r: {
-  satisfaction: number; behovstreff: boolean; revenue: number; bad: number; personaMatch: boolean
+  satisfaction: number; behovstreff: boolean; revenue: number; cost: number; bad: number; personaMatch: boolean; service: boolean
 }): string {
   const parts: string[] = []
+
+  if (r.service) {
+    // Klage/service-utfall: rykte i sentrum, kostnad som avveining.
+    if (r.satisfaction >= 85) parts.push('Forbilledlig klagehåndtering! Kunden følte seg hørt og rettferdig behandlet.')
+    else if (r.satisfaction >= 65) parts.push('God håndtering. Kunden dro herfra mer fornøyd enn han kom.')
+    else if (r.satisfaction >= 45) parts.push('Helt grei håndtering, men saken kunne vært løst varmere og tryggere.')
+    else parts.push('Dette gikk skeivt — kunden følte seg avvist. Slikt sprer seg fort og svekker ryktet.')
+
+    if (r.cost > 0) parts.push(`Løsningen kostet ${r.cost.toLocaleString('nb-NO')} kr der og da — men en lojal kunde er verdt langt mer enn én kake.`)
+    else parts.push('Du brukte ingen penger på saken — men husk at et tapt rykte koster mer i lengden enn en omlevering.')
+
+    if (r.personaMatch) parts.push('Kunden traff midt i målgruppa di — desto viktigere å beholde tilliten.')
+    if (r.bad >= 2) parts.push('Unngå å avvise kunden på formaliteter; ved en mangel har han rettigheter selv uten kvittering.')
+    return parts.join(' ')
+  }
 
   if (r.satisfaction >= 85) parts.push('Strålende salgssamtale! Kunden følte seg sett og godt ivaretatt.')
   else if (r.satisfaction >= 65) parts.push('God samtale. Kunden gikk fornøyd ut.')

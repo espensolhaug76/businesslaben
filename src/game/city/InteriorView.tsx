@@ -1,23 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND } from '../../data/districts'
+import { randomScenario } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
 
 // ── InteriorView (INTERIØR-NIVÅ) ─────────────────────────────────────────────
-// Bilde-basert visning (cover, 16:9). Én kunde (Kari) står STOR bak disken:
-// underkroppen okkluderes av et forgrunns-disk-lag (samme interiørbilde klippet
-// til det nederste diskbåndet). Hun toner inn ved oppstart (ingen bevegelse),
-// og åpner salgssituasjon-motoren ved klikk. INGEN kø/respawn: når runden er
-// ferdig (overlay lukkes), toner hun ut.
+// Bilde-basert visning (cover, 16:9). Ved hvert besøk velges et TILFELDIG
+// scenario fra poolen (morgenkunden/reklamasjonen); riktig kunde-sprite
+// (kari.png / tom.png) vises STOR bak disken på SAMME okkluderte diskposisjon.
+// Underkroppen okkluderes av et forgrunns-disk-lag (samme interiørbilde klippet
+// til det nederste diskbåndet). Kunden toner inn ved oppstart (ingen bevegelse),
+// og klikk åpner DET tilhørende scenariet. INGEN kø/respawn: når runden er
+// ferdig (overlay lukkes), toner kunden ut.
+//
+// Begge sprites bruker SAMME fire kalibrerings-konstanter (samme høyde ~706–709
+// px ⇒ samme diskposisjon). Trenger en kunde egen skala senere, legg til en
+// per-scenario `spriteScale` — ikke nødvendig for Kari/Tom nå.
 //
 // LIVE-KALIBRERING (?dev=1): de fire plasserings-konstantene er slidere i et
 // dev-panel. Espen drar kunden + diskkanten på plass visuelt; verdiene vises på
 // skjermen og logges til konsollen ved hver endring for permanent lagring.
 
 const INTERIOR_IMG = '/assets/raw/interior-cafe.png'
-const KARI_IMG = '/assets/raw/customers/kari.png'
 const ASPECT = 16 / 9
 
 // ── Start-verdier — kalibrert visuelt av Espen (?dev=1-sliderne) 2026-06-16 ───
@@ -61,6 +67,9 @@ export default function InteriorView({ districtId, lokaleId }: {
   lokaleId: string
 }) {
   const navigate = useNavigate()
+  // Tilfeldig kunde fra poolen, valgt ÉN gang per besøk (mount). randomScenario
+  // ligger i en ren modul, så Math.random ikke flagges i render.
+  const [scenario] = useState(randomScenario)
   const [imgFailed, setImgFailed] = useState(false)
   const [shown, setShown] = useState(false)        // fade-in/ut (opacity)
   const [gone, setGone] = useState(false)          // fjernet etter runden
@@ -105,9 +114,9 @@ export default function InteriorView({ districtId, lokaleId }: {
 
   function talkToCustomer() {
     initiatedRef.current = true
-    // Samme inngang som dev-knappen «Øv salg» — GamePage lytter og åpner
-    // SalesScenarioOverlay (håndterer __OVERLAY_OPEN__).
-    window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: 'morgenkunden' } }))
+    // Åpner DET scenariet kunden i scenen tilhører (samme inngang som
+    // dev-knappene; GamePage lytter og håndterer __OVERLAY_OPEN__).
+    window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: scenario.id } }))
   }
 
   // Oppdater én konstant + logg alle fire (snapshot med den nye verdien).
@@ -177,8 +186,8 @@ export default function InteriorView({ districtId, lokaleId }: {
             }}
           >
             <img
-              src={KARI_IMG}
-              alt="Kunde"
+              src={scenario.sprite}
+              alt={scenario.customerName}
               draggable={false}
               style={{
                 height: '100%', width: 'auto', display: 'block', userSelect: 'none',

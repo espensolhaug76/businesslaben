@@ -32,6 +32,9 @@ export interface SalesChoice {
   next?: string
   /** Valgfritt: registrer et salg fra sortimentet når dette velges. */
   sell?: SellDirective
+  /** Valgfritt (DEL 3): kroner som forlater kassa når dette velges — f.eks.
+   *  omlevering/refusjon i et reklamasjonsscenario. Trekkes fra `money`. */
+  cost?: number
 }
 
 export interface SalesStep {
@@ -58,8 +61,14 @@ export interface SalesScenario {
   personaTag: string
   /** Kort, synlig beskrivelse av kunden. */
   description: string
+  /** Kundens sprite (ren PNG med alfa) som vises i interiørscenen. */
+  sprite: string
   /** SKJULT behov — vises ikke til eleven før i resultat/feedback. */
   hiddenNeed: string
+  /** Utfallstype (DEL 3). 'sale' (standard) = hovedmetrikken er salg.
+   *  'service' = hovedmetrikken er RYKTE (f.eks. klage/reklamasjon): ingen
+   *  salgsforventning, og en god løsning kan koste penger. */
+  outcomeKind?: 'sale' | 'service'
   /** Ordnet liste steg; første element = startsteg. */
   steps: SalesStep[]
 }
@@ -87,6 +96,11 @@ export interface ScoredPick {
 export interface SalesResult {
   sales: SaleLine[]
   revenue: number
+  /** Kroner ut av kassa (DEL 3): sum av valgte `cost` (omlevering/refusjon). */
+  cost: number
+  /** Hovedmetrikken som resultatkortet fremhever: 'sale' (salg/omsetning) eller
+   *  'reputation' (rykte — for service/klage-scenarier). */
+  primaryMetric: 'sale' | 'reputation'
   /** Kundetilfredshet 0–100 (per scenario; mappes til rykte-delta). */
   satisfaction: number
   reputationDelta: number

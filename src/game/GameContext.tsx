@@ -168,7 +168,7 @@ type Action =
   | { type: 'SET_PRODUCTS'; products: Product[] }
   | { type: 'SET_MAIN_PRODUCT'; id: string }
   | { type: 'SET_WINDOW_DISPLAY'; items: WindowDisplayItem[] }
-  | { type: 'RESOLVE_SALES_SCENARIO'; sales: SaleLine[]; reputationDelta: number; xpEarned: number }
+  | { type: 'RESOLVE_SALES_SCENARIO'; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   | { type: 'SET_MARKETING'; budget: GameState['marketingBudget'] }
   | { type: 'SET_APPEAL'; appealType: GameState['appealType'] }
@@ -294,9 +294,10 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'RESOLVE_SALES_SCENARIO': {
       // Salgssituasjon-motor: skriver resultatet til EKSISTERENDE felt —
-      // money (salg), products[].stock (varelager), reputation (rykte) og
-      // xp/level (med samme level-up-løype som APPLY_MONTH_RESULT). Ingen nye
-      // state-felt. Salg klemmes mot faktisk lager.
+      // money (salg minus kostnad), products[].stock (varelager), reputation
+      // (rykte) og xp/level (med samme level-up-løype som APPLY_MONTH_RESULT).
+      // Ingen nye state-felt. Salg klemmes mot faktisk lager; `cost` (DEL 3 —
+      // omlevering/refusjon) trekkes fra kassa.
       const reqByProduct = new Map<string, number>()
       for (const l of action.sales) reqByProduct.set(l.productId, (reqByProduct.get(l.productId) ?? 0) + l.qty)
 
@@ -322,7 +323,7 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         products,
-        money: state.money + revenue,
+        money: state.money + revenue - Math.max(0, action.cost ?? 0),
         reputation,
         xp: newXp,
         level: newLevel,

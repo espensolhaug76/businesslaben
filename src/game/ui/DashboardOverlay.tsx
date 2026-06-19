@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
 import WindowDisplayEditor from '../city/WindowDisplay'
+import { SCENARIOS } from '../sales/scenarios'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import type { Product, DistributionChannel } from '../types'
 import type { Loan } from '../types'
@@ -185,17 +186,20 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
         borderRadius: 12, padding: '0.6rem 0.9rem',
       }}>
         <span style={{ fontSize: 11, fontWeight: 800, color: '#c084fc', letterSpacing: '0.05em' }}>DEV</span>
-        <span style={{ fontSize: 12, color: '#94a3b8', flex: 1 }}>Test salgssituasjon-motoren</span>
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: 'morgenkunden' } }))}
-          style={{
-            background: 'linear-gradient(135deg,#a855f7,#7c3aed)', border: 'none', borderRadius: 99,
-            padding: '0.45rem 1.1rem', color: '#fff', fontWeight: 700, fontSize: 13,
-            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-          }}
-        >
-          🛎️ Øv salg
-        </button>
+        <span style={{ fontSize: 12, color: '#94a3b8', flex: 1 }}>Test salgssituasjon-motoren (pool)</span>
+        {SCENARIOS.map(s => (
+          <button
+            key={s.id}
+            onClick={() => window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: s.id } }))}
+            style={{
+              background: 'linear-gradient(135deg,#a855f7,#7c3aed)', border: 'none', borderRadius: 99,
+              padding: '0.45rem 1.1rem', color: '#fff', fontWeight: 700, fontSize: 13,
+              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+            }}
+          >
+            🛎️ {s.customerName}
+          </button>
+        ))}
       </div>
 
       {/* KPI cards */}

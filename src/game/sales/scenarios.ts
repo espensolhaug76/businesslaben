@@ -16,6 +16,7 @@ export const MORGENKUNDEN: SalesScenario = {
   id: 'morgenkunden',
   customerName: 'Morgenkunden',
   personaTag: 'Karriereorienterte',
+  sprite: '/assets/raw/customers/kari.png',
   description: 'En stresset pendler på vei til jobb. Vil ha noe raskt og oppkvikkende, og setter pris på effektiv, vennlig service.',
   hiddenNeed: 'Trenger noe som vekker — helst en kaffe å ta med. Har dårlig tid og vil bli sett.',
   steps: [
@@ -82,8 +83,110 @@ export const MORGENKUNDEN: SalesScenario = {
   ],
 }
 
-export const SCENARIOS: SalesScenario[] = [MORGENKUNDEN]
+// ─── «Reklamasjonen» ─────────────────────────────────────────────────────────
+// Service/klage-scenario (ikke salg): Tom kommer tilbake med en dårlig
+// bursdagskake. KJERNE er rettighets-steget — en mangel gir rett til
+// omlevering/heving SELV UTEN kvittering når kjøpet kan sannsynliggjøres
+// (forbrukerkjøpsloven). Hovedmetrikken er RYKTE, ikke salg (se DEL 3:
+// outcomeKind 'service' + kostnad på en god løsning).
+//
+// persona-tag 'Familieorienterte' (far som handler til familien) — gir
+// målgruppe-bonus mot psychographics; hans misfornøyde tilstand ligger i
+// description/replikkene, ikke i taggen.
+
+/** Kostnad (kr) ved omlevering av bursdagskaka (DEL 3). Kaka er en
+ *  BESTILLINGSVARE — den inngår ikke i det løpende sortimentet — derfor en fast
+ *  kostpris her framfor et sortiment-oppslag. Lett å justere ved
+ *  økonomi-balansering. */
+export const REKLAMASJON_OMLEVERING_KOST = 250
+
+export const REKLAMASJONEN: SalesScenario = {
+  id: 'reklamasjonen',
+  customerName: 'Tom',
+  personaTag: 'Familieorienterte',
+  sprite: '/assets/raw/customers/tom.png',
+  outcomeKind: 'service',   // hovedmetrikk = rykte (DEL 3), ikke salg
+  description: 'En far som kjøpte bursdagskake til datteren. Kaka var sur, og han er tydelig skuffet og irritert. Vil bli tatt på alvor og få en ordentlig løsning.',
+  hiddenNeed: 'Vil bli hørt og få en rettferdig løsning på en reell mangel — ikke bli avvist på formaliteter som manglende kvittering.',
+  steps: [
+    {
+      id: 'mot',
+      customerLine: '(setter en kakeeske hardt i disken) Den her kaka var sur! Datteras bursdag ble ødelagt.',
+      note: 'Han er opprørt. Tonen din nå avgjør mye.',
+      choices: [
+        { id: 'mot_a', text: 'Så leit å høre — det skal vi finne ut av sammen. Fortell hva som skjedde.', quality: 'good',
+          feedback: 'Rolig og empatisk. Du anerkjenner følelsen uten å gå i forsvar, og Tom roer seg litt.' },
+        { id: 'mot_b', text: 'Oi. Er du sikker på at det var noe galt med den?', quality: 'warn',
+          feedback: 'Du sår tvil med en gang. Det føles avvisende, selv om du ikke mente det vondt.' },
+        { id: 'mot_c', text: 'Sånt skjer. Hva vil du jeg skal gjøre med det?', quality: 'bad',
+          feedback: 'Likegyldig og defensiv. Tom føler seg ikke tatt på alvor.' },
+      ],
+    },
+    {
+      id: 'forsta',
+      customerLine: 'Den smakte gjæret allerede da vi skar i den — midt i selskapet!',
+      note: 'Få fram fakta før du konkluderer.',
+      choices: [
+        { id: 'fs_a', text: 'Det høres ut som en klar feil på varen. Når kjøpte du den?', quality: 'good',
+          feedback: 'Du lytter, bekrefter og kartlegger — ryddig og profesjonelt.' },
+        { id: 'fs_b', text: 'Kaker kan jo bli sure hvis de står for varmt hjemme …', quality: 'warn',
+          feedback: 'Du antyder at det er kundens feil uten grunnlag. Det provoserer.' },
+        { id: 'fs_c', text: 'Du har sikkert oppbevart den feil.', quality: 'bad',
+          feedback: 'Du anklager kunden direkte. Nå er han enda mer opprørt.' },
+      ],
+    },
+    {
+      id: 'rettigheter',
+      customerLine: 'Jeg har ikke kvitteringen lenger, altså. Betyr det at jeg er sjanseløs?',
+      note: 'KJERNE: hva sier forbrukerretten?',
+      choices: [
+        { id: 'rt_a', text: 'Nei. En mangel gir deg rett til omlevering eller pengene tilbake — kvittering er fint, men ikke et absolutt krav når kjøpet kan sannsynliggjøres.', quality: 'good',
+          feedback: 'Riktig. Ved en mangel har kunden krav på retting/omlevering; manglende kvittering stenger ikke døra når kjøpet kan sannsynliggjøres. Faglig trygt.' },
+        { id: 'rt_b', text: 'Hmm, jeg er ikke helt sikker på reglene … la meg sjekke litt.', quality: 'warn',
+          feedback: 'Ærlig, men vinglete. Usikkerheten svekker tilliten — kunne du forbrukerrettene, sto du tryggere.' },
+        { id: 'rt_c', text: 'Uten kvittering kan jeg dessverre ikke gjøre noe for deg.', quality: 'bad',
+          feedback: 'Faktafeil. En mangel gir rettigheter selv uten kvittering når kjøpet kan sannsynliggjøres — å avvise på formalitet er både feil og dårlig service.' },
+      ],
+    },
+    {
+      id: 'losning',
+      customerLine: 'Ok … så hva kan dere gjøre, da?',
+      note: 'Velg en konkret løsning.',
+      choices: [
+        { id: 'ls_a', text: 'Du får en helt ny kake nå, og en liten unnskyldning på huset.', quality: 'good',
+          cost: REKLAMASJON_OMLEVERING_KOST,   // omlevering: kroner ut av kassa (DEL 3)
+          feedback: 'Raus og ryddig omlevering. Det koster litt der og da, men gjør en skuffet kunde til en lojal en.' },
+        { id: 'ls_b', text: 'Jeg kan gi deg 20 % avslag på neste kjøp.', quality: 'warn',
+          feedback: 'Bedre enn ingenting, men det løser ikke den faktiske mangelen her og nå.' },
+        { id: 'ls_c', text: 'Jeg kan dessverre ikke gjøre noe uten kvittering.', quality: 'bad',
+          feedback: 'Du står på formaliteten og lar kunden sitte med tapet. Ryktet ditt tar skade.' },
+      ],
+    },
+    {
+      id: 'avslutt',
+      customerLine: '(litt mildere) Greit. Takk for det.',
+      note: 'Sisteinntrykket avgjør om han kommer tilbake.',
+      choices: [
+        { id: 'av_a', text: 'Beklager bryderiet, Tom — hils datteren din fra oss. Velkommen tilbake!', quality: 'good',
+          feedback: 'Varmt og personlig. Du snur en klage til en god historie han forteller videre.' },
+        { id: 'av_b', text: 'Værsågod. Ha en fin dag.', quality: 'warn',
+          feedback: 'Korrekt, men litt flatt etter en sånn sak.' },
+        { id: 'av_c', text: '(snur deg mot neste kunde uten å si mer)', quality: 'bad',
+          feedback: 'Kald avslutning. Han går misfornøyd uansett hva som ble sagt før.' },
+      ],
+    },
+  ],
+}
+
+export const SCENARIOS: SalesScenario[] = [MORGENKUNDEN, REKLAMASJONEN]
 
 export function getScenario(id: string): SalesScenario | undefined {
   return SCENARIOS.find(s => s.id === id)
+}
+
+/** Velg et tilfeldig scenario fra poolen. Math.random ligger i denne rene
+ *  modulen (ikke i React-render), så kallstedet (useState-initialisering i
+ *  InteriorView) forblir lint-rent. */
+export function randomScenario(): SalesScenario {
+  return SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)]!
 }

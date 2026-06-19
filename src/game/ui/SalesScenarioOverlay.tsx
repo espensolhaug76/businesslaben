@@ -83,6 +83,7 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
   const [stepId, setStepId] = useState(scenario.steps[0]!.id)
   const [picks, setPicks] = useState<ScoredPick[]>([])
   const [sales, setSales] = useState<SaleLine[]>([])
+  const [costs, setCosts] = useState(0)            // DEL 3: kroner ut (omlevering/refusjon)
   const [pending, setPending] = useState<Pending | null>(null)
   const [phase, setPhase] = useState<'dialog' | 'result'>('dialog')
 
@@ -98,7 +99,8 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
     setPending(p)
   }
 
-  // Vanlig valg (kan bære et valgfritt mersalg via sell-direktivet).
+  // Vanlig valg (kan bære et valgfritt mersalg via sell-direktivet, eller en
+  // kostnad via cost — DEL 3: omlevering/refusjon).
   function chooseFixed(choice: SalesChoice) {
     let sale: SaleLine | null = null
     let extra: string | undefined
@@ -110,6 +112,10 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
         sale = { productId: hit.id, name: hit.name, price: hit.retailPrice, qty: 1, addon: choice.sell.addon }
         extra = `Mersalg: ${hit.name} (${hit.retailPrice.toLocaleString('nb-NO')} kr)`
       }
+    }
+    if (choice.cost && choice.cost > 0) {
+      setCosts(c => c + choice.cost!)
+      extra = `Kostnad: −${choice.cost.toLocaleString('nb-NO')} kr (ut av kassa)`
     }
     record({ quality: choice.quality }, sale, { quality: choice.quality, text: choice.feedback, extra, next: choice.next })
   }
@@ -145,15 +151,16 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
 
   function restart() {
     setStepId(scenario.steps[0]!.id)
-    setPicks([]); setSales([]); setPending(null); setPhase('dialog')
+    setPicks([]); setSales([]); setCosts(0); setPending(null); setPhase('dialog')
   }
 
   function finish() {
-    const result = buildSalesResult(picks, sales, personaMatch)
-    // DEL 3: skriv til spillstate (salg → økonomi/lager, rykte, XP).
+    const result = buildSalesResult(picks, sales, personaMatch, { costs, outcomeKind: scenario.outcomeKind })
+    // DEL 3: skriv til spillstate (salg → økonomi/lager, kostnad, rykte, XP).
     dispatch({
       type: 'RESOLVE_SALES_SCENARIO',
       sales: result.sales,
+      cost: result.cost,
       reputationDelta: result.reputationDelta,
       xpEarned: result.xpEarned,
     })
@@ -199,7 +206,7 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
               onChooseHonest={chooseHonest} onNext={next}
             />
           : <ResultView
-              result={buildSalesResult(picks, sales, personaMatch)}
+              result={buildSalesResult(picks, sales, personaMatch, { costs, outcomeKind: scenario.outcomeKind })}
               hiddenNeed={scenario.hiddenNeed}
               onFinish={finish} onRestart={restart}
             />}
@@ -316,6 +323,8 @@ function ResultView({ result, hiddenNeed, onFinish, onRestart }: {
 }) {
   const satColor = result.satisfaction >= 70 ? '#22c55e' : result.satisfaction >= 45 ? '#facc15' : '#ef4444'
   const soldLines = result.sales.filter(s => s.qty > 0)
+  const repPrimary = result.primaryMetric === 'reputation'
+  const repColor = result.reputationDelta >= 0 ? '#38bdf8' : '#ef4444'
 
   return (
     <div>
@@ -332,11 +341,22 @@ function ResultView({ result, hiddenNeed, onFinish, onRestart }: {
         </div>
       </div>
 
-      {/* Nøkkeltall */}
+      {/* Nøkkeltall — hovedmetrikken først. Service/klage: RYKTE + kostnad.
+          Salg: omsetning + rykte. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', marginBottom: '1.1rem' }}>
-        <StatCard label="Salg" value={result.revenue > 0 ? `${result.revenue.toLocaleString('nb-NO')} kr` : '—'} color="#22c55e" />
-        <StatCard label="Rykte" value={`${result.reputationDelta >= 0 ? '+' : ''}${result.reputationDelta}`} color={result.reputationDelta >= 0 ? '#38bdf8' : '#ef4444'} />
-        <StatCard label="XP" value={`+${result.xpEarned}`} color="#a855f7" />
+        {repPrimary ? (
+          <>
+            <StatCard label="Rykte (hovedmål)" value={`${result.reputationDelta >= 0 ? '+' : ''}${result.reputationDelta}`} color={repColor} primary />
+            <StatCard label="Kostnad" value={result.cost > 0 ? `−${result.cost.toLocaleString('nb-NO')} kr` : '—'} color={result.cost > 0 ? '#f97316' : '#64748b'} />
+            <StatCard label="XP" value={`+${result.xpEarned}`} color="#a855f7" />
+          </>
+        ) : (
+          <>
+            <StatCard label="Salg" value={result.revenue > 0 ? `${result.revenue.toLocaleString('nb-NO')} kr` : '—'} color="#22c55e" primary />
+            <StatCard label="Rykte" value={`${result.reputationDelta >= 0 ? '+' : ''}${result.reputationDelta}`} color={repColor} />
+            <StatCard label="XP" value={`+${result.xpEarned}`} color="#a855f7" />
+          </>
+        )}
       </div>
 
       {/* Salgslinjer */}
@@ -408,11 +428,15 @@ function PrimaryButton({ label, onClick }: { label: string; onClick: () => void 
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
+function StatCard({ label, value, color, primary }: { label: string; value: string; color: string; primary?: boolean }) {
   return (
-    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '0.7rem', textAlign: 'center' }}>
+    <div style={{
+      background: primary ? `${color}12` : 'rgba(255,255,255,0.03)',
+      border: `1px solid ${primary ? `${color}55` : 'rgba(255,255,255,0.08)'}`,
+      borderRadius: 10, padding: '0.7rem', textAlign: 'center',
+    }}>
       <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 17, fontWeight: 800, color }}>{value}</div>
+      <div style={{ fontSize: primary ? 19 : 17, fontWeight: 800, color }}>{value}</div>
     </div>
   )
 }
