@@ -98,6 +98,8 @@ const initialState: GameState = {
   monthlyRent: 0,
   storageCapacity: 0,
 
+  shopOpen: false,
+
   products: [],
   mainProductId: null,
   channels: ['physicalStore'],
@@ -189,6 +191,7 @@ type Action =
   | { type: 'SET_P4_COMPLETE' }
   | { type: 'ENTER_INTERIOR' }
   | { type: 'EXIT_INTERIOR' }
+  | { type: 'SET_SHOP_OPEN'; open: boolean }
   | { type: 'RESET' }
 
 // ─── Plan quality helper ─────────────────────────────────────────────────────
@@ -644,6 +647,9 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'EXIT_INTERIOR':
       return { ...state, currentScene: 'city' }
+
+    case 'SET_SHOP_OPEN':
+      return { ...state, shopOpen: action.open }
 
     case 'RESET':
       return initialState

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { MONTER_TRAU, type MonterTrau } from '../../data/districts'
@@ -7,7 +7,7 @@ import { INDUSTRY_CATALOG, catalogToProduct, type IndustryCatalogItem } from '..
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
-import type { Product } from '../types'
+import type { Product, TrauDensity, TrauItem } from '../types'
 
 // ── MonterScene (FRONTAL MONTER — kunde-siden) ───────────────────────────────
 // Frontal vy av disk-monteren. Disken er en LAGER-flate: hvert TRAU fylles med
@@ -54,13 +54,20 @@ const MAX_ROWS = 3
 function trauCols(trauId: string): number {
   return trauId === 'trau-17' || trauId === 'trau-18' ? 4 : 1
 }
+// Presentasjonsvalg (DEL 3, spillermekanikk) — tetthet justerer kapasiteten
+// (+40 %/−40 %); mellomrommet mellom fliser FØLGER av dette automatisk siden
+// flere/færre fliser deler samme trau-flate (rad-avstanden er 100 %/antall
+// rader, se TrauContents), ingen egen spacing-parameter trengs.
+const DENSITY_MULT: Record<TrauDensity, number> = { tett: 1.4, standard: 1, luftig: 0.6 }
+const DENSITY_LABEL: Record<TrauDensity, string> = { tett: 'Tett', standard: 'Standard', luftig: 'Luftig' }
+const DENSITY_OPTIONS: TrauDensity[] = ['tett', 'standard', 'luftig']
 /** Antall fliser i ETT trau, uavhengig av alle andre trau: andel av DETTE
- *  trauets egen kapasitet (bredde × maks rader i dybden) etter lagermengde
- *  (full / halv / lav / tom). Hvert trau er en egen, selvstendig flate —
- *  ingen overflyt til naboer. */
-function tileCount(product: Product, trauId: string): number {
+ *  trauets egen kapasitet (bredde × maks rader i dybden × spillerens
+ *  tetthetsvalg) etter lagermengde (full / halv / lav / tom). Hvert trau er
+ *  en egen, selvstendig flate — ingen overflyt til naboer. */
+function tileCount(product: Product, trauId: string, density: TrauDensity): number {
   if (product.stock <= 0) return 0
-  const capacity = trauCols(trauId) * MAX_ROWS
+  const capacity = Math.max(1, Math.round(trauCols(trauId) * MAX_ROWS * DENSITY_MULT[density]))
   const r = product.stock / Math.max(1, product.maxDemandPerMonth)
   const frac = r >= 0.66 ? 1 : r >= 0.33 ? 0.625 : 0.25
   return Math.max(1, Math.round(capacity * frac))
@@ -84,8 +91,15 @@ export default function MonterScene({ districtId, lokaleId }: {
   const [overTrau, setOverTrau] = useState<string | null>(null)
   const [failedSprites, setFailedSprites] = useState<Set<string>>(new Set())
   const [devTrau, setDevTrau] = useState<MonterTrau[]>([])
-  const [calTrauId, setCalTrauId] = useState('trau-1')
+  const [openPanelTrauId, setOpenPanelTrauId] = useState<string | null>(null)
+  const [hoverHintTrauId, setHoverHintTrauId] = useState<string | null>(null)
+  const [autoHintTrauId, setAutoHintTrauId] = useState<string | null>(null)
   const [, setRev] = useState(0)
+  const panelRef = useRef<HTMLDivElement>(null)
+  // Hvilke trau har allerede fått sitt automatiske «klikk for å tilpasse»-hint
+  // denne økten — vises kun FØRSTE gang et gitt trau fylles, ikke støyende ved
+  // hver re-fylling.
+  const autoHintShownRef = useRef<Set<string>>(new Set())
 
   const catalog = INDUSTRY_CATALOG[state.industry] ?? []
   const trauVarer = catalog.filter(i => i.trauVare)
@@ -108,20 +122,16 @@ export default function MonterScene({ districtId, lokaleId }: {
     )
   }
 
-  /** ?dev=1: kalibrer sporet vare-stacken plasseres langs / flis-størrelsen,
-   *  for et VILKÅRLIG trau (mutasjon av det kjørende MONTER_TRAU-objektet,
-   *  samme mønster som ZoneTracer — logges for permanent innliming i
-   *  districts.ts). */
-  function setTrauSkew(t: MonterTrau, pct: number) {
-    t.skew = pct
-    console.log(`[MonterScene] ${t.id}.skew = ${pct} — lim inn i MONTER_TRAU i districts.ts`)
-    setRev(r => r + 1)
-  }
-  function setTrauScale(t: MonterTrau, mult: number) {
-    t.scale = mult
-    console.log(`[MonterScene] ${t.id}.scale = ${mult} — lim inn i MONTER_TRAU i districts.ts`)
-    setRev(r => r + 1)
-  }
+  // Lukk justeringspanelet ved klikk utenfor det (capture-fase, robust mot
+  // stopPropagation andre steder — samme mønster som drag-lytterne under).
+  useEffect(() => {
+    if (!openPanelTrauId) return
+    function onPointerDown(e: PointerEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpenPanelTrauId(null)
+    }
+    window.addEventListener('pointerdown', onPointerDown, true)
+    return () => window.removeEventListener('pointerdown', onPointerDown, true)
+  }, [openPanelTrauId])
 
   /** Hvilket trau ligger punktet (klient-koord) over? null hvis ingen. */
   function trauForPoint(clientX: number, clientY: number): string | null {
@@ -145,11 +155,28 @@ export default function MonterScene({ districtId, lokaleId }: {
     dispatch({ type: 'CARRY_PRODUCT', product, starterStock: starterStockFor(item) })
     const next = [...layout.filter(t => t.trauId !== trauId), { trauId, productId: product.id }]
     dispatch({ type: 'SET_COUNTER_LAYOUT', items: next })
+
+    // Første gang DETTE trauet fylles denne økten: vis «klikk for å
+    // tilpasse»-hintet kort, automatisk (uoppfordret oppdagelse av panelet).
+    if (!autoHintShownRef.current.has(trauId)) {
+      autoHintShownRef.current.add(trauId)
+      setAutoHintTrauId(trauId)
+      window.setTimeout(() => setAutoHintTrauId(id => id === trauId ? null : id), 2200)
+    }
   }
 
   /** Tømmer kun DETTE trauet — varen kan fortsatt stå i andre trau. */
   function clearTrau(trauId: string) {
     dispatch({ type: 'SET_COUNTER_LAYOUT', items: layout.filter(t => t.trauId !== trauId) })
+  }
+
+  /** Spillerens justeringspanel (DEL 1): oppdaterer tetthet/størrelse/skew
+   *  for ÉN trau-plassering — live mens man drar sliderne. */
+  function updateTrauAdjust(trauId: string, patch: Partial<Pick<TrauItem, 'density' | 'sizeAdjust' | 'skewAdjust'>>) {
+    dispatch({
+      type: 'SET_COUNTER_LAYOUT',
+      items: layout.map(t => t.trauId === trauId ? { ...t, ...patch } : t),
+    })
   }
 
   // Dra en trau-vare fra paletten til et trau.
@@ -213,28 +240,43 @@ export default function MonterScene({ districtId, lokaleId }: {
         )}
 
         {/* TRAU-LAG (z=5) — varene flislagt etter lager; tomme trau er
-            diskré dropp-mål. */}
+            diskré dropp-mål. Klikk på et FYLT trau åpner spillerens
+            justeringspanel (DEL 1, under). */}
         {allTrau.map(t => {
           const placed = layout.find(ti => ti.trauId === t.id)
           const product = placed ? state.products.find(p => p.id === placed.productId) ?? null : null
-          const n = product ? tileCount(product, t.id) : 0
+          const density = placed?.density ?? 'standard'
+          const sizeAdjust = placed?.sizeAdjust ?? 1
+          const skewAdjust = placed?.skewAdjust ?? 0
+          const n = product ? tileCount(product, t.id, density) : 0
           const hot = overTrau === t.id
+          // Hint («Klikk for å tilpasse plassering») — kun fylte trau, kun ved
+          // hover ELLER det korte auto-visningsvinduet første gang trauet ble
+          // fylt, ALDRI mens justeringspanelet er åpent for dette trauet.
+          const showHint = !!placed && openPanelTrauId !== t.id
+            && (hoverHintTrauId === t.id || autoHintTrauId === t.id)
           return (
             <div
               key={t.id}
+              onClick={() => { if (placed) setOpenPanelTrauId(t.id) }}
               onContextMenu={e => { e.preventDefault(); if (placed) clearTrau(t.id) }}
-              title={product ? `${product.name} — høyreklikk for å tømme trauet` : 'Tomt trau — dra en vare hit'}
+              onMouseEnter={() => { if (placed) setHoverHintTrauId(t.id) }}
+              onMouseLeave={() => setHoverHintTrauId(id => id === t.id ? null : id)}
+              title={product
+                ? `${product.name} — klikk for å justere, høyreklikk for å tømme trauet`
+                : 'Tomt trau — dra en vare hit'}
               style={{
                 position: 'absolute',
                 left: `${t.rect[0]}%`, top: `${t.rect[1]}%`, width: `${t.rect[2]}%`, height: `${t.rect[3]}%`,
                 zIndex: 5,
                 borderRadius: 8,
+                cursor: placed ? 'pointer' : 'default',
                 // Klipp KUN bakkanten — siden nærmest den som står bak disken
                 // (POV) — til trauets egen nedre kant, likt for alle trau.
                 // Topp/sider klippes ikke — der ligger varen bare litt lenger
                 // ut mot glasset, ingen synlig feil.
                 clipPath: 'inset(-100% -100% 0 -100%)',
-                border: hot
+                border: hot || openPanelTrauId === t.id
                   ? '2px solid rgba(255,180,84,0.95)'
                   : product ? '1px solid transparent' : '1px dashed rgba(255,255,255,0.22)',
                 background: hot ? 'rgba(255,180,84,0.12)' : 'transparent',
@@ -242,8 +284,21 @@ export default function MonterScene({ districtId, lokaleId }: {
               }}
             >
               {product && n > 0
-                ? <TrauContents product={product} trauId={t.id} n={n} skew={t.skew ?? 0} scale={t.scale ?? 1} failedSprites={failedSprites} onFail={markFailed} />
+                ? <TrauContents product={product} trauId={t.id} n={n} scale={t.scale ?? 1} sizeAdjust={sizeAdjust} skewAdjust={skewAdjust} failedSprites={failedSprites} onFail={markFailed} />
                 : null}
+
+              {/* DEL 1 — diskret hint, dempet stil, sperrer ikke klikk. */}
+              {showHint && (
+                <div style={{
+                  position: 'absolute', left: '50%', top: 0, transform: 'translate(-50%, -130%)',
+                  background: 'rgba(10,14,26,0.82)', border: '1px solid rgba(255,255,255,0.14)',
+                  borderRadius: 6, padding: '2px 7px', color: '#cbd5e1',
+                  fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap', pointerEvents: 'none',
+                  opacity: 0.9, zIndex: 7,
+                }}>
+                  Klikk for å tilpasse plassering
+                </div>
+              )}
             </div>
           )
         })}
@@ -269,41 +324,62 @@ export default function MonterScene({ districtId, lokaleId }: {
         </div>
       )}
 
-      {/* ?dev=1: trau-kalibrering — VELG et trau, juster spor-skjevheten
-          (bakerste rad ↔ fremste rad forskjøvet sidelengs, flisene roterer
-          ikke selv) og flis-størrelsen. Gjelder alle 18 trau, ikke bare
-          hjørnene. Verdiene logges for permanent innliming i districts.ts
-          (samme mønster som sone-tracer). */}
-      {IS_DEV_COORDS && (() => {
-        const t = allTrau.find(x => x.id === calTrauId)
+      {/* SPILLERENS JUSTERINGSPANEL (DEL 1) — klikk på et fylt trau for å
+          åpne. Kontinuerlige slidere for størrelse og vinkel/skew (samme
+          følelse/range som det tidligere dev-kun kalibreringspanelet — nå
+          spillerens verktøy per trau-PLASSERING, ikke en fast dev-konstant),
+          pluss tetthet (Tett/Standard/Luftig). Live-oppdatering i trauet
+          mens man drar. Lukkes ved klikk utenfor (useEffect over) eller ✕. */}
+      {openPanelTrauId && (() => {
+        const t = allTrau.find(x => x.id === openPanelTrauId)
+        const placed = layout.find(l => l.trauId === openPanelTrauId)
+        const product = placed ? state.products.find(p => p.id === placed.productId) : null
+        if (!t || !placed || !product) return null
+        const density = placed.density ?? 'standard'
+        const sizeAdjust = placed.sizeAdjust ?? 1
+        const skewAdjust = placed.skewAdjust ?? 0
         return (
-          <div style={{
-            position: 'fixed', top: 112, left: 20, zIndex: 90, width: 200,
-            background: 'rgba(10,14,26,0.94)', border: '1px solid #ffd24a55',
-            borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
-          }}>
-            <div style={{ color: '#ffd24a', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>📐 Trau-kalibrering</div>
-            <select
-              value={calTrauId}
-              onChange={e => setCalTrauId(e.target.value)}
-              style={{
-                width: '100%', marginBottom: 8, background: '#0a0e1a',
-                color: '#f1f5f9', border: '1px solid #ffd24a44', borderRadius: 6,
-                padding: '3px 6px', fontSize: 11, fontFamily: "'Outfit', sans-serif",
-              }}
-            >
-              {allTrau.map(x => (
-                <option key={x.id} value={x.id} style={{ background: '#0a0e1a', color: '#f1f5f9' }}>{x.id}</option>
+          <div
+            ref={panelRef}
+            style={{
+              position: 'fixed', top: 100, left: '50%', transform: 'translateX(-50%)', zIndex: 200, width: 240,
+              background: 'rgba(10,14,26,0.96)', border: '1px solid #ffd24a66', borderRadius: 12,
+              padding: '10px 14px 12px', fontFamily: "'Outfit', sans-serif", boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ color: '#ffd24a', fontSize: 12, fontWeight: 800 }}>🎛️ {t.id} · {product.name}</div>
+              <button
+                onClick={() => setOpenPanelTrauId(null)}
+                title="Lukk"
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 15, lineHeight: 1, cursor: 'pointer', padding: 2 }}
+              >✕</button>
+            </div>
+            <CalRow
+              label="Størrelse" value={sizeAdjust} min={0.5} max={1.5} step={0.02}
+              fmt={v => `${Math.round(v * 100)}%`}
+              onChange={v => updateTrauAdjust(t.id, { sizeAdjust: v })}
+            />
+            <CalRow
+              label="Vinkel / skew" value={skewAdjust} min={-60} max={60} step={1}
+              fmt={v => `${v.toFixed(0)}%`}
+              onChange={v => updateTrauAdjust(t.id, { skewAdjust: v })}
+            />
+            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Tetthet</div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {DENSITY_OPTIONS.map(d => (
+                <button
+                  key={d}
+                  onClick={() => updateTrauAdjust(t.id, { density: d })}
+                  style={{
+                    flex: 1, padding: '4px 0', borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                    fontFamily: "'Outfit', sans-serif",
+                    background: density === d ? 'rgba(255,210,74,0.18)' : 'rgba(255,255,255,0.05)',
+                    color: density === d ? '#ffd24a' : '#94a3b8',
+                    border: `1px solid ${density === d ? 'rgba(255,210,74,0.55)' : 'rgba(255,255,255,0.12)'}`,
+                  }}
+                >{DENSITY_LABEL[d]}</button>
               ))}
-            </select>
-            {t && (
-              <>
-                <SkewSlider trauId={t.id} skew={t.skew ?? 0} onChange={v => setTrauSkew(t, v)} />
-                <ScaleSlider trauId={t.id} scale={t.scale ?? 1} onChange={v => setTrauScale(t, v)} />
-              </>
-            )}
-            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>
-              Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
             </div>
           </div>
         )
@@ -396,23 +472,27 @@ export default function MonterScene({ districtId, lokaleId }: {
 // hverandre) — bredden er fast per trau (trauCols: 1, eller 4 for trau-17/18).
 // Flere fliser enn det som får plass i bredden stables bakover→fremover i
 // dybden (rad for rad, maks MAX_ROWS), med litt skalering/z-rekkefølge så det
-// leses som et lite lager, ikke en flat rekke. `skew` skjevstiller SPORET
-// radene plasseres langs (bakerste rad ↔ fremste rad forskjøvet sidelengs,
-// som et parallellogram) for hjørnetrau fotografert skjevt (buet glass) —
-// flisenes EGEN rotasjon (jitter under) er uendret av dette. `scale`
-// justerer flis-størrelsen (1 = standard).
-function TrauContents({ product, trauId, n, skew, scale: sizeScale, failedSprites, onFail }: {
+// leses som et lite lager, ikke en flat rekke. Flis-bredde = trauets EGEN
+// statiske dev-skala (`scale`) × varens `displayScale` (fysisk størrelse per
+// vare) × spillerens `sizeAdjust` (DEL 1-panelet, per plassering). Flis-rotasjon
+// = varens `displayRotation` (avlange varer som ligger naturlig på skrå) +
+// liten tilfeldig jitter. `skewAdjust` (spillerens panel) skjevstiller SPORET
+// radene plasseres langs (bakerste ↔ fremste rad forskjøvet sidelengs) — samme
+// mekanikk som det tidligere dev-kun trau-skewet, uten å rotere flisene selv.
+function TrauContents({ product, trauId, n, scale: sizeScale, sizeAdjust, skewAdjust, failedSprites, onFail }: {
   product: Product
   trauId: string
   n: number
-  skew: number
   scale: number
+  sizeAdjust: number
+  skewAdjust: number
   failedSprites: Set<string>
   onFail: (src: string) => void
 }) {
   const cols = trauCols(trauId)
   const rows = Math.ceil(n / cols)
-  const tileW = (cols === 1 ? 82 : (100 / cols) * 1.05) * sizeScale
+  const tileW = (cols === 1 ? 82 : (100 / cols) * 1.05) * sizeScale * (product.displayScale ?? 1) * sizeAdjust
+  const baseRotation = product.displayRotation ?? 0
   const hue = productHue(product.id)
   const useSprite = product.sprite && !failedSprites.has(product.sprite)
 
@@ -423,11 +503,12 @@ function TrauContents({ product, trauId, n, skew, scale: sizeScale, failedSprite
         // Dybde: bakerste rad (row 0, øverst i sonen) minst, fremste (nærmest
         // glasset) størst — rendres/stables i samme rekkefølge (zIndex: row).
         const depth = rows > 1 ? row / (rows - 1) : 1
-        const cx = ((col + 0.5) / cols) * 100 + skew * (depth - 0.5)
+        const cx = ((col + 0.5) / cols) * 100 + skewAdjust * (depth - 0.5)
         const cy = ((row + 0.5) / rows) * 100
         const jx = (hash01(`${trauId}-${i}-x`) - 0.5) * 8
         const jy = (hash01(`${trauId}-${i}-y`) - 0.5) * 6
-        const rot = (hash01(`${trauId}-${i}-r`) - 0.5) * 12
+        const jitterRot = (hash01(`${trauId}-${i}-r`) - 0.5) * 12
+        const rot = baseRotation + jitterRot
         const scale = 0.85 + 0.15 * depth
         return (
           <div key={i} style={{
@@ -454,7 +535,7 @@ function TrauContents({ product, trauId, n, skew, scale: sizeScale, failedSprite
   )
 }
 
-// ── Kalibrerings-slider (?dev=1-panel) — delt av skew og størrelse ───────────
+// ── Kalibrerings-slider (spillerens justeringspanel) ─────────────────────────
 function CalRow({ label, value, min, max, step, fmt, onChange }: {
   label: string
   value: number
@@ -477,10 +558,4 @@ function CalRow({ label, value, min, max, step, fmt, onChange }: {
       />
     </div>
   )
-}
-function SkewSlider({ trauId, skew, onChange }: { trauId: string; skew: number; onChange: (v: number) => void }) {
-  return <CalRow label={`${trauId} · skew`} value={skew} min={-60} max={60} step={1} fmt={v => `${v.toFixed(0)}%`} onChange={onChange} />
-}
-function ScaleSlider({ trauId, scale, onChange }: { trauId: string; scale: number; onChange: (v: number) => void }) {
-  return <CalRow label={`${trauId} · størrelse`} value={scale} min={0.5} max={1.5} step={0.02} fmt={v => `${Math.round(v * 100)}%`} onChange={onChange} />
 }

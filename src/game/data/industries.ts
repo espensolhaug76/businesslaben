@@ -20,6 +20,15 @@ export interface IndustryCatalogItem {
   sprite?: string
   /** true = trau-vare (mat i disk-monterens trau). Drikke = false. */
   trauVare?: boolean
+  /** Trau-flis-størrelse for DENNE varen (multiplikator, default 1.0) —
+   *  flis-størrelse i monteren = trauets egen skala × displayScale. Ulike
+   *  varer har ulik fysisk størrelse (et brød ≠ en croissant), så dette
+   *  justeres per vare, ikke per trau. */
+  displayScale?: number
+  /** Trau-flis-rotasjon for DENNE varen i grader (default 0°) — lagt til
+   *  flisens egen små jitter-rotasjon. Brukes for avlange varer (baguette
+   *  o.l.) som naturlig ligger på skrå i trauet. */
+  displayRotation?: number
   tiers: {
     premium:  { costPrice: number; recommendedPrice: number }
     standard: { costPrice: number; recommendedPrice: number }
@@ -29,15 +38,21 @@ export interface IndustryCatalogItem {
 
 /** Kompakt bygger for trau-bakevarer: standard-tier + avledet premium/budget.
  *  `id` brukes som både katalog-id og utklipp-filnavn
- *  (/assets/raw/products/<id>.png), så det matcher split-product-sheet. */
+ *  (/assets/raw/products/<id>.png), så det matcher split-product-sheet.
+ *  `display` (valgfri) justerer trau-visningen — utelatt ⇒ default
+ *  (scale 1.0, rotation 0°). Ett sted å finpusse visuell størrelse/vinkel
+ *  per vare (Espen finpusser videre). */
 function bakeryItem(
   id: string, name: string, icon: string, category: ProductCategory,
   maxDemand: number, costStd: number, priceStd: number,
+  display?: { scale?: number; rotation?: number },
 ): IndustryCatalogItem {
   return {
     id, name, icon, category, trauVare: true,
     sprite: `/assets/raw/products/${id}.png`,
     maxDemandPerMonth: maxDemand, quality: 7, sustainability: 6,
+    displayScale: display?.scale ?? 1.0,
+    displayRotation: display?.rotation ?? 0,
     tiers: {
       premium:  { costPrice: Math.round(costStd * 1.5), recommendedPrice: Math.round(priceStd * 1.4) },
       standard: { costPrice: costStd, recommendedPrice: priceStd },
@@ -85,18 +100,19 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
       tiers: { premium: { costPrice: 20, recommendedPrice: 49  }, standard: { costPrice: 12, recommendedPrice: 29  }, budget: { costPrice: 6,  recommendedPrice: 19  } } },
 
     // Spesifikke trau-bakevarer (sprite-utklipp fra split-product-sheet).
+    // display: { scale, rotation } — startverdier, Espen finpusser visuelt.
     // Ark 1
-    bakeryItem('croissant',       'Croissant',        '🥐', 'frokost', 220, 9,  35),
-    bakeryItem('muffin-blabaer',  'Blåbærmuffins',    '🧁', 'kaker',   180, 8,  32),
-    bakeryItem('kanelbolle',      'Kanelbolle',       '🥮', 'frokost', 260, 7,  29),
-    bakeryItem('skolebrod',       'Skolebrød',        '🍩', 'frokost', 200, 8,  32),
-    bakeryItem('rundstykke-grovt','Grovt rundstykke', '🥖', 'brod',    300, 5,  19),
-    bakeryItem('gulrotkake',      'Gulrotkake',       '🍰', 'kaker',   120, 14, 49),
+    bakeryItem('croissant',       'Croissant',        '🥐', 'frokost', 220, 9,  35, { scale: 0.55 }),
+    bakeryItem('muffin-blabaer',  'Blåbærmuffins',    '🧁', 'kaker',   180, 8,  32, { scale: 0.55 }),
+    bakeryItem('kanelbolle',      'Kanelbolle',       '🥮', 'frokost', 260, 7,  29, { scale: 0.65 }),
+    bakeryItem('skolebrod',       'Skolebrød',        '🍩', 'frokost', 200, 8,  32, { scale: 0.65 }),
+    bakeryItem('rundstykke-grovt','Grovt rundstykke', '🥖', 'brod',    300, 5,  19, { scale: 0.55 }),
+    bakeryItem('gulrotkake',      'Gulrotkake',       '🍰', 'kaker',   120, 14, 49, { scale: 0.65 }),
     // Ark 2
-    bakeryItem('baguette',        'Baguette',         '🥖', 'brod',    160, 10, 39),
-    bakeryItem('focaccia',        'Focaccia',         '🫓', 'lunsj',   140, 12, 45),
-    bakeryItem('wrap-kylling',    'Kyllingwrap',      '🌯', 'lunsj',   180, 18, 59),
-    bakeryItem('salat',           'Salat',            '🥗', 'lunsj',   150, 20, 69),
+    bakeryItem('baguette',        'Baguette',         '🥖', 'brod',    160, 10, 39, { scale: 0.9, rotation: -12 }),
+    bakeryItem('focaccia',        'Focaccia',         '🫓', 'lunsj',   140, 12, 45, { scale: 0.9, rotation: -8 }),
+    bakeryItem('wrap-kylling',    'Kyllingwrap',      '🌯', 'lunsj',   180, 18, 59, { scale: 0.8 }),
+    bakeryItem('salat',           'Salat',            '🥗', 'lunsj',   150, 20, 69, { scale: 0.8 }),
     bakeryItem('grovbrod',        'Grovbrød',         '🍞', 'brod',    140, 14, 45),
     bakeryItem('surdeigsbrod',    'Surdeigsbrød',     '🍞', 'brod',    120, 18, 59),
   ],
@@ -141,6 +157,8 @@ export function catalogToProduct(item: IndustryCatalogItem, tier: Product['tier'
     category: item.category,
     sprite: item.sprite,
     trauVare: item.trauVare,
+    displayScale: item.displayScale,
+    displayRotation: item.displayRotation,
     maxDemandPerMonth: tier === 'premium'
       ? Math.round(item.maxDemandPerMonth * 0.5)
       : tier === 'budget'

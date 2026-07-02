@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useGame } from '../GameContext'
 import { STOREFRONT_HOTSPOTS, INTERIOR_DISK_DISPLAY } from '../../data/districts'
+import { INDUSTRY_CATALOG, catalogToProduct, type IndustryCatalogItem } from '../data/industries'
 import type { Product, WindowDisplayItem, FixtureId } from '../types'
 import { FACADE_IMG } from './StorefrontView'
 
@@ -75,11 +76,26 @@ function productHue(id: string): number {
   return h % 360
 }
 
-// ── Placeholder-kort (delt visuell mellom editor og scene) ────────────────────
+// ── Kort (delt visuell mellom editor og scene) ────────────────────────────────
 // Skrift skaleres med kortbredden via container-query-enheter (cqw), så samme
-// komponent ser riktig ut i både stor editor og liten scene-flate.
+// komponent ser riktig ut i både stor editor og liten scene-flate. Bruker
+// varens EKTE utklipp (samme sprite som trau-paletten i MonterScene) når
+// tilgjengelig; faller tilbake til fargekort+emoji kun ved manglende/feilet
+// sprite. Sprite-feil holdes LOKALT (egen useState) så komponenten er
+// selvstendig uansett hvilken scene den brukes i (editor/StorefrontView).
 
 function CardVisual({ product }: { product: Product }) {
+  const [spriteFailed, setSpriteFailed] = useState(false)
+  const useSprite = !!product.sprite && !spriteFailed
+  if (useSprite) {
+    return (
+      <img
+        src={product.sprite} alt={product.name} draggable={false}
+        onError={() => setSpriteFailed(true)}
+        style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.45))' }}
+      />
+    )
+  }
   const hue = productHue(product.id)
   return (
     <div style={{
@@ -142,12 +158,57 @@ export function WindowDisplayLayer({ items, products, fixtureId = 'vindu', cardW
 
 // ── Editor for ÉN flate — fri plassering, fra dashbordet ──────────────────────
 
-type DragKind = 'new' | 'move'
+/** Full starter-batch (samme mønster som MonterScene) — så varen har lager
+ *  når den bæres inn i sortimentet ved plassering. */
+function starterStockFor(item: IndustryCatalogItem): number {
+  return item.maxDemandPerMonth
+}
+
+/** Én rad i katalog-paletten — ekte utklipp (samme sprite som trau-paletten i
+ *  MonterScene), fallback til fargekort+emoji kun ved manglende/feilet sprite.
+ *  Sprite-feil holdes lokalt, samme mønster som CardVisual. */
+function PaletteRow({ item, placed, onStart }: {
+  item: IndustryCatalogItem
+  placed: boolean
+  onStart: (e: React.PointerEvent) => void
+}) {
+  const [spriteFailed, setSpriteFailed] = useState(false)
+  const useSprite = !!item.sprite && !spriteFailed
+  const hue = productHue(item.id)
+  return (
+    <div
+      onPointerDown={placed ? undefined : onStart}
+      title={placed ? `${item.name} — allerede plassert` : `${item.name} — dra inn på flaten`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        background: placed ? 'rgba(255,255,255,0.03)' : `linear-gradient(160deg, hsl(${hue} 50% 28%), hsl(${hue} 45% 20%))`,
+        border: `1px solid ${placed ? 'rgba(255,255,255,0.08)' : `hsl(${hue} 50% 40%)`}`,
+        borderRadius: 10, padding: '0.55rem 0.7rem',
+        cursor: placed ? 'default' : 'grab',
+        opacity: placed ? 0.5 : 1, userSelect: 'none', touchAction: 'none',
+      }}
+    >
+      <div style={{ width: 28, height: 28, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {useSprite
+          ? <img src={item.sprite} alt="" draggable={false} onError={() => setSpriteFailed(true)} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+          : <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>}
+      </div>
+      <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: '#f1f5f9', lineHeight: 1.2 }}>
+        {item.name}
+      </span>
+      {placed && <span style={{ fontSize: 14, color: '#00d4aa' }}>✓</span>}
+    </div>
+  )
+}
 
 function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
   const { state, dispatch } = useGame()
   const surfaceRef = useRef<HTMLDivElement>(null)
   const cardWFrac = fixture.cardWFrac
+  // HELE bransjekatalogen — ikke bare det eleven alt har bestilt. Ingen
+  // windowDisplay-filter: drikke (kaffe o.l.) er fin styling i et vindu, selv
+  // om feltet historisk gated trau-egnethet.
+  const catalog = INDUSTRY_CATALOG[state.industry] ?? []
 
   // Arbeidskopi for DENNE flaten (filtrert på fixtureId). Hver endring committes
   // umiddelbart. itemsRef holdes synkron i commit() og under drag (onMove) —
@@ -157,7 +218,9 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
   )
   const itemsRef = useRef(items)
 
-  const [drag, setDrag] = useState<{ kind: DragKind; productId: string } | null>(null)
+  // 'new' drag holder en KATALOG-id (paletten er katalogbasert); 'move'
+  // holder den ferdige produkt-id-en (allerede plassert = allerede båret inn).
+  const [drag, setDrag] = useState<{ kind: 'new'; catalogId: string } | { kind: 'move'; productId: string } | null>(null)
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
   const [dragOut, setDragOut] = useState(false)
 
@@ -188,10 +251,12 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
     return fx < 0 || fx > 1 || fy < 0 || fy > 1
   }
 
-  // Dra et NYTT produkt fra paletten inn på flaten.
-  function startNew(productId: string, e: React.PointerEvent) {
+  // Dra et NYTT produkt fra KATALOG-paletten inn på flaten. Ved slipp: bæres
+  // varen inn i sortimentet (om den ikke alt er der — samme «før + still ut»
+  // som MonterScene) med en full starter-batch, og plasseres.
+  function startNew(catalogId: string, e: React.PointerEvent) {
     e.preventDefault()
-    setDrag({ kind: 'new', productId })
+    setDrag({ kind: 'new', catalogId })
     setGhost({ x: e.clientX, y: e.clientY })
 
     const onMove = (ev: PointerEvent) => {
@@ -207,10 +272,14 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
       if (!rect) return
       const { fx, fy } = fracFromEvent(ev.clientX, ev.clientY, rect)
       if (isOutside(fx, fy)) return   // sluppet utenfor ⇒ avbryt
+      const item = catalog.find(c => c.id === catalogId)
+      if (!item) return
+      const product = catalogToProduct(item, 'standard')
+      dispatch({ type: 'CARRY_PRODUCT', product, starterStock: starterStockFor(item) })
       const [cx, cy] = clampFrac(fx, fy, rect)
       const next = [
-        ...itemsRef.current.filter(i => i.productId !== productId),
-        { fixtureId: fixture.id, productId, x: cx, y: cy, z: computeZ(cy) },
+        ...itemsRef.current.filter(i => i.productId !== product.id),
+        { fixtureId: fixture.id, productId: product.id, x: cx, y: cy, z: computeZ(cy) },
       ]
       commit(next)
     }
@@ -354,45 +423,28 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
         </div>
       </div>
 
-      {/* Palett — elevens sortiment */}
+      {/* Palett — HELE bransjekatalogen (ikke bare det som alt er bestilt). */}
       <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
-        DITT SORTIMENT
+        VARER
       </div>
-      {state.products.length === 0 ? (
+      {catalog.length === 0 ? (
         <div style={{
           textAlign: 'center', color: '#475569', padding: '1.5rem',
           background: 'rgba(255,255,255,0.02)', borderRadius: 12,
           border: '1px dashed rgba(255,255,255,0.1)', fontSize: 13,
         }}>
-          Du har ingen produkter ennå. Bestill varer i <strong>Produkter</strong>-fanen først.
+          Ingen varer i katalogen for denne bransjen.
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.6rem' }}>
-          {state.products.map(p => {
-            const placed = placedIds.has(p.id)
-            const hue = productHue(p.id)
-            return (
-              <div
-                key={p.id}
-                onPointerDown={placed ? undefined : e => startNew(p.id, e)}
-                title={placed ? `${p.name} — allerede plassert` : `${p.name} — dra inn på flaten`}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  background: placed ? 'rgba(255,255,255,0.03)' : `linear-gradient(160deg, hsl(${hue} 50% 28%), hsl(${hue} 45% 20%))`,
-                  border: `1px solid ${placed ? 'rgba(255,255,255,0.08)' : `hsl(${hue} 50% 40%)`}`,
-                  borderRadius: 10, padding: '0.55rem 0.7rem',
-                  cursor: placed ? 'default' : 'grab',
-                  opacity: placed ? 0.5 : 1, userSelect: 'none', touchAction: 'none',
-                }}
-              >
-                <span style={{ fontSize: 20, lineHeight: 1 }}>{p.icon}</span>
-                <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: '#f1f5f9', lineHeight: 1.2 }}>
-                  {p.name}
-                </span>
-                {placed && <span style={{ fontSize: 14, color: '#00d4aa' }}>✓</span>}
-              </div>
-            )
-          })}
+          {catalog.map(item => (
+            <PaletteRow
+              key={item.id}
+              item={item}
+              placed={placedIds.has(`${item.id}_standard`)}
+              onStart={e => startNew(item.id, e)}
+            />
+          ))}
         </div>
       )}
 
@@ -400,8 +452,9 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
           DashboardOverlay (framer-motion) har transform på dialog-div'en, og en
           ancestor med transform gjør at position:fixed måles fra DEN. */}
       {drag?.kind === 'new' && ghost && (() => {
-        const p = state.products.find(pr => pr.id === drag.productId)
-        if (!p) return null
+        const item = catalog.find(c => c.id === drag.catalogId)
+        if (!item) return null
+        const p = catalogToProduct(item, 'standard')
         return createPortal(
           <div style={{
             position: 'fixed', left: ghost.x, top: ghost.y,

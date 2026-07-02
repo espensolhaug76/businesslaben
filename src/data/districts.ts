@@ -336,14 +336,14 @@ export const INTERIOR_DISK_DISPLAY: [number, number, number, number] = [14, 74, 
  *  flislegges med ÉN vares utklipp etter lagermengde. Trace-t av Espen med
  *  ?dev=1 — ett per fysisk fronttrau (18 stk). Trau 9–11 er øvre hylle i
  *  midtseksjonen; trau 17–18 er øvre hylle i hhv. venstre og høyre seksjon.
- *  `skew` (valgfri, % av trau-bredden) skjevstiller SPORET vare-stacken
- *  plasseres langs — bakerste rad skyves til én side, fremste til den andre —
- *  UTEN å rotere hver enkelt flis (de holder egen jitter-rotasjon). `scale`
- *  (valgfri, multiplikator, default 1) justerer flis-størrelsen i trauet.
- *  Begge kalibrert av Espen med ?dev=1 (trau-kalibreringspanelet i
- *  MonterScene, velg trau i nedtrekksmenyen) — særlig aktuelt for
- *  hjørnetrauene (1, 16) som fotograferes skjevt pga. buet glass i hjørnene. */
-export interface MonterTrau { id: string; rect: [number, number, number, number]; skew?: number; scale?: number }
+ *  `scale` (valgfri, multiplikator, default 1) er en STATISK dev-verdi for
+ *  flis-størrelsen i trauet — justeres kun ved å redigere denne fila direkte
+ *  (det tidligere live dev-kalibreringspanelet er fjernet). Størrelse/vinkel
+ *  som spilleren kan justere live ligger IKKE her: se `displayScale`/
+ *  `displayRotation` på katalogvaren (industries.ts) og spillerens
+ *  justeringspanel per trau-plassering (`TrauItem.sizeAdjust`/`skewAdjust`
+ *  i counterLayout, MonterScene). */
+export interface MonterTrau { id: string; rect: [number, number, number, number]; scale?: number }
 export const MONTER_TRAU: MonterTrau[] = [
   { id: 'trau-1', rect: [2.8, 67.4, 12, 5.9] },
   { id: 'trau-2', rect: [12.2, 70.5, 7.7, 3.6] },

@@ -12,7 +12,7 @@ export default function HUD() {
   const { state } = useGame()
   const { money, reputation, currentMonth, currentYear, companyName, industry,
           p1_complete, p2_complete, p3_complete, p4_complete, unreadCount,
-          level, xp, xpToNextLevel } = state
+          level, xp, xpToNextLevel, rentedLocationId, shopOpen } = state
 
   const meta = INDUSTRY_META[industry]
   const psDone = [p1_complete, p2_complete, p3_complete, p4_complete].filter(Boolean).length
@@ -51,6 +51,11 @@ export default function HUD() {
       <KpiChip icon="💰" value={formatKr(money)} color="#22c55e" />
       <KpiChip icon="⭐" value={`Rykte: ${reputation}`} color={reputation >= 60 ? '#22c55e' : reputation >= 30 ? '#facc15' : '#ef4444'} />
       <KpiChip icon="📅" value={`${MONTH_NAMES[(currentMonth - 1) % 12]} · År ${currentYear}`} color="#38bdf8" />
+
+      {/* Butikk-status — kun synlig når det finnes en butikk å ha åpen/stengt. */}
+      {rentedLocationId && (
+        <KpiChip icon={shopOpen ? '🔓' : '🔒'} value={shopOpen ? 'Åpent' : 'Stengt'} color={shopOpen ? '#22c55e' : '#94a3b8'} />
+      )}
 
       {/* Xray toggle */}
       <XrayToggle />

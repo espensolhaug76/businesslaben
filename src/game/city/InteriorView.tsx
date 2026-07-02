@@ -5,6 +5,7 @@ import { randomScenario } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
+import { useGame } from '../GameContext'
 
 // ── InteriorView (BAK-DISKEN-SCENE) ──────────────────────────────────────────
 // Bilde-basert visning (cover, 16:9). KUN kunde + salgssamtale: ved hvert besøk
@@ -69,9 +70,12 @@ export default function InteriorView({ districtId, lokaleId }: {
   lokaleId: string
 }) {
   const navigate = useNavigate()
-  // Tilfeldig kunde fra poolen, valgt ÉN gang per besøk (mount). randomScenario
-  // ligger i en ren modul, så Math.random ikke flagges i render.
-  const [scenario] = useState(randomScenario)
+  const { state, dispatch } = useGame()
+  // Tilfeldig kunde fra poolen — valgt ved mount, og på nytt hver gang
+  // butikken ÅPNES uten at en kunde allerede står der (se shopOpen-effekten
+  // under). randomScenario ligger i en ren modul, så Math.random ikke
+  // flagges i render.
+  const [scenario, setScenario] = useState(randomScenario)
   const [imgFailed, setImgFailed] = useState(false)
   const [shown, setShown] = useState(false)        // fade-in/ut (opacity)
   const [gone, setGone] = useState(false)          // fjernet etter runden
@@ -85,11 +89,27 @@ export default function InteriorView({ districtId, lokaleId }: {
   const [waistY, setWaistY] = useState(DEFAULT_WAIST_Y)
   const [scale, setScale] = useState(DEFAULT_SCALE)
 
-  // Fade kunden inn rett etter mount (ingen bevegelse).
+  // Fade kunden inn rett etter mount (ingen bevegelse). Kunden rendres uansett
+  // kun når butikken er ÅPEN (se render-gaten under), så dette er harmløst
+  // ved mount i stengt butikk.
   useEffect(() => {
     const t = setTimeout(() => setShown(true), 50)
     return () => clearTimeout(t)
   }, [])
+
+  // STENGT ⇒ ingen kunde (gates spawn — kunde-poolen skrus helt av). Åpnes
+  // butikken igjen mens ingen kunde står der (forrige er `gone`), spawnes en
+  // fersk fra poolen med samme fade-inn som ved mount. Var kunden IKKE gone
+  // (fortsatt der/i samtale) gjør dette ingenting — hun blir stående, og
+  // forsvinner naturlig når scenen under (sales:closed) sier fra.
+  useEffect(() => {
+    if (!state.shopOpen || !gone) return
+    setScenario(randomScenario())
+    setGone(false)
+    setShown(false)
+    const t = setTimeout(() => setShown(true), 50)
+    return () => clearTimeout(t)
+  }, [state.shopOpen])
 
   // Logg start-verdiene ved ?dev=1.
   useEffect(() => {
@@ -140,11 +160,35 @@ export default function InteriorView({ districtId, lokaleId }: {
         <BackButton onClick={() => navigate(`/game/d/${districtId}/l/${lokaleId}`)} label="← Ut til fasaden" />
       </div>
 
-      {/* Drift: gå til den frontale monter-scenen for å stelle disken. Ligger
-          bak salgsoverlayet, så ikke tilgjengelig midt i en samtale. */}
-      <div style={{ position: 'fixed', bottom: 30, right: 24, zIndex: 79 }}>
+      {/* ÅPEN/STENGT-bryter + «Stell disken», samlet øverst til høyre — de
+          hører sammen (stengt butikk → stell disken i fred). Flyttet hit fra
+          nederst til høyre, der den kolliderte med Dashbord/«Gå til
+          butikken»-pillene i GamePage (samme hjørne, lavere z-index).
+          Stenges butikken, forsvinner en ev. kunde som ikke er i aktiv
+          samtale (render-gaten under) — men avbryter IKKE en pågående
+          salgssamtale (SalesScenarioOverlay ligger i GamePage, uavhengig av
+          denne bryteren). */}
+      <div style={{
+        position: 'fixed', top: 64, right: 20, zIndex: 80,
+        display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end',
+      }}>
+        <button
+          onClick={() => dispatch({ type: 'SET_SHOP_OPEN', open: !state.shopOpen })}
+          title={state.shopOpen ? 'Steng butikken — kundene slutter å komme' : 'Åpne butikken — kunder kan komme innom'}
+          style={{
+            background: state.shopOpen
+              ? 'linear-gradient(135deg, #dc2626, #991b1b)'
+              : 'linear-gradient(135deg, #16a34a, #15803d)',
+            border: 'none', borderRadius: 99, padding: '0.55rem 1.2rem', color: '#fff', fontWeight: 700,
+            fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+            boxShadow: state.shopOpen ? '0 0 16px rgba(220,38,38,0.35)' : '0 0 16px rgba(22,163,74,0.35)',
+          }}
+        >
+          {state.shopOpen ? '🔒 Steng butikken' : '🔓 Åpne butikken'}
+        </button>
         <button
           onClick={() => navigate(`/game/d/${districtId}/l/${lokaleId}/disk`)}
+          title="Stell disken — juster vareeksponeringen i disk-monteren"
           style={{
             background: 'linear-gradient(135deg, #b45309, #92400e)', border: 'none',
             borderRadius: 99, padding: '0.7rem 1.4rem', color: '#fff', fontWeight: 700,
@@ -185,8 +229,9 @@ export default function InteriorView({ districtId, lokaleId }: {
         )}
 
         {/* KUNDEN (z=10) — stor, forankret på livlinja, mellom bakgrunn og disk.
-            Underkroppen strekker seg under occludeY og skjules av forgrunns-laget. */}
-        {!gone && (
+            Underkroppen strekker seg under occludeY og skjules av forgrunns-laget.
+            Rendres KUN når butikken er ÅPEN — stengt butikk = ingen spawn. */}
+        {!gone && state.shopOpen && (
           <div
             onClick={talkToCustomer}
             onMouseEnter={() => setHover(true)}
@@ -286,7 +331,8 @@ export default function InteriorView({ districtId, lokaleId }: {
         borderRadius: 12, padding: '0.4rem 1rem', color: '#f1f5f9', zIndex: 80,
         fontSize: 13, whiteSpace: 'nowrap',
       }}>
-        🪑 Interiør{IS_DEV_COORDS ? ' · kalibrering aktiv (panel øverst venstre)' : ''}
+        🪑 Interiør · {state.shopOpen ? '🔓 Åpent' : '🔒 Stengt'}
+        {IS_DEV_COORDS ? ' · kalibrering aktiv (panel øverst venstre)' : ''}
       </div>
     </div>
   )

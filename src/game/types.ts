@@ -72,6 +72,12 @@ export interface Product {
   /** true = trau-vare (mat som flislegges i disk-monterens trau). Drikke o.l.
    *  er ikke trau-varer. */
   trauVare?: boolean
+  /** Trau-flis-størrelse for DENNE varen (multiplikator, default 1.0) —
+   *  flis-størrelse i monteren = trauets egen skala × displayScale. */
+  displayScale?: number
+  /** Trau-flis-rotasjon for DENNE varen i grader (default 0°) — lagt til
+   *  flisens egen jitter-rotasjon. */
+  displayRotation?: number
 }
 
 // ── Vareeksponering (fri plassering) ──────────────────────────────────────────
@@ -107,8 +113,19 @@ export interface WindowDisplayItem {
   z: number
 }
 
+/** Presentasjonstetthet — spillerens valg av hvor mange fliser som vises for
+ *  gitt lagermengde (kapasitet-multiplikator; mellomrommet mellom fliser
+ *  følger automatisk siden flere/færre fliser deler samme trau-flate). */
+export type TrauDensity = 'tett' | 'standard' | 'luftig'
+
 /** Ett fylt trau i den frontale disk-monteren: hvilken vare som er stilt ut i
  *  trauet (mengden flislegges fra produktets `stock`).
+ *
+ *  `density`/`sizeAdjust`/`skewAdjust` er spillerens PRESENTASJONSVALG for
+ *  DENNE plasseringen (klikk på et fylt trau åpner justeringspanelet i
+ *  MonterScene) — kun visuelt uttrykk i v1, ingen scoring ennå, men lagret
+ *  slik at en fremtidig eksponerings-score kan lese dem. Fjernes varen
+ *  (trauet tømmes), forsvinner justeringen med resten av TrauItem-en.
  *
  *  Bevisst minimal og UTVIDBAR: ferskhet/svinn kan legges til senere som
  *  valgfrie felt (f.eks. `placedMonth`, `freshness`) UTEN å bryte eksisterende
@@ -116,6 +133,16 @@ export interface WindowDisplayItem {
 export interface TrauItem {
   trauId: string
   productId: string
+  /** Default 'standard' når utelatt. */
+  density?: TrauDensity
+  /** Størrelse-MULTIPLIKATOR oppå varens `displayScale` (industries.ts).
+   *  Default 1.0 (= katalogens egen størrelse, uendret) når utelatt. */
+  sizeAdjust?: number
+  /** Skjevstiller SPORET flisene plasseres langs (bakerste rad ↔ fremste rad
+   *  forskjøvet sidelengs, % av trau-bredden) — samme mekanikk som det
+   *  tidligere dev-kun `MonterTrau.skew`, nå spillerens verktøy per
+   *  plassering. Default 0 (rett spor) når utelatt. */
+  skewAdjust?: number
 }
 
 // ── Staff ────────────────────────────────────────────────────────────────────
@@ -243,6 +270,13 @@ export interface GameState {
   locationZone: LocationZone | null
   monthlyRent: number
   storageCapacity: number
+
+  /** Butikkens drifts-tilstand: STENGT (default, ny butikk starter stengt) =
+   *  ingen kunder spawner i interiørscenen, eleven kan stelle disk/vindu i
+   *  fred. ÅPEN = kunde-poolen fungerer som normalt. Bevisst et enkelt
+   *  boolsk felt nå — en senere dagssyklus (åpne → selg → steng → svinn) kan
+   *  bygges oppå dette uten å endre skjemaet. */
+  shopOpen: boolean
 
   // Products & selling
   products: Product[]
