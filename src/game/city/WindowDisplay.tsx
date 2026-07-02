@@ -1,37 +1,68 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useGame } from '../GameContext'
-import { STOREFRONT_HOTSPOTS } from '../../data/districts'
-import type { Product, WindowDisplayItem } from '../types'
+import { STOREFRONT_HOTSPOTS, INTERIOR_DISK_DISPLAY } from '../../data/districts'
+import type { Product, WindowDisplayItem, FixtureId } from '../types'
 import { FACADE_IMG } from './StorefrontView'
 
-// ── VINDUSUTSTILLING — fri drag-and-drop (ren React/DOM) ─────────────────────
+// ── VAREEKSPONERING — fri drag-and-drop (ren React/DOM) ──────────────────────
 //
-// Eleven bygger vindusutstillingen manuelt: drar produkter fritt inn i vinduet
-// og plasserer dem hvor som helst. Redigeres fra dashbordet (PC-en «inni
-// lokalet»), men redigeringsflaten rendres FRONTALT — en oppskalert utsnitt av
-// fasadens vindussone — slik at eleven ser nøyaktig det kunden ser fra
-// fortauet. Ingen bakvendt plassering.
+// Samme motor på TO flater (fixtures): 'vindu' (fasadens vindusutstilling) og
+// 'monter' (disk-monteren i interiøret). Eleven drar produkter fritt inn på
+// flaten fra dashbordets Utstilling-fane. Redigeringslerretet rendres FRONTALT
+// — et oppskalert utsnitt av flatens sone fra kildebildet — så eleven ser
+// nøyaktig det kunden ser.
 //
-// Datamodellen (WindowDisplayItem) lagrer x/y som BRØK (0–1) av VINDUSSONEN
-// (STOREFRONT_HOTSPOTS.vindu), så samme liste rendres korrekt både her i
-// editoren og på den ekte fasaden (StorefrontView) i en helt annen skala.
+// Datamodellen (WindowDisplayItem) lagrer x/y som BRØK (0–1) av FLATENS sone og
+// en fixtureId, så samme state-liste rommer begge flatene og rendres korrekt
+// både i editoren og i scenen (StorefrontView / InteriorView) i en annen skala.
 
-/** Vindussonen på fasaden, i prosent [x, y, bredde, høyde]. Kilde til ALL
- *  geometri her — endrer Espen sonen i districts.ts (?dev=1) følger både
- *  editor og fasade automatisk. */
-const VINDU = STOREFRONT_HOTSPOTS.vindu
+// Speil av InteriorView sin bildebane (literal her for å unngå sirkulær import).
+const INTERIOR_IMG = '/assets/raw/interior-cafe.png'
 
-/** Vindussonens reelle bredde/høyde-forhold på fasaden. Editorflaten bruker
- *  samme forhold slik at brøk-koordinatene mappes uten forvrengning. */
-const WINDOW_ASPECT = (VINDU[2] / VINDU[3]) * (1024 / 1280)
+/** Lik skala på alle elementer (ingen resize). Kortbredde = brøk av sonens
+ *  bredde, per flate (monteren er bred og lav ⇒ mindre kort). */
+const VINDU_CARD_W_FRAC = 0.24
+export const MONTER_CARD_W_FRAC = 0.14
 
-/** Kortbredde som BRØK av vindussonens bredde. Lik skala på alle elementer
- *  i v1 (ingen resize). */
-const CARD_W_FRAC = 0.24
+interface FixtureConfig {
+  id: FixtureId
+  icon: string
+  title: string
+  blurb: string
+  emptyText: string
+  /** Sone [x, y, b, h] i prosent av kildebildet. */
+  zone: readonly [number, number, number, number]
+  /** Kildebilde å utsnittsforstørre som redigeringsbakgrunn. */
+  image: string
+  /** Kildebildets native bredde/høyde — for korrekt utsnitt-proporsjon. */
+  imageAspect: number
+  cardWFrac: number
+}
 
-/** Lagrekkefølge avledet av y: lavere i vinduet (høyere y) = nærmere glasset
- *  = foran = høyere z. Persisteres for stabil opptegning. */
+const VINDU_FIXTURE: FixtureConfig = {
+  id: 'vindu', icon: '🪟', title: 'Vindusutstilling',
+  blurb: 'Dra produkter inn i vinduet og plasser dem fritt — slik kundene ser det fra fortauet. Lavere = nærmere glasset (foran).',
+  emptyText: 'Tomt vindu — dra produkter hit fra paletten under',
+  zone: STOREFRONT_HOTSPOTS.vindu, image: FACADE_IMG, imageAspect: 1024 / 1280,
+  cardWFrac: VINDU_CARD_W_FRAC,
+}
+
+// PARKERT: den frie disk-monteren. Disk-vareeksponering er flyttet til den
+// frontale MonterScene (trau-mekanikk). Konfigen beholdes (eksportert) for
+// gjenbruk og er ikke lenger en fane i dashbordet. (Bevisst parkert eksport —
+// derav unntak fra react-refresh-regelen.)
+// eslint-disable-next-line react-refresh/only-export-components
+export const MONTER_FIXTURE: FixtureConfig = {
+  id: 'monter', icon: '🧁', title: 'Disk-monter',
+  blurb: 'Dra produkter ut på disken og plasser dem fritt. Lavere på disken = nærmere kunden (foran).',
+  emptyText: 'Tom disk — dra produkter hit fra paletten under',
+  zone: INTERIOR_DISK_DISPLAY, image: INTERIOR_IMG, imageAspect: 16 / 9,
+  cardWFrac: MONTER_CARD_W_FRAC,
+}
+
+/** Lagrekkefølge avledet av y: lavere på flaten (høyere y) = nærmere
+ *  betrakteren = foran = høyere z. Persisteres for stabil opptegning. */
 function computeZ(y: number): number {
   return Math.round(y * 1000)
 }
@@ -44,9 +75,9 @@ function productHue(id: string): number {
   return h % 360
 }
 
-// ── Placeholder-kort (delt visuell mellom editor og fasade) ───────────────────
+// ── Placeholder-kort (delt visuell mellom editor og scene) ────────────────────
 // Skrift skaleres med kortbredden via container-query-enheter (cqw), så samme
-// komponent ser riktig ut i både stor editor og lite fasadevindu.
+// komponent ser riktig ut i både stor editor og liten scene-flate.
 
 function CardVisual({ product }: { product: Product }) {
   const hue = productHue(product.id)
@@ -73,14 +104,17 @@ function CardVisual({ product }: { product: Product }) {
   )
 }
 
-// ── Read-only lag — brukes på den ekte fasaden (StorefrontView) ───────────────
-// Forutsetter en forelder med position:relative satt til vindussonen.
+// ── Read-only lag — brukes i scenen (StorefrontView / InteriorView) ───────────
+// Filtrerer til ÉN flate (default 'vindu' så StorefrontView-bruken er uendret).
+// Forutsetter en forelder med position:relative satt til flatens sone.
 
-export function WindowDisplayLayer({ items, products }: {
+export function WindowDisplayLayer({ items, products, fixtureId = 'vindu', cardWFrac = VINDU_CARD_W_FRAC }: {
   items: WindowDisplayItem[]
   products: Product[]
+  fixtureId?: FixtureId
+  cardWFrac?: number
 }) {
-  const sorted = [...items].sort((a, b) => a.z - b.z)
+  const sorted = items.filter(i => i.fixtureId === fixtureId).sort((a, b) => a.z - b.z)
   return (
     <>
       {sorted.map(it => {
@@ -92,7 +126,7 @@ export function WindowDisplayLayer({ items, products }: {
             style={{
               position: 'absolute',
               left: `${it.x * 100}%`, top: `${it.y * 100}%`,
-              width: `${CARD_W_FRAC * 100}%`,
+              width: `${cardWFrac * 100}%`,
               transform: 'translate(-50%, -50%)',
               zIndex: it.z, containerType: 'inline-size',
               pointerEvents: 'none',
@@ -106,24 +140,23 @@ export function WindowDisplayLayer({ items, products }: {
   )
 }
 
-// ── Editor — fri plassering, redigeres fra inni lokalet (dashbordet) ──────────
+// ── Editor for ÉN flate — fri plassering, fra dashbordet ──────────────────────
 
 type DragKind = 'new' | 'move'
 
-export default function WindowDisplayEditor() {
+function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
   const { state, dispatch } = useGame()
   const surfaceRef = useRef<HTMLDivElement>(null)
+  const cardWFrac = fixture.cardWFrac
 
-  // Editorens arbeidskopi. Initialiseres fra spillstate; hver endring
-  // committes umiddelbart til state (ingen egen lagre-knapp). itemsRef holder
-  // en synkron kopi så drag-avslutning leser fersk verdi.
-  // itemsRef holdes synkron i commit() og under drag (onMove) — IKKE i
-  // render-kroppen — så drag-avslutning leser fersk verdi uten å mutere ref
-  // under opptegning.
-  const [items, setItems] = useState<WindowDisplayItem[]>(() => state.windowDisplayLayout)
+  // Arbeidskopi for DENNE flaten (filtrert på fixtureId). Hver endring committes
+  // umiddelbart. itemsRef holdes synkron i commit() og under drag (onMove) —
+  // IKKE i render-kroppen — så drag-avslutning leser fersk verdi.
+  const [items, setItems] = useState<WindowDisplayItem[]>(
+    () => state.windowDisplayLayout.filter(i => i.fixtureId === fixture.id),
+  )
   const itemsRef = useRef(items)
 
-  // Aktiv drag (for visuell tilstand) + flytende «spøkelse» for palett-drag.
   const [drag, setDrag] = useState<{ kind: DragKind; productId: string } | null>(null)
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
   const [dragOut, setDragOut] = useState(false)
@@ -133,20 +166,21 @@ export default function WindowDisplayEditor() {
   function commit(next: WindowDisplayItem[]) {
     itemsRef.current = next
     setItems(next)
-    dispatch({ type: 'SET_WINDOW_DISPLAY', items: next })
+    dispatch({ type: 'SET_WINDOW_DISPLAY', fixtureId: fixture.id, items: next })
+  }
+  function persist() {
+    dispatch({ type: 'SET_WINDOW_DISPLAY', fixtureId: fixture.id, items: itemsRef.current })
   }
 
-  /** Klem senterpunktet så hele kortet holder seg innenfor vindussonen. */
+  /** Klem senterpunktet så hele kortet holder seg innenfor sonen. */
   function clampFrac(fx: number, fy: number, rect: DOMRect): [number, number] {
-    const cardWFrac = CARD_W_FRAC
-    const cardHFrac = Math.min(0.9, (CARD_W_FRAC * rect.width * 1.15) / rect.height)
+    const cardHFrac = Math.min(0.9, (cardWFrac * rect.width * 1.15) / rect.height)
     const mx = cardWFrac / 2, my = cardHFrac / 2
     return [
       Math.max(mx, Math.min(1 - mx, fx)),
       Math.max(my, Math.min(1 - my, fy)),
     ]
   }
-
   function fracFromEvent(clientX: number, clientY: number, rect: DOMRect) {
     return { fx: (clientX - rect.left) / rect.width, fy: (clientY - rect.top) / rect.height }
   }
@@ -154,7 +188,7 @@ export default function WindowDisplayEditor() {
     return fx < 0 || fx > 1 || fy < 0 || fy > 1
   }
 
-  // Dra et NYTT produkt fra paletten inn i vinduet.
+  // Dra et NYTT produkt fra paletten inn på flaten.
   function startNew(productId: string, e: React.PointerEvent) {
     e.preventDefault()
     setDrag({ kind: 'new', productId })
@@ -172,17 +206,16 @@ export default function WindowDisplayEditor() {
       const rect = surfaceRef.current?.getBoundingClientRect()
       if (!rect) return
       const { fx, fy } = fracFromEvent(ev.clientX, ev.clientY, rect)
-      if (isOutside(fx, fy)) return   // sluppet utenfor ⇒ avbryt (legges ikke til)
+      if (isOutside(fx, fy)) return   // sluppet utenfor ⇒ avbryt
       const [cx, cy] = clampFrac(fx, fy, rect)
       const next = [
         ...itemsRef.current.filter(i => i.productId !== productId),
-        { productId, x: cx, y: cy, z: computeZ(cy) },
+        { fixtureId: fixture.id, productId, x: cx, y: cy, z: computeZ(cy) },
       ]
       commit(next)
     }
     // Capture-fase: DashboardOverlay kaller stopPropagation på pointerup i
-    // boble-fasen, så bobleende window-lyttere ville aldri fyre. Capture
-    // fyrer FØR overlayet rekker å stoppe eventet.
+    // boble-fasen, så bobleende window-lyttere ville aldri fyre.
     window.addEventListener('pointermove', onMove, true)
     window.addEventListener('pointerup', onUp, true)
   }
@@ -213,11 +246,8 @@ export default function WindowDisplayEditor() {
       let out = false
       if (rect) { const { fx, fy } = fracFromEvent(ev.clientX, ev.clientY, rect); out = isOutside(fx, fy) }
       if (out) commit(itemsRef.current.filter(i => i.productId !== productId))  // dra ut ⇒ fjern
-      else dispatch({ type: 'SET_WINDOW_DISPLAY', items: itemsRef.current })   // lagre ny posisjon
+      else persist()                                                            // lagre ny posisjon
     }
-    // Capture-fase: DashboardOverlay kaller stopPropagation på pointerup i
-    // boble-fasen, så bobleende window-lyttere ville aldri fyre. Capture
-    // fyrer FØR overlayet rekker å stoppe eventet.
     window.addEventListener('pointermove', onMove, true)
     window.addEventListener('pointerup', onUp, true)
   }
@@ -226,49 +256,42 @@ export default function WindowDisplayEditor() {
     commit(itemsRef.current.filter(i => i.productId !== productId))
   }
 
-  // Bakgrunnen på editorflaten = oppskalert utsnitt av fasaden begrenset til
-  // vindussonen (frontal-visning av det ekte vinduet).
-  const [vx, vy, vw, vh] = VINDU
+  // Bakgrunnen på editorflaten = oppskalert utsnitt av kildebildet begrenset til
+  // sonen (frontal-visning av den ekte flaten).
+  const [zx, zy, zw, zh] = fixture.zone
+  const surfaceAspect = (zw / zh) * fixture.imageAspect
   const surfaceBg: React.CSSProperties = {
     backgroundColor: '#26303c',
-    backgroundImage: `url(${FACADE_IMG})`,
+    backgroundImage: `url(${fixture.image})`,
     backgroundRepeat: 'no-repeat',
-    backgroundSize: `${(100 / vw) * 100}% ${(100 / vh) * 100}%`,
-    backgroundPosition: `${(vx / (100 - vw)) * 100}% ${(vy / (100 - vh)) * 100}%`,
+    backgroundSize: `${(100 / zw) * 100}% ${(100 / zh) * 100}%`,
+    backgroundPosition: `${(zx / (100 - zw)) * 100}% ${(zy / (100 - zh)) * 100}%`,
   }
 
   const sortedItems = [...items].sort((a, b) => a.z - b.z)
 
   return (
     <div>
-      <div style={{ marginBottom: '1rem' }}>
-        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>🪟 Vindusutstilling</h3>
-        <p style={{ color: '#64748b', fontSize: 13, margin: '0.3rem 0 0', lineHeight: 1.5 }}>
-          Dra produkter fra paletten inn i vinduet og plasser dem fritt. Du ser
-          vinduet rett forfra — akkurat slik kundene ser det fra fortauet.
-          Lavere i vinduet = nærmere glasset (foran). Dra et produkt ut av
-          vinduet eller høyreklikk på det for å fjerne det.
-        </p>
-      </div>
+      <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 1rem', lineHeight: 1.5 }}>
+        {fixture.blurb} Dra et produkt ut av flaten eller høyreklikk på det for å fjerne det.
+      </p>
 
-      {/* Frontal redigeringsflate (vindussonen, oppskalert) */}
+      {/* Frontal redigeringsflate (sonen, oppskalert) */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
         <div style={{ width: '100%', maxWidth: 460 }}>
           <div
             ref={surfaceRef}
             style={{
-              position: 'relative', width: '100%', aspectRatio: `${WINDOW_ASPECT}`,
+              position: 'relative', width: '100%', aspectRatio: `${surfaceAspect}`,
               borderRadius: 12, overflow: 'hidden',
               border: `2px solid ${dragOut ? 'rgba(239,68,68,0.8)' : 'rgba(125,211,252,0.45)'}`,
-              boxShadow: dragOut
-                ? '0 0 0 3px rgba(239,68,68,0.25)'
-                : '0 8px 24px rgba(0,0,0,0.4)',
+              boxShadow: dragOut ? '0 0 0 3px rgba(239,68,68,0.25)' : '0 8px 24px rgba(0,0,0,0.4)',
               transition: 'border-color 0.15s, box-shadow 0.15s',
               touchAction: 'none',
               ...surfaceBg,
             }}
           >
-            {/* Glass-hint */}
+            {/* Glass-/lys-hint */}
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
               background: 'linear-gradient(115deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0.07) 65%, rgba(255,255,255,0) 100%)',
@@ -288,7 +311,7 @@ export default function WindowDisplayEditor() {
                   style={{
                     position: 'absolute',
                     left: `${it.x * 100}%`, top: `${it.y * 100}%`,
-                    width: `${CARD_W_FRAC * 100}%`,
+                    width: `${cardWFrac * 100}%`,
                     transform: 'translate(-50%, -50%)',
                     zIndex: it.z, containerType: 'inline-size',
                     cursor: isDragging ? 'grabbing' : 'grab',
@@ -304,7 +327,7 @@ export default function WindowDisplayEditor() {
               )
             })}
 
-            {/* Tomt vindu */}
+            {/* Tom flate */}
             {items.length === 0 && !drag && (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex',
@@ -313,7 +336,7 @@ export default function WindowDisplayEditor() {
                 textAlign: 'center', padding: '0 1.5rem',
                 textShadow: '0 1px 3px rgba(0,0,0,0.7)',
               }}>
-                Tomt vindu — dra produkter hit fra paletten under
+                {fixture.emptyText}
               </div>
             )}
 
@@ -352,7 +375,7 @@ export default function WindowDisplayEditor() {
               <div
                 key={p.id}
                 onPointerDown={placed ? undefined : e => startNew(p.id, e)}
-                title={placed ? `${p.name} — allerede i vinduet` : `${p.name} — dra inn i vinduet`}
+                title={placed ? `${p.name} — allerede plassert` : `${p.name} — dra inn på flaten`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   background: placed ? 'rgba(255,255,255,0.03)' : `linear-gradient(160deg, hsl(${hue} 50% 28%), hsl(${hue} 45% 20%))`,
@@ -373,10 +396,9 @@ export default function WindowDisplayEditor() {
         </div>
       )}
 
-      {/* Flytende spøkelse under palett-drag. Portales til document.body:
-          DashboardOverlay (framer-motion) har transform på dialog-div'en, og
-          en ancestor med transform gjør at position:fixed måles fra DEN i
-          stedet for viewporten — da havner spøkelset langt fra markøren. */}
+      {/* Flytende spøkelse under palett-drag. Portales til document.body fordi
+          DashboardOverlay (framer-motion) har transform på dialog-div'en, og en
+          ancestor med transform gjør at position:fixed måles fra DEN. */}
       {drag?.kind === 'new' && ghost && (() => {
         const p = state.products.find(pr => pr.id === drag.productId)
         if (!p) return null
@@ -392,6 +414,21 @@ export default function WindowDisplayEditor() {
           document.body,
         )
       })()}
+    </div>
+  )
+}
+
+// ── Utstilling-fanen: vindusutstillingen (UENDRET, fri styling) ───────────────
+// Disk-monteren er flyttet til den frontale MonterScene (trau), så denne fanen
+// viser kun vinduet — som før.
+
+export default function WindowDisplayEditor() {
+  return (
+    <div>
+      <div style={{ marginBottom: '0.9rem' }}>
+        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{VINDU_FIXTURE.icon} {VINDU_FIXTURE.title}</h3>
+      </div>
+      <FixtureEditor fixture={VINDU_FIXTURE} />
     </div>
   )
 }

@@ -12,6 +12,7 @@ import CityMapView from './city/CityMapView'
 import DistrictView, { type LokaleClick } from './city/DistrictView'
 import StorefrontView from './city/StorefrontView'
 import InteriorView from './city/InteriorView'
+import MonterScene from './city/MonterScene'
 import { districtOfLokale } from '../data/districts'
 
 // ── BYBILDE-ARKITEKTUR ────────────────────────────────────────────────────────
@@ -53,8 +54,11 @@ function GameContent() {
   const { state, dispatch } = useGame()
   const navigate = useNavigate()
   const { districtId, lokaleId } = useParams<{ districtId?: string; lokaleId?: string }>()
-  // Interiørnivå: samme lokale-rute med /inne-suffiks (midlertidig stillas).
-  const isInterior = useLocation().pathname.endsWith('/inne')
+  // Lokale-undernivåer via rute-suffiks: /inne = bak disken (kunde + salg),
+  // /disk = frontal monter-scene (vareeksponering i trau).
+  const pathname = useLocation().pathname
+  const isInterior = pathname.endsWith('/inne')
+  const isCounter = pathname.endsWith('/disk')
   const [simOpen, setSimOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [dashboardTab, setDashboardTab] = useState<string>('oversikt')
@@ -154,11 +158,13 @@ function GameContent() {
       {lokaleId && districtId
         ? (isInterior
             ? <InteriorView districtId={districtId} lokaleId={lokaleId} />
-            : <StorefrontView
-                districtId={districtId}
-                lokaleId={lokaleId}
-                onOpenPanel={tab => { setDashboardTab(tab); setDashboardOpen(true); setOverlay(true) }}
-              />)
+            : isCounter
+              ? <MonterScene districtId={districtId} lokaleId={lokaleId} />
+              : <StorefrontView
+                  districtId={districtId}
+                  lokaleId={lokaleId}
+                  onOpenPanel={tab => { setDashboardTab(tab); setDashboardOpen(true); setOverlay(true) }}
+                />)
         : districtId
           ? <DistrictView districtId={districtId} onVacantClick={onVacantClick} />
           : <CityMapView />}

@@ -323,6 +323,48 @@ export const STOREFRONT_DISPLAY_ZONES: { id: 'disk' | 'bakvegg' | 'hylle_venstre
 export const INTERIOR_CUSTOMER_SPAWN: [number, number, number, number] = [46.1, 23.8, 8, 31]
 export const INTERIOR_CUSTOMER_STAND: [number, number, number, number] = [41.9, 57, 17.6, 15.6]
 
+/** Disk-monterens utstillingsflate (INTERIØR-NIVÅ) — prosent av interiørbildet
+ *  [x, y, b, h]. Andre flate for vareeksponering (fixtureId='monter');
+ *  vindusutstillingen er den første. Flaten ligger i forgrunnen, NEDENFOR
+ *  COUNTER_OCCLUDE_Y (disk-trauet), så varene leses som «på disken». Startverdi
+ *  er et rimelig estimat — trace-bar med ?dev=1 på /inne (sone-tracer →
+ *  «Bruk siste på disk», verdien logges for innliming hit). */
+export const INTERIOR_DISK_DISPLAY: [number, number, number, number] = [14, 74, 72, 22]
+
+/** Trau i den FRONTALE monter-scenen (kunde-siden) — prosent av
+ *  monter-frontal-bildet [x, y, b, h]. Hvert trau er en lager-flate som
+ *  flislegges med ÉN vares utklipp etter lagermengde. Trace-t av Espen med
+ *  ?dev=1 — ett per fysisk fronttrau (18 stk). Trau 9–11 er øvre hylle i
+ *  midtseksjonen; trau 17–18 er øvre hylle i hhv. venstre og høyre seksjon.
+ *  `skew` (valgfri, % av trau-bredden) skjevstiller SPORET vare-stacken
+ *  plasseres langs — bakerste rad skyves til én side, fremste til den andre —
+ *  UTEN å rotere hver enkelt flis (de holder egen jitter-rotasjon). `scale`
+ *  (valgfri, multiplikator, default 1) justerer flis-størrelsen i trauet.
+ *  Begge kalibrert av Espen med ?dev=1 (trau-kalibreringspanelet i
+ *  MonterScene, velg trau i nedtrekksmenyen) — særlig aktuelt for
+ *  hjørnetrauene (1, 16) som fotograferes skjevt pga. buet glass i hjørnene. */
+export interface MonterTrau { id: string; rect: [number, number, number, number]; skew?: number; scale?: number }
+export const MONTER_TRAU: MonterTrau[] = [
+  { id: 'trau-1', rect: [2.8, 67.4, 12, 5.9] },
+  { id: 'trau-2', rect: [12.2, 70.5, 7.7, 3.6] },
+  { id: 'trau-3', rect: [15.3, 67.2, 7.8, 2.7] },
+  { id: 'trau-4', rect: [20.6, 71.1, 8.3, 2.6] },
+  { id: 'trau-5', rect: [23.2, 67, 7.8, 2.6] },
+  { id: 'trau-6', rect: [37.7, 66.9, 7.4, 6.7] },
+  { id: 'trau-7', rect: [46.4, 67.3, 6.6, 6.7] },
+  { id: 'trau-8', rect: [55.6, 66.5, 5.4, 7.5] },
+  { id: 'trau-9', rect: [37.9, 55.6, 7.7, 4.7] },
+  { id: 'trau-10', rect: [46.6, 56.5, 6.6, 3.7] },
+  { id: 'trau-11', rect: [55.3, 56.3, 5.8, 4.1] },
+  { id: 'trau-12', rect: [72.7, 71, 5.5, 2.4] },
+  { id: 'trau-13', rect: [81.4, 70.8, 5.3, 3.1] },
+  { id: 'trau-14', rect: [70.2, 66.9, 5.2, 3.2] },
+  { id: 'trau-15', rect: [77.9, 66.8, 5, 3.2] },
+  { id: 'trau-16', rect: [87.7, 66.5, 6.6, 7.4] },
+  { id: 'trau-17', rect: [9.3, 57.5, 25.4, 4.6] },
+  { id: 'trau-18', rect: [65.4, 56.9, 24.6, 4.4] },
+]
+
 export function lokaleRent(d: District, l: Lokale): number {
   return Math.round((d.leieniva * l.rentFactor) / 100) * 100
 }

@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
-  GameFlags, BusinessCanvas, WindowDisplayItem,
+  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
@@ -102,6 +102,7 @@ const initialState: GameState = {
   mainProductId: null,
   channels: ['physicalStore'],
   windowDisplayLayout: [],
+  counterLayout: [],
   marketingBudget: { socialMedia: 0, google: 0, influencer: 0, print: 0, tv: 0 },
   appealType: null,
 
@@ -167,7 +168,9 @@ type Action =
   | { type: 'TAKE_LOAN'; loan: Loan }
   | { type: 'SET_PRODUCTS'; products: Product[] }
   | { type: 'SET_MAIN_PRODUCT'; id: string }
-  | { type: 'SET_WINDOW_DISPLAY'; items: WindowDisplayItem[] }
+  | { type: 'SET_WINDOW_DISPLAY'; fixtureId: WindowDisplayItem['fixtureId']; items: WindowDisplayItem[] }
+  | { type: 'SET_COUNTER_LAYOUT'; items: TrauItem[] }
+  | { type: 'CARRY_PRODUCT'; product: Product; starterStock: number }
   | { type: 'RESOLVE_SALES_SCENARIO'; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   | { type: 'SET_MARKETING'; budget: GameState['marketingBudget'] }
@@ -288,9 +291,16 @@ function reducer(state: GameState, action: Action): GameState {
       }
 
     case 'SET_WINDOW_DISPLAY':
-      // Manuell vindusutstilling (fri plassering). Hele lista erstattes ved
-      // hver endring fra editoren — ingen egen lagre-knapp nødvendig.
-      return { ...state, windowDisplayLayout: action.items }
+      // Manuell vareeksponering (fri plassering). To flater deler lista og
+      // skilles med fixtureId — kun den aktive flatens elementer erstattes,
+      // den andre flaten beholdes. Ingen egen lagre-knapp nødvendig.
+      return {
+        ...state,
+        windowDisplayLayout: [
+          ...state.windowDisplayLayout.filter(i => i.fixtureId !== action.fixtureId),
+          ...action.items,
+        ],
+      }
 
     case 'RESOLVE_SALES_SCENARIO': {
       // Salgssituasjon-motor: skriver resultatet til EKSISTERENDE felt —
@@ -328,6 +338,23 @@ function reducer(state: GameState, action: Action): GameState {
         xp: newXp,
         level: newLevel,
         xpToNextLevel: xpToNext,
+      }
+    }
+
+    case 'SET_COUNTER_LAYOUT':
+      // Disk-monterens trau-oppsett (frontal scene). Hele lista erstattes ved
+      // hver endring — ingen egen lagre-knapp.
+      return { ...state, counterLayout: action.items }
+
+    case 'CARRY_PRODUCT': {
+      // «Før varen»: legg produktet i sortimentet hvis det ikke alt finnes, med
+      // en starter-batch så trauet fylles. Finnes det fra før, beholdes lageret.
+      // (Display-mekanikk — kobler IKKE på økonomi/innkjøp ennå.)
+      if (state.products.some(p => p.id === action.product.id)) return state
+      return {
+        ...state,
+        products: [...state.products, { ...action.product, stock: Math.max(0, action.starterStock) }],
+        p1_complete: true,
       }
     }
 
@@ -647,4 +674,4 @@ export function useGame() {
 }
 
 // Re-export types for consumers
-export type { GameState, GamePhase, Product, MonthResult, InboxMessage, PestEvent, Loan, GameProgress, BusinessModel, GameFlags, BusinessCanvas, WindowDisplayItem }
+export type { GameState, GamePhase, Product, MonthResult, InboxMessage, PestEvent, Loan, GameProgress, BusinessModel, GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem }

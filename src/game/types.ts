@@ -45,6 +45,10 @@ export type DistributionChannel =
 
 // ── Product ─────────────────────────────────────────────────────────────────
 
+/** Varegruppe i katalogen — brukes til gruppering i UI og til å skille
+ *  trau-varer (mat) fra ikke-trau (drikke). */
+export type ProductCategory = 'frokost' | 'lunsj' | 'brod' | 'kaker' | 'drikke'
+
 export interface Product {
   id: string
   name: string
@@ -60,32 +64,58 @@ export interface Product {
   /** Egnet for vindusutstilling (VINDUSLOGIKK). Utelatt/true = vises i
    *  vinduet; false (f.eks. kaffe i pappkopp) = kun i «+N i butikken». */
   windowDisplay?: boolean
+  /** Varegruppe (frokost/lunsj/brod/kaker/drikke). */
+  category?: ProductCategory
+  /** Filsti til vare-utklipp (fra split-product-sheet). Undefined ⇒
+   *  placeholder håndteres grasiøst. */
+  sprite?: string
+  /** true = trau-vare (mat som flislegges i disk-monterens trau). Drikke o.l.
+   *  er ikke trau-varer. */
+  trauVare?: boolean
 }
 
-// ── Vindusutstilling (fri plassering) ─────────────────────────────────────────
+// ── Vareeksponering (fri plassering) ──────────────────────────────────────────
 
-/** Ett element i den manuelt byggede vindusutstillingen.
+/** Hvilken fysiske flate elementet ligger på. To flater deler samme state-liste
+ *  og skilles med denne id-en: 'vindu' (fasadens vindusutstilling) og 'monter'
+ *  (disk-monteren i interiøret). */
+export type FixtureId = 'vindu' | 'monter'
+
+/** Ett element i en manuelt bygget vareeksponering (vindu ELLER disk-monter).
  *
- *  Koordinatsystemet er BRØK (0–1) relativt til VINDUSSONEN
- *  (`STOREFRONT_HOTSPOTS.vindu` i districts.ts), ikke piksler — slik overlever
- *  plasseringen re-kalibrering av sonen og rendres korrekt på fasaden i en
- *  annen skala. `x`/`y` er senterpunktet til elementet.
+ *  Koordinatsystemet er BRØK (0–1) relativt til FLATENS sone — vindu:
+ *  `STOREFRONT_HOTSPOTS.vindu`, monter: `INTERIOR_DISK_DISPLAY` — ikke piksler,
+ *  slik at plasseringen overlever re-kalibrering og rendres korrekt i en annen
+ *  skala. `x`/`y` er senterpunktet til elementet.
  *
- *  `z` = lagrekkefølge. Beregnes automatisk fra `y` ved hver endring (lavere i
- *  vinduet = høyere y = nærmere glasset = foran = høyere z), men persisteres
+ *  `z` = lagrekkefølge. Beregnes automatisk fra `y` ved hver endring (lavere på
+ *  flaten = høyere y = nærmere betrakteren = foran = høyere z), men persisteres
  *  for stabil opptegning.
  *
  *  Skjemaet er bevisst flatt og lett å utvide: en senere simulering kan legge
  *  til f.eks. `attraction`/`relevance`-score som valgfrie felt UTEN å bryte
- *  eksisterende lagrede utstillinger. */
+ *  eksisterende lagrede eksponeringer. */
 export interface WindowDisplayItem {
+  /** Hvilken flate elementet ligger på. */
+  fixtureId: FixtureId
   productId: string
-  /** Senter-x som brøk 0–1 av vindussonens bredde. */
+  /** Senter-x som brøk 0–1 av flatens bredde. */
   x: number
-  /** Senter-y som brøk 0–1 av vindussonens høyde. */
+  /** Senter-y som brøk 0–1 av flatens høyde. */
   y: number
   /** Lagrekkefølge (avledet av y, persistert). Lavere = bakerst. */
   z: number
+}
+
+/** Ett fylt trau i den frontale disk-monteren: hvilken vare som er stilt ut i
+ *  trauet (mengden flislegges fra produktets `stock`).
+ *
+ *  Bevisst minimal og UTVIDBAR: ferskhet/svinn kan legges til senere som
+ *  valgfrie felt (f.eks. `placedMonth`, `freshness`) UTEN å bryte eksisterende
+ *  lagrede monter-oppsett. */
+export interface TrauItem {
+  trauId: string
+  productId: string
 }
 
 // ── Staff ────────────────────────────────────────────────────────────────────
@@ -220,9 +250,12 @@ export interface GameState {
    *  brukes av kampanje-/scenariosystemet senere. Ingen demand-effekt. */
   mainProductId: string | null
   channels: DistributionChannel[]
-  /** Manuelt bygget vindusutstilling (fri plassering). Tom liste = tomt
-   *  vindu. Se WindowDisplayItem. */
+  /** Manuelt bygget vareeksponering (fri plassering) — vindu + parkert monter,
+   *  skilt på fixtureId. Tom liste = ingenting. Se WindowDisplayItem. */
   windowDisplayLayout: WindowDisplayItem[]
+  /** Disk-monterens trau-oppsett (frontal scene): hvilken vare i hvilket trau.
+   *  Tom liste = tomme trau. Se TrauItem. */
+  counterLayout: TrauItem[]
   marketingBudget: {
     socialMedia: number
     google: number

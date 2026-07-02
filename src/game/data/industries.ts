@@ -2,7 +2,7 @@
 // Product templates (before ordering) per industry.
 // costPrice / recommendedPrice vary by tier: premium / standard / budget
 
-import type { Industry, Product } from '../types'
+import type { Industry, Product, ProductCategory } from '../types'
 
 export interface IndustryCatalogItem {
   id: string
@@ -14,10 +14,35 @@ export interface IndustryCatalogItem {
   /** Egnet for vindusutstilling — utelatt = true. Drikkevarer i kopp/glass
    *  (kaffe, smoothie, te) er false: urealistisk i et butikkvindu. */
   windowDisplay?: boolean
+  /** Varegruppe (frokost/lunsj/brod/kaker/drikke). */
+  category?: ProductCategory
+  /** Filsti til vare-utklipp (fra split-product-sheet). Undefined ⇒ placeholder. */
+  sprite?: string
+  /** true = trau-vare (mat i disk-monterens trau). Drikke = false. */
+  trauVare?: boolean
   tiers: {
     premium:  { costPrice: number; recommendedPrice: number }
     standard: { costPrice: number; recommendedPrice: number }
     budget:   { costPrice: number; recommendedPrice: number }
+  }
+}
+
+/** Kompakt bygger for trau-bakevarer: standard-tier + avledet premium/budget.
+ *  `id` brukes som både katalog-id og utklipp-filnavn
+ *  (/assets/raw/products/<id>.png), så det matcher split-product-sheet. */
+function bakeryItem(
+  id: string, name: string, icon: string, category: ProductCategory,
+  maxDemand: number, costStd: number, priceStd: number,
+): IndustryCatalogItem {
+  return {
+    id, name, icon, category, trauVare: true,
+    sprite: `/assets/raw/products/${id}.png`,
+    maxDemandPerMonth: maxDemand, quality: 7, sustainability: 6,
+    tiers: {
+      premium:  { costPrice: Math.round(costStd * 1.5), recommendedPrice: Math.round(priceStd * 1.4) },
+      standard: { costPrice: costStd, recommendedPrice: priceStd },
+      budget:   { costPrice: Math.round(costStd * 0.7), recommendedPrice: Math.round(priceStd * 0.7) },
+    },
   }
 }
 
@@ -51,18 +76,29 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
       tiers: { premium: { costPrice: 700, recommendedPrice: 1899}, standard: { costPrice: 400, recommendedPrice: 999 }, budget: { costPrice: 180, recommendedPrice: 499 } } },
   ],
   cafe: [
-    { id: 'coffee',    name: 'Kaffe',       icon: '☕', maxDemandPerMonth: 600, quality: 8, sustainability: 7, windowDisplay: false,
+    // Eksisterende generiske varer (beholdt), nå tagget med gruppe/trau-flagg.
+    { id: 'coffee',    name: 'Kaffe',       icon: '☕', maxDemandPerMonth: 600, quality: 8, sustainability: 7, windowDisplay: false, category: 'drikke', trauVare: false,
       tiers: { premium: { costPrice: 25, recommendedPrice: 59  }, standard: { costPrice: 15, recommendedPrice: 39  }, budget: { costPrice: 8,  recommendedPrice: 25  } } },
-    { id: 'pastry',    name: 'Bakevarer',   icon: '🥐', maxDemandPerMonth: 400, quality: 8, sustainability: 6,
-      tiers: { premium: { costPrice: 35, recommendedPrice: 79  }, standard: { costPrice: 20, recommendedPrice: 49  }, budget: { costPrice: 10, recommendedPrice: 29  } } },
-    { id: 'smoothie',  name: 'Smoothie',    icon: '🥤', maxDemandPerMonth: 200, quality: 9, sustainability: 8, windowDisplay: false,
+    { id: 'smoothie',  name: 'Smoothie',    icon: '🥤', maxDemandPerMonth: 200, quality: 9, sustainability: 8, windowDisplay: false, category: 'drikke', trauVare: false,
       tiers: { premium: { costPrice: 30, recommendedPrice: 75  }, standard: { costPrice: 18, recommendedPrice: 45  }, budget: { costPrice: 10, recommendedPrice: 29  } } },
-    { id: 'sandwich',  name: 'Sandwich',    icon: '🥪', maxDemandPerMonth: 250, quality: 8, sustainability: 7,
-      tiers: { premium: { costPrice: 40, recommendedPrice: 89  }, standard: { costPrice: 25, recommendedPrice: 59  }, budget: { costPrice: 12, recommendedPrice: 35  } } },
-    { id: 'cake',      name: 'Kake',        icon: '🍰', maxDemandPerMonth: 150, quality: 9, sustainability: 6,
-      tiers: { premium: { costPrice: 45, recommendedPrice: 99  }, standard: { costPrice: 28, recommendedPrice: 65  }, budget: { costPrice: 14, recommendedPrice: 39  } } },
-    { id: 'tea',       name: 'Te / Spesial',icon: '🍵', maxDemandPerMonth: 180, quality: 8, sustainability: 8, windowDisplay: false,
+    { id: 'tea',       name: 'Te / Spesial',icon: '🍵', maxDemandPerMonth: 180, quality: 8, sustainability: 8, windowDisplay: false, category: 'drikke', trauVare: false,
       tiers: { premium: { costPrice: 20, recommendedPrice: 49  }, standard: { costPrice: 12, recommendedPrice: 29  }, budget: { costPrice: 6,  recommendedPrice: 19  } } },
+
+    // Spesifikke trau-bakevarer (sprite-utklipp fra split-product-sheet).
+    // Ark 1
+    bakeryItem('croissant',       'Croissant',        '🥐', 'frokost', 220, 9,  35),
+    bakeryItem('muffin-blabaer',  'Blåbærmuffins',    '🧁', 'kaker',   180, 8,  32),
+    bakeryItem('kanelbolle',      'Kanelbolle',       '🥮', 'frokost', 260, 7,  29),
+    bakeryItem('skolebrod',       'Skolebrød',        '🍩', 'frokost', 200, 8,  32),
+    bakeryItem('rundstykke-grovt','Grovt rundstykke', '🥖', 'brod',    300, 5,  19),
+    bakeryItem('gulrotkake',      'Gulrotkake',       '🍰', 'kaker',   120, 14, 49),
+    // Ark 2
+    bakeryItem('baguette',        'Baguette',         '🥖', 'brod',    160, 10, 39),
+    bakeryItem('focaccia',        'Focaccia',         '🫓', 'lunsj',   140, 12, 45),
+    bakeryItem('wrap-kylling',    'Kyllingwrap',      '🌯', 'lunsj',   180, 18, 59),
+    bakeryItem('salat',           'Salat',            '🥗', 'lunsj',   150, 20, 69),
+    bakeryItem('grovbrod',        'Grovbrød',         '🍞', 'brod',    140, 14, 45),
+    bakeryItem('surdeigsbrod',    'Surdeigsbrød',     '🍞', 'brod',    120, 18, 59),
   ],
   sports: [
     { id: 'shoes',     name: 'Løpesko',          icon: '👟', maxDemandPerMonth: 40,  quality: 9, sustainability: 6,
@@ -102,6 +138,9 @@ export function catalogToProduct(item: IndustryCatalogItem, tier: Product['tier'
     quality: tier === 'premium' ? Math.min(10, item.quality + 1) : tier === 'budget' ? Math.max(1, item.quality - 2) : item.quality,
     sustainability: item.sustainability,
     windowDisplay: item.windowDisplay !== false,
+    category: item.category,
+    sprite: item.sprite,
+    trauVare: item.trauVare,
     maxDemandPerMonth: tier === 'premium'
       ? Math.round(item.maxDemandPerMonth * 0.5)
       : tier === 'budget'

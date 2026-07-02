@@ -460,6 +460,7 @@ function App() {
           <Route path="/game/d/:districtId" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId/inne" element={<GamePage />} />
+          <Route path="/game/d/:districtId/l/:lokaleId/disk" element={<GamePage />} />
 
 
           {/* ── Startup flow ─────────────────────────────────────────────── */}

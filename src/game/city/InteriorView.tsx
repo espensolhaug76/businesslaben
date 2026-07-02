@@ -6,14 +6,16 @@ import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
 
-// ── InteriorView (INTERIØR-NIVÅ) ─────────────────────────────────────────────
-// Bilde-basert visning (cover, 16:9). Ved hvert besøk velges et TILFELDIG
-// scenario fra poolen (morgenkunden/reklamasjonen); riktig kunde-sprite
-// (kari.png / tom.png) vises STOR bak disken på SAMME okkluderte diskposisjon.
-// Underkroppen okkluderes av et forgrunns-disk-lag (samme interiørbilde klippet
-// til det nederste diskbåndet). Kunden toner inn ved oppstart (ingen bevegelse),
-// og klikk åpner DET tilhørende scenariet. INGEN kø/respawn: når runden er
-// ferdig (overlay lukkes), toner kunden ut.
+// ── InteriorView (BAK-DISKEN-SCENE) ──────────────────────────────────────────
+// Bilde-basert visning (cover, 16:9). KUN kunde + salgssamtale: ved hvert besøk
+// velges et TILFELDIG scenario fra poolen (morgenkunden/reklamasjonen); riktig
+// kunde-sprite (kari.png / tom.png) vises STOR bak disken på den okkluderte
+// diskposisjonen. Underkroppen okkluderes av et forgrunns-disk-lag (samme
+// interiørbilde klippet til det nederste diskbåndet). Kunden toner inn ved
+// oppstart, og klikk åpner DET tilhørende scenariet. INGEN kø/respawn.
+//
+// Vareeksponering (disk-monter) er FLYTTET til den frontale monter-scenen
+// (MonterScene) — den rendres ikke lenger her.
 //
 // Begge sprites bruker SAMME fire kalibrerings-konstanter (samme høyde ~706–709
 // px ⇒ samme diskposisjon). Trenger en kunde egen skala senere, legg til en
@@ -136,6 +138,22 @@ export default function InteriorView({ districtId, lokaleId }: {
       {/* Tilbake ut til fasaden */}
       <div style={{ position: 'fixed', top: 64, left: 20, zIndex: 80 }}>
         <BackButton onClick={() => navigate(`/game/d/${districtId}/l/${lokaleId}`)} label="← Ut til fasaden" />
+      </div>
+
+      {/* Drift: gå til den frontale monter-scenen for å stelle disken. Ligger
+          bak salgsoverlayet, så ikke tilgjengelig midt i en samtale. */}
+      <div style={{ position: 'fixed', bottom: 30, right: 24, zIndex: 79 }}>
+        <button
+          onClick={() => navigate(`/game/d/${districtId}/l/${lokaleId}/disk`)}
+          style={{
+            background: 'linear-gradient(135deg, #b45309, #92400e)', border: 'none',
+            borderRadius: 99, padding: '0.7rem 1.4rem', color: '#fff', fontWeight: 700,
+            fontSize: 14, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+            boxShadow: '0 0 20px rgba(180,83,9,0.4)',
+          }}
+        >
+          🧁 Stell disken
+        </button>
       </div>
 
       {/* Cover-stage: 16:9-bildet dekker skjermen. Kunde + forgrunns-disk +
