@@ -100,17 +100,25 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
   }
 
   // Vanlig valg (kan bære et valgfritt mersalg via sell-direktivet, eller en
-  // kostnad via cost — DEL 3: omlevering/refusjon).
+  // kostnad via cost — DEL 3: omlevering/refusjon). Kvantum (DEL 1,
+  // Salgsmotor-oppgaven): sell.qty (default 1) klemmes mot FAKTISK stock —
+  // delsalg hvis lageret ikke strekker til, aldri et salg motoren ikke kan
+  // innfri.
   function chooseFixed(choice: SalesChoice) {
     let sale: SaleLine | null = null
     let extra: string | undefined
     if (choice.sell) {
       const hit = state.products.find(p => productMatchesNeed(p, choice.sell!.needTags))
+      const wantQty = choice.sell.qty ?? 1
       if (!hit) extra = '(du fører ingen passende vare — ingen tilleggssalg)'
       else if (hit.stock <= 0) extra = `(${hit.name} er utsolgt — ingen tilleggssalg)`
       else {
-        sale = { productId: hit.id, name: hit.name, price: hit.retailPrice, qty: 1, addon: choice.sell.addon }
-        extra = `Mersalg: ${hit.name} (${hit.retailPrice.toLocaleString('nb-NO')} kr)`
+        const qty = Math.min(wantQty, hit.stock)
+        sale = { productId: hit.id, name: hit.name, price: hit.retailPrice, qty, addon: choice.sell.addon }
+        const sum = (qty * hit.retailPrice).toLocaleString('nb-NO')
+        extra = qty < wantQty
+          ? `Mersalg: ${qty} av ${wantQty} ønsket × ${hit.name} (resten utsolgt) — ${sum} kr`
+          : `Mersalg: ${qty > 1 ? `${qty} × ` : ''}${hit.name} — ${sum} kr`
       }
     }
     if (choice.cost && choice.cost > 0) {
@@ -120,16 +128,21 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
     record({ quality: choice.quality }, sale, { quality: choice.quality, text: choice.feedback, extra, next: choice.next })
   }
 
-  // Anbefal-steget: eleven velger en FAKTISK vare fra sortimentet.
-  function chooseProduct(product: Product, hit: boolean) {
-    const qty = product.stock > 0 ? 1 : 0
+  // Anbefal-steget: eleven velger en FAKTISK vare fra sortimentet. wantQty
+  // kommer fra step.recommendQty (default 1, se DialogView) — samme
+  // klem-mot-stock-regel som chooseFixed.
+  function chooseProduct(product: Product, hit: boolean, wantQty: number) {
+    const qty = Math.min(wantQty, product.stock)
     const sale: SaleLine = { productId: product.id, name: product.name, price: product.retailPrice, qty }
     const text = hit
       ? 'Riktig! Det dekker akkurat behovet kunden hintet om.'
       : 'Et salg, men det traff ikke helt det kunden egentlig var ute etter.'
+    const sum = (qty * product.retailPrice).toLocaleString('nb-NO')
     const extra = qty === 0
       ? '(varen er dessverre utsolgt — registrert uten salg)'
-      : `Solgt: ${product.name} (${product.retailPrice.toLocaleString('nb-NO')} kr)`
+      : qty < wantQty
+        ? `Solgt: ${qty} av ${wantQty} ønsket × ${product.name} (resten utsolgt) — ${sum} kr`
+        : `Solgt: ${qty > 1 ? `${qty} × ` : ''}${product.name} — ${sum} kr`
     record({ quality: hit ? 'good' : 'warn', behovstreff: hit }, sale, { quality: hit ? 'good' : 'warn', text, extra })
   }
 
@@ -296,7 +309,7 @@ function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixe
   pending: Pending | null
   products: Product[]
   onChooseFixed: (c: SalesChoice) => void
-  onChooseProduct: (p: Product, hit: boolean) => void
+  onChooseProduct: (p: Product, hit: boolean, wantQty: number) => void
   onChooseHonest: (hasMatch: boolean) => void
   onChooseStockCommit: (p: Product | null, mode: 'full' | 'partial' | 'no', commitQty: number) => void
   onChooseMarginDiscount: (p: Product | null, mode: 'discount' | 'no-discount') => void
@@ -351,11 +364,12 @@ function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixe
               )}
               {products.map(p => {
                 const hit = productMatchesNeed(p, need)
+                const wantQty = step.recommendQty ?? 1
                 return (
                   <ChoiceButton
                     key={p.id}
-                    label={`${p.icon} Anbefal «${p.name}»${p.stock <= 0 ? ' (utsolgt)' : ''}`}
-                    onClick={() => onChooseProduct(p, hit)}
+                    label={`${p.icon} Anbefal «${p.name}»${wantQty > 1 ? ` × ${wantQty}` : ''}${p.stock <= 0 ? ' (utsolgt)' : ''}`}
+                    onClick={() => onChooseProduct(p, hit, wantQty)}
                   />
                 )
               })}
@@ -491,7 +505,7 @@ function ResultView({ result, hiddenNeed, onFinish, onRestart }: {
           <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.05em', marginBottom: 6 }}>SOLGT</div>
           {soldLines.map((s, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0' }}>
-              <span style={{ color: '#cbd5e1' }}>{s.name}{s.addon ? ' (mersalg)' : ''}</span>
+              <span style={{ color: '#cbd5e1' }}>{s.qty > 1 ? `${s.qty} × ` : ''}{s.name}{s.addon ? ' (mersalg)' : ''}</span>
               <span style={{ color: '#22c55e' }}>{(s.price * s.qty).toLocaleString('nb-NO')} kr</span>
             </div>
           ))}

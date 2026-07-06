@@ -6,6 +6,7 @@
 // nye elementer i SCENARIOS uten endringer ellers.
 
 import type { SalesScenario } from './types'
+import type { ScenarioMix } from '../data/dayConfig'
 
 /** Nøkkelord som identifiserer kundens hovedbehov (oppkvikkende drikke). */
 const KAFFE_TAGS = ['kaffe', 'coffee', 'espresso', 'cappuccino', 'latte']
@@ -380,17 +381,27 @@ export const DEN_USIKRE: SalesScenario = {
       id: 'anbefal',
       kind: 'recommend',
       recommendNeed: KAKE_BOLLE_TAGS,
+      // Selskap for 8 — hovedsalget skal være 8 stk, ikke 1 (Salgsmotor-
+      // oppgaven, DEL 2). Klemmes mot faktisk stock i chooseProduct
+      // (delsalg om lageret ikke strekker til 8).
+      recommendQty: 8,
       customerLine: 'Det høres bra ut — hva vil du anbefale da, basert på det jeg har fortalt deg?',
-      note: 'Anbefal fra sortimentet, tilpasset det hun akkurat fortalte deg.',
+      note: 'Anbefal fra sortimentet, tilpasset det hun akkurat fortalte deg. Husk: selskapet er 8 stykker.',
     },
     {
       id: 'mersalg',
       customerLine: 'Åh, det passer sikkert bra! Trenger jeg noe mer, tror du?',
       note: 'Naturlig mersalgs-mulighet — hun spør faktisk deg selv.',
       choices: [
-        { id: 'me_a', text: 'Kanskje litt drikke til barna også, så alle har noe å skylle ned med?', quality: 'good',
-          sell: { needTags: DRIKKE_TAGS, addon: true },
-          feedback: 'Naturlig og hjelpsomt mersalg — hun spurte selv, og forslaget passer perfekt til anledningen.' },
+        // Nøytral formulering («ved siden av», ikke «til barna») + ærlig
+        // feedback-flagg om drikkeutvalget (Salgsmotor-oppgaven, DEL 2):
+        // dagens kafé-sortiment har typisk kaffe/te/smoothie — ikke
+        // nødvendigvis det mest barnevennlige valget, og choice-teksten skal
+        // ikke late som om ETHVERT treff i DRIKKE_TAGS automatisk passer et
+        // barneselskap.
+        { id: 'me_a', text: 'Kanskje noe å drikke ved siden av også?', quality: 'good',
+          sell: { needTags: DRIKKE_TAGS, addon: true, qty: 8 },
+          feedback: 'Naturlig og hjelpsomt mersalg — hun spurte selv. Til et barneselskap er juice/saft/brus ofte et bedre valg enn kaffe eller te; vurder om drikkeutvalget ditt faktisk passer denne kundegruppen.' },
         { id: 'me_b', text: 'Nei, det tror jeg går fint.', quality: 'warn',
           feedback: 'Helt grei, men du går glipp av en åpenbar og ønsket mersalgsmulighet siden hun faktisk spurte deg.' },
         { id: 'me_c', text: 'Du bør uansett kjøpe litt mer enn du tror du trenger.', quality: 'bad',
@@ -494,9 +505,21 @@ export function getScenario(id: string): SalesScenario | undefined {
   return SCENARIOS.find(s => s.id === id)
 }
 
-/** Velg et tilfeldig scenario fra poolen. Math.random ligger i denne rene
- *  modulen (ikke i React-render), så kallstedet (useState-initialisering i
- *  InteriorView) forblir lint-rent. */
-export function randomScenario(): SalesScenario {
-  return SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)]!
+/** Velg et tilfeldig scenario fra en gitt pool (default: hele SCENARIOS).
+ *  Math.random ligger i denne rene modulen (ikke i React-render), så
+ *  kallstedet (useState-initialisering i InteriorView) forblir lint-rent. */
+export function randomScenario(pool: SalesScenario[] = SCENARIOS): SalesScenario {
+  return pool[Math.floor(Math.random() * pool.length)]!
+}
+
+/** DAGSSYKLUS (DEL 1/2) — filtrer dagens kunde-pool etter DAY_CONFIG.scenarioMix.
+ *  'alle' er reservert for FREMTIDIGE scenariotyper utover salg/service — i
+ *  dag identisk med 'salgOgService' siden bare de to outcomeKind-verdiene
+ *  finnes ennå. Tom pool (umulig i dag, men defensivt) faller tilbake til
+ *  hele SCENARIOS så InteriorView aldri står uten noen å spawne. */
+export function scenariosForMix(mix: ScenarioMix): SalesScenario[] {
+  const pool = mix === 'kunSalg'
+    ? SCENARIOS.filter(s => (s.outcomeKind ?? 'sale') === 'sale')
+    : SCENARIOS
+  return pool.length > 0 ? pool : SCENARIOS
 }

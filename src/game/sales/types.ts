@@ -19,6 +19,10 @@ export interface SellDirective {
   needTags: string[]
   /** true = tilleggssalg (mersalg), ikke hovedbehovet. */
   addon?: boolean
+  /** Ønsket antall (default 1 når utelatt) — f.eks. et selskap på 8 kjøper
+   *  8 stk, ikke 1. Klemmes mot FAKTISK stock ved valgtidspunktet (delsalg
+   *  hvis lageret ikke strekker til) — se chooseFixed i SalesScenarioOverlay. */
+  qty?: number
 }
 
 export interface SalesChoice {
@@ -62,6 +66,11 @@ export interface SalesStep {
    *  «behovstreff»-nøkkelord; for 'stock-commit'/'margin-discount' brukes
    *  det til å finne DEN ENE varen bestillingen/rabatten gjelder). */
   recommendNeed?: string[]
+  /** Kun for kind:'recommend' — ønsket antall (default 1). F.eks. et
+   *  bursdagsselskap på 8 anbefales i 8 stk, ikke 1. Klemmes mot faktisk
+   *  stock ved valgtidspunktet (delsalg hvis lite), samme regel som
+   *  SellDirective.qty. */
+  recommendQty?: number
   /** Kun for kind:'stock-commit' — antall kunden ber om (f.eks. 40). */
   commitQty?: number
   /** Faste valg (for vanlige steg). Utelatt for kind:'recommend'/'stock-commit'/'margin-discount'. */
