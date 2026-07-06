@@ -337,14 +337,15 @@ export default function InteriorView({ districtId, lokaleId }: {
             og kan ikke få varen til å se ut som den ligger PÅ en hylle.
             `mirrorTiltX` = vippet forover/bakover, `mirrorTiltY` = vridd
             sidelengs (begge default 0, dev-kalibrert per sone).
-            Ytre sone-boks klipper BÅDE topp og bakkant (til forskjell fra
-            MonterScene, som kun klipper bakkanten — der leser "vokser
-            oppover" som "lenger inn i trauet", ufarlig; her er sonen en
-            fysisk hylle/glassflate i FOTOET med en synlig overkant, så en
-            for stor (mirrorScale > 1) vare må klippes ved sonens overkant,
-            ellers stikker den synlig ut av glassmonteren (bug funnet og
-            rettet 2026-07-06 — se mirrorScale-kommentaren ved
-            INTERIOR_MIRROR_TRAU i districts.ts). Sider klippes fortsatt ikke.
+            Ytre sone-boks klipper KUN bakkanten (samme regel som
+            MonterScene) — IKKE toppen. Et tidligere forsøk klippet toppen
+            også (for å hindre synlig overflyt over glassmonteret), men det
+            kappet av toppen av selve VAREN (flate brød-topper) — like ille,
+            og Espen ville heller ha en vare som evt. vokser naturlig
+            oppover enn en synlig avkuttet en (2026-07-06). Overflyt over
+            sonen holdes nede av de allerede reduserte mirrorScale-verdiene
+            (se INTERIOR_MIRROR_TRAU i districts.ts) i stedet for klipping.
+            Sider klippes fortsatt ikke.
             z=25 (over FORGRUNNS-DISK-LAGET, z=20) — MÅ ligge over: det laget
             re-tegner HELE bunnen av fotoet (alt under occludeY-linja, for å
             okkludere kundens underkropp foran disken) og dekket dermed
@@ -369,10 +370,9 @@ export default function InteriorView({ districtId, lokaleId }: {
                 position: 'absolute',
                 left: `${m.rect[0]}%`, top: `${m.rect[1]}%`,
                 width: `${m.rect[2]}%`, height: `${m.rect[3]}%`,
-                // Klipp topp OG bakkant (til forskjell fra MonterScene, som
-                // kun klipper bakkanten — se kommentaren over). Sider
-                // fortsatt åpne (-100%), samme regel som ellers.
-                clipPath: 'inset(0 -100% 0 -100%)',
+                // Klipp KUN bakkanten — se kommentaren over (IKKE toppen,
+                // det kappet av selve varen).
+                clipPath: 'inset(-100% -100% 0 -100%)',
                 transform: `perspective(500px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`,
                 zIndex: 25, pointerEvents: 'none',
               }}

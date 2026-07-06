@@ -14,6 +14,7 @@ import StorefrontView from './city/StorefrontView'
 import InteriorView from './city/InteriorView'
 import MonterScene from './city/MonterScene'
 import { districtOfLokale } from '../data/districts'
+import { INDUSTRY_CATALOG, catalogToProduct } from './data/industries'
 
 // ── BYBILDE-ARKITEKTUR ────────────────────────────────────────────────────────
 // /game er nå bildebasert: master-kart → bydel → lokale (URL-styrt).
@@ -84,16 +85,25 @@ function GameContent() {
     })
     // Demo-sortiment med full/lav/tom lagerstatus så vindusutstillingen
     // (lager-barometeret) kan itereres uten å klikke gjennom 4P-løypa.
+    // Bygget MED catalogToProduct() (samme vei som ekte bestilling/føring)
+    // — IKKE håndskrevne Product-literaler. Håndskrevne kopier manglet
+    // sprite/displayScale/category (de finnes bare på katalogens
+    // IndustryCatalogItem), og siden id-ene bevisst matcher katalogen (se
+    // under), gjorde CARRY_PRODUCT/ORDER_PRODUCT sin dedup-sjekk
+    // (`some(p => p.id === action.product.id)`) at en ekte bestilling/føring
+    // av f.eks. Croissant ble et no-op — trauet fortsatte å peke på den
+    // sprite-løse dev-seed-varianten, som falt tilbake til
+    // farge+ikon-plassholderen i stedet for det ekte bilde-utklippet.
+    const cafeCatalog = INDUSTRY_CATALOG.cafe
+    const coffeeItem = cafeCatalog.find(i => i.id === 'coffee')!
+    const croissantItem = cafeCatalog.find(i => i.id === 'croissant')!
+    const muffinItem = cafeCatalog.find(i => i.id === 'muffin-blabaer')!
     dispatch({
       type: 'SET_PRODUCTS',
       products: [
-        // Samme id som katalogen (industries.ts) — ellers lager en ordinær
-        // bestilling av «Kaffe» via Produkter-fanen en SEPARAT rad (duplikat
-        // «Kaffe» på tavla/i Priser-fanen) i stedet for å øke lageret på
-        // denne. Var tidligere `dev_kaffe` o.l. — feilet nettopp slik.
-        { id: 'coffee', name: 'Kaffe', icon: '☕', tier: 'standard', costPrice: 12, retailPrice: 45, recommendedPrice: 45, stock: 40, quality: 70, sustainability: 60, maxDemandPerMonth: 40, windowDisplay: false, trauVare: false },
-        { id: 'croissant', name: 'Croissant', icon: '🥐', tier: 'standard', costPrice: 9, retailPrice: 35, recommendedPrice: 35, stock: 6, quality: 70, sustainability: 55, maxDemandPerMonth: 30, windowDisplay: true, trauVare: true },
-        { id: 'muffin-blabaer', name: 'Blåbærmuffins', icon: '🧁', tier: 'budget', costPrice: 7, retailPrice: 29, recommendedPrice: 29, stock: 0, quality: 60, sustainability: 50, maxDemandPerMonth: 25, windowDisplay: true, trauVare: true },
+        { ...catalogToProduct(coffeeItem), stock: 40 },
+        { ...catalogToProduct(croissantItem), stock: 6 },
+        { ...catalogToProduct(muffinItem), stock: 0 },
       ],
     })
     // Kaffe (windowDisplay: false) som hovedprodukt demonstrerer
