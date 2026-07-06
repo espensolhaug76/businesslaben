@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, INTERIOR_MIRROR_TRAU, type InteriorMirrorTrau } from '../../data/districts'
+import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, type InteriorMirrorTrau } from '../../data/districts'
 import { randomScenario } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
@@ -52,8 +52,24 @@ const DEFAULT_SCALE = 1.3
  *  havner under disken — uansett skala. */
 const WAIST_FRAC = 0.46
 
+/** Tavle-tekstens vinkling/skala (DEL 3-oppfølging: teksten sto flatt/rett
+ *  opp mens selve tavla er fotografert i perspektiv på høyre vegg — ekte 3D
+ *  (perspective + rotateY/rotateX), IKKE en flat skewX(), samme regel som
+ *  speil-laget over. GROVE startverdier (ikke Espen-kalibrert ennå) —
+ *  trace-/juster-bare med ?dev=1 (Tavle-kalibrering-panelet). */
+const DEFAULT_MENU_TILT_Y = -18
+const DEFAULT_MENU_TILT_X = 0
+const DEFAULT_MENU_SCALE = 1
+/** rotateY vipper den ene siden av teksten lenger unna kameraet enn den
+ *  andre — perspektivet komprimerer DEN siden mer, så den visuelle
+ *  «massen» av teksten (sentrert FØR vipping) havner synlig forskjøvet mot
+ *  den nærmeste siden etter vipping. Denne px-forskyvningen (i SKJERM-
+ *  planet, lagt til ETTER perspective/rotate i transform-kjeden) kompenserer
+ *  uten å røre selve vinkelen. Espen-kalibrert (?dev=1-panelet) 2026-07-06. */
+const DEFAULT_MENU_OFFSET_X = -11
+
 // ── Tracer-mål/soner (merket «spawn/stand» + «speil-N» for glassmonter-speilet) ─
-const ZONE_COLORS: Record<string, string> = { spawn: '#50dcff', stand: '#50e08c', speil: '#c084fc' }
+const ZONE_COLORS: Record<string, string> = { spawn: '#50dcff', stand: '#50e08c', speil: '#c084fc', meny: '#fbbf24' }
 
 function setRect(target: Rect, r: Rect) {
   target[0] = r[0]; target[1] = r[1]; target[2] = r[2]; target[3] = r[3]
@@ -62,6 +78,7 @@ function interiorTargets(mirrorTrau: InteriorMirrorTrau[]): Target[] {
   return [
     { id: 'spawn', label: 'spawn', get: () => INTERIOR_CUSTOMER_SPAWN, set: r => setRect(INTERIOR_CUSTOMER_SPAWN, r) },
     { id: 'stand', label: 'stand', get: () => INTERIOR_CUSTOMER_STAND, set: r => setRect(INTERIOR_CUSTOMER_STAND, r) },
+    { id: 'meny', label: 'meny', get: () => INTERIOR_MENU_BOARD, set: r => setRect(INTERIOR_MENU_BOARD, r) },
     ...mirrorTrau.map(m => ({ id: m.id, label: m.id, get: () => m.rect, set: (r: Rect) => setRect(m.rect, r) })),
   ]
 }
@@ -69,6 +86,7 @@ function interiorDrawZones(mirrorTrau: InteriorMirrorTrau[]): DrawZone[] {
   return [
     { rect: INTERIOR_CUSTOMER_SPAWN, id: 'spawn', label: 'spawn', color: ZONE_COLORS.spawn, dashed: true },
     { rect: INTERIOR_CUSTOMER_STAND, id: 'stand', label: 'stand', color: ZONE_COLORS.stand, dashed: true },
+    { rect: INTERIOR_MENU_BOARD, id: 'meny', label: 'meny', color: ZONE_COLORS.meny, dashed: true },
     ...mirrorTrau.map(m => ({ rect: m.rect, id: m.id, label: m.id, color: ZONE_COLORS.speil, dashed: true })),
   ]
 }
@@ -135,6 +153,19 @@ export default function InteriorView({ districtId, lokaleId }: {
   const [waistY, setWaistY] = useState(DEFAULT_WAIST_Y)
   const [scale, setScale] = useState(DEFAULT_SCALE)
 
+  // Tavle-tekstens vinkling/skala (?dev=1 — «📋 Tavle-kalibrering»-panelet).
+  const [menuTiltY, setMenuTiltY] = useState(DEFAULT_MENU_TILT_Y)
+  const [menuTiltX, setMenuTiltX] = useState(DEFAULT_MENU_TILT_X)
+  const [menuScale, setMenuScale] = useState(DEFAULT_MENU_SCALE)
+  const [menuOffsetX, setMenuOffsetX] = useState(DEFAULT_MENU_OFFSET_X)
+
+  // Er de tre dev-panelene åpne/felt sammen (accordion) — dekket scenen bak
+  // (glassmonteret, tavla) i utfoldet tilstand, så Espen ba om å kunne
+  // lukke dem. Default åpen (samme oppførsel som før denne endringen).
+  const [kundeOpen, setKundeOpen] = useState(true)
+  const [speilOpen, setSpeilOpen] = useState(true)
+  const [tavleOpen, setTavleOpen] = useState(true)
+
   // Fade kunden inn rett etter mount (ingen bevegelse). Kunden rendres uansett
   // kun når butikken er ÅPEN (se render-gaten under), så dette er harmløst
   // ved mount i stengt butikk.
@@ -193,6 +224,15 @@ export default function InteriorView({ districtId, lokaleId }: {
     console.log('[InteriorView] kunde-konstanter:', {
       CUSTOMER_SCALE: scale, CUSTOMER_CENTER_X: centerX, CUSTOMER_WAIST_Y: waistY,
       COUNTER_OCCLUDE_Y_LEFT: occludeYLeft, COUNTER_OCCLUDE_Y_RIGHT: occludeYRight,
+      [key]: v,
+    })
+  }
+
+  // Tavle-tekstens vinkling/skala — samme mutér/logg-mønster.
+  function updateMenu(key: 'MENU_TILT_Y' | 'MENU_TILT_X' | 'MENU_SCALE' | 'MENU_OFFSET_X', v: number, setter: (n: number) => void) {
+    setter(v)
+    console.log('[InteriorView] tavle-konstanter:', {
+      MENU_TILT_Y: menuTiltY, MENU_TILT_X: menuTiltX, MENU_SCALE: menuScale, MENU_OFFSET_X: menuOffsetX,
       [key]: v,
     })
   }
@@ -297,9 +337,14 @@ export default function InteriorView({ districtId, lokaleId }: {
             og kan ikke få varen til å se ut som den ligger PÅ en hylle.
             `mirrorTiltX` = vippet forover/bakover, `mirrorTiltY` = vridd
             sidelengs (begge default 0, dev-kalibrert per sone).
-            Ytre sone-boks klipper KUN bakkanten (siden nærmest POV, samme
-            regel/formel som MonterScene) — topp/sider klippes ikke, så en
-            stor (mirrorScale > 1) vare kan vokse oppover uten å bli avkuttet.
+            Ytre sone-boks klipper BÅDE topp og bakkant (til forskjell fra
+            MonterScene, som kun klipper bakkanten — der leser "vokser
+            oppover" som "lenger inn i trauet", ufarlig; her er sonen en
+            fysisk hylle/glassflate i FOTOET med en synlig overkant, så en
+            for stor (mirrorScale > 1) vare må klippes ved sonens overkant,
+            ellers stikker den synlig ut av glassmonteren (bug funnet og
+            rettet 2026-07-06 — se mirrorScale-kommentaren ved
+            INTERIOR_MIRROR_TRAU i districts.ts). Sider klippes fortsatt ikke.
             z=25 (over FORGRUNNS-DISK-LAGET, z=20) — MÅ ligge over: det laget
             re-tegner HELE bunnen av fotoet (alt under occludeY-linja, for å
             okkludere kundens underkropp foran disken) og dekket dermed
@@ -324,11 +369,10 @@ export default function InteriorView({ districtId, lokaleId }: {
                 position: 'absolute',
                 left: `${m.rect[0]}%`, top: `${m.rect[1]}%`,
                 width: `${m.rect[2]}%`, height: `${m.rect[3]}%`,
-                // Klipp KUN bakkanten (siden nærmest POV — samme regel og
-                // samme formel som MonterScene sin trau-klipping) — IKKE
-                // overflow:hidden på alle fire sider, det klippet toppen av
-                // varen når den ble skalert opp (mirrorScale > 1).
-                clipPath: 'inset(-100% -100% 0 -100%)',
+                // Klipp topp OG bakkant (til forskjell fra MonterScene, som
+                // kun klipper bakkanten — se kommentaren over). Sider
+                // fortsatt åpne (-100%), samme regel som ellers.
+                clipPath: 'inset(0 -100% 0 -100%)',
                 transform: `perspective(500px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`,
                 zIndex: 25, pointerEvents: 'none',
               }}
@@ -364,6 +408,68 @@ export default function InteriorView({ districtId, lokaleId }: {
             </div>
           )
         })}
+
+        {/* DRIKKEMENY PÅ TAVLA (DEL 3, z=15) — den blanke tavla på høyre vegg
+            blir en funksjonell meny: drikke-sortimentet eleven har FØRT
+            (varer med trauVare=false — kaffe/smoothie/te i cafe-katalogen,
+            ikke fysiske trau-varer) listes med elevens egen pris (samme
+            product.retailPrice-felt som Produkter-/Priser-fanen og
+            prislappene på trauene leser — én kilde). Ingen førte drikkevarer
+            ⇒ tom tavle (rendrer ingenting, ingen krasj). Maks 6 linjer —
+            flere enn det ⇒ 5 varer + «…og mer»-linje. Sonen er et GROVT
+            estimat (se INTERIOR_MENU_BOARD i districts.ts) — trace-bar med
+            ?dev=1 til Espen kalibrerer mot tavlas faktiske posisjon.
+            EKTE 3D-vinkling (perspective + rotateY/rotateX), IKKE en flat
+            skewX() — samme regel som speil-laget: en flat skjevstilling
+            spinner bare teksten i skjermplanet og ser ikke ut som kritt
+            skrevet PÅ tavlas fotograferte flate. `menuTiltY/X/scale` er
+            GROVE startverdier, juster med ?dev=1-panelet «📋
+            Tavle-kalibrering». */}
+        {(() => {
+          const drinks = state.products.filter(p => p.trauVare === false)
+          if (drinks.length === 0) return null
+          const shown = drinks.length > 6 ? drinks.slice(0, 5) : drinks
+          const overflow = drinks.length > 6
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${INTERIOR_MENU_BOARD[0]}%`, top: `${INTERIOR_MENU_BOARD[1]}%`,
+                width: `${INTERIOR_MENU_BOARD[2]}%`, height: `${INTERIOR_MENU_BOARD[3]}%`,
+                zIndex: 15, pointerEvents: 'none',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: '0.35em', padding: '6%',
+                fontFamily: "'Segoe Print', 'Bradley Hand', cursive",
+                color: '#f1f5f9', textShadow: '0 0 3px rgba(255,255,255,0.35), 0 1px 1px rgba(0,0,0,0.5)',
+                // translateX FØRST i lista = SIST anvendt (skjerm-planet,
+                // etter projeksjon) — rekompenserer den visuelle
+                // sideforskyvningen vippingen gir, uten å røre vinkelen selv.
+                transform: `translateX(${menuOffsetX}px) perspective(600px) rotateY(${menuTiltY}deg) rotateX(${menuTiltX}deg) scale(${menuScale})`,
+                transformOrigin: 'center',
+              }}
+            >
+              <div style={{
+                fontSize: 'clamp(11px, 1.6vw, 18px)', fontWeight: 700, whiteSpace: 'nowrap',
+                marginBottom: '0.15em', letterSpacing: '0.03em', textDecoration: 'underline',
+                textUnderlineOffset: '0.2em',
+              }}>
+                Drikkemeny
+              </div>
+              {shown.map(p => (
+                <div key={p.id} style={{
+                  fontSize: 'clamp(9px, 1.3vw, 15px)', whiteSpace: 'nowrap',
+                  display: 'flex', alignItems: 'baseline', gap: '0.6em',
+                }}>
+                  <span>{p.name}</span>
+                  <span style={{ opacity: 0.85 }}>{p.retailPrice > 0 ? `${p.retailPrice.toLocaleString('nb-NO')} kr` : '—'}</span>
+                </div>
+              ))}
+              {overflow && (
+                <div style={{ fontSize: 'clamp(9px, 1.2vw, 14px)', opacity: 0.75, whiteSpace: 'nowrap' }}>…og mer</div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* KUNDEN (z=10) — stor, forankret på livlinja, mellom bakgrunn og disk.
             Underkroppen strekker seg under occludeY-linja og skjules av
@@ -465,25 +571,22 @@ export default function InteriorView({ districtId, lokaleId }: {
           ikke øverst til venstre lenger, det lå rett oppå glassmonteret med
           varene panelet skal kalibrere mot). */}
       {IS_DEV_COORDS && (
-        <div style={{
-          position: 'fixed', top: 320, right: 16, zIndex: 90, width: 224,
-          background: 'rgba(10,14,26,0.94)', border: '1px solid #7dd3fc55',
-          borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
-        }}>
-          <div style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>🎚️ Kunde-kalibrering</div>
-          <CalSlider label="CUSTOMER_SCALE"     value={scale}    min={0.5} max={2.5} step={0.05}
-            onChange={v => update('CUSTOMER_SCALE', v, setScale)}      fmt={v => v.toFixed(2)} />
-          <CalSlider label="CUSTOMER_CENTER_X"  value={centerX}  min={0}   max={100} step={0.5}
-            onChange={v => update('CUSTOMER_CENTER_X', v, setCenterX)} fmt={v => v.toFixed(1)} />
-          <CalSlider label="CUSTOMER_WAIST_Y"   value={waistY}   min={0}   max={100} step={0.5}
-            onChange={v => update('CUSTOMER_WAIST_Y', v, setWaistY)}   fmt={v => v.toFixed(1)} />
-          <CalSlider label="COUNTER_OCCLUDE_Y_LEFT"  value={occludeYLeft} min={0} max={100} step={0.5}
-            onChange={v => update('COUNTER_OCCLUDE_Y_LEFT', v, setOccludeYLeft)}   fmt={v => v.toFixed(1)} />
-          <CalSlider label="COUNTER_OCCLUDE_Y_RIGHT" value={occludeYRight} min={0} max={100} step={0.5}
-            onChange={v => update('COUNTER_OCCLUDE_Y_RIGHT', v, setOccludeYRight)} fmt={v => v.toFixed(1)} />
-          <div style={{ fontSize: 10, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
-            Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
-          </div>
+        <div style={{ position: 'fixed', top: 320, right: 16, zIndex: 90, width: 224 }}>
+          <CalPanel title="🎚️ Kunde-kalibrering" color="#7dd3fc" open={kundeOpen} onToggle={() => setKundeOpen(o => !o)}>
+            <CalSlider label="CUSTOMER_SCALE"     value={scale}    min={0.5} max={2.5} step={0.05}
+              onChange={v => update('CUSTOMER_SCALE', v, setScale)}      fmt={v => v.toFixed(2)} />
+            <CalSlider label="CUSTOMER_CENTER_X"  value={centerX}  min={0}   max={100} step={0.5}
+              onChange={v => update('CUSTOMER_CENTER_X', v, setCenterX)} fmt={v => v.toFixed(1)} />
+            <CalSlider label="CUSTOMER_WAIST_Y"   value={waistY}   min={0}   max={100} step={0.5}
+              onChange={v => update('CUSTOMER_WAIST_Y', v, setWaistY)}   fmt={v => v.toFixed(1)} />
+            <CalSlider label="COUNTER_OCCLUDE_Y_LEFT"  value={occludeYLeft} min={0} max={100} step={0.5}
+              onChange={v => update('COUNTER_OCCLUDE_Y_LEFT', v, setOccludeYLeft)}   fmt={v => v.toFixed(1)} />
+            <CalSlider label="COUNTER_OCCLUDE_Y_RIGHT" value={occludeYRight} min={0} max={100} step={0.5}
+              onChange={v => update('COUNTER_OCCLUDE_Y_RIGHT', v, setOccludeYRight)} fmt={v => v.toFixed(1)} />
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
+              Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
+            </div>
+          </CalPanel>
         </div>
       )}
 
@@ -497,41 +600,59 @@ export default function InteriorView({ districtId, lokaleId }: {
       {IS_DEV_COORDS && (() => {
         const m = mirrorTrau.find(x => x.id === calMirrorId)
         return (
-          <div style={{
-            position: 'fixed', top: 320, right: 256, zIndex: 90, width: 224,
-            background: 'rgba(10,14,26,0.94)', border: '1px solid #c084fc55',
-            borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
-          }}>
-            <div style={{ color: '#c084fc', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>🪞 Speil-kalibrering</div>
-            <select
-              value={calMirrorId}
-              onChange={e => setCalMirrorId(e.target.value)}
-              style={{
-                width: '100%', marginBottom: 8, background: '#0a0e1a',
-                color: '#f1f5f9', border: '1px solid #c084fc44', borderRadius: 6,
-                padding: '3px 6px', fontSize: 11, fontFamily: "'Outfit', sans-serif",
-              }}
-            >
-              {mirrorTrau.map(x => (
-                <option key={x.id} value={x.id} style={{ background: '#0a0e1a', color: '#f1f5f9' }}>{x.id} ({x.mirrorsTrauId})</option>
-              ))}
-            </select>
-            {m && (
-              <>
-                <CalSlider label="mirrorScale" value={m.mirrorScale ?? 1} min={0.2} max={6} step={0.05}
-                  onChange={v => setMirrorScale(m, v)} fmt={v => `${Math.round(v * 100)}%`} />
-                <CalSlider label="mirrorTiltX (forover)" value={m.mirrorTiltX ?? 0} min={-80} max={80} step={1}
-                  onChange={v => setMirrorTiltX(m, v)} fmt={v => `${v.toFixed(0)}°`} />
-                <CalSlider label="mirrorTiltY (sidelengs)" value={m.mirrorTiltY ?? 0} min={-80} max={80} step={1}
-                  onChange={v => setMirrorTiltY(m, v)} fmt={v => `${v.toFixed(0)}°`} />
-              </>
-            )}
-            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>
-              Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
-            </div>
+          <div style={{ position: 'fixed', top: 320, right: 256, zIndex: 90, width: 224 }}>
+            <CalPanel title="🪞 Speil-kalibrering" color="#c084fc" open={speilOpen} onToggle={() => setSpeilOpen(o => !o)}>
+              <select
+                value={calMirrorId}
+                onChange={e => setCalMirrorId(e.target.value)}
+                style={{
+                  width: '100%', marginBottom: 8, background: '#0a0e1a',
+                  color: '#f1f5f9', border: '1px solid #c084fc44', borderRadius: 6,
+                  padding: '3px 6px', fontSize: 11, fontFamily: "'Outfit', sans-serif",
+                }}
+              >
+                {mirrorTrau.map(x => (
+                  <option key={x.id} value={x.id} style={{ background: '#0a0e1a', color: '#f1f5f9' }}>{x.id} ({x.mirrorsTrauId})</option>
+                ))}
+              </select>
+              {m && (
+                <>
+                  <CalSlider label="mirrorScale" value={m.mirrorScale ?? 1} min={0.2} max={6} step={0.05}
+                    onChange={v => setMirrorScale(m, v)} fmt={v => `${Math.round(v * 100)}%`} />
+                  <CalSlider label="mirrorTiltX (forover)" value={m.mirrorTiltX ?? 0} min={-80} max={80} step={1}
+                    onChange={v => setMirrorTiltX(m, v)} fmt={v => `${v.toFixed(0)}°`} />
+                  <CalSlider label="mirrorTiltY (sidelengs)" value={m.mirrorTiltY ?? 0} min={-80} max={80} step={1}
+                    onChange={v => setMirrorTiltY(m, v)} fmt={v => `${v.toFixed(0)}°`} />
+                </>
+              )}
+              <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>
+                Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
+              </div>
+            </CalPanel>
           </div>
         )
       })()}
+
+      {/* TAVLE-KALIBRERING (kun ?dev=1) — vinkling/skala for drikkemeny-
+          teksten på tavla. Plassert ved siden av speil-panelet (samme top,
+          right forskjøvet enda et hakk), samme mutér-og-logg-mønster. */}
+      {IS_DEV_COORDS && (
+        <div style={{ position: 'fixed', top: 320, right: 496, zIndex: 90, width: 224 }}>
+          <CalPanel title="📋 Tavle-kalibrering" color="#fbbf24" open={tavleOpen} onToggle={() => setTavleOpen(o => !o)}>
+            <CalSlider label="menuTiltY (sidelengs)" value={menuTiltY} min={-60} max={60} step={1}
+              onChange={v => updateMenu('MENU_TILT_Y', v, setMenuTiltY)} fmt={v => `${v.toFixed(0)}°`} />
+            <CalSlider label="menuTiltX (forover)" value={menuTiltX} min={-60} max={60} step={1}
+              onChange={v => updateMenu('MENU_TILT_X', v, setMenuTiltX)} fmt={v => `${v.toFixed(0)}°`} />
+            <CalSlider label="menuScale" value={menuScale} min={0.5} max={2} step={0.02}
+              onChange={v => updateMenu('MENU_SCALE', v, setMenuScale)} fmt={v => `${Math.round(v * 100)}%`} />
+            <CalSlider label="menuOffsetX (rekompenser sentrering)" value={menuOffsetX} min={-40} max={40} step={1}
+              onChange={v => updateMenu('MENU_OFFSET_X', v, setMenuOffsetX)} fmt={v => `${v.toFixed(0)}px`} />
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>
+              Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
+            </div>
+          </CalPanel>
+        </div>
+      )}
 
       {/* Stillas-etikett nederst */}
       <div style={{
@@ -541,8 +662,40 @@ export default function InteriorView({ districtId, lokaleId }: {
         fontSize: 13, whiteSpace: 'nowrap',
       }}>
         🪑 Interiør · {state.shopOpen ? '🔓 Åpent' : '🔒 Stengt'}
-        {IS_DEV_COORDS ? ' · kalibrering aktiv (panel øverst venstre)' : ''}
+        {IS_DEV_COORDS ? ' · kalibrering aktiv (panel øverst høyre)' : ''}
       </div>
+    </div>
+  )
+}
+
+// ── Sammenleggbart kalibreringspanel (accordion) ─────────────────────────────
+// De faste dev-panelene dekket scenen bak (glassmonteret, tavla) — klikk
+// tittelen for å felle sammen til KUN header-linja, så innholdet bak blir
+// synlig igjen uten å måtte skru av ?dev=1 helt.
+function CalPanel({ title, color, open, onToggle, children }: {
+  title: string
+  color: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{
+      background: 'rgba(10,14,26,0.94)', border: `1px solid ${color}55`,
+      borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
+    }}>
+      <div
+        onClick={onToggle}
+        title={open ? 'Klikk for å felle sammen' : 'Klikk for å åpne'}
+        style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          cursor: 'pointer', marginBottom: open ? 6 : 0, userSelect: 'none',
+        }}
+      >
+        <span style={{ color, fontSize: 12, fontWeight: 800 }}>{title}</span>
+        <span style={{ color, fontSize: 11 }}>{open ? '▾' : '▸'}</span>
+      </div>
+      {open && children}
     </div>
   )
 }

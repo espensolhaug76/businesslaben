@@ -87,14 +87,18 @@ function GameContent() {
     dispatch({
       type: 'SET_PRODUCTS',
       products: [
-        { id: 'dev_kaffe', name: 'Kaffe', icon: '☕', tier: 'standard', costPrice: 12, retailPrice: 45, recommendedPrice: 45, stock: 40, quality: 70, sustainability: 60, maxDemandPerMonth: 40, windowDisplay: false },
-        { id: 'dev_croissant', name: 'Croissant', icon: '🥐', tier: 'standard', costPrice: 9, retailPrice: 35, recommendedPrice: 35, stock: 6, quality: 70, sustainability: 55, maxDemandPerMonth: 30, windowDisplay: true },
-        { id: 'dev_muffins', name: 'Muffins', icon: '🧁', tier: 'budget', costPrice: 7, retailPrice: 29, recommendedPrice: 29, stock: 0, quality: 60, sustainability: 50, maxDemandPerMonth: 25, windowDisplay: true },
+        // Samme id som katalogen (industries.ts) — ellers lager en ordinær
+        // bestilling av «Kaffe» via Produkter-fanen en SEPARAT rad (duplikat
+        // «Kaffe» på tavla/i Priser-fanen) i stedet for å øke lageret på
+        // denne. Var tidligere `dev_kaffe` o.l. — feilet nettopp slik.
+        { id: 'coffee', name: 'Kaffe', icon: '☕', tier: 'standard', costPrice: 12, retailPrice: 45, recommendedPrice: 45, stock: 40, quality: 70, sustainability: 60, maxDemandPerMonth: 40, windowDisplay: false, trauVare: false },
+        { id: 'croissant', name: 'Croissant', icon: '🥐', tier: 'standard', costPrice: 9, retailPrice: 35, recommendedPrice: 35, stock: 6, quality: 70, sustainability: 55, maxDemandPerMonth: 30, windowDisplay: true, trauVare: true },
+        { id: 'muffin-blabaer', name: 'Blåbærmuffins', icon: '🧁', tier: 'budget', costPrice: 7, retailPrice: 29, recommendedPrice: 29, stock: 0, quality: 60, sustainability: 50, maxDemandPerMonth: 25, windowDisplay: true, trauVare: true },
       ],
     })
     // Kaffe (windowDisplay: false) som hovedprodukt demonstrerer
     // plakat-stedfortrederen på disken.
-    dispatch({ type: 'SET_MAIN_PRODUCT', id: 'dev_kaffe' })
+    dispatch({ type: 'SET_MAIN_PRODUCT', id: 'coffee' })
     console.log('[DEV] StartupScreen skipped, seeded defaults + demo-sortiment')
   }, [state.phase, dispatch])
 

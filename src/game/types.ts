@@ -53,6 +53,13 @@ export interface Product {
   id: string
   name: string
   icon: string
+  /** PARKET (Prisflyt-opprydding 2026-07-06) — alltid 'standard' nå.
+   *  Tier-per-vare (Premium/Standard/Budget) kolliderte med resten av
+   *  spillet (én vare = ett costPrice/recommendedPrice/retailPrice, se
+   *  IndustryCatalogItem.tiers i industries.ts). Feltet beholdes for
+   *  personas.ts sin målgruppe-matching (calcPersonaMatchScore), som
+   *  fortsatt leser det — men premium/budget-andelen er dermed alltid 0
+   *  inntil en ny mekanikk (leverandør-/merkekatalog) erstatter tier. */
   tier: 'premium' | 'standard' | 'budget'
   costPrice: number
   retailPrice: number
@@ -283,6 +290,14 @@ export interface GameState {
   /** Hovedprodukt (VINDUSLOGIKK TILLEGG): vises størst/fremst i vinduet;
    *  brukes av kampanje-/scenariosystemet senere. Ingen demand-effekt. */
   mainProductId: string | null
+  /** Kjøpbar prisinnsikt (Priser-fanen, DEL 3) — IKKE samme som
+   *  `businessPlan.marketResearchDone` (den generelle markedsanalysen i
+   *  Forretningsplan-fanen). Denne er per-vare: `purchasedProductIds`
+   *  er et øyeblikksbilde av hvilke varer som var i sortimentet SIST
+   *  eleven kjøpte innsikt — konkurrentpris-intervallet vises kun for de
+   *  id-ene. Nye varer ført etterpå er ikke dekket ⇒ «ikke undersøkt»,
+   *  til eleven kjøper på nytt (utvider snapshotet, koster på nytt). */
+  priceResearch: { purchasedProductIds: string[] }
   channels: DistributionChannel[]
   /** Manuelt bygget vareeksponering (fri plassering) — vindu + parkert monter,
    *  skilt på fixtureId. Tom liste = ingenting. Se WindowDisplayItem. */

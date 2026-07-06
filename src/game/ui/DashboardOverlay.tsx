@@ -580,7 +580,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               {products.map(p => (
                 <span key={p.id} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 99, padding: '3px 10px', fontSize: 12 }}>
-                  {p.icon} {p.name} ({p.tier})
+                  {p.icon} {p.name}
                 </span>
               ))}
             </div>
@@ -1247,35 +1247,22 @@ function ProdukterTab() {
   const { state, dispatch } = useGame()
   const catalog = INDUSTRY_CATALOG[state.industry] ?? []
 
-  // Per-item local state: selected tier + quantity
-  const [selections, setSelections] = useState<Record<string, { tier: Product['tier']; qty: number }>>({})
-
-  function setTier(id: string, tier: Product['tier']) {
-    setSelections(prev => ({ ...prev, [id]: { tier, qty: prev[id]?.qty ?? 10 } }))
-  }
+  // Per-item local state: kun antall — tier-valg er PARKET (se
+  // IndustryCatalogItem.tiers i industries.ts). Én katalogvare = ett
+  // costPrice/recommendedPrice, ikke tre å velge mellom.
+  const [qtyById, setQtyById] = useState<Record<string, number>>({})
 
   function setQty(id: string, qty: number) {
-    setSelections(prev => ({ ...prev, [id]: { ...prev[id]!, qty } }))
+    setQtyById(prev => ({ ...prev, [id]: qty }))
   }
 
   function order(id: string) {
-    const sel = selections[id]
-    if (!sel || sel.qty <= 0) return
+    const qty = qtyById[id] ?? 10
+    if (qty <= 0) return
     const item = catalog.find(c => c.id === id)
     if (!item) return
-    const product = catalogToProduct(item, sel.tier)
-    dispatch({ type: 'ORDER_PRODUCT', product, quantity: sel.qty })
-  }
-
-  const TIER_COLORS: Record<Product['tier'], string> = {
-    premium: '#ffd700',
-    standard: '#00d4aa',
-    budget: '#94a3b8',
-  }
-  const TIER_LABELS: Record<Product['tier'], string> = {
-    premium: '⭐ Premium',
-    standard: '◆ Standard',
-    budget: '◇ Budget',
+    const product = catalogToProduct(item)
+    dispatch({ type: 'ORDER_PRODUCT', product, quantity: qty })
   }
 
   return (
@@ -1283,38 +1270,43 @@ function ProdukterTab() {
       <div style={{ marginBottom: '1.25rem' }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Varelager</h3>
         <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
-          Velg kvalitetstier og antall → klikk Bestill. Pengene trekkes med en gang.
+          Velg antall → klikk Bestill. Pengene trekkes med en gang.
         </p>
       </div>
 
-      {/* Current stock summary */}
+      {/* Current stock summary — vare, lager, kostpris. IKKE utsalgspris
+          (4P-pedagogikk: produkt er produkt, pris er pris — prissetting
+          skjer utelukkende i Priser-fanen, se DEL 2/3 i Prisflyt-oppgaven). */}
       {state.products.length > 0 && (
         <div style={{
           background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.2)',
           borderRadius: '1rem', padding: '0.75rem 1rem', marginBottom: '1.25rem',
-          display: 'flex', flexWrap: 'wrap', gap: '0.75rem',
+          display: 'flex', flexDirection: 'column', gap: '0.6rem',
         }}>
           {state.products.map(p => {
             const isMain = state.mainProductId === p.id
             return (
               <div key={p.id} style={{
-                fontSize: 12, color: '#94a3b8',
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: isMain ? 'rgba(255,215,0,0.08)' : undefined,
-                border: isMain ? '1px solid rgba(255,215,0,0.35)' : '1px solid transparent',
-                borderRadius: 8, padding: '2px 8px',
+                display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem 0.75rem',
+                background: isMain ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)',
+                border: isMain ? '1px solid rgba(255,215,0,0.35)' : '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 10, padding: '0.5rem 0.7rem',
               }}>
                 <span style={{ fontSize: 16 }}>{p.icon}</span>
-                <span style={{ fontWeight: 700, color: '#f1f5f9' }}>{isMain && '⭐ '}{p.name}</span>
-                <span style={{ color: '#00d4aa' }}>{p.stock} stk</span>
+                <span style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 12 }}>{isMain && '⭐ '}{p.name}</span>
+                <span style={{ color: '#00d4aa', fontSize: 12 }}>{p.stock} stk</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>· Kostpris: {formatKr(p.costPrice)}</span>
+
                 <button
                   onClick={() => dispatch({ type: 'SET_MAIN_PRODUCT', id: p.id })}
                   title={isMain ? 'Fjern som hovedprodukt' : 'Vises størst i butikkvinduet'}
                   style={{
+                    marginLeft: 'auto',
                     background: isMain ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.06)',
                     border: `1px solid ${isMain ? '#ffd70066' : 'rgba(255,255,255,0.15)'}`,
                     borderRadius: 6, padding: '1px 7px', fontSize: 10, fontWeight: 700,
                     color: isMain ? '#ffd700' : '#94a3b8', cursor: 'pointer', fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {isMain ? 'Hovedprodukt' : 'Sett som hovedprodukt'}
@@ -1327,92 +1319,72 @@ function ProdukterTab() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {catalog.map(item => {
-          const sel = selections[item.id]
-          const activeTier = sel?.tier
-          const qty = sel?.qty ?? 10
-          const t = activeTier ? item.tiers[activeTier] : null
-          const totalCost = t ? t.costPrice * qty : 0
+          const qty = qtyById[item.id] ?? 10
+          const totalCost = item.costPrice * qty
           const canAfford = totalCost <= state.money
-          const existingStock = state.products.find(p => p.id === `${item.id}_${activeTier}`)?.stock ?? 0
+          const existingStock = state.products.find(p => p.id === item.id)?.stock ?? 0
 
           return (
             <div key={item.id} style={{
               background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
               borderRadius: '1rem', padding: '1rem',
             }}>
-              {/* Item header */}
+              {/* Item header + innkjøpspris. IKKE anbefalt utsalgspris — ingen
+                  fasit for hva varen skal SELGES for (kun hva den KJØPES inn
+                  for). Utsalgspris settes utelukkende i Priser-fanen. */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: 24 }}>{item.icon}</span>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{item.name}</div>
                   <div style={{ fontSize: 11, color: '#475569' }}>Maks etterspørsel: {item.maxDemandPerMonth} stk/mnd</div>
                 </div>
-              </div>
-
-              {/* Tier selection */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                {(['premium', 'standard', 'budget'] as const).map(tier => {
-                  const tc = TIER_COLORS[tier]
-                  const active = activeTier === tier
-                  return (
-                    <button key={tier} onClick={() => setTier(item.id, tier)} style={{
-                      background: active ? `${tc}18` : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${active ? tc + '88' : 'rgba(255,255,255,0.08)'}`,
-                      borderRadius: '0.6rem', padding: '0.6rem 0.5rem',
-                      cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9', textAlign: 'left',
-                    }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: tc, marginBottom: 2 }}>{TIER_LABELS[tier]}</div>
-                      <div style={{ fontSize: 11, color: '#64748b' }}>Innkjøp: {formatKr(item.tiers[tier].costPrice)}</div>
-                      <div style={{ fontSize: 11, color: '#475569' }}>Anbefalt: {formatKr(item.tiers[tier].recommendedPrice)}</div>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Order row — only when tier is selected */}
-              {activeTier && t && (
-                <div style={{
-                  display: 'flex', gap: '0.75rem', alignItems: 'center',
-                  background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.75rem',
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Antall å bestille</div>
-                    <input
-                      type="number" min={1} max={500} value={qty}
-                      onChange={e => setQty(item.id, Math.max(1, parseInt(e.target.value) || 1))}
-                      style={{
-                        width: '100%', background: 'rgba(255,255,255,0.08)',
-                        border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
-                        padding: '6px 10px', color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit',
-                      }}
-                    />
-                  </div>
-                  <div style={{ textAlign: 'center', minWidth: 80 }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Totalkostnad</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: canAfford ? '#22c55e' : '#ef4444' }}>
-                      {formatKr(totalCost)}
-                    </div>
-                    {existingStock > 0 && (
-                      <div style={{ fontSize: 10, color: '#00d4aa' }}>Har: {existingStock} stk</div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => order(item.id)}
-                    disabled={!canAfford || qty <= 0}
-                    style={{
-                      background: canAfford
-                        ? 'linear-gradient(135deg,#00d4aa,#0d9488)'
-                        : 'rgba(255,255,255,0.08)',
-                      border: 'none', borderRadius: 8, padding: '0.6rem 1.25rem',
-                      color: canAfford ? '#fff' : '#475569',
-                      fontWeight: 700, fontSize: 14, cursor: canAfford ? 'pointer' : 'not-allowed',
-                      fontFamily: 'inherit', whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {canAfford ? '📦 Bestill' : '💸 Ikke råd'}
-                  </button>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>Innkjøp: {formatKr(item.costPrice)}</div>
                 </div>
-              )}
+              </div>
+
+              {/* Order row */}
+              <div style={{
+                display: 'flex', gap: '0.75rem', alignItems: 'center',
+                background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.75rem',
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Antall å bestille</div>
+                  <input
+                    type="number" min={1} max={500} value={qty}
+                    onChange={e => setQty(item.id, Math.max(1, parseInt(e.target.value) || 1))}
+                    style={{
+                      width: '100%', background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
+                      padding: '6px 10px', color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit',
+                    }}
+                  />
+                </div>
+                <div style={{ textAlign: 'center', minWidth: 80 }}>
+                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Totalkostnad</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: canAfford ? '#22c55e' : '#ef4444' }}>
+                    {formatKr(totalCost)}
+                  </div>
+                  {existingStock > 0 && (
+                    <div style={{ fontSize: 10, color: '#00d4aa' }}>Har: {existingStock} stk</div>
+                  )}
+                </div>
+                <button
+                  onClick={() => order(item.id)}
+                  disabled={!canAfford || qty <= 0}
+                  style={{
+                    background: canAfford
+                      ? 'linear-gradient(135deg,#00d4aa,#0d9488)'
+                      : 'rgba(255,255,255,0.08)',
+                    border: 'none', borderRadius: 8, padding: '0.6rem 1.25rem',
+                    color: canAfford ? '#fff' : '#475569',
+                    fontWeight: 700, fontSize: 14, cursor: canAfford ? 'pointer' : 'not-allowed',
+                    fontFamily: 'inherit', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {canAfford ? '📦 Bestill' : '💸 Ikke råd'}
+                </button>
+              </div>
             </div>
           )
         })}
@@ -1423,6 +1395,18 @@ function ProdukterTab() {
 
 // ── Priser ────────────────────────────────────────────────────────────────────
 
+/** Konkurrentpris-intervall for markedsundersøkelsen (DEL 3) — avledet av
+ *  recommendedPrice ± 15 %, en REN funksjon (ikke Math.random) så den er
+ *  stabil per vare og ved hver re-render. recommendedPrice vises ALDRI
+ *  direkte til eleven (ingen fasit) — kun dette avledede intervallet, og
+ *  kun etter kjøpt undersøkelse. */
+function competitorRange(recommendedPrice: number): { low: number; high: number } {
+  return {
+    low: Math.round(recommendedPrice * 0.85),
+    high: Math.round(recommendedPrice * 1.15),
+  }
+}
+
 function PriserTab() {
   const { state, dispatch } = useGame()
   const [products, setProducts] = useState<Product[]>(() => state.products.map(p => ({ ...p })))
@@ -1432,16 +1416,19 @@ function PriserTab() {
   }
 
   function setPrice(id: string, price: number) {
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, retailPrice: price } : p))
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, retailPrice: Math.max(0, price) } : p))
   }
 
   function save() {
     dispatch({ type: 'SET_PRODUCTS', products })
   }
 
+  const researchedIds = new Set(state.priceResearch.purchasedProductIds)
+  const allResearched = products.every(p => researchedIds.has(p.id))
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Prissetting</h3>
           <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Sett salgspris per produkt</p>
@@ -1450,37 +1437,78 @@ function PriserTab() {
           Lagre priser ✓
         </button>
       </div>
+
+      {/* DEL 3 — kjøpbar innsikt, IKKE en fasit: et konkurrentpris-intervall
+          per vare (snapshot av dagens sortiment ved kjøp). Nye varer ført
+          etterpå er ikke dekket. */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem',
+        background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)',
+        borderRadius: '0.75rem', padding: '0.75rem 1rem', marginBottom: '1.25rem',
+      }}>
+        <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>
+          📊 Se hva konkurrenter i nærheten tar for lignende varer — gjelder varene du har ført NÅ.
+        </p>
+        <button
+          onClick={() => dispatch({ type: 'BUY_PRICE_RESEARCH' })}
+          disabled={state.money < 2_500}
+          title={allResearched ? 'Kjøp på nytt for å dekke nyere varer' : undefined}
+          style={{
+            background: state.money >= 2_500 ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${state.money >= 2_500 ? 'rgba(56,189,248,0.4)' : 'rgba(255,255,255,0.1)'}`,
+            borderRadius: 8, padding: '0.5rem 1rem', whiteSpace: 'nowrap',
+            color: state.money >= 2_500 ? '#38bdf8' : '#475569',
+            fontSize: 13, fontWeight: 700, cursor: state.money >= 2_500 ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+          }}
+        >
+          📊 Kjøp markedsundersøkelse — 2 500 kr
+        </button>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {products.map(p => {
           const mg = p.retailPrice > 0 ? Math.round(((p.retailPrice - p.costPrice) / p.retailPrice) * 100) : 0
           const mgColor = mg >= 50 ? '#22c55e' : mg >= 20 ? '#facc15' : '#ef4444'
+          const underCost = p.retailPrice > 0 && p.retailPrice < p.costPrice
+          const researched = researchedIds.has(p.id)
+          const range = competitorRange(p.recommendedPrice)
           return (
             <div key={p.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: 24 }}>{p.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>Innkjøp: {formatKr(p.costPrice)} · Anbefalt: {formatKr(p.recommendedPrice)}</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>Innkjøp: {formatKr(p.costPrice)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 800, fontSize: 20, color: '#38bdf8' }}>{formatKr(p.retailPrice)}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: mgColor }}>Margin: {mg}%</div>
+                  <input
+                    type="number" min={0} step={1} value={p.retailPrice}
+                    onChange={e => setPrice(p.id, parseInt(e.target.value) || 0)}
+                    style={{
+                      width: 100, textAlign: 'right', background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.18)', borderRadius: 6,
+                      padding: '4px 8px', color: '#38bdf8', fontSize: 18, fontWeight: 800, fontFamily: 'inherit',
+                    }}
+                  /> <span style={{ fontSize: 13, color: '#64748b' }}>kr</span>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: mgColor }}>Margin: {p.retailPrice > 0 ? `${mg}%` : '—'}</div>
                 </div>
               </div>
-              <input type="range"
-                min={Math.round(p.costPrice * 0.8)}
-                max={Math.round(p.recommendedPrice * 3)}
-                value={p.retailPrice}
-                onChange={e => setPrice(p.id, parseInt(e.target.value))}
-                style={{ width: '100%', accentColor: '#00d4aa' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#475569', marginTop: 4 }}>
-                <span>{formatKr(Math.round(p.costPrice * 0.8))} (under innkjøp)</span>
-                <button onClick={() => setPrice(p.id, p.recommendedPrice)} style={{ background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.3)', borderRadius: 6, padding: '2px 8px', color: '#00d4aa', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Anbefalt pris
-                </button>
-                <span>{formatKr(Math.round(p.recommendedPrice * 3))}</span>
-              </div>
+
+              {underCost && (
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', marginBottom: '0.5rem' }}>
+                  ⚠ Under innkjøpspris — du taper penger på hvert salg.
+                </div>
+              )}
+
+              {/* Konkurrentpris — kun etter kjøpt undersøkelse, IKKE en fasit
+                  for hva EGEN pris bør være, bare hva konkurrenter tar. */}
+              {researched ? (
+                <div style={{ fontSize: 12, color: '#38bdf8' }}>
+                  📊 Konkurrentpris i nærheten: {formatKr(range.low)}–{formatKr(range.high)}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#475569' }}>Ikke undersøkt</div>
+              )}
             </div>
           )
         })}

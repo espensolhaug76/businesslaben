@@ -157,7 +157,7 @@ export default function MonterScene({ districtId, lokaleId }: {
   function placeInTrau(catalogId: string, trauId: string) {
     const item = catalog.find(c => c.id === catalogId)
     if (!item) return
-    const product = catalogToProduct(item, 'standard')
+    const product = catalogToProduct(item)
     dispatch({ type: 'CARRY_PRODUCT', product, starterStock: starterStockFor(item) })
     const next = [...layout.filter(t => t.trauId !== trauId), { trauId, productId: product.id }]
     dispatch({ type: 'SET_COUNTER_LAYOUT', items: next })
@@ -293,6 +293,42 @@ export default function MonterScene({ districtId, lokaleId }: {
                 ? <TrauContents product={product} trauId={t.id} n={n} scale={t.scale ?? 1} sizeAdjust={sizeAdjust} skewAdjust={skewAdjust} failedSprites={failedSprites} onFail={markFailed} />
                 : null}
 
+              {/* Prislapp — leser ELEVENS pris (product.retailPrice), samme
+                  felt salgsmotoren leser. Plassert i toppkanten av trauet
+                  (IKKE bunnen — den er klippet bort av clipPath over).
+                  Mangler pris (0/usatt) ⇒ lovkrav-varsel i stedet for pris,
+                  med forklaring ved hover. Ingen straff i v1 — kun
+                  synliggjøring; product.retailPrice er allerede den ENE
+                  tilstanden en senere tilsyns-/konsekvensmekanikk kan lese. */}
+              {product && (
+                product.retailPrice > 0 ? (
+                  <div
+                    title={`${product.name} — ${product.retailPrice.toLocaleString('nb-NO')} kr`}
+                    style={{
+                      position: 'absolute', left: 4, top: 4, zIndex: 8,
+                      background: 'rgba(10,14,26,0.82)', border: '1px solid rgba(255,255,255,0.14)',
+                      borderRadius: 5, padding: '1px 6px', color: '#e5e7eb',
+                      fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap', pointerEvents: 'none',
+                    }}
+                  >
+                    {product.name} · {product.retailPrice.toLocaleString('nb-NO')} kr
+                  </div>
+                ) : (
+                  <div
+                    title="Mangler prismerking — prismerking er lovpålagt (prisopplysningsforskriften). Sett en utsalgspris på varen i Produkter-fanen."
+                    style={{
+                      position: 'absolute', left: 4, top: 4, zIndex: 8,
+                      background: 'rgba(120,53,15,0.88)', border: '1px solid rgba(251,191,36,0.6)',
+                      borderRadius: 5, padding: '1px 6px', color: '#fde68a',
+                      fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap', pointerEvents: 'auto',
+                      cursor: 'help',
+                    }}
+                  >
+                    ⚠ Mangler prismerking
+                  </div>
+                )
+              )}
+
               {/* DEL 1 — diskret hint, dempet stil, sperrer ikke klikk. */}
               {showHint && (
                 <div style={{
@@ -402,7 +438,7 @@ export default function MonterScene({ districtId, lokaleId }: {
         </div>
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
           {trauVarer.map(item => {
-            const placed = layout.some(ti => ti.productId === `${item.id}_standard`)
+            const placed = layout.some(ti => ti.productId === item.id)
             const hue = productHue(item.id)
             const useSprite = item.sprite && !failedSprites.has(item.sprite)
             return (

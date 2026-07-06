@@ -102,6 +102,7 @@ const initialState: GameState = {
 
   products: [],
   mainProductId: null,
+  priceResearch: { purchasedProductIds: [] },
   channels: ['physicalStore'],
   windowDisplayLayout: [],
   counterLayout: [],
@@ -167,6 +168,7 @@ type Action =
   | { type: 'SAVE_CANVAS'; canvas: BusinessCanvas }
   | { type: 'RESOLVE_GAME_EVENT'; eventId: string; choiceId: string; messageId: string }
   | { type: 'BUY_MARKET_RESEARCH' }
+  | { type: 'BUY_PRICE_RESEARCH' }
   | { type: 'TAKE_LOAN'; loan: Loan }
   | { type: 'SET_PRODUCTS'; products: Product[] }
   | { type: 'SET_MAIN_PRODUCT'; id: string }
@@ -458,6 +460,20 @@ function reducer(state: GameState, action: Action): GameState {
       const bp = { ...state.businessPlan, marketResearchDone: true }
       const q = calcPlanQuality({ ...state, businessPlan: bp })
       return { ...state, money: state.money - 10_000, businessPlan: { ...bp, qualityScore: q } }
+    }
+
+    // Priser-fanen (DEL 3, Prisflyt-oppgaven) — kjøpbar konkurrentpris-innsikt
+    // PER VARE, atskilt fra BUY_MARKET_RESEARCH over (den generelle
+    // markedsanalysen i Forretningsplan). Snapshot av dagens sortiment:
+    // varer ført ETTER kjøpet er ikke dekket før neste kjøp.
+    case 'BUY_PRICE_RESEARCH': {
+      if (state.money < 2_500) return state
+      const ids = new Set([...state.priceResearch.purchasedProductIds, ...state.products.map(p => p.id)])
+      return {
+        ...state,
+        money: state.money - 2_500,
+        priceResearch: { purchasedProductIds: [...ids] },
+      }
     }
 
     case 'TAKE_LOAN': {

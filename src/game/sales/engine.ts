@@ -18,7 +18,7 @@ export function shuffle<T>(arr: T[]): T[] {
 }
 
 /** Treffer varen behovet? Matcher nøkkelord mot produktets navn + id, så både
- *  katalog-id (f.eks. 'coffee_standard') og bokmålsnavn ('Kaffe') fanges. */
+ *  katalog-id (f.eks. 'coffee') og bokmålsnavn ('Kaffe') fanges. */
 export function productMatchesNeed(p: { name: string; id: string }, tags: string[]): boolean {
   const hay = `${p.name} ${p.id}`.toLowerCase()
   return tags.some(t => hay.includes(t.toLowerCase()))

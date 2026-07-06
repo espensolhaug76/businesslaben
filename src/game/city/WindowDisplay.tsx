@@ -274,7 +274,7 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
       if (isOutside(fx, fy)) return   // sluppet utenfor ⇒ avbryt
       const item = catalog.find(c => c.id === catalogId)
       if (!item) return
-      const product = catalogToProduct(item, 'standard')
+      const product = catalogToProduct(item)
       dispatch({ type: 'CARRY_PRODUCT', product, starterStock: starterStockFor(item) })
       const [cx, cy] = clampFrac(fx, fy, rect)
       const next = [
@@ -441,7 +441,7 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
             <PaletteRow
               key={item.id}
               item={item}
-              placed={placedIds.has(`${item.id}_standard`)}
+              placed={placedIds.has(item.id)}
               onStart={e => startNew(item.id, e)}
             />
           ))}
@@ -454,7 +454,7 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
       {drag?.kind === 'new' && ghost && (() => {
         const item = catalog.find(c => c.id === drag.catalogId)
         if (!item) return null
-        const p = catalogToProduct(item, 'standard')
+        const p = catalogToProduct(item)
         return createPortal(
           <div style={{
             position: 'fixed', left: ghost.x, top: ghost.y,

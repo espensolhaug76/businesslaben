@@ -333,6 +333,15 @@ export const INTERIOR_CUSTOMER_STAND: [number, number, number, number] = [42.6, 
  *  «Bruk siste på disk», verdien logges for innliming hit). */
 export const INTERIOR_DISK_DISPLAY: [number, number, number, number] = [14, 74, 72, 22]
 
+/** Tavle-sonen (INTERIØR-NIVÅ, bakfra-vy på /inne) — prosent av
+ *  interior-kasse.png [x, y, b, h]. Den blanke tavla på høyre vegg —
+ *  DEL 3 (drikkemeny). Startverdi er et GROVT estimat lest av bildets
+ *  pikselmål (1376×768, tavlas mørke ramme ca. x 1057–1220, y 68–437) —
+ *  IKKE Espens kalibrering. Trace-bar med ?dev=1 på /inne (sone-tracer →
+ *  «Bruk siste på: meny»), verdien logges for innliming hit når Espen
+ *  har trukket sonen på plass i Chrome. */
+export const INTERIOR_MENU_BOARD: [number, number, number, number] = [77, 9, 12, 47]
+
 /** Speil-soner (INTERIØR-NIVÅ, bakfra-vy på /inne) — prosent av
  *  interior-kasse.png [x, y, b, h]. Glassmonteret er synlig i bakgrunnen til
  *  venstre fra denne kameravinkelen; disse sonene er der varene fra
@@ -359,15 +368,25 @@ export interface InteriorMirrorTrau {
   mirrorTiltX?: number
   mirrorTiltY?: number
 }
-// mirrorScale/mirrorTiltX/mirrorTiltY kalibrert visuelt av Espen (?dev=1
+// mirrorTiltX/mirrorTiltY kalibrert visuelt av Espen (?dev=1
 // speil-kalibreringspanelet) 2026-07-06.
+// mirrorScale justert NED 2026-07-06 (samme dato, egen runde): speil-laget
+// klipper nå TOPPEN også (InteriorView, "Fix speil-overflyt" — se kommentar
+// ved clipPath der), så de gamle verdiene (kalibrert mot et topp-åpent lag)
+// skar brødet stygt av. Nye tall er utledet fra faktisk målt overflyt i en
+// headless-kjøring (Playwright: fylte alle 6 speil-trau, målte hvor mye hvert
+// speil-bilde stakk over sin egen sone før klippet) — IKKE gjettet fra et
+// skjermbilde. Formelen løser mirrorScale slik at bildet akkurat unngår å
+// treffe sonens gamle overflyt, med ~10-15 % margin. Espen bør likevel
+// synskalibrere i Chrome (?dev=1-panelet, samme slider) — dette er et
+// beregnet, ikke et visuelt godkjent, utgangspunkt.
 export const INTERIOR_MIRROR_TRAU: InteriorMirrorTrau[] = [
-  { id: 'speil-1', rect: [0, 54.5, 17.3, 6.6], mirrorsTrauId: 'trau-18', mirrorScale: 3.85, mirrorTiltX: 29, mirrorTiltY: 0 },
-  { id: 'speil-2', rect: [1, 66.9, 7.6, 4], mirrorsTrauId: 'trau-15', mirrorScale: 6, mirrorTiltX: 0, mirrorTiltY: 7 },
-  { id: 'speil-3', rect: [0, 70, 5.7, 4.4], mirrorsTrauId: 'trau-13', mirrorScale: 3.75, mirrorTiltX: 41, mirrorTiltY: 0 },
-  { id: 'speil-4', rect: [8.8, 66.7, 6.8, 7.3], mirrorsTrauId: 'trau-16', mirrorScale: 3.6, mirrorTiltX: 0, mirrorTiltY: 0 },
-  { id: 'speil-5', rect: [0.2, 78.3, 8.7, 11.5], mirrorsTrauId: 'trau-8', mirrorScale: 1.8, mirrorTiltX: 19, mirrorTiltY: 0 },
-  { id: 'speil-6', rect: [9.3, 78.6, 7.3, 10.3], mirrorsTrauId: 'trau-7', mirrorScale: 2.0, mirrorTiltX: 26, mirrorTiltY: 0 },
+  { id: 'speil-1', rect: [0, 54.5, 17.3, 6.6], mirrorsTrauId: 'trau-18', mirrorScale: 2.75, mirrorTiltX: 29, mirrorTiltY: 0 },
+  { id: 'speil-2', rect: [1, 66.9, 7.6, 4], mirrorsTrauId: 'trau-15', mirrorScale: 2.25, mirrorTiltX: 0, mirrorTiltY: 7 },
+  { id: 'speil-3', rect: [0, 70, 5.7, 4.4], mirrorsTrauId: 'trau-13', mirrorScale: 2.75, mirrorTiltX: 41, mirrorTiltY: 0 },
+  { id: 'speil-4', rect: [8.8, 66.7, 6.8, 7.3], mirrorsTrauId: 'trau-16', mirrorScale: 2.55, mirrorTiltX: 0, mirrorTiltY: 0 },
+  { id: 'speil-5', rect: [0.2, 78.3, 8.7, 11.5], mirrorsTrauId: 'trau-8', mirrorScale: 2.75, mirrorTiltX: 19, mirrorTiltY: 0 },
+  { id: 'speil-6', rect: [9.3, 78.6, 7.3, 10.3], mirrorsTrauId: 'trau-7', mirrorScale: 2.8, mirrorTiltX: 26, mirrorTiltY: 0 },
 ]
 
 /** Trau i den FRONTALE monter-scenen (kunde-siden) — prosent av
