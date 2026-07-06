@@ -50,6 +50,10 @@ export interface IndustryCatalogItem {
     standard: { costPrice: number; recommendedPrice: number }
     budget:   { costPrice: number; recommendedPrice: number }
   }
+  /** DAGSSYKLUS (DEL 3, Svinn) — true = ferskvare (bakevarer, salat, wrap,
+   *  sandwich). Usolgt lager av ferskvare kastes ved stenging (CLOSE_DAY).
+   *  Drikke er IKKE ferskvare — lager beholdes over natten. Utelatt = false. */
+  ferskvare?: boolean
 }
 
 /** Kompakt bygger for trau-bakevarer. `id` brukes som både katalog-id og
@@ -66,7 +70,7 @@ function bakeryItem(
   display?: { scale?: number; rotation?: number },
 ): IndustryCatalogItem {
   return {
-    id, name, icon, category, trauVare: true,
+    id, name, icon, category, trauVare: true, ferskvare: true,
     sprite: `/assets/raw/products/${id}.png`,
     maxDemandPerMonth: maxDemand, quality: 7, sustainability: 6,
     displayScale: display?.scale ?? 1.0,
@@ -224,5 +228,6 @@ export function catalogToProduct(item: IndustryCatalogItem): Product {
     displayScale: item.displayScale,
     displayRotation: item.displayRotation,
     maxDemandPerMonth: item.maxDemandPerMonth,
+    ferskvare: item.ferskvare,
   }
 }

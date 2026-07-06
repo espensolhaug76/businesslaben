@@ -2,13 +2,14 @@ import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
-  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem,
+  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
 import { EVENT_POOL } from '../strategies/innovation/eventPool'
 import { getEventsForMonth } from '../strategies/innovation/eventEngine'
 import { updateFlags } from '../strategies/innovation/flagSystem'
+import { DAY_CONFIG } from './data/dayConfig'
 
 // ─── XP thresholds ──────────────────────────────────────────────────────────
 
@@ -99,6 +100,13 @@ const initialState: GameState = {
   storageCapacity: 0,
 
   shopOpen: false,
+
+  dayNumber: 1,
+  meetingsToday: 0,
+  dayPhase: 'stengt',
+  dayStats: { soldStk: 0, soldKr: 0, varekostKr: 0, reputationDelta: 0, xpEarned: 0, stockoutHappened: false },
+  lastDayResult: null,
+  dayHistory: [],
 
   products: [],
   mainProductId: null,
@@ -193,7 +201,11 @@ type Action =
   | { type: 'SET_P4_COMPLETE' }
   | { type: 'ENTER_INTERIOR' }
   | { type: 'EXIT_INTERIOR' }
-  | { type: 'SET_SHOP_OPEN'; open: boolean }
+  // Dagssyklus (DEL 2) — erstatter den gamle SET_SHOP_OPEN (kun ett sted
+  // brukte den, en enkel bryter uten dagtelling/svinn).
+  | { type: 'OPEN_DAY' }
+  | { type: 'CLOSE_DAY' }
+  | { type: 'START_NEW_DAY' }
   | { type: 'RESET' }
 
 // ─── Plan quality helper ─────────────────────────────────────────────────────
@@ -311,17 +323,25 @@ function reducer(state: GameState, action: Action): GameState {
       // Salgssituasjon-motor: skriver resultatet til EKSISTERENDE felt —
       // money (salg minus kostnad), products[].stock (varelager), reputation
       // (rykte) og xp/level (med samme level-up-løype som APPLY_MONTH_RESULT).
-      // Ingen nye state-felt. Salg klemmes mot faktisk lager; `cost` (DEL 3 —
-      // omlevering/refusjon) trekkes fra kassa.
+      // Salg klemmes mot faktisk lager; `cost` (DEL 3 — omlevering/refusjon)
+      // trekkes fra kassa. DAGSSYKLUS (DEL 2): akkumulerer i tillegg inn i
+      // dayStats + teller kundemøtet, MEN kun når butikken faktisk er i
+      // åpningstid (dayPhase 'åpen') — dev-knappene i dashbordet kan trigge
+      // scenarier utenfor en handledag (isolert testing) uten å forstyrre
+      // dagtellingen.
       const reqByProduct = new Map<string, number>()
       for (const l of action.sales) reqByProduct.set(l.productId, (reqByProduct.get(l.productId) ?? 0) + l.qty)
 
       let revenue = 0
+      let varekost = 0
+      let soldStk = 0
       const products = state.products.map(p => {
         const req = reqByProduct.get(p.id) ?? 0
         if (req <= 0) return p
         const sold = Math.min(req, p.stock)
         revenue += sold * p.retailPrice
+        varekost += sold * p.costPrice
+        soldStk += sold
         return sold > 0 ? { ...p, stock: p.stock - sold } : p
       })
 
@@ -335,6 +355,9 @@ function reducer(state: GameState, action: Action): GameState {
         xpToNext = xpForLevel(newLevel)
       }
 
+      const stockoutNow = action.sales.some(l => l.qty === 0)
+      const inDay = state.dayPhase === 'åpen'
+
       return {
         ...state,
         products,
@@ -343,6 +366,15 @@ function reducer(state: GameState, action: Action): GameState {
         xp: newXp,
         level: newLevel,
         xpToNextLevel: xpToNext,
+        meetingsToday: inDay ? state.meetingsToday + 1 : state.meetingsToday,
+        dayStats: inDay ? {
+          soldStk: state.dayStats.soldStk + soldStk,
+          soldKr: state.dayStats.soldKr + revenue,
+          varekostKr: state.dayStats.varekostKr + varekost,
+          reputationDelta: state.dayStats.reputationDelta + action.reputationDelta,
+          xpEarned: state.dayStats.xpEarned + action.xpEarned,
+          stockoutHappened: state.dayStats.stockoutHappened || stockoutNow,
+        } : state.dayStats,
       }
     }
 
@@ -664,8 +696,85 @@ function reducer(state: GameState, action: Action): GameState {
     case 'EXIT_INTERIOR':
       return { ...state, currentScene: 'city' }
 
-    case 'SET_SHOP_OPEN':
-      return { ...state, shopOpen: action.open }
+    // ── Dagssyklus (DEL 2) ───────────────────────────────────────────────────
+
+    case 'OPEN_DAY': {
+      // Kun gyldig fra stengt (defensiv no-op ellers — knappen skal uansett
+      // ikke tilby dette utenom 'stengt', se InteriorView).
+      if (state.dayPhase !== 'stengt') return state
+      return {
+        ...state,
+        shopOpen: true,
+        dayPhase: 'åpen',
+        meetingsToday: 0,
+        dayStats: { soldStk: 0, soldKr: 0, varekostKr: 0, reputationDelta: 0, xpEarned: 0, stockoutHappened: false },
+      }
+    }
+
+    case 'CLOSE_DAY': {
+      // Kun gyldig fra åpen.
+      if (state.dayPhase !== 'åpen') return state
+
+      // DEL 3 — Svinn: alle FERSKVARER med usolgt lager kastes ved stenging.
+      // Ikke-ferskvarer (drikke) beholder lageret over natten uendret.
+      let svinnStk = 0
+      let svinnKr = 0
+      const products = state.products.map(p => {
+        if (!p.ferskvare || p.stock <= 0) return p
+        svinnStk += p.stock
+        svinnKr += p.stock * p.costPrice
+        return { ...p, stock: 0 }
+      })
+
+      const result: DayResult = {
+        dayNumber: state.dayNumber,
+        month: state.currentMonth,
+        year: state.currentYear,
+        soldStk: state.dayStats.soldStk,
+        soldKr: state.dayStats.soldKr,
+        varekostKr: state.dayStats.varekostKr,
+        svinnStk,
+        svinnKr,
+        resultat: state.dayStats.soldKr - state.dayStats.varekostKr - svinnKr,
+        reputationDelta: state.dayStats.reputationDelta,
+        xpEarned: state.dayStats.xpEarned,
+        stockoutHappened: state.dayStats.stockoutHappened,
+      }
+
+      return {
+        ...state,
+        products,
+        shopOpen: false,
+        dayPhase: 'oppgjør',
+        lastDayResult: result,
+        dayHistory: [...state.dayHistory, result],
+      }
+    }
+
+    case 'START_NEW_DAY': {
+      // Kun gyldig fra oppgjør (dispatches av DayResultOverlay sin knapp).
+      if (state.dayPhase !== 'oppgjør') return state
+
+      const nextDayNumber = state.dayNumber + 1
+      const rollsMonth = nextDayNumber > DAY_CONFIG.daysPerMonth
+      // Samme envelope-formel som APPLY_MONTH_RESULT (nextMonth/isYearEnd) —
+      // gjenbrukt ARITMETIKK, ikke selve handlingen: runde 1 kobler kun
+      // dag-telleren på månedstallet, uten å trigge PEST-hendelser eller
+      // måneds-rapport-fasen (egen, større simulering, bevisst utenfor
+      // scope her — se rapport-kommentaren i oppgaven).
+      const nextMonth = state.currentMonth + 1
+      const isYearEnd = nextMonth > 12
+
+      return {
+        ...state,
+        dayNumber: rollsMonth ? 1 : nextDayNumber,
+        currentMonth: rollsMonth ? (isYearEnd ? 1 : nextMonth) : state.currentMonth,
+        currentYear: rollsMonth && isYearEnd ? state.currentYear + 1 : state.currentYear,
+        dayPhase: 'stengt',
+        meetingsToday: 0,
+        lastDayResult: null,
+      }
+    }
 
     case 'RESET':
       return initialState

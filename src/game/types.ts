@@ -85,6 +85,11 @@ export interface Product {
   /** Trau-flis-rotasjon for DENNE varen i grader (default 0°) — lagt til
    *  flisens egen jitter-rotasjon. */
   displayRotation?: number
+  /** DAGSSYKLUS (DEL 3, Svinn) — true = ferskvare (bakevarer, salat, wrap,
+   *  sandwich): usolgt lager ved dagens slutt blir SVINN (nullstilles, se
+   *  CLOSE_DAY). Drikke o.l. er ikke ferskvare — lager beholdes over natten.
+   *  Utelatt = false (ikke ferskvare). */
+  ferskvare?: boolean
 }
 
 // ── Vareeksponering (fri plassering) ──────────────────────────────────────────
@@ -258,6 +263,30 @@ export interface GameFlags {
   exitValue: number
 }
 
+// ── Dagsoppgjør (DEL 4) ───────────────────────────────────────────────────────
+
+/** Oppgjørstall for ÉN fullført handledag — bygget av CLOSE_DAY fra
+ *  dayStats + svinn-beregningen, vist av DayResultOverlay, og lagret i
+ *  dayHistory for senere svinn-statistikk. */
+export interface DayResult {
+  dayNumber: number
+  month: number
+  year: number
+  soldStk: number
+  soldKr: number
+  varekostKr: number
+  /** Antall enheter ferskvare kastet (stock > 0 ved stenging). */
+  svinnStk: number
+  /** Kr tapt på svinn (stk × costPrice). */
+  svinnKr: number
+  /** salg − varekost − svinn. */
+  resultat: number
+  reputationDelta: number
+  xpEarned: number
+  /** Minst én utsolgt-hendelse i dag (se dayStats.stockoutHappened). */
+  stockoutHappened: boolean
+}
+
 // ── Game state ───────────────────────────────────────────────────────────────
 
 export interface GameState {
@@ -278,12 +307,44 @@ export interface GameState {
   monthlyRent: number
   storageCapacity: number
 
-  /** Butikkens drifts-tilstand: STENGT (default, ny butikk starter stengt) =
-   *  ingen kunder spawner i interiørscenen, eleven kan stelle disk/vindu i
-   *  fred. ÅPEN = kunde-poolen fungerer som normalt. Bevisst et enkelt
-   *  boolsk felt nå — en senere dagssyklus (åpne → selg → steng → svinn) kan
-   *  bygges oppå dette uten å endre skjemaet. */
+  /** Butikkens drifts-tilstand: STENGT = ingen kunder spawner i
+   *  interiørscenen, eleven kan stelle disk/vindu i fred. ÅPEN = kunde-
+   *  poolen fungerer som normalt (se dayPhase for hele dagssyklusen —
+   *  shopOpen er avledet AV/satt SAMMEN MED dayPhase, ikke uavhengig av den:
+   *  OPEN_DAY/CLOSE_DAY setter begge samtidig). */
   shopOpen: boolean
+
+  // ── Dagssyklus (DEL 2, runde 1) ──────────────────────────────────────────
+  // Handlingsdrevet (ingen sanntidsklokke): stell (stengt) → åpne →
+  // DAY_CONFIG.meetingsPerDay kundemøter → steng (svinn + oppgjør) → ny dag.
+  /** Handledag-nummer, 1-indeksert. Ruller til 1 igjen når den passerer
+   *  DAY_CONFIG.daysPerMonth (se START_NEW_DAY) — currentMonth/currentYear
+   *  bumpes samtidig, samme envelope-formel som APPLY_MONTH_RESULT bruker
+   *  (uten å trigge PEST-hendelser/measneds-rapport-fasen — det er en egen,
+   *  større simulering, bevisst IKKE koblet inn her i runde 1). */
+  dayNumber: number
+  /** Fullførte kundemøter i DAGENS åpningstid, 0..DAY_CONFIG.meetingsPerDay. */
+  meetingsToday: number
+  dayPhase: 'stengt' | 'åpen' | 'oppgjør'
+  /** Akkumulerer gjennom dagens åpningstid (RESOLVE_SALES_SCENARIO) —
+   *  nullstilles av OPEN_DAY, leses av CLOSE_DAY inn i lastDayResult. */
+  dayStats: {
+    soldStk: number
+    soldKr: number
+    /** Varekost (costPrice × qty) for det som ble solgt i dag — trengs for
+     *  oppgjørets «Resultat: salg − varekost − svinn». */
+    varekostKr: number
+    reputationDelta: number
+    xpEarned: number
+    /** Minst ett salgsforsøk i dag traff en utsolgt vare (qty=0-linje). */
+    stockoutHappened: boolean
+  }
+  /** Siste fullførte dags oppgjørstall — DayResultOverlay vises når denne er
+   *  satt (dayPhase === 'oppgjør'). Nullstilles av START_NEW_DAY. */
+  lastDayResult: DayResult | null
+  /** Historikk over alle fullførte dager (DEL 3-forberedelse: «svinn-
+   *  statistikk kan kobles på uten omskriving» — ingen UI leser denne ennå). */
+  dayHistory: DayResult[]
 
   // Products & selling
   products: Product[]

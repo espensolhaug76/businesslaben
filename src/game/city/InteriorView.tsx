@@ -1,12 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, type InteriorMirrorTrau } from '../../data/districts'
-import { randomScenario } from '../sales/scenarios'
+import { randomScenario, scenariosForMix } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
 import { tileCount, trauCols } from './MonterScene'
 import { useGame } from '../GameContext'
+import { DAY_CONFIG } from '../data/dayConfig'
+
+// Dagens kunde-pool (DEL 1/2, Dagssyklus) — filtrert ÉN gang per modul-last
+// (scenarioMix er en hardkodet config i runde 1, ikke live-redigerbar ennå).
+const DAY_SCENARIO_POOL = scenariosForMix(DAY_CONFIG.scenarioMix)
 
 // ── InteriorView (BAK-DISKEN-SCENE) ──────────────────────────────────────────
 // Bilde-basert visning (cover, 16:9). KUN kunde + salgssamtale: ved hvert besøk
@@ -97,11 +102,11 @@ export default function InteriorView({ districtId, lokaleId }: {
 }) {
   const navigate = useNavigate()
   const { state, dispatch } = useGame()
-  // Tilfeldig kunde fra poolen — valgt ved mount, og på nytt hver gang
-  // butikken ÅPNES uten at en kunde allerede står der (se shopOpen-effekten
-  // under). randomScenario ligger i en ren modul, så Math.random ikke
-  // flagges i render.
-  const [scenario, setScenario] = useState(randomScenario)
+  // Tilfeldig kunde fra DAGENS pool (scenarioMix-filtrert) — valgt ved mount,
+  // og på nytt for hvert nye kundemøte innenfor dagens kvote (se
+  // spawn-effekten under). randomScenario ligger i en ren modul, så
+  // Math.random ikke flagges i render.
+  const [scenario, setScenario] = useState(() => randomScenario(DAY_SCENARIO_POOL))
   const [imgFailed, setImgFailed] = useState(false)
   const [shown, setShown] = useState(false)        // fade-in/ut (opacity)
   const [gone, setGone] = useState(false)          // fjernet etter runden
@@ -174,19 +179,23 @@ export default function InteriorView({ districtId, lokaleId }: {
     return () => clearTimeout(t)
   }, [])
 
-  // STENGT ⇒ ingen kunde (gates spawn — kunde-poolen skrus helt av). Åpnes
-  // butikken igjen mens ingen kunde står der (forrige er `gone`), spawnes en
-  // fersk fra poolen med samme fade-inn som ved mount. Var kunden IKKE gone
-  // (fortsatt der/i samtale) gjør dette ingenting — hun blir stående, og
-  // forsvinner naturlig når scenen under (sales:closed) sier fra.
+  // STENGT ⇒ ingen kunde (gates spawn — kunde-poolen skrus helt av).
+  // DAGSSYKLUS (DEL 2): så lenge butikken er ÅPEN og forrige kunde er `gone`,
+  // spawnes automatisk en NY kunde fra dagens pool — helt til
+  // meetingsToday når DAY_CONFIG.meetingsPerDay, da stopper spawningen
+  // (tydelig hint vises i stedet, se render under) og eleven må selv stenge
+  // for å gå til dagsoppgjøret. Var kunden IKKE gone (fortsatt der/i
+  // samtale) gjør dette ingenting — hun blir stående til scenen under
+  // (sales:closed) sier fra.
   useEffect(() => {
     if (!state.shopOpen || !gone) return
-    setScenario(randomScenario())
+    if (state.meetingsToday >= DAY_CONFIG.meetingsPerDay) return
+    setScenario(randomScenario(DAY_SCENARIO_POOL))
     setGone(false)
     setShown(false)
     const t = setTimeout(() => setShown(true), 50)
     return () => clearTimeout(t)
-  }, [state.shopOpen])
+  }, [state.shopOpen, gone, state.meetingsToday])
 
   // Logg start-verdiene ved ?dev=1.
   useEffect(() => {
@@ -264,20 +273,37 @@ export default function InteriorView({ districtId, lokaleId }: {
         position: 'fixed', bottom: 30, left: 24, zIndex: 80,
         display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start',
       }}>
-        <button
-          onClick={() => dispatch({ type: 'SET_SHOP_OPEN', open: !state.shopOpen })}
-          title={state.shopOpen ? 'Steng butikken — kundene slutter å komme' : 'Åpne butikken — kunder kan komme innom'}
-          style={{
-            background: state.shopOpen
-              ? 'linear-gradient(135deg, #dc2626, #991b1b)'
-              : 'linear-gradient(135deg, #16a34a, #15803d)',
-            border: 'none', borderRadius: 99, padding: '0.55rem 1.2rem', color: '#fff', fontWeight: 700,
-            fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
-            boxShadow: state.shopOpen ? '0 0 16px rgba(220,38,38,0.35)' : '0 0 16px rgba(22,163,74,0.35)',
-          }}
-        >
-          {state.shopOpen ? '🔒 Steng butikken' : '🔓 Åpne butikken'}
-        </button>
+        {/* DAGSSYKLUS (DEL 2): «stengt»/«åpen» dispatcher nå OPEN_DAY/CLOSE_DAY
+            (dagteller + svinn + oppgjør) i stedet for den gamle enkle
+            SET_SHOP_OPEN-bryteren. Skjules i «oppgjør» — DayResultOverlay
+            eier fremdriften videre («Start ny dag») til dagen er stengt igjen. */}
+        {state.dayPhase !== 'oppgjør' && (
+          <>
+            {state.dayPhase === 'åpen' && state.meetingsToday >= DAY_CONFIG.meetingsPerDay && (
+              <div style={{
+                background: 'rgba(250,204,21,0.14)', border: '1px solid rgba(250,204,21,0.5)',
+                borderRadius: 12, padding: '0.5rem 0.9rem', color: '#facc15',
+                fontSize: 12, fontWeight: 700, fontFamily: "'Outfit', sans-serif", maxWidth: 220,
+              }}>
+                📋 Dagen er over — steng butikken for dagsoppgjør.
+              </div>
+            )}
+            <button
+              onClick={() => dispatch({ type: state.dayPhase === 'åpen' ? 'CLOSE_DAY' : 'OPEN_DAY' })}
+              title={state.dayPhase === 'åpen' ? 'Steng butikken — dagen er over, dagsoppgjør vises' : 'Åpne butikken — kunder kan komme innom'}
+              style={{
+                background: state.dayPhase === 'åpen'
+                  ? 'linear-gradient(135deg, #dc2626, #991b1b)'
+                  : 'linear-gradient(135deg, #16a34a, #15803d)',
+                border: 'none', borderRadius: 99, padding: '0.55rem 1.2rem', color: '#fff', fontWeight: 700,
+                fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                boxShadow: state.dayPhase === 'åpen' ? '0 0 16px rgba(220,38,38,0.35)' : '0 0 16px rgba(22,163,74,0.35)',
+              }}
+            >
+              {state.dayPhase === 'åpen' ? '🔒 Steng butikken' : '🔓 Åpne butikken'}
+            </button>
+          </>
+        )}
         <button
           onClick={() => navigate(`/game/d/${districtId}/l/${lokaleId}/disk`)}
           title="Stell disken — juster vareeksponeringen i disk-monteren"
@@ -473,9 +499,12 @@ export default function InteriorView({ districtId, lokaleId }: {
 
         {/* KUNDEN (z=10) — stor, forankret på livlinja, mellom bakgrunn og disk.
             Underkroppen strekker seg under occludeY-linja og skjules av
-            forgrunns-laget. Rendres KUN når butikken er ÅPEN — stengt
-            butikk = ingen spawn. */}
-        {!gone && state.shopOpen && (
+            forgrunns-laget. Rendres KUN når butikken er ÅPEN OG dagens
+            møtekvote ikke er nådd ennå — `gone` er lokal komponent-state og
+            nullstilles ved remount (f.eks. en tur innom /disk og tilbake),
+            så meetingsToday-sjekken her er nødvendig for å ikke spawne en
+            ekstra kunde etter at dagen egentlig er ferdig. */}
+        {!gone && state.shopOpen && state.meetingsToday < DAY_CONFIG.meetingsPerDay && (
           <div
             onClick={talkToCustomer}
             onMouseEnter={() => setHover(true)}

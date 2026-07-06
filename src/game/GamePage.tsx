@@ -6,6 +6,7 @@ import SimulationModal from './ui/SimulationModal'
 import DashboardOverlay from './ui/DashboardOverlay'
 import SalesScenarioOverlay from './ui/SalesScenarioOverlay'
 import YearEndOverlay from './ui/YearEndOverlay'
+import DayResultOverlay from './ui/DayResultOverlay'
 import RentPanel from './ui/panels/RentPanel'
 import StartupScreen from './screens/StartupScreen'
 import CityMapView from './city/CityMapView'
@@ -239,6 +240,7 @@ function GameContent() {
       <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} initialTab={dashboardTab as any} />
       <SalesScenarioOverlay open={salesOpen} onClose={closeSales} scenarioId={salesScenarioId} />
       <YearEndOverlay />
+      <DayResultOverlay />
 
       {vacantInfo && (
         <RentPanel

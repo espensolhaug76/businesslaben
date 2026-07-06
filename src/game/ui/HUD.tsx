@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGame } from '../GameContext'
 import { INDUSTRY_META } from '../data/industries'
+import { DAY_CONFIG } from '../data/dayConfig'
 
 const MONTH_NAMES = ['Januar','Februar','Mars','April','Mai','Juni','Juli','August','September','Oktober','November','Desember']
 
@@ -12,7 +13,7 @@ export default function HUD() {
   const { state } = useGame()
   const { money, reputation, currentMonth, currentYear, companyName, industry,
           p1_complete, p2_complete, p3_complete, p4_complete, unreadCount,
-          level, xp, xpToNextLevel, rentedLocationId, shopOpen } = state
+          level, xp, xpToNextLevel, rentedLocationId, shopOpen, dayNumber, meetingsToday } = state
 
   const meta = INDUSTRY_META[industry]
   const psDone = [p1_complete, p2_complete, p3_complete, p4_complete].filter(Boolean).length
@@ -52,9 +53,16 @@ export default function HUD() {
       <KpiChip icon="⭐" value={`Rykte: ${reputation}`} color={reputation >= 60 ? '#22c55e' : reputation >= 30 ? '#facc15' : '#ef4444'} />
       <KpiChip icon="📅" value={`${MONTH_NAMES[(currentMonth - 1) % 12]} · År ${currentYear}`} color="#38bdf8" />
 
-      {/* Butikk-status — kun synlig når det finnes en butikk å ha åpen/stengt. */}
+      {/* Butikk-status — kun synlig når det finnes en butikk å ha åpen/stengt.
+          DAGSSYKLUS (DEL 5): ikonet (🔓/🔒) bærer åpen/stengt-statusen,
+          teksten viser dag-status («Dag 3 · 2/4 kunder») i stedet for det
+          tidligere «Åpent»/«Stengt»-ordet — ikke dobbelt opp. */}
       {rentedLocationId && (
-        <KpiChip icon={shopOpen ? '🔓' : '🔒'} value={shopOpen ? 'Åpent' : 'Stengt'} color={shopOpen ? '#22c55e' : '#94a3b8'} />
+        <KpiChip
+          icon={shopOpen ? '🔓' : '🔒'}
+          value={`Dag ${dayNumber} · ${meetingsToday}/${DAY_CONFIG.meetingsPerDay} kunder`}
+          color={shopOpen ? '#22c55e' : '#94a3b8'}
+        />
       )}
 
       {/* Xray toggle */}
