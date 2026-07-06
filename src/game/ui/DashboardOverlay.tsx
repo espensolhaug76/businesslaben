@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
+import { getIndustryDefinitionFor } from '../data/industryDefinition'
 import WindowDisplayEditor from '../city/WindowDisplay'
 import { SCENARIOS } from '../sales/scenarios'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
@@ -677,10 +678,15 @@ function MalgruppeTab() {
     dispatch({ type: 'SET_TARGET_AUDIENCE', audience })
   }
 
-  // Auto-generate persona (deterministic, live)
+  // Auto-generate persona (deterministic, live). BRANSJE-DEFINISJON: den
+  // AKTIVE bransjens budsjettmodell (personaBudsjett) slås opp via
+  // getIndustryDefinitionFor — undefined for bransjer uten en definisjon
+  // ennå (fashion/tech/sports), som generatePersona da håndterer med sine
+  // opprinnelige, uendrede fallback-grener (se personas.ts).
+  const personaBudsjett = getIndustryDefinitionFor(state.industry)?.personaBudsjett
   const persona = useMemo(
-    () => generatePersona(audience.geography, audience.genders, audience.ageGroups, audience.psychographics, state.industry),
-    [audience.geography, audience.genders, audience.ageGroups, audience.psychographics, state.industry],
+    () => generatePersona(audience.geography, audience.genders, audience.ageGroups, audience.psychographics, state.industry, personaBudsjett),
+    [audience.geography, audience.genders, audience.ageGroups, audience.psychographics, state.industry, personaBudsjett],
   )
 
   const matchScore = useMemo(

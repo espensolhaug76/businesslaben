@@ -1,47 +1,52 @@
-# AdVenture — repo notes for future Claude sessions
+# AdVenture — repo-regler
 
-This file is loaded automatically into Claude Code's context when working in
-this repo. Keep it short. If a section grows long, split into a topical
-`docs/*.md` and reference it here.
+Dette er REGLER, ikke historie. Les før du gjør noe; hold filen kort — under
+én skjerm. Detaljer som vokser hører hjemme i `docs/*.md`, referert herfra.
 
-## Dev shortcuts
+## Verifisering
+- Kjør `tsc -b` etter hver del/endring. **ALDRI** `npx tsc --noEmit` — rot-
+  `tsconfig.json` har `files: []` + kun project references, den type-sjekker
+  INGENTING og gir falsk trygghet.
 
-### `?skip=1` — bypass the StartupScreen wizard
+## Push og validering
+- **ALDRI push** uten at Espen har validert manuelt i Chrome. Commit kun når
+  eksplisitt bedt om det.
+- Playwright/headless Chromium er KUN diagnostikk (verifisere at noe
+  fungerer/ikke fungerer, reprodusere bugs) — erstatter aldri Espens visuelle
+  godkjenning.
 
-While iterating on city visuals (sprite tuning, depth sorting, render
-branches in `CityScene`) the StartupScreen's industry → business model →
-financing → personality → name flow is friction. Append `?skip=1` to the
-`/game` URL — e.g. `http://localhost:5173/game?skip=1` — to seed defaults
-and land directly in the city with the player slot pre-rented:
+## Geometri og soner
+- Alle prosent-soner (trau, speil, kunde-spawn/-stand, vinduer, tavle osv.)
+  kalibreres av Espen selv via `?dev=1`-sone-tracere og LÅSES i
+  `src/data/districts.ts`.
+- **Aldri gjett** koordinater fra et skjermbilde. Mangler en sone/verdi:
+  STOPP og be Espen trace den med `?dev=1` — ikke finn på et tall.
 
-| Field | Default |
-|---|---|
-| `companyName` | `DevCo` |
-| `industry` | `cafe` (so the rented slot renders the modern cafe sprite) |
-| `businessModel` | `detaljhandel` |
-| `finansiering` | `bank` (50k starting loan) |
-| `personlighet` | `analytisk` |
-| Rented slot | The vacant V closest to camera center, picked at runtime |
+## Innhold
+- All UI-tekst er bokmål.
+- Ingen tekst i bilde-assets (skilt/tavler/etiketter genereres tekstfrie;
+  tekst legges alltid på i CSS/DOM).
+- Ingen ekte merkenavn/varemerker — kun fiktive.
 
-**Implementation** (don't duplicate elsewhere):
-- `IS_DEV_SKIP` constant in `src/game/GamePage.tsx` — the only entry point.
-  Combines `import.meta.env.DEV` (compile-time) and the `?skip=1` query.
-  Production builds dead-code-eliminate everything gated behind it.
-- Two `useEffect`s in `GameContent`: one dispatches `START_GAME` with the
-  defaults above; the other listens for `phaser:mapReady`, asks
-  `CityScene` to pick a central vacant via `dev:requestAutoRent`, then
-  dispatches `RENT_LOCATION` when CityScene emits `dev:vacantClicked`.
-- `CityScene.onDevRequestAutoRent` does the picking — closest V to
-  camera center by squared distance.
-- StartupScreen itself is not modified; if `?skip=1` is absent or the
-  build is production, the wizard renders normally.
+## Pris
+- `Product.retailPrice` er DEN ENE prissettingskilden (Priser-fanen). Ikke
+  gjeninnfør per-tier-priser eller duplikate prisfelt.
 
-When the skip is active you'll see two console lines:
-```
-[DEV] StartupScreen skipped, seeded defaults
-[DEV] Auto-rented v0X at <zone>
-```
-Followed by `[CityScene] onRented …` from the existing rent-flow handler.
+## Parkert / dødt
+- Den isometriske Phaser-byen (`src/game/phaser/`, `PhaserGame.tsx`) er
+  PARKERT — ikke rør den, ikke "rydd opp" i den.
+- Migrert fra Unity: `.cs`-filer og `Handover.md` er DØDE artefakter — les
+  dem ALDRI, de reflekterer ikke dagens arkitektur.
 
-If you need to test the full StartupScreen flow, just drop the query
-parameter.
+## Nøkkelfiler
+- `src/game/GameContext.tsx` — global state/reducer (all spill-logikk)
+- `src/data/districts.ts` — all geometri/soner (kalibrert, låst av Espen)
+- `src/game/data/industryDefinition.ts` — bransjedefinisjon (KUN CAFE aktiv)
+- `src/game/data/industries.ts`, `personas.ts`, `dayConfig.ts` — katalog,
+  persona-generator, dagssyklus-config
+- `src/game/sales/scenarios.ts` + `engine.ts` — salgsscenario-motoren
+- `src/game/city/{InteriorView,MonterScene,WindowDisplay}.tsx` — scene-motorer
+
+Før bransje-arbeid: les `docs/BRANSJE_DEFINISJON.md` + `docs/BRANSJE2_*.md` +
+`docs/INNKJOP_LEVERING.md` først. Motorene røres ikke; bransjer er
+data+bilder+scenarier.

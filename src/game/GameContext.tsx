@@ -10,6 +10,7 @@ import { EVENT_POOL } from '../strategies/innovation/eventPool'
 import { getEventsForMonth } from '../strategies/innovation/eventEngine'
 import { updateFlags } from '../strategies/innovation/flagSystem'
 import { DAY_CONFIG } from './data/dayConfig'
+import { getActiveIndustryDefinition } from './data/industryDefinition'
 
 // ─── XP thresholds ──────────────────────────────────────────────────────────
 
@@ -715,16 +716,24 @@ function reducer(state: GameState, action: Action): GameState {
       // Kun gyldig fra åpen.
       if (state.dayPhase !== 'åpen') return state
 
-      // DEL 3 — Svinn: alle FERSKVARER med usolgt lager kastes ved stenging.
-      // Ikke-ferskvarer (drikke) beholder lageret over natten uendret.
+      // BRANSJE-DEFINISJON — svinn HÅNDTERES ulikt per bransje (svinnRegel).
+      // 'ferskvare-daglig' (kafeens regel, den ENESTE implementert i dag):
+      // alle FERSKVARER med usolgt lager kastes ved stenging, ikke-ferskvarer
+      // (drikke) beholder lageret over natten uendret — samme utregning som
+      // før denne omleggingen. En fremtidig 'sesong/kolleksjon'-regel er
+      // reservert (se industryDefinition.ts) men ikke implementert ennå —
+      // faller trygt til «ingen svinn» i stedet for å krasje.
+      const svinnRegel = getActiveIndustryDefinition().svinnRegel
       let svinnStk = 0
       let svinnKr = 0
-      const products = state.products.map(p => {
-        if (!p.ferskvare || p.stock <= 0) return p
-        svinnStk += p.stock
-        svinnKr += p.stock * p.costPrice
-        return { ...p, stock: 0 }
-      })
+      const products = svinnRegel === 'ferskvare-daglig'
+        ? state.products.map(p => {
+            if (!p.ferskvare || p.stock <= 0) return p
+            svinnStk += p.stock
+            svinnKr += p.stock * p.costPrice
+            return { ...p, stock: 0 }
+          })
+        : state.products
 
       const result: DayResult = {
         dayNumber: state.dayNumber,

@@ -501,6 +501,13 @@ export const SCENARIOS: SalesScenario[] = [
   MORGENKUNDEN, REKLAMASJONEN, ALLERGIKEREN, PRUTEKUNDEN, DEN_USIKRE, STORBESTILLINGEN,
 ]
 
+/** BRANSJE-DEFINISJON — id-ene kafeens IndustryDefinition.scenariePool peker
+ *  til (industryDefinition.ts). Alle scenarier i SCENARIOS er kafé-scenarier
+ *  i dag, så listen er foreløpig identisk med SCENARIOS sine id-er — men
+ *  eksplisitt her (ikke utledet inline i industryDefinition.ts), så en
+ *  fremtidig bransje 2 med EGNE scenarier ikke ved et uhell arver kafeens. */
+export const CAFE_SCENARIO_IDS: string[] = SCENARIOS.map(s => s.id)
+
 export function getScenario(id: string): SalesScenario | undefined {
   return SCENARIOS.find(s => s.id === id)
 }
@@ -512,14 +519,25 @@ export function randomScenario(pool: SalesScenario[] = SCENARIOS): SalesScenario
   return pool[Math.floor(Math.random() * pool.length)]!
 }
 
-/** DAGSSYKLUS (DEL 1/2) — filtrer dagens kunde-pool etter DAY_CONFIG.scenarioMix.
- *  'alle' er reservert for FREMTIDIGE scenariotyper utover salg/service — i
- *  dag identisk med 'salgOgService' siden bare de to outcomeKind-verdiene
- *  finnes ennå. Tom pool (umulig i dag, men defensivt) faller tilbake til
- *  hele SCENARIOS så InteriorView aldri står uten noen å spawne. */
-export function scenariosForMix(mix: ScenarioMix): SalesScenario[] {
-  const pool = mix === 'kunSalg'
-    ? SCENARIOS.filter(s => (s.outcomeKind ?? 'sale') === 'sale')
-    : SCENARIOS
-  return pool.length > 0 ? pool : SCENARIOS
+/** BRANSJE-DEFINISJON — slår opp en bransjes scenariePool (liste med id-er,
+ *  f.eks. CAFE_SCENARIO_IDS) til faktiske SalesScenario-objekter. Ukjente
+ *  id-er (skrivefeil e.l.) filtreres bort i stedet for å krasje. */
+export function scenariosForIndustry(scenarioIds: string[]): SalesScenario[] {
+  const found = scenarioIds.map(getScenario).filter((s): s is SalesScenario => !!s)
+  return found.length > 0 ? found : SCENARIOS
+}
+
+/** DAGSSYKLUS (DEL 1/2) — filtrer en bransjes scenario-pool etter
+ *  DAY_CONFIG.scenarioMix. 'alle' er reservert for FREMTIDIGE scenariotyper
+ *  utover salg/service — i dag identisk med 'salgOgService' siden bare de to
+ *  outcomeKind-verdiene finnes ennå. `pool` er allerede bransje-filtrert av
+ *  kalleren (scenariosForIndustry) — denne funksjonen filtrerer KUN på
+ *  utfallstype, ikke på bransje. Tom pool (umulig i dag, men defensivt)
+ *  faller tilbake til hele SCENARIOS så InteriorView aldri står uten noen å
+ *  spawne. */
+export function scenariosForMix(pool: SalesScenario[], mix: ScenarioMix): SalesScenario[] {
+  const filtered = mix === 'kunSalg'
+    ? pool.filter(s => (s.outcomeKind ?? 'sale') === 'sale')
+    : pool
+  return filtered.length > 0 ? filtered : SCENARIOS
 }

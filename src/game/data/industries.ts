@@ -56,15 +56,18 @@ export interface IndustryCatalogItem {
   ferskvare?: boolean
 }
 
-/** Kompakt bygger for trau-bakevarer. `id` brukes som både katalog-id og
- *  utklipp-filnavn (/assets/raw/products/<id>.png), så det matcher
- *  split-product-sheet. `display` (valgfri) justerer trau-visningen —
+/** Generisk bygger for trau-/ferskvarer (BRANSJE-DEFINISJON: generalisert fra
+ *  den tidligere kafé-spesifikke `bakeryItem` — samme felt, samme atferd,
+ *  nøytralt navn så en fremtidig bransje med egne ferskvarer/trau-varer kan
+ *  bruke DENNE byggeren i stedet for å skrive en ny). `id` brukes som både
+ *  katalog-id og utklipp-filnavn (/assets/raw/products/<id>.png), så det
+ *  matcher split-product-sheet. `display` (valgfri) justerer trau-visningen —
  *  utelatt ⇒ default (scale 1.0, rotation 0°). Ett sted å finpusse visuell
  *  størrelse/vinkel per vare (Espen finpusser videre).
  *  `tiers` (premium/budget avledet av std-tallene) er PARKET — se
  *  kommentaren ved IndustryCatalogItem.tiers — beholdt kun som historiske
  *  tall til leverandør-/merkekatalog-runden. */
-function bakeryItem(
+function catalogItem(
   id: string, name: string, icon: string, category: ProductCategory,
   maxDemand: number, costStd: number, priceStd: number,
   display?: { scale?: number; rotation?: number },
@@ -160,19 +163,19 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
     // Spesifikke trau-bakevarer (sprite-utklipp fra split-product-sheet).
     // display: { scale, rotation } — startverdier, Espen finpusser visuelt.
     // Ark 1
-    bakeryItem('croissant',       'Croissant',        '🥐', 'frokost', 220, 9,  35, { scale: 0.55 }),
-    bakeryItem('muffin-blabaer',  'Blåbærmuffins',    '🧁', 'kaker',   180, 8,  32, { scale: 0.55 }),
-    bakeryItem('kanelbolle',      'Kanelbolle',       '🥮', 'frokost', 260, 7,  29, { scale: 0.65 }),
-    bakeryItem('skolebrod',       'Skolebrød',        '🍩', 'frokost', 200, 8,  32, { scale: 0.65 }),
-    bakeryItem('rundstykke-grovt','Grovt rundstykke', '🥖', 'brod',    300, 5,  19, { scale: 0.55 }),
-    bakeryItem('gulrotkake',      'Gulrotkake',       '🍰', 'kaker',   120, 14, 49, { scale: 0.65 }),
+    catalogItem('croissant',       'Croissant',        '🥐', 'frokost', 220, 9,  35, { scale: 0.55 }),
+    catalogItem('muffin-blabaer',  'Blåbærmuffins',    '🧁', 'kaker',   180, 8,  32, { scale: 0.55 }),
+    catalogItem('kanelbolle',      'Kanelbolle',       '🥮', 'frokost', 260, 7,  29, { scale: 0.65 }),
+    catalogItem('skolebrod',       'Skolebrød',        '🍩', 'frokost', 200, 8,  32, { scale: 0.65 }),
+    catalogItem('rundstykke-grovt','Grovt rundstykke', '🥖', 'brod',    300, 5,  19, { scale: 0.55 }),
+    catalogItem('gulrotkake',      'Gulrotkake',       '🍰', 'kaker',   120, 14, 49, { scale: 0.65 }),
     // Ark 2
-    bakeryItem('baguette',        'Baguette',         '🥖', 'brod',    160, 10, 39, { scale: 0.9, rotation: -12 }),
-    bakeryItem('focaccia',        'Focaccia',         '🫓', 'lunsj',   140, 12, 45, { scale: 0.9, rotation: -8 }),
-    bakeryItem('wrap-kylling',    'Kyllingwrap',      '🌯', 'lunsj',   180, 18, 59, { scale: 0.8 }),
-    bakeryItem('salat',           'Salat',            '🥗', 'lunsj',   150, 20, 69, { scale: 0.8 }),
-    bakeryItem('grovbrod',        'Grovbrød',         '🍞', 'brod',    140, 14, 45),
-    bakeryItem('surdeigsbrod',    'Surdeigsbrød',     '🍞', 'brod',    120, 18, 59),
+    catalogItem('baguette',        'Baguette',         '🥖', 'brod',    160, 10, 39, { scale: 0.9, rotation: -12 }),
+    catalogItem('focaccia',        'Focaccia',         '🫓', 'lunsj',   140, 12, 45, { scale: 0.9, rotation: -8 }),
+    catalogItem('wrap-kylling',    'Kyllingwrap',      '🌯', 'lunsj',   180, 18, 59, { scale: 0.8 }),
+    catalogItem('salat',           'Salat',            '🥗', 'lunsj',   150, 20, 69, { scale: 0.8 }),
+    catalogItem('grovbrod',        'Grovbrød',         '🍞', 'brod',    140, 14, 45),
+    catalogItem('surdeigsbrod',    'Surdeigsbrød',     '🍞', 'brod',    120, 18, 59),
   ],
   sports: [
     { id: 'shoes',     name: 'Løpesko',          icon: '👟', maxDemandPerMonth: 40,  quality: 9, sustainability: 6,

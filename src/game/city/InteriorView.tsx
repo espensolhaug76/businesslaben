@@ -1,17 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, type InteriorMirrorTrau } from '../../data/districts'
-import { randomScenario, scenariosForMix } from '../sales/scenarios'
+import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, type InteriorMirrorTrau } from '../../data/districts'
+import { randomScenario, scenariosForIndustry, scenariosForMix } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
 import { tileCount, trauCols } from './MonterScene'
 import { useGame } from '../GameContext'
 import { DAY_CONFIG } from '../data/dayConfig'
+import { getActiveIndustryDefinition } from '../data/industryDefinition'
 
-// Dagens kunde-pool (DEL 1/2, Dagssyklus) — filtrert ÉN gang per modul-last
-// (scenarioMix er en hardkodet config i runde 1, ikke live-redigerbar ennå).
-const DAY_SCENARIO_POOL = scenariosForMix(DAY_CONFIG.scenarioMix)
+// BRANSJE-DEFINISJON: speil-trau, tavle-sonen og kunde-poolen leses nå fra
+// den AKTIVE bransjens IndustryDefinition (industryDefinition.ts) i stedet
+// for faste import fra districts.ts/scenarios.ts. ACTIVE_DEF er et
+// modul-nivå oppslag (getActiveIndustryDefinition() er en ren funksjon som i
+// dag alltid returnerer CAFE — se industryDefinition.ts), så dette er
+// funksjonelt identisk med de tidligere faste konstant-importene.
+const ACTIVE_DEF = getActiveIndustryDefinition()
+const MENU_BOARD_FLATE = ACTIVE_DEF.ekstraFlater.find(f => f.id === 'tavla')
+
+// Dagens kunde-pool (DEL 1/2, Dagssyklus) — filtrert på den AKTIVE bransjens
+// scenariePool (industryDefinition.ts) og DAY_CONFIG.scenarioMix. Beregnet
+// ÉN gang per modul-last (scenarioMix er en hardkodet config i runde 1, ikke
+// live-redigerbar ennå).
+const DAY_SCENARIO_POOL = scenariosForMix(scenariosForIndustry(ACTIVE_DEF.scenariePool), DAY_CONFIG.scenarioMix)
 
 // ── InteriorView (BAK-DISKEN-SCENE) ──────────────────────────────────────────
 // Bilde-basert visning (cover, 16:9). KUN kunde + salgssamtale: ved hvert besøk
@@ -32,8 +44,14 @@ const DAY_SCENARIO_POOL = scenariosForMix(DAY_CONFIG.scenarioMix)
 // dev-panel. Espen drar kunden + diskkanten på plass visuelt; verdiene vises på
 // skjermen og logges til konsollen ved hver endring for permanent lagring.
 
-const INTERIOR_IMG = '/assets/raw/interior-kasse.png'
+// BRANSJE-DEFINISJON: scenebildet er den aktive bransjens speil-scenebilde
+// (i dag alltid kafeens interior-kasse.png, se CAFE.flater.lager.speil).
+const INTERIOR_IMG = ACTIVE_DEF.flater.lager.speil.sceneImage
 const ASPECT = 16 / 9
+/** Tavle-sonen (drikkemeny) — den aktive bransjens «tavla»-ekstraflate, med
+ *  en trygg [0,0,0,0]-fallback (uerklærlig i praksis: CAFE har alltid denne
+ *  flaten) i stedet for en ikke-null-antagelse. */
+const MENU_BOARD_ZONE: Rect = MENU_BOARD_FLATE?.zone ?? [0, 0, 0, 0]
 
 // ── Start-verdier — kalibrert visuelt av Espen (?dev=1-sliderne) 2026-07-06
 // mot interior-kasse.png ─────────────────────────────────────────────────────
@@ -83,7 +101,7 @@ function interiorTargets(mirrorTrau: InteriorMirrorTrau[]): Target[] {
   return [
     { id: 'spawn', label: 'spawn', get: () => INTERIOR_CUSTOMER_SPAWN, set: r => setRect(INTERIOR_CUSTOMER_SPAWN, r) },
     { id: 'stand', label: 'stand', get: () => INTERIOR_CUSTOMER_STAND, set: r => setRect(INTERIOR_CUSTOMER_STAND, r) },
-    { id: 'meny', label: 'meny', get: () => INTERIOR_MENU_BOARD, set: r => setRect(INTERIOR_MENU_BOARD, r) },
+    { id: 'meny', label: 'meny', get: () => MENU_BOARD_ZONE, set: r => setRect(MENU_BOARD_ZONE, r) },
     ...mirrorTrau.map(m => ({ id: m.id, label: m.id, get: () => m.rect, set: (r: Rect) => setRect(m.rect, r) })),
   ]
 }
@@ -91,7 +109,7 @@ function interiorDrawZones(mirrorTrau: InteriorMirrorTrau[]): DrawZone[] {
   return [
     { rect: INTERIOR_CUSTOMER_SPAWN, id: 'spawn', label: 'spawn', color: ZONE_COLORS.spawn, dashed: true },
     { rect: INTERIOR_CUSTOMER_STAND, id: 'stand', label: 'stand', color: ZONE_COLORS.stand, dashed: true },
-    { rect: INTERIOR_MENU_BOARD, id: 'meny', label: 'meny', color: ZONE_COLORS.meny, dashed: true },
+    { rect: MENU_BOARD_ZONE, id: 'meny', label: 'meny', color: ZONE_COLORS.meny, dashed: true },
     ...mirrorTrau.map(m => ({ rect: m.rect, id: m.id, label: m.id, color: ZONE_COLORS.speil, dashed: true })),
   ]
 }
@@ -116,7 +134,8 @@ export default function InteriorView({ districtId, lokaleId }: {
   // ?dev=1: flere speil-soner enn de faste (trace-bare, samme mønster som
   // trau-tracer'en i MonterScene).
   const [devMirrorTrau, setDevMirrorTrau] = useState<InteriorMirrorTrau[]>([])
-  const mirrorTrau = devMirrorTrau.length ? [...INTERIOR_MIRROR_TRAU, ...devMirrorTrau] : INTERIOR_MIRROR_TRAU
+  const activeMirrorTrau = ACTIVE_DEF.flater.lager.speil.trau
+  const mirrorTrau = devMirrorTrau.length ? [...activeMirrorTrau, ...devMirrorTrau] : activeMirrorTrau
 
   function addDevMirrorTrau() {
     const id = `speil-${mirrorTrau.length + 1}`
@@ -452,7 +471,10 @@ export default function InteriorView({ districtId, lokaleId }: {
             GROVE startverdier, juster med ?dev=1-panelet «📋
             Tavle-kalibrering». */}
         {(() => {
-          const drinks = state.products.filter(p => p.trauVare === false)
+          // BRANSJE-DEFINISJON: hvilke sortimentsvarer havner på tavla
+          // avgjøres av den aktive bransjens ekstraflate-regel (kafé: alt
+          // som ikke er trau-vare = drikke), ikke en fast trauVare-sjekk her.
+          const drinks = MENU_BOARD_FLATE ? state.products.filter(MENU_BOARD_FLATE.matches) : []
           if (drinks.length === 0) return null
           const shown = drinks.length > 6 ? drinks.slice(0, 5) : drinks
           const overflow = drinks.length > 6
@@ -460,8 +482,8 @@ export default function InteriorView({ districtId, lokaleId }: {
             <div
               style={{
                 position: 'absolute',
-                left: `${INTERIOR_MENU_BOARD[0]}%`, top: `${INTERIOR_MENU_BOARD[1]}%`,
-                width: `${INTERIOR_MENU_BOARD[2]}%`, height: `${INTERIOR_MENU_BOARD[3]}%`,
+                left: `${MENU_BOARD_ZONE[0]}%`, top: `${MENU_BOARD_ZONE[1]}%`,
+                width: `${MENU_BOARD_ZONE[2]}%`, height: `${MENU_BOARD_ZONE[3]}%`,
                 zIndex: 15, pointerEvents: 'none',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 gap: '0.35em', padding: '6%',

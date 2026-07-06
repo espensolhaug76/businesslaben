@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { MONTER_TRAU, type MonterTrau } from '../../data/districts'
+import type { MonterTrau } from '../../data/districts'
 import { useGame } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct, type IndustryCatalogItem } from '../data/industries'
+import { getActiveIndustryDefinition } from '../data/industryDefinition'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
@@ -16,8 +17,11 @@ import type { Product, TrauDensity, TrauItem } from '../types'
 // Vare→trau persisteres i state (counterLayout), modellert så ferskhet/svinn
 // kan legges på senere. Tomt trau = ingenting. Bilde-basert (cover 16:9) —
 // monter-frontal.png er placeholder til Espen legger inn det ekte bildet.
+//
+// BRANSJE-DEFINISJON: trau-geometrien (MONTER_TRAU) og scenebildet leses fra
+// den AKTIVE bransjens IndustryDefinition (industryDefinition.ts), ikke
+// import direkte fra districts.ts — se getActiveIndustryDefinition().
 
-const MONTER_IMG = '/assets/raw/monter-frontal.png'
 const ASPECT = 16 / 9
 const TRAU_COLOR = '#ffb454'
 
@@ -55,9 +59,13 @@ const MAX_ROWS = 3
 // (bakfra-vy på /inne) trenger SAMME antall-logikk som disken selv, så
 // speilet viser riktig ANTALL fliser — ikke bare riktig vare — og dermed
 // faktisk speiler oppsettet i disken i stedet for alltid å vise ett stykk.
+// BRANSJE-DEFINISJON: selve REGELEN (hvilke trau er brede nok til 4) er
+// flyttet til CAFE.flater.lager.trauCols i industryDefinition.ts — denne
+// er nå en tynn videreformidling til den AKTIVE bransjens regel, ikke en
+// hardkodet kafé-antagelse her.
 // eslint-disable-next-line react-refresh/only-export-components
 export function trauCols(trauId: string): number {
-  return trauId === 'trau-17' || trauId === 'trau-18' ? 4 : 1
+  return getActiveIndustryDefinition().flater.lager.trauCols(trauId)
 }
 // Presentasjonsvalg (DEL 3, spillermekanikk) — tetthet justerer kapasiteten
 // (+40 %/−40 %); mellomrommet mellom fliser FØLGER av dette automatisk siden
@@ -107,12 +115,16 @@ export default function MonterScene({ districtId, lokaleId }: {
   // hver re-fylling.
   const autoHintShownRef = useRef<Set<string>>(new Set())
 
+  const activeDef = getActiveIndustryDefinition()
+  const monterImg = activeDef.flater.lager.sceneImage
+  const monterTrau = activeDef.flater.lager.trau
   const catalog = INDUSTRY_CATALOG[state.industry] ?? []
   const trauVarer = catalog.filter(i => i.trauVare)
   const layout = state.counterLayout
-  // Full trau-liste denne økten: de faste + evt. dev-trau lagt til via traceren
-  // (?dev=1). N vilkårlige soner — ikke fast 4.
-  const allTrau = devTrau.length ? [...MONTER_TRAU, ...devTrau] : MONTER_TRAU
+  // Full trau-liste denne økten: de faste (fra den aktive bransjens
+  // lager-flate) + evt. dev-trau lagt til via traceren (?dev=1). N vilkårlige
+  // soner — ikke fast 4.
+  const allTrau = devTrau.length ? [...monterTrau, ...devTrau] : monterTrau
 
   function markFailed(src: string) {
     setFailedSprites(prev => prev.has(src) ? prev : new Set(prev).add(src))
@@ -230,7 +242,7 @@ export default function MonterScene({ districtId, lokaleId }: {
       >
         {!imgFailed ? (
           <img
-            src={MONTER_IMG} alt="Disk-monter" draggable={false}
+            src={monterImg} alt="Disk-monter" draggable={false}
             onError={() => setImgFailed(true)}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', userSelect: 'none' }}
           />

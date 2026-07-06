@@ -91,7 +91,9 @@ function occupationFrom(ageGroup: string, psycho: string, seed: number): string 
 
 // ─── Monthly budget ──────────────────────────────────────────────────────────
 
-type BudgetMap = Record<string, Record<string, [number, number]>>
+// Eksportert (BRANSJE-DEFINISJON) — samme type industryDefinition.ts sin
+// PersonaBudsjett (kind:'kategori') bruker for tabell-feltet.
+export type BudgetMap = Record<string, Record<string, [number, number]>>
 
 const BUDGETS: BudgetMap = {
   '15-20': { default: [500, 2000] },
@@ -110,11 +112,19 @@ const BUDGETS: BudgetMap = {
   '60+':   { default: [1500, 4000] },
 }
 
+// Generisk tabelloppslag (BRANSJE-DEFINISJON) — samme utregning som før, men
+// parameterisert på TABELL + STEG i stedet for å lese en modul-konstant
+// direkte, slik at både den generiske BUDGETS-tabellen og
+// FASHION_BUDGETS-tabellen (ulikt steg: 500 vs 100) kan dele én funksjon.
+function budgetFromTable(table: BudgetMap, ageGroup: string, psycho: string, seed: number, step: number): number {
+  const group      = table[ageGroup] ?? table['21-30']!
+  const [min, max] = (group[psycho] ?? group['default'])!
+  const steps      = Math.floor((max - min) / step)
+  return min + (seed % (steps + 1)) * step
+}
+
 function budgetFrom(ageGroup: string, psycho: string, seed: number): number {
-  const group         = BUDGETS[ageGroup] ?? BUDGETS['21-30']!
-  const [min, max]    = (group[psycho] ?? group['default'])!
-  const steps         = Math.floor((max - min) / 500)
-  return min + (seed % (steps + 1)) * 500
+  return budgetFromTable(BUDGETS, ageGroup, psycho, seed, 500)
 }
 
 // ─── Klesbudsjett (bransje 2 — «egne tall», IKKE samme tabell som resten) ─────
@@ -122,7 +132,9 @@ function budgetFrom(ageGroup: string, psycho: string, seed: number): number {
 // generiske BUDGETS-tabellen over (som fashion/tech/sports tidligere delte
 // uten noen reell bransjeforskjell). Tech/sports bruker fortsatt BUDGETS
 // (generisk) inntil de får tilsvarende egne tall i en senere runde.
-const FASHION_BUDGETS: BudgetMap = {
+// Eksportert (BRANSJE-DEFINISJON) — kilden industryDefinition.ts bygger
+// KLESBUTIKK-stubbens personaBudsjett fra, IKKE en kopi.
+export const FASHION_BUDGETS: BudgetMap = {
   '15-20': { default: [300, 800] },
   '21-30': {
     'Prisbevisste':       [400, 900],
@@ -140,10 +152,7 @@ const FASHION_BUDGETS: BudgetMap = {
   '60+':   { default: [400, 1000] },
 }
 function fashionBudgetFrom(ageGroup: string, psycho: string, seed: number): number {
-  const group      = FASHION_BUDGETS[ageGroup] ?? FASHION_BUDGETS['21-30']!
-  const [min, max] = (group[psycho] ?? group['default'])!
-  const steps      = Math.floor((max - min) / 100)
-  return min + (seed % (steps + 1)) * 100
+  return budgetFromTable(FASHION_BUDGETS, ageGroup, psycho, seed, 100)
 }
 
 // ─── Kafé: besøksfrekvens + kr per besøk (DEL 1, Persona-realisme) ───────────
@@ -154,13 +163,16 @@ function fashionBudgetFrom(ageGroup: string, psycho: string, seed: number): numb
 // Grenseverdiene under er valgt slik at visitsPerMonth × perVisitSpend ALLTID
 // havner innenfor per-besøk 40–180 kr og mnd 300–1500 kr, uten behov for
 // klipping i etterkant (se kommentarene per rad).
-interface CafeSpendProfile {
+export interface CafeSpendProfile {
   /** Besøk per måned [min, max]. */
   visitsPerMonth: [number, number]
   /** Kr per besøk [min, max] — skal ligge innenfor 40–180. */
   perVisitSpend: [number, number]
 }
-const CAFE_SPEND: Record<string, CafeSpendProfile> = {
+/** Eksportert (BRANSJE-DEFINISJON) — kilden industryDefinition.ts sin
+ *  CAFE.personaBudsjett (kind:'besok') bygges fra, IKKE en kopi. */
+export type CafeSpendTable = Record<string, CafeSpendProfile>
+export const CAFE_SPEND: CafeSpendTable = {
   // 8–14 × 40–70 ⇒ mnd 320–980
   'Prisbevisste':       { visitsPerMonth: [8, 14], perVisitSpend: [40, 70] },
   // 4–8 × 90–160 ⇒ mnd 360–1280
@@ -177,14 +189,26 @@ const CAFE_SPEND: Record<string, CafeSpendProfile> = {
   default:              { visitsPerMonth: [7, 12], perVisitSpend: [45, 90] },
 }
 interface CafeSpend { visitsPerMonth: number; perVisitSpend: number; monthlyBudget: number }
-function cafeSpendFrom(psycho: string, seed: number): CafeSpend {
-  const prof = CAFE_SPEND[psycho] ?? CAFE_SPEND['default']!
+/** Parameterisert på TABELL (BRANSJE-DEFINISJON) i stedet for å lese
+ *  CAFE_SPEND direkte — samme utregning, men nå kallbar med en hvilken som
+ *  helst «besøk × kr-per-besøk»-tabell (personaBudsjett kind:'besok'). */
+function cafeSpendFrom(table: CafeSpendTable, psycho: string, seed: number): CafeSpend {
+  const prof = table[psycho] ?? table['default']!
   const [vMin, vMax] = prof.visitsPerMonth
   const [pMin, pMax] = prof.perVisitSpend
   const visitsPerMonth = vMin + (seed % (vMax - vMin + 1))
   const perVisitSpend  = pMin + ((seed + 11) % (pMax - pMin + 1))
   return { visitsPerMonth, perVisitSpend, monthlyBudget: visitsPerMonth * perVisitSpend }
 }
+
+/** Hvilken budsjettmodell en bransje bruker (BRANSJE-DEFINISJON,
+ *  industryDefinition.ts sitt `personaBudsjett`-felt) — 'besok' = kafeens
+ *  frekvens×kr-per-besøk-modell (cafeSpendFrom), 'kategori' = en flat
+ *  kr/mnd-tabell nøklet på aldersgruppe→psykografi (samme skjema som
+ *  BUDGETS/FASHION_BUDGETS, `step` er avstanden mellom mulige beløp). */
+export type PersonaBudsjett =
+  | { kind: 'besok'; table: CafeSpendTable }
+  | { kind: 'kategori'; table: BudgetMap; step: number }
 
 // ─── Interests ───────────────────────────────────────────────────────────────
 
@@ -365,6 +389,12 @@ export function generatePersona(
   ageGroups: string[],
   psychographics: string[],
   industry: string,
+  /** BRANSJE-DEFINISJON — den AKTIVE bransjens budsjettmodell (kalleren slår
+   *  opp via getIndustryDefinitionFor(industry) i industryDefinition.ts).
+   *  Utelatt/undefined for bransjer UTEN en definisjon ennå (fashion/tech/
+   *  sports i dag) — faller da tilbake til de opprinnelige, uendrede
+   *  gren-else-funksjonene under, nøyaktig som før denne omleggingen. */
+  personaBudsjett?: PersonaBudsjett,
 ): Persona | null {
   // Need at least one selection to generate
   if (ageGroups.length === 0 && genders.length === 0 && psychographics.length === 0) return null
@@ -399,14 +429,18 @@ export function generatePersona(
   const occupation  = occupationFrom(ageGroup, primaryP, seed)
 
   // Forbruk: bransje-spesifikke tall som DATA (ikke en delt generisk tabell
-  // eller magic numbers i en tekstmal) — kafé får et konsistent
-  // frekvens×per-besøk-par, klær (bransje 2) sin egen kalibrerte tabell,
-  // tech/sports faller fortsatt tilbake på den generiske BUDGETS-tabellen.
+  // eller magic numbers i en tekstmal). BRANSJE-DEFINISJON: den AKTIVE
+  // bransjens personaBudsjett (fra industryDefinition.ts, via kalleren)
+  // avgjør modellen NÅR den finnes — kun kafé har en definisjon i dag.
+  // Bransjer uten definisjon (fashion/tech/sports) bruker de opprinnelige,
+  // uendrede else-grenene, så oppførselen er identisk med før omleggingen.
   let monthlyBudget: number
   let cafeSpend: CafeSpend | undefined
-  if (industry === 'cafe') {
-    cafeSpend = cafeSpendFrom(primaryP, seed)
+  if (personaBudsjett?.kind === 'besok') {
+    cafeSpend = cafeSpendFrom(personaBudsjett.table, primaryP, seed)
     monthlyBudget = cafeSpend.monthlyBudget
+  } else if (personaBudsjett?.kind === 'kategori') {
+    monthlyBudget = budgetFromTable(personaBudsjett.table, ageGroup, primaryP, seed, personaBudsjett.step)
   } else if (industry === 'fashion') {
     monthlyBudget = fashionBudgetFrom(ageGroup, primaryP, seed)
   } else {
