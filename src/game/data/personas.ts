@@ -117,6 +117,75 @@ function budgetFrom(ageGroup: string, psycho: string, seed: number): number {
   return min + (seed % (steps + 1)) * 500
 }
 
+// ─── Klesbudsjett (bransje 2 — «egne tall», IKKE samme tabell som resten) ─────
+// Egen, realistisk kalibrert klesbudsjett-tabell (kr/mnd) — atskilt fra den
+// generiske BUDGETS-tabellen over (som fashion/tech/sports tidligere delte
+// uten noen reell bransjeforskjell). Tech/sports bruker fortsatt BUDGETS
+// (generisk) inntil de får tilsvarende egne tall i en senere runde.
+const FASHION_BUDGETS: BudgetMap = {
+  '15-20': { default: [300, 800] },
+  '21-30': {
+    'Prisbevisste':       [400, 900],
+    'Trendsettere':       [1000, 2500],
+    'Karriereorienterte': [800, 1800],
+    default:              [600, 1200],
+  },
+  '31-45': {
+    'Prisbevisste':       [500, 1000],
+    'Karriereorienterte': [1200, 2500],
+    'Familieorienterte':  [700, 1500],
+    default:              [700, 1500],
+  },
+  '46-60': { default: [600, 1500] },
+  '60+':   { default: [400, 1000] },
+}
+function fashionBudgetFrom(ageGroup: string, psycho: string, seed: number): number {
+  const group      = FASHION_BUDGETS[ageGroup] ?? FASHION_BUDGETS['21-30']!
+  const [min, max] = (group[psycho] ?? group['default'])!
+  const steps      = Math.floor((max - min) / 100)
+  return min + (seed % (steps + 1)) * 100
+}
+
+// ─── Kafé: besøksfrekvens + kr per besøk (DEL 1, Persona-realisme) ───────────
+// Månedsforbruk avledes ALLTID som frekvens × kr-per-besøk (ALDRI omvendt) —
+// garanterer at «X kr/mnd» og «Y kr per besøk» aldri kan sprike. Tidligere bug:
+// samme (urealistisk høye) tall ble vist BÅDE som mnd-budsjett OG som
+// per-besøk-beløp (f.eks. «8500 kr per besøk» for en kaffekunde).
+// Grenseverdiene under er valgt slik at visitsPerMonth × perVisitSpend ALLTID
+// havner innenfor per-besøk 40–180 kr og mnd 300–1500 kr, uten behov for
+// klipping i etterkant (se kommentarene per rad).
+interface CafeSpendProfile {
+  /** Besøk per måned [min, max]. */
+  visitsPerMonth: [number, number]
+  /** Kr per besøk [min, max] — skal ligge innenfor 40–180. */
+  perVisitSpend: [number, number]
+}
+const CAFE_SPEND: Record<string, CafeSpendProfile> = {
+  // 8–14 × 40–70 ⇒ mnd 320–980
+  'Prisbevisste':       { visitsPerMonth: [8, 14], perVisitSpend: [40, 70] },
+  // 4–8 × 90–160 ⇒ mnd 360–1280
+  'Trendsettere':       { visitsPerMonth: [4, 8],  perVisitSpend: [90, 160] },
+  // 5–10 × 80–140 ⇒ mnd 400–1400
+  'Karriereorienterte': { visitsPerMonth: [5, 10], perVisitSpend: [80, 140] },
+  // 6–10 × 50–100 ⇒ mnd 300–1000
+  'Miljøbevisste':      { visitsPerMonth: [6, 10], perVisitSpend: [50, 100] },
+  // 6–10 × 50–110 ⇒ mnd 300–1100
+  'Helsebevisste':      { visitsPerMonth: [6, 10], perVisitSpend: [50, 110] },
+  // 5–8 × 60–120 ⇒ mnd 300–960
+  'Familieorienterte':  { visitsPerMonth: [5, 8],  perVisitSpend: [60, 120] },
+  // 7–12 × 45–90 ⇒ mnd 315–1080 — brukes når ingen psykografi er valgt
+  default:              { visitsPerMonth: [7, 12], perVisitSpend: [45, 90] },
+}
+interface CafeSpend { visitsPerMonth: number; perVisitSpend: number; monthlyBudget: number }
+function cafeSpendFrom(psycho: string, seed: number): CafeSpend {
+  const prof = CAFE_SPEND[psycho] ?? CAFE_SPEND['default']!
+  const [vMin, vMax] = prof.visitsPerMonth
+  const [pMin, pMax] = prof.perVisitSpend
+  const visitsPerMonth = vMin + (seed % (vMax - vMin + 1))
+  const perVisitSpend  = pMin + ((seed + 11) % (pMax - pMin + 1))
+  return { visitsPerMonth, perVisitSpend, monthlyBudget: visitsPerMonth * perVisitSpend }
+}
+
 // ─── Interests ───────────────────────────────────────────────────────────────
 
 const INTEREST_POOLS: Record<string, string[]> = {
@@ -176,12 +245,31 @@ export const MARKETING_CHANNEL_TIP: Record<string, string> = {
   'Familieorienterte':  'trygghet, verdi og familievennlighet',
 }
 
-function industrySpecific(industry: string, pronoun: string, age: number, budget: number): string {
+/** Bokmål-frase for besøksfrekvens — DATA-drevet (faktisk visitsPerMonth),
+ *  IKKE en fast aldersterskel i teksten (tidligere bug: teksten sa «3–4
+ *  ganger i uken» uavhengig av hvilket beløp/frekvens som faktisk var
+ *  generert for personaen). */
+function frequencyPhrase(visitsPerMonth: number): string {
+  if (visitsPerMonth >= 12) return 'flere ganger i uken'
+  if (visitsPerMonth >= 6)  return '1–2 ganger i uken'
+  if (visitsPerMonth >= 3)  return 'et par ganger i måneden'
+  return 'sjelden, men gjerne'
+}
+
+function industrySpecific(
+  industry: string, pronoun: string, age: number, budget: number,
+  cafeSpend?: CafeSpend,
+): string {
   const kr = budget.toLocaleString('nb-NO')
   switch (industry) {
     case 'fashion': return `${pronoun} bruker ca ${kr} kr/mnd på klær og tilbehør.`
     case 'tech':    return `${pronoun} oppgraderer gadgets ${age < 30 ? 'ofte' : 'når det trengs'} og bruker ca ${kr} kr/mnd på teknologi.`
-    case 'cafe':    return `${pronoun} besøker kafeer ${age < 35 ? '3–4 ganger i uken' : '1–2 ganger i uken'} og bruker ca ${kr} kr per besøk.`
+    case 'cafe': {
+      if (!cafeSpend) return `${pronoun} bruker ca ${kr} kr/mnd på kafébesøk.`
+      const freq = frequencyPhrase(cafeSpend.visitsPerMonth)
+      const perVisit = cafeSpend.perVisitSpend.toLocaleString('nb-NO')
+      return `${pronoun} besøker kafeer ${freq} og bruker ca ${perVisit} kr per besøk (~${kr} kr/mnd totalt).`
+    }
     case 'sports':  return `${pronoun} trener ${age < 40 ? '4–5' : '2–3'} ganger i uken og investerer i godt utstyr.`
     default:        return `${pronoun} bruker ca ${kr} kr/mnd på denne kategorien.`
   }
@@ -252,7 +340,15 @@ export interface Persona {
   pronoun: 'Hun' | 'Han'
   location: string
   occupation: string
+  /** Forbruk i DENNE bransjekategorien, kr/mnd — ALLTID månedlig (aldri
+   *  per-besøk). For kafé er dette avledet som visitsPerMonth × perVisitSpend
+   *  (se cafeSpendFrom) — garantert konsistent, ikke et separat tall. */
   monthlyBudget: number
+  /** Kun satt for kafé (DEL 1, Persona-realisme) — antall besøk/mnd. */
+  visitsPerMonth?: number
+  /** Kun satt for kafé — kr per besøk (40–180), IKKE samme tall som
+   *  monthlyBudget (tidligere enhetsfeil: samme tall ble vist som begge deler). */
+  perVisitSpend?: number
   interests: string[]
   socialMedia: string[]
   bio: string
@@ -301,7 +397,21 @@ export function generatePersona(
   const location    = locationFromGeo(geography, seed)
   const primaryP    = psychographics[0] ?? 'Karriereorienterte'
   const occupation  = occupationFrom(ageGroup, primaryP, seed)
-  const monthlyBudget = budgetFrom(ageGroup, primaryP, seed)
+
+  // Forbruk: bransje-spesifikke tall som DATA (ikke en delt generisk tabell
+  // eller magic numbers i en tekstmal) — kafé får et konsistent
+  // frekvens×per-besøk-par, klær (bransje 2) sin egen kalibrerte tabell,
+  // tech/sports faller fortsatt tilbake på den generiske BUDGETS-tabellen.
+  let monthlyBudget: number
+  let cafeSpend: CafeSpend | undefined
+  if (industry === 'cafe') {
+    cafeSpend = cafeSpendFrom(primaryP, seed)
+    monthlyBudget = cafeSpend.monthlyBudget
+  } else if (industry === 'fashion') {
+    monthlyBudget = fashionBudgetFrom(ageGroup, primaryP, seed)
+  } else {
+    monthlyBudget = budgetFrom(ageGroup, primaryP, seed)
+  }
 
   // Interests: from primary + secondary psycho, deduped
   const primary2Pool = INTEREST_POOLS[primaryP] ?? []
@@ -317,7 +427,7 @@ export function generatePersona(
 
   const traitText = TRAIT_DESC[primaryP] ?? 'liker å handle'
   const shopText  = SHOP_DESC[primaryP]  ?? 'handler i butikk og på nett'
-  const indText   = industrySpecific(industry, pronoun, age, monthlyBudget)
+  const indText   = industrySpecific(industry, pronoun, age, monthlyBudget, cafeSpend)
   const bio       = `${firstName} ${traitText}. ${pronoun} ${shopText}. ${indText}`
 
   return {
@@ -330,6 +440,8 @@ export function generatePersona(
     location,
     occupation,
     monthlyBudget,
+    visitsPerMonth: cafeSpend?.visitsPerMonth,
+    perVisitSpend: cafeSpend?.perVisitSpend,
     interests,
     socialMedia,
     bio,

@@ -827,6 +827,12 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
           <div style={{ fontSize: 13, color: '#64748b' }}>💼 {persona.occupation}</div>
           <div style={{ fontSize: 13, color: '#00d4aa', marginTop: 2 }}>
             💰 Bruker ~{persona.monthlyBudget.toLocaleString('nb-NO')} kr/mnd
+            {/* DEL 1 (Persona-realisme): kafé viser ALLTID mnd + per-besøk
+                atskilt og konsistente (aldri samme tall for begge — se
+                cafeSpendFrom i personas.ts). */}
+            {persona.perVisitSpend !== undefined && persona.visitsPerMonth !== undefined && (
+              <span style={{ color: '#64748b' }}> ({persona.perVisitSpend.toLocaleString('nb-NO')} kr/besøk · {persona.visitsPerMonth}×/mnd)</span>
+            )}
           </div>
         </div>
       </div>

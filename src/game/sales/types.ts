@@ -39,17 +39,32 @@ export interface SalesChoice {
 
 export interface SalesStep {
   id: string
-  /** Kundens replikk i dette steget. */
+  /** Kundens replikk i dette steget. Kan inneholde token-referanser
+   *  `{price:<produkt-id>}` / `{stock:<produkt-id>}` som byttes ut med
+   *  elevens FAKTISKE tall fra sortimentet ved rendering (se
+   *  engine.ts sin interpolateTokens) — så replikkene aldri lyver om
+   *  hva eleven faktisk har satt/fører. */
   customerLine: string
-  /** Valgfri regi/utdypning som vises diskret under replikken. */
+  /** Valgfri regi/utdypning som vises diskret under replikken. Støtter
+   *  samme token-interpolering som customerLine. */
   note?: string
   /** 'recommend' ⇒ UI bygger valgene fra elevens FAKTISKE sortiment
-   *  (anbefal-steget). Ellers brukes `choices`. */
-  kind?: 'recommend'
-  /** Behovet anbefal-steget skal dekke (kun for kind:'recommend'):
-   *  nøkkelord som avgjør hvilken vare som er «behovstreff». */
+   *  (anbefal-steget).
+   *  'stock-commit' (DEL 2, Storbestillingen) ⇒ UI slår opp varen som
+   *  matcher `recommendNeed` og bygger 3 valg (lov alt / ærlig delvis /
+   *  si nei) der kvaliteten avhenger av om `stock` faktisk dekker
+   *  `commitQty`.
+   *  'margin-discount' (DEL 2, Storbestillingen) ⇒ UI slår opp samme vare
+   *  og bygger volumrabatt-valg der kvaliteten avhenger av VARENS margin.
+   *  Ellers brukes `choices`. */
+  kind?: 'recommend' | 'stock-commit' | 'margin-discount'
+  /** Behovet/varen steget skal slå opp (for kind:'recommend' er dette
+   *  «behovstreff»-nøkkelord; for 'stock-commit'/'margin-discount' brukes
+   *  det til å finne DEN ENE varen bestillingen/rabatten gjelder). */
   recommendNeed?: string[]
-  /** Faste valg (for vanlige steg). Utelatt for kind:'recommend'. */
+  /** Kun for kind:'stock-commit' — antall kunden ber om (f.eks. 40). */
+  commitQty?: number
+  /** Faste valg (for vanlige steg). Utelatt for kind:'recommend'/'stock-commit'/'margin-discount'. */
   choices?: SalesChoice[]
 }
 

@@ -1,33 +1,53 @@
 #!/usr/bin/env python3
 """
-Splitt et vare-ark til navngitte enkeltvare-utklipp.
+Splitt et vare- ELLER kunde-ark til navngitte enkeltutklipp.
 
 Pipeline per ark:
   1) rembg (U^2-Net) fjerner bakgrunn -> alfa
-  2) finn hver vare som egen connected-component (blob) i alfa-maska
+  2) finn hver vare/person som egen connected-component (blob) i alfa-maska
   3) sorter blobs i lese-rekkefølge (rad for rad, venstre->høyre)
   4) kropp hver blob til sin alfa-bounding-box (+pad) og lagre som <navn>.png
 
-Re-kjørbar for flere ark: legg nye ark i public/assets/raw/products/ som
-products-ark-NN-raw.png og legg navnekartet i NAME_MAPS under 'NN'. Kjør så:
+To ark-familier, skilt på filnavn-prefiks (avgjør både mappe og navnekart):
+  products-ark-NN-raw.png  -> public/assets/raw/products/<navn>.png
+  customers-ark-NN-raw.png -> public/assets/raw/customers/<navn>.png
+
+Re-kjørbar for flere ark: legg nye ark i riktig mappe under public/assets/raw/
+og legg navnekartet i PRODUCTS_NAME_MAPS/CUSTOMERS_NAME_MAPS under ark-nummeret
+('NN' fra filnavnet). Kjør så:
     python scripts/split-product-sheet.py products-ark-03-raw.png
+    python scripts/split-product-sheet.py customers-ark-03-raw.png
 eller med eksplisitte navn (overstyrer kartet):
     python scripts/split-product-sheet.py <fil> navn1 navn2 ...
 
 Avhenger av rembg-venvet (~/.venvs/rembg). scipy brukes om tilgjengelig, ellers
 en ren numpy-fallback for labeling.
-
-Output: public/assets/raw/products/<navn>.png  (ren alfa, ett utklipp per vare)
 """
 import sys, os
 from collections import deque
 
-RAW_DIR = "/home/espen/adventure-web/public/assets/raw/products"
+PRODUCTS_DIR  = "/home/espen/adventure-web/public/assets/raw/products"
+CUSTOMERS_DIR = "/home/espen/adventure-web/public/assets/raw/customers"
 
 # Navnekart per ark-nummer, i LESE-rekkefølge (rad for rad, venstre->høyre).
-NAME_MAPS = {
+PRODUCTS_NAME_MAPS = {
     "01": ["croissant", "muffin-blabaer", "kanelbolle", "skolebrod", "rundstykke-grovt", "gulrotkake"],
     "02": ["baguette", "focaccia", "wrap-kylling", "salat", "grovbrod", "surdeigsbrod"],
+}
+# kari/tom kom IKKE fra denne ark-splitteren — de ble laget fra hver sin
+# frittstående rå-fil (kari-raw.png / tom-raw.png), ikke et rutenett-ark. Ingen
+# "01"/"02"-oppføring for dem her (en tidligere versjon av denne kommentaren
+# gjettet feil på dette).
+#
+# customers-ark-02-raw.png = DEL 3 (Persona-realisme + 4 nye salgsscenarier,
+# 2026-07-06): fire nye kunder generert PARALLELT av Espen på ett NB-ark,
+# lastet opp 2026-07-06. Lese-rekkefølge (rad for rad, venstre->høyre) matchet
+# visuelt mot scenarioenes kjernebehov: øverst v. = usikker/spørrende positur
+# (Den usikre), øverst h. = korslagte armer/skeptisk (Prutekunden), nederst v.
+# = nervøs/bekymret (Allergikeren), nederst h. = i fart med telefon+veske
+# (Storbestillingen).
+CUSTOMERS_NAME_MAPS = {
+    "02": ["usikre", "prutekunden", "allergikeren", "storbestiller"],
 }
 
 ALPHA_THRESHOLD = 40      # alfa over dette = «vare-piksel»
@@ -94,32 +114,64 @@ def reading_order(boxes):
     return out
 
 
+def resolve_family(path):
+    """Avgjør ark-familie fra filnavn-prefiks -> (raw_dir, name_map, out_dir)."""
+    base = os.path.basename(path)
+    if base.startswith("customers-ark"):
+        return CUSTOMERS_DIR, CUSTOMERS_NAME_MAPS, CUSTOMERS_DIR
+    return PRODUCTS_DIR, PRODUCTS_NAME_MAPS, PRODUCTS_DIR
+
+
 def main():
     if len(sys.argv) < 2:
         print("Bruk: split-product-sheet.py <ark-fil.png> [navn1 navn2 ...]")
         sys.exit(1)
     inp = sys.argv[1]
+    # Familien avgjøres av filnavnet ALENE (products-ark-* / customers-ark-*),
+    # så vi må kjenne familien FØR vi kan lete i riktig mappe for et
+    # relativt filnavn.
+    raw_dir, name_maps, out_dir = resolve_family(inp)
     if not os.path.isabs(inp):
-        inp = os.path.join(RAW_DIR, inp) if not os.path.exists(inp) else inp
+        inp = os.path.join(raw_dir, inp) if not os.path.exists(inp) else inp
     if not os.path.exists(inp):
         print(f"FEIL: fant ikke {inp}")
         sys.exit(1)
 
-    names = sys.argv[2:]
+    # --model <navn> (valgfritt, hvor som helst i args): overstyr rembg-modellen.
+    # Oppdaget 2026-07-06 (customers-ark-02, Prutekunden): standard-modellen
+    # (u2net) kan legge igjen et INTERNT gjennomsiktig felt midt i en
+    # korslagte-armer-positur — et segmenteringsartefakt, ikke en kant-halo
+    # (fanges ikke av halo-sjekken under). 'u2net_human_seg' løste DEN posen,
+    # men laget samtidig et NYTT artefakt på en annen positur i samme ark
+    # (usikre) som var ren under standard-modellen — altså ikke en universell
+    # «alltid bedre for mennesker»-erstatning. Kjør per ark/positur med begge
+    # og sammenlign visuelt; bruk dette flagget til å be om et alternativ der
+    # standard feiler, IKKE som ny standard for hele customers-familien.
+    rest = sys.argv[2:]
+    model = None
+    if "--model" in rest:
+        idx = rest.index("--model")
+        model = rest[idx + 1]
+        rest = rest[:idx] + rest[idx + 2:]
+
+    names = rest
     if not names:
         nn = ark_number(inp)
-        names = NAME_MAPS.get(nn or "", [])
+        names = name_maps.get(nn or "", [])
         if not names:
-            print(f"FEIL: ingen navn oppgitt og intet kart for ark '{nn}'. Legg til i NAME_MAPS.")
+            print(f"FEIL: ingen navn oppgitt og intet kart for ark '{nn}'. Legg til i "
+                  f"{'CUSTOMERS_NAME_MAPS' if out_dir == CUSTOMERS_DIR else 'PRODUCTS_NAME_MAPS'}.")
             sys.exit(1)
 
     import numpy as np
     from PIL import Image
-    from rembg import remove
+    from rembg import remove, new_session
 
-    print(f"rembg: {inp}")
+    session = new_session(model) if model else None
+
+    print(f"rembg: {inp}" + (f" (modell: {model})" if model else ""))
     src = Image.open(inp).convert("RGBA")
-    cut = remove(src)  # RGBA med ren alfa
+    cut = remove(src, session=session) if session else remove(src)  # RGBA med ren alfa
     arr = np.array(cut)
     H, W = arr.shape[:2]
     mask = arr[:, :, 3] > ALPHA_THRESHOLD
@@ -139,7 +191,7 @@ def main():
         print("  ADVARSEL: antall blobs != antall navn. Sjekk MIN_AREA_FRAC / arket "
               "(varer som henger sammen blir én blob; krummer blir egne).")
 
-    os.makedirs(RAW_DIR, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
     area_by_idx = {b[0]: b[5] for b in boxes}
     for k, (idx, x0, y0, x1, y1) in enumerate(ordered):
         name = names[k] if k < len(names) else f"ukjent-{k+1}"
@@ -150,7 +202,7 @@ def main():
         a = ca[:, :, 3]
         semi = (a > 20) & (a < 230)
         whiteish = semi & (ca[:, :, 0] > 235) & (ca[:, :, 1] > 235) & (ca[:, :, 2] > 235)
-        out = os.path.join(RAW_DIR, f"{name}.png")
+        out = os.path.join(out_dir, f"{name}.png")
         clip.save(out)
         print(f"  {name:18s} {clip.size[0]:>4}x{clip.size[1]:<4}  areal={area_by_idx.get(idx,0):>7}  "
               f"halo={int(whiteish.sum()):>4}  -> {out}")

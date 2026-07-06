@@ -24,6 +24,30 @@ export function productMatchesNeed(p: { name: string; id: string }, tags: string
   return tags.some(t => hay.includes(t.toLowerCase()))
 }
 
+/** Finn FØRSTE vare i sortimentet som matcher nøkkelordene — samme oppslag
+ *  som `sell`-direktivet bruker, gjenbrukt for scenarier som må lese en
+ *  bestemt vares pris/lager/margin (Prutekunden, Storbestillingen). */
+export function findProductByTags<T extends { name: string; id: string }>(products: T[], tags: string[]): T | undefined {
+  return products.find(p => productMatchesNeed(p, tags))
+}
+
+/** Bytt ut `{price:<id>}` / `{stock:<id>}` i en tekst med elevens FAKTISKE
+ *  tall for varen med den id-en (matches direkte mot Product.id — IKKE
+ *  needTags, siden dette skal peke på ÉN bestemt vare, ikke et behov).
+ *  Finnes ikke varen (eleven fører den ikke): faller tilbake til en nøytral
+ *  frase i stedet for å vise et hull eller et feil tall — replikken skal
+ *  aldri lyve om noe eleven ikke faktisk har satt. Ren funksjon (ingen
+ *  Math.random/Date), trygg å kalle i render. */
+export function interpolateTokens(text: string, products: { id: string; retailPrice: number; stock: number }[]): string {
+  return text.replace(/\{(price|stock):([a-z0-9-]+)\}/gi, (_match, kind: string, id: string) => {
+    const p = products.find(x => x.id === id)
+    if (kind === 'price') {
+      return p ? `${p.retailPrice.toLocaleString('nb-NO')} kr` : 'prisen der'
+    }
+    return p ? `${p.stock}` : 'et ukjent antall'
+  })
+}
+
 export function buildSalesResult(
   picks: ScoredPick[],
   sales: SaleLine[],

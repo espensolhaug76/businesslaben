@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { getScenario } from '../sales/scenarios'
-import { productMatchesNeed, buildSalesResult, shuffle } from '../sales/engine'
+import { productMatchesNeed, findProductByTags, interpolateTokens, buildSalesResult, shuffle } from '../sales/engine'
 import type { SalesScenario, SalesStep, SalesChoice, SaleLine, ScoredPick, ChoiceQuality } from '../sales/types'
 import type { Product } from '../types'
 
@@ -142,6 +142,76 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
     record({ quality }, null, { quality, text })
   }
 
+  // kind:'stock-commit' (Storbestillingen, DEL 2) — kvaliteten avhenger av om
+  // varens FAKTISKE lager dekker det kunden ber om (commitQty). 'full' = lov
+  // alt, 'partial' = ærlig delleveranse, 'no' = takk nei.
+  function chooseStockCommit(product: Product | null, mode: 'full' | 'partial' | 'no', commitQty: number) {
+    if (!product) {
+      record({ quality: 'warn' }, null, {
+        quality: 'warn',
+        text: 'Du fører ingen passende vare i sortimentet — du må gi beskjed om at bestillingen ikke kan innfris slik den står.',
+      })
+      return
+    }
+    const enough = product.stock >= commitQty
+    let quality: ChoiceQuality
+    let text: string
+    let sale: SaleLine | null = null
+    let extra: string
+    if (mode === 'full') {
+      quality = enough ? 'good' : 'bad'
+      text = enough
+        ? 'Lageret dekker det faktisk — du lover trygt hele bestillingen.'
+        : 'Du lover flere enn du faktisk har på lager. Sprekker løftet i morgen, mister du tilliten hos en bedriftskunde.'
+      sale = { productId: product.id, name: product.name, price: product.retailPrice, qty: commitQty }
+      extra = `Lovet: ${commitQty} stk ${product.name} (lager: ${product.stock} stk)`
+    } else if (mode === 'partial') {
+      quality = enough ? 'warn' : 'good'
+      text = enough
+        ? 'Ærlig og trygt, men unødvendig forsiktig — lageret dekket faktisk hele bestillingen.'
+        : 'Ærlig og løsningsorientert: du tilbyr det du faktisk har, og resten når det er klart — bedre enn et løfte du ikke kan holde.'
+      const qty = Math.min(product.stock, commitQty)
+      sale = qty > 0 ? { productId: product.id, name: product.name, price: product.retailPrice, qty } : null
+      extra = `Tilbød: ${qty} stk nå (lager: ${product.stock} stk) + resten senere`
+    } else {
+      quality = enough ? 'bad' : 'warn'
+      text = enough
+        ? 'Du sier nei til noe lageret faktisk kunne dekket — en unødvendig tapt bestilling.'
+        : 'Trygt, men du mister en mulig delvis leveranse — et ærlig tilbud om det du faktisk har hadde vært enda bedre.'
+      extra = `Lager: ${product.stock} stk`
+    }
+    record({ quality }, sale, { quality, text, extra })
+  }
+
+  // kind:'margin-discount' (Storbestillingen, DEL 2) — kvaliteten avhenger av
+  // varens FAKTISKE margin (retailPrice vs. costPrice), ikke en fast regel.
+  function chooseMarginDiscount(product: Product | null, mode: 'discount' | 'no-discount') {
+    if (!product) {
+      record({ quality: 'warn' }, null, {
+        quality: 'warn',
+        text: 'Du fører ingen passende vare å vurdere volumrabatt på.',
+      })
+      return
+    }
+    const margin = product.retailPrice > 0 ? (product.retailPrice - product.costPrice) / product.retailPrice : 0
+    const marginPct = Math.round(margin * 100)
+    const healthyMargin = margin >= 0.5
+    let quality: ChoiceQuality
+    let text: string
+    if (mode === 'discount') {
+      quality = healthyMargin ? 'good' : 'bad'
+      text = healthyMargin
+        ? `God margin (${marginPct} %) — en beskjeden volumrabatt er trygt, og kan sikre gjentatte storbestillinger fremover.`
+        : `Margin er kun ${marginPct} % — en rabatt her spiser rett inn i overskuddet. Vurder heller å holde på ordinær pris.`
+    } else {
+      quality = healthyMargin ? 'warn' : 'good'
+      text = healthyMargin
+        ? `Trygt valg, men med ${marginPct} % margin kunne en liten rabatt vært en smart investering i en fast bedriftskunde.`
+        : `Fornuftig — med ${marginPct} % margin ville en rabatt kostet mer enn den smakte.`
+    }
+    record({ quality }, null, { quality, text, extra: `Margin: ${marginPct} %` })
+  }
+
   function next() {
     const nextId = pending?.next ?? scenario.steps[stepIndex + 1]?.id
     setPending(null)
@@ -203,7 +273,9 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
               scenario={scenario} step={step} stepIndex={stepIndex} pending={pending}
               products={state.products}
               onChooseFixed={chooseFixed} onChooseProduct={chooseProduct}
-              onChooseHonest={chooseHonest} onNext={next}
+              onChooseHonest={chooseHonest}
+              onChooseStockCommit={chooseStockCommit} onChooseMarginDiscount={chooseMarginDiscount}
+              onNext={next}
             />
           : <ResultView
               result={buildSalesResult(picks, sales, personaMatch, { costs, outcomeKind: scenario.outcomeKind })}
@@ -217,7 +289,7 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
 
 // ── Dialogvisning ─────────────────────────────────────────────────────────────
 
-function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixed, onChooseProduct, onChooseHonest, onNext }: {
+function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixed, onChooseProduct, onChooseHonest, onChooseStockCommit, onChooseMarginDiscount, onNext }: {
   scenario: SalesScenario
   step: SalesStep
   stepIndex: number
@@ -226,16 +298,28 @@ function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixe
   onChooseFixed: (c: SalesChoice) => void
   onChooseProduct: (p: Product, hit: boolean) => void
   onChooseHonest: (hasMatch: boolean) => void
+  onChooseStockCommit: (p: Product | null, mode: 'full' | 'partial' | 'no', commitQty: number) => void
+  onChooseMarginDiscount: (p: Product | null, mode: 'discount' | 'no-discount') => void
   onNext: () => void
 }) {
   const need = step.recommendNeed ?? []
   const hasMatch = step.kind === 'recommend' && products.some(p => productMatchesNeed(p, need))
+  const matchedProduct = (step.kind === 'stock-commit' || step.kind === 'margin-discount')
+    ? findProductByTags(products, need) ?? null
+    : null
 
   // Stokk rekkefølgen på de faste valgene per steg (stabil til steget bytter),
   // så det «gode» valget ikke alltid ligger først. Kvalitet + feedback følger
-  // valget, ikke posisjonen — scoring er uberørt. Recommend-steget stokkes
-  // IKKE (bygges allerede dynamisk fra sortimentet).
+  // valget, ikke posisjonen — scoring er uberørt. Recommend/stock-commit/
+  // margin-discount stokkes IKKE (bygges allerede dynamisk).
   const fixedChoices = useMemo(() => shuffle(step.choices ?? []), [step.choices])
+
+  // Token-interpolering ({price:id}/{stock:id}) — samme kilde
+  // (state.products) som alt annet leser, så replikkene aldri lyver om
+  // elevens faktiske priser/lager.
+  const customerLine = interpolateTokens(step.customerLine, products)
+  const note = step.note ? interpolateTokens(step.note, products) : undefined
+  const pendingText = pending ? interpolateTokens(pending.text, products) : ''
 
   return (
     <div>
@@ -250,10 +334,10 @@ function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixe
         borderRadius: '0 14px 14px 14px', padding: '0.9rem 1.1rem', marginBottom: '0.4rem',
         position: 'relative',
       }}>
-        <div style={{ fontSize: 15, color: '#f1f5f9', lineHeight: 1.5 }}>{step.customerLine}</div>
+        <div style={{ fontSize: 15, color: '#f1f5f9', lineHeight: 1.5 }}>{customerLine}</div>
       </div>
-      {step.note && <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', marginBottom: '1rem' }}>{step.note}</div>}
-      {!step.note && <div style={{ marginBottom: '1rem' }} />}
+      {note && <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', marginBottom: '1rem' }}>{note}</div>}
+      {!note && <div style={{ marginBottom: '1rem' }} />}
 
       {/* Valg, eller feedback + neste */}
       {!pending ? (
@@ -280,9 +364,51 @@ function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixe
                 onClick={() => onChooseHonest(hasMatch)}
               />
             </>
+          ) : step.kind === 'stock-commit' ? (
+            <>
+              {matchedProduct ? (
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
+                  📦 Lager akkurat nå: <strong style={{ color: '#f1f5f9' }}>{matchedProduct.stock} stk {matchedProduct.name}</strong>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#facc15', marginBottom: 4 }}>
+                  Du fører ingen vare som matcher denne bestillingen ennå.
+                </div>
+              )}
+              <ChoiceButton
+                label={`Lov alle ${step.commitQty ?? 0} stk`}
+                onClick={() => onChooseStockCommit(matchedProduct, 'full', step.commitQty ?? 0)}
+              />
+              <ChoiceButton
+                label={matchedProduct
+                  ? `Vær ærlig: tilby ${Math.min(matchedProduct.stock, step.commitQty ?? 0)} stk nå + resten senere`
+                  : 'Vær ærlig: tilby det jeg faktisk har + resten senere'}
+                onClick={() => onChooseStockCommit(matchedProduct, 'partial', step.commitQty ?? 0)}
+              />
+              <ChoiceButton
+                label="Si nei, vi rekker ikke en så stor bestilling"
+                onClick={() => onChooseStockCommit(matchedProduct, 'no', step.commitQty ?? 0)}
+              />
+            </>
+          ) : step.kind === 'margin-discount' ? (
+            <>
+              {matchedProduct ? (
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
+                  💹 Margin på {matchedProduct.name}: <strong style={{ color: '#f1f5f9' }}>
+                    {matchedProduct.retailPrice > 0 ? Math.round(((matchedProduct.retailPrice - matchedProduct.costPrice) / matchedProduct.retailPrice) * 100) : 0} %
+                  </strong>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#facc15', marginBottom: 4 }}>
+                  Du fører ingen vare å vurdere volumrabatt på ennå.
+                </div>
+              )}
+              <ChoiceButton label="Gi en beskjeden volumrabatt" onClick={() => onChooseMarginDiscount(matchedProduct, 'discount')} />
+              <ChoiceButton label="Hold på ordinær pris" onClick={() => onChooseMarginDiscount(matchedProduct, 'no-discount')} />
+            </>
           ) : (
             fixedChoices.map(c => (
-              <ChoiceButton key={c.id} label={c.text} onClick={() => onChooseFixed(c)} />
+              <ChoiceButton key={c.id} label={interpolateTokens(c.text, products)} onClick={() => onChooseFixed(c)} />
             ))
           )}
         </div>
@@ -298,7 +424,7 @@ function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixe
               {QUALITY_UI[pending.quality].icon}
             </span>
             <div>
-              <div style={{ fontSize: 14, color: '#e2e8f0', lineHeight: 1.5 }}>{pending.text}</div>
+              <div style={{ fontSize: 14, color: '#e2e8f0', lineHeight: 1.5 }}>{pendingText}</div>
               {pending.extra && (
                 <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>{pending.extra}</div>
               )}
