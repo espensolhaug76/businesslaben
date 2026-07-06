@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND } from '../../data/districts'
+import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, INTERIOR_MIRROR_TRAU, type InteriorMirrorTrau } from '../../data/districts'
 import { randomScenario } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
+import { tileCount, trauCols } from './MonterScene'
 import { useGame } from '../GameContext'
 
 // ── InteriorView (BAK-DISKEN-SCENE) ──────────────────────────────────────────
@@ -26,42 +27,49 @@ import { useGame } from '../GameContext'
 // dev-panel. Espen drar kunden + diskkanten på plass visuelt; verdiene vises på
 // skjermen og logges til konsollen ved hver endring for permanent lagring.
 
-const INTERIOR_IMG = '/assets/raw/interior-cafe.png'
+const INTERIOR_IMG = '/assets/raw/interior-kasse.png'
 const ASPECT = 16 / 9
 
-// ── Start-verdier — kalibrert visuelt av Espen (?dev=1-sliderne) 2026-06-16 ───
-/** Diskens overkant i % av stage-høyden — nær reell diskoverkant i bildet.
- *  Forgrunns-disk-laget viser KUN alt under denne linja. */
-const DEFAULT_OCCLUDE_Y = 73
+// ── Start-verdier — kalibrert visuelt av Espen (?dev=1-sliderne) 2026-07-06
+// mot interior-kasse.png ─────────────────────────────────────────────────────
+/** Diskens overkant i % av stage-høyden VED VENSTRE/HØYRE kant av stagen —
+ *  to punkter (ikke ett) fordi disken i interior-kasse.png er fotografert i
+ *  perspektiv (skrå, ikke vannrett) — én flat linje traff feil på den ene
+ *  siden. Forgrunns-disk-laget viser KUN alt under den rette linja mellom
+ *  disse to punktene (clip-path polygon, ikke inset). */
+const DEFAULT_OCCLUDE_Y_LEFT = 78
+const DEFAULT_OCCLUDE_Y_RIGHT = 70
 /** Kundens senter-x i % av stage-bredden. */
-const DEFAULT_CENTER_X = 48.5
+const DEFAULT_CENTER_X = 40
 /** Kundens livlinje i % av stage-høyden (der livet møter diskkanten). */
-const DEFAULT_WAIST_Y = 75
+const DEFAULT_WAIST_Y = 78.5
 /** Kundens høyde som andel av stage-høyden. Stor = nær disken; hun når ned til
  *  diskkanten og underkroppen skjules bak forgrunns-laget. */
-const DEFAULT_SCALE = 1.25
+const DEFAULT_SCALE = 1.3
 
 /** Hvor på spriten livet sitter (andel fra toppen). Intern ankerverdi: spriten
  *  forankres på livlinja, så skala vokser RUNDT livet og underkroppen alltid
  *  havner under disken — uansett skala. */
 const WAIST_FRAC = 0.46
 
-// ── Tracer-mål/soner (merket «spawn/stand») ──────────────────────────────────
-const ZONE_COLORS: Record<string, string> = { spawn: '#50dcff', stand: '#50e08c' }
+// ── Tracer-mål/soner (merket «spawn/stand» + «speil-N» for glassmonter-speilet) ─
+const ZONE_COLORS: Record<string, string> = { spawn: '#50dcff', stand: '#50e08c', speil: '#c084fc' }
 
 function setRect(target: Rect, r: Rect) {
   target[0] = r[0]; target[1] = r[1]; target[2] = r[2]; target[3] = r[3]
 }
-function interiorTargets(): Target[] {
+function interiorTargets(mirrorTrau: InteriorMirrorTrau[]): Target[] {
   return [
     { id: 'spawn', label: 'spawn', get: () => INTERIOR_CUSTOMER_SPAWN, set: r => setRect(INTERIOR_CUSTOMER_SPAWN, r) },
     { id: 'stand', label: 'stand', get: () => INTERIOR_CUSTOMER_STAND, set: r => setRect(INTERIOR_CUSTOMER_STAND, r) },
+    ...mirrorTrau.map(m => ({ id: m.id, label: m.id, get: () => m.rect, set: (r: Rect) => setRect(m.rect, r) })),
   ]
 }
-function interiorDrawZones(): DrawZone[] {
+function interiorDrawZones(mirrorTrau: InteriorMirrorTrau[]): DrawZone[] {
   return [
     { rect: INTERIOR_CUSTOMER_SPAWN, id: 'spawn', label: 'spawn', color: ZONE_COLORS.spawn, dashed: true },
     { rect: INTERIOR_CUSTOMER_STAND, id: 'stand', label: 'stand', color: ZONE_COLORS.stand, dashed: true },
+    ...mirrorTrau.map(m => ({ rect: m.rect, id: m.id, label: m.id, color: ZONE_COLORS.speil, dashed: true })),
   ]
 }
 
@@ -82,9 +90,47 @@ export default function InteriorView({ districtId, lokaleId }: {
   const [hover, setHover] = useState(false)
   const [, setRev] = useState(0)                    // re-render når traceren skriver
   const initiatedRef = useRef(false)                // åpnet VI overlayet (klikk på kunden)?
+  // ?dev=1: flere speil-soner enn de faste (trace-bare, samme mønster som
+  // trau-tracer'en i MonterScene).
+  const [devMirrorTrau, setDevMirrorTrau] = useState<InteriorMirrorTrau[]>([])
+  const mirrorTrau = devMirrorTrau.length ? [...INTERIOR_MIRROR_TRAU, ...devMirrorTrau] : INTERIOR_MIRROR_TRAU
+
+  function addDevMirrorTrau() {
+    const id = `speil-${mirrorTrau.length + 1}`
+    // mirrorsTrauId er en PLASSHOLDER (trau-1) — meld tilbake hvilket ekte
+    // trau sonen faktisk viser, sammen med rektanglet, så det kan limes inn.
+    setDevMirrorTrau(prev => [...prev, { id, rect: [10, 60, 10, 8], mirrorsTrauId: 'trau-1' }])
+    console.log(
+      `[InteriorView] La til ${id} — dra et rektangel i traceren og trykk `
+      + `«Bruk siste på: ${id}». Meld tilbake rektangelet OG hvilket ekte trau `
+      + `sonen viser, så begge limes inn i INTERIOR_MIRROR_TRAU i districts.ts`,
+    )
+  }
+
+  // ?dev=1: velg ETT speil om gangen og kalibrer flis-størrelse/vinkel for
+  // DEN sonen — hver sone sitter et annet sted i fotoet (annen skala,
+  // perspektiv), så én universal verdi for alle så rart ut. Samme
+  // mutér-kjørende-objekt-og-logg-mønster som resten av dev-verktøyene.
+  const [calMirrorId, setCalMirrorId] = useState('speil-1')
+  function setMirrorScale(m: InteriorMirrorTrau, v: number) {
+    m.mirrorScale = v
+    console.log(`[InteriorView] ${m.id}.mirrorScale = ${v} — lim inn i INTERIOR_MIRROR_TRAU i districts.ts`)
+    setRev(r => r + 1)
+  }
+  function setMirrorTiltX(m: InteriorMirrorTrau, v: number) {
+    m.mirrorTiltX = v
+    console.log(`[InteriorView] ${m.id}.mirrorTiltX = ${v} — lim inn i INTERIOR_MIRROR_TRAU i districts.ts`)
+    setRev(r => r + 1)
+  }
+  function setMirrorTiltY(m: InteriorMirrorTrau, v: number) {
+    m.mirrorTiltY = v
+    console.log(`[InteriorView] ${m.id}.mirrorTiltY = ${v} — lim inn i INTERIOR_MIRROR_TRAU i districts.ts`)
+    setRev(r => r + 1)
+  }
 
   // Live-kalibrerbare plasserings-konstanter (slidere ved ?dev=1).
-  const [occludeY, setOccludeY] = useState(DEFAULT_OCCLUDE_Y)
+  const [occludeYLeft, setOccludeYLeft] = useState(DEFAULT_OCCLUDE_Y_LEFT)
+  const [occludeYRight, setOccludeYRight] = useState(DEFAULT_OCCLUDE_Y_RIGHT)
   const [centerX, setCenterX] = useState(DEFAULT_CENTER_X)
   const [waistY, setWaistY] = useState(DEFAULT_WAIST_Y)
   const [scale, setScale] = useState(DEFAULT_SCALE)
@@ -117,7 +163,7 @@ export default function InteriorView({ districtId, lokaleId }: {
     console.log(
       '%c[InteriorView] kunde-konstanter (start — juster med sliderne):',
       'color:#7dd3fc;font-weight:bold',
-      { CUSTOMER_SCALE: DEFAULT_SCALE, CUSTOMER_CENTER_X: DEFAULT_CENTER_X, CUSTOMER_WAIST_Y: DEFAULT_WAIST_Y, COUNTER_OCCLUDE_Y: DEFAULT_OCCLUDE_Y },
+      { CUSTOMER_SCALE: DEFAULT_SCALE, CUSTOMER_CENTER_X: DEFAULT_CENTER_X, CUSTOMER_WAIST_Y: DEFAULT_WAIST_Y, COUNTER_OCCLUDE_Y_LEFT: DEFAULT_OCCLUDE_Y_LEFT, COUNTER_OCCLUDE_Y_RIGHT: DEFAULT_OCCLUDE_Y_RIGHT },
     )
   }, [])
 
@@ -141,11 +187,12 @@ export default function InteriorView({ districtId, lokaleId }: {
     window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: scenario.id } }))
   }
 
-  // Oppdater én konstant + logg alle fire (snapshot med den nye verdien).
-  function update(key: 'CUSTOMER_SCALE' | 'CUSTOMER_CENTER_X' | 'CUSTOMER_WAIST_Y' | 'COUNTER_OCCLUDE_Y', v: number, setter: (n: number) => void) {
+  // Oppdater én konstant + logg alle (snapshot med den nye verdien).
+  function update(key: 'CUSTOMER_SCALE' | 'CUSTOMER_CENTER_X' | 'CUSTOMER_WAIST_Y' | 'COUNTER_OCCLUDE_Y_LEFT' | 'COUNTER_OCCLUDE_Y_RIGHT', v: number, setter: (n: number) => void) {
     setter(v)
     console.log('[InteriorView] kunde-konstanter:', {
-      CUSTOMER_SCALE: scale, CUSTOMER_CENTER_X: centerX, CUSTOMER_WAIST_Y: waistY, COUNTER_OCCLUDE_Y: occludeY,
+      CUSTOMER_SCALE: scale, CUSTOMER_CENTER_X: centerX, CUSTOMER_WAIST_Y: waistY,
+      COUNTER_OCCLUDE_Y_LEFT: occludeYLeft, COUNTER_OCCLUDE_Y_RIGHT: occludeYRight,
       [key]: v,
     })
   }
@@ -160,17 +207,22 @@ export default function InteriorView({ districtId, lokaleId }: {
         <BackButton onClick={() => navigate(`/game/d/${districtId}/l/${lokaleId}`)} label="← Ut til fasaden" />
       </div>
 
-      {/* ÅPEN/STENGT-bryter + «Stell disken», samlet øverst til høyre — de
-          hører sammen (stengt butikk → stell disken i fred). Flyttet hit fra
-          nederst til høyre, der den kolliderte med Dashbord/«Gå til
-          butikken»-pillene i GamePage (samme hjørne, lavere z-index).
+      {/* ÅPEN/STENGT-bryter + «Stell disken», samlet nederst til venstre — de
+          hører sammen (stengt butikk → stell disken i fred). IKKE øverst til
+          høyre: ZoneTracer sin egen kontrollpanel (?dev=1) er portalert rett
+          til document.body på NESTEN samme flekk (top:64, right:16, zIndex:
+          300) og slukte klikkene fullstendig (bekreftet — «intercepts
+          pointer events»). IKKE nederst til høyre heller: der kolliderte den
+          historisk med Dashbord/«Gå til butikken»-pillene i GamePage (samme
+          hjørne, lavere z-index). Nederst til venstre er eneste hjørne uten
+          konkurrerende faste elementer, i eller utenfor ?dev=1.
           Stenges butikken, forsvinner en ev. kunde som ikke er i aktiv
           samtale (render-gaten under) — men avbryter IKKE en pågående
           salgssamtale (SalesScenarioOverlay ligger i GamePage, uavhengig av
           denne bryteren). */}
       <div style={{
-        position: 'fixed', top: 64, right: 20, zIndex: 80,
-        display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end',
+        position: 'fixed', bottom: 30, left: 24, zIndex: 80,
+        display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start',
       }}>
         <button
           onClick={() => dispatch({ type: 'SET_SHOP_OPEN', open: !state.shopOpen })}
@@ -224,13 +276,99 @@ export default function InteriorView({ districtId, lokaleId }: {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#94a3b8', fontSize: 14, textAlign: 'center', padding: '0 2rem',
           }}>
-            Interiørbilde mangler<br />(/assets/raw/interior-cafe.png)
+            Interiørbilde mangler<br />(/assets/raw/interior-kasse.png)
           </div>
         )}
 
+        {/* SPEIL-MONTER (z=25) — glassmonteret synlig i bakgrunnen (bakfra-vy):
+            varene fra counterLayout (den FRONTALE MonterScene-monteren)
+            speiles inn her som ambient bakgrunnsliv. Tilnærmet plassering —
+            ikke en redigeringsflate. Hver sone viser EKSPLISITT det ekte
+            trauet Espen har oppgitt (mirrorsTrauId) — tomt trau (eller ikke i
+            lager) ⇒ rendres ikke (ingen krasj).
+            ANTALL fliser = SAMME tileCount/trauCols som disken selv (importert
+            fra MonterScene). Hver flis er en egen boks (grid inni sonen) med
+            object-fit:contain × varens `displayScale` × spillerens
+            `sizeAdjust` × sonens EGEN `mirrorScale` (dev-kalibrert per sone,
+            se panelet under — hver sone sitter et annet sted i fotoet med
+            annen skala, én universal verdi for alle så rart ut). VINKEL er
+            EKTE 3D (perspective + rotateX/rotateY), IKKE en flat rotate() —
+            en flat rotasjon bare spinner bildet side-til-side i skjermplanet
+            og kan ikke få varen til å se ut som den ligger PÅ en hylle.
+            `mirrorTiltX` = vippet forover/bakover, `mirrorTiltY` = vridd
+            sidelengs (begge default 0, dev-kalibrert per sone).
+            Ytre sone-boks klipper KUN bakkanten (siden nærmest POV, samme
+            regel/formel som MonterScene) — topp/sider klippes ikke, så en
+            stor (mirrorScale > 1) vare kan vokse oppover uten å bli avkuttet.
+            z=25 (over FORGRUNNS-DISK-LAGET, z=20) — MÅ ligge over: det laget
+            re-tegner HELE bunnen av fotoet (alt under occludeY-linja, for å
+            okkludere kundens underkropp foran disken) og dekket dermed
+            fullstendig over speil-soner som ligger under den linja (venstre
+            glassmonter er ikke i nærheten av disken/kunden, så ingen
+            visuell konflikt ved å ligge over). */}
+        {mirrorTrau.map(m => {
+          const entry = state.counterLayout.find(t => t.trauId === m.mirrorsTrauId)
+          const product = entry ? state.products.find(p => p.id === entry.productId) : null
+          if (!product || product.stock <= 0) return null
+          const density = entry?.density ?? 'standard'
+          const n = tileCount(product, m.mirrorsTrauId, density)
+          const cols = Math.min(n, trauCols(m.mirrorsTrauId))
+          const rows = Math.ceil(n / cols)
+          const itemScale = (product.displayScale ?? 1) * (entry?.sizeAdjust ?? 1) * (m.mirrorScale ?? 1)
+          const tiltX = m.mirrorTiltX ?? 0
+          const tiltY = m.mirrorTiltY ?? 0
+          return (
+            <div
+              key={m.id}
+              style={{
+                position: 'absolute',
+                left: `${m.rect[0]}%`, top: `${m.rect[1]}%`,
+                width: `${m.rect[2]}%`, height: `${m.rect[3]}%`,
+                // Klipp KUN bakkanten (siden nærmest POV — samme regel og
+                // samme formel som MonterScene sin trau-klipping) — IKKE
+                // overflow:hidden på alle fire sider, det klippet toppen av
+                // varen når den ble skalert opp (mirrorScale > 1).
+                clipPath: 'inset(-100% -100% 0 -100%)',
+                transform: `perspective(500px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`,
+                zIndex: 25, pointerEvents: 'none',
+              }}
+            >
+              {Array.from({ length: n }, (_, i) => {
+                const col = i % cols, row = Math.floor(i / cols)
+                const cx = ((col + 0.5) / cols) * 100
+                const cy = ((row + 0.5) / rows) * 100
+                return (
+                  <div key={i} style={{
+                    position: 'absolute', left: `${cx}%`, top: `${cy}%`,
+                    width: `${100 / cols}%`, height: `${100 / rows}%`,
+                    transform: 'translate(-50%, -50%)',
+                  }}>
+                    {product.sprite
+                      ? <img
+                          src={product.sprite} alt="" draggable={false}
+                          onError={e => { e.currentTarget.style.display = 'none' }}
+                          style={{
+                            position: 'absolute', inset: 0, width: '100%', height: '100%',
+                            objectFit: 'contain', opacity: 0.92,
+                            transform: `scale(${itemScale})`, transformOrigin: 'center',
+                          }}
+                        />
+                      : <div style={{
+                          position: 'absolute', inset: 0, display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          fontSize: '1.6rem', opacity: 0.85,
+                        }}>{product.icon}</div>}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+
         {/* KUNDEN (z=10) — stor, forankret på livlinja, mellom bakgrunn og disk.
-            Underkroppen strekker seg under occludeY og skjules av forgrunns-laget.
-            Rendres KUN når butikken er ÅPEN — stengt butikk = ingen spawn. */}
+            Underkroppen strekker seg under occludeY-linja og skjules av
+            forgrunns-laget. Rendres KUN når butikken er ÅPEN — stengt
+            butikk = ingen spawn. */}
         {!gone && state.shopOpen && (
           <div
             onClick={talkToCustomer}
@@ -275,8 +413,11 @@ export default function InteriorView({ districtId, lokaleId }: {
         )}
 
         {/* FORGRUNNS-DISK-LAG (z=20) — samme interiørbilde, identisk plassert,
-            men klippet til KUN båndet under occludeY (clip-path inset).
-            Sømløst med bakgrunnen, okkluderer kundens underkropp. */}
+            men klippet til KUN båndet under den SKRÅ linja mellom
+            occludeYLeft (x=0%) og occludeYRight (x=100%) — disken er
+            fotografert i perspektiv (ikke vannrett), så en flat inset()
+            traff feil på den ene siden; polygon() følger den faktiske
+            skråkanten. Sømløst med bakgrunnen, okkluderer kundens underkropp. */}
         {!imgFailed && (
           <img
             src={INTERIOR_IMG}
@@ -285,27 +426,47 @@ export default function InteriorView({ districtId, lokaleId }: {
             draggable={false}
             style={{
               position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block',
-              clipPath: `inset(${occludeY}% 0 0 0)`,
+              clipPath: `polygon(0% ${occludeYLeft}%, 100% ${occludeYRight}%, 100% 100%, 0% 100%)`,
               zIndex: 20, pointerEvents: 'none', userSelect: 'none',
             }}
           />
         )}
 
-        {/* ?dev=1: sone-tracer (samme verktøy som fasaden), merket spawn/stand. */}
+        {/* ?dev=1: sone-tracer (samme verktøy som fasaden), merket
+            spawn/stand/speil-N. */}
         {IS_DEV_COORDS && !imgFailed && (
           <ZoneTracer
             onApply={() => setRev(r => r + 1)}
-            targets={interiorTargets()}
-            drawZones={interiorDrawZones()}
+            targets={interiorTargets(mirrorTrau)}
+            drawZones={interiorDrawZones(mirrorTrau)}
           />
         )}
       </div>
 
+      {/* ?dev=1: legg til flere speil-soner enn de faste (navngis speil-N
+          fortløpende) — plasseres med sone-traceren over, lim resultatet inn
+          i INTERIOR_MIRROR_TRAU. */}
+      {IS_DEV_COORDS && (
+        <div style={{ position: 'fixed', top: 64, right: 226, zIndex: 300 }}>
+          <button
+            onClick={addDevMirrorTrau}
+            style={{
+              background: 'rgba(192,132,252,0.12)', color: '#c084fc', border: '1px solid #c084fc66',
+              borderRadius: 7, padding: '4px 9px', fontSize: 11, fontWeight: 700,
+              cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+            }}
+          >+ Nytt speil-trau</button>
+        </div>
+      )}
+
       {/* LIVE-KALIBRERINGSPANEL (kun ?dev=1) — søsken av stagen så fixed-posisjon
-          måles mot viewporten, ikke mot den transformerte stagen. */}
+          måles mot viewporten, ikke mot den transformerte stagen. Plassert
+          øverst til HØYRE (under sone-tracer, som slutter på y≈302 målt live —
+          ikke øverst til venstre lenger, det lå rett oppå glassmonteret med
+          varene panelet skal kalibrere mot). */}
       {IS_DEV_COORDS && (
         <div style={{
-          position: 'fixed', top: 112, left: 20, zIndex: 90, width: 224,
+          position: 'fixed', top: 320, right: 16, zIndex: 90, width: 224,
           background: 'rgba(10,14,26,0.94)', border: '1px solid #7dd3fc55',
           borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
         }}>
@@ -316,13 +477,61 @@ export default function InteriorView({ districtId, lokaleId }: {
             onChange={v => update('CUSTOMER_CENTER_X', v, setCenterX)} fmt={v => v.toFixed(1)} />
           <CalSlider label="CUSTOMER_WAIST_Y"   value={waistY}   min={0}   max={100} step={0.5}
             onChange={v => update('CUSTOMER_WAIST_Y', v, setWaistY)}   fmt={v => v.toFixed(1)} />
-          <CalSlider label="COUNTER_OCCLUDE_Y"  value={occludeY} min={0}   max={100} step={0.5}
-            onChange={v => update('COUNTER_OCCLUDE_Y', v, setOccludeY)} fmt={v => v.toFixed(1)} />
+          <CalSlider label="COUNTER_OCCLUDE_Y_LEFT"  value={occludeYLeft} min={0} max={100} step={0.5}
+            onChange={v => update('COUNTER_OCCLUDE_Y_LEFT', v, setOccludeYLeft)}   fmt={v => v.toFixed(1)} />
+          <CalSlider label="COUNTER_OCCLUDE_Y_RIGHT" value={occludeYRight} min={0} max={100} step={0.5}
+            onChange={v => update('COUNTER_OCCLUDE_Y_RIGHT', v, setOccludeYRight)} fmt={v => v.toFixed(1)} />
           <div style={{ fontSize: 10, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
             Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
           </div>
         </div>
       )}
+
+      {/* SPEIL-KALIBRERING (kun ?dev=1) — VELG én speil-sone, juster
+          størrelse/vinkel for DEN sonen. Hver sone sitter et annet sted i
+          fotoet (annen skala/perspektiv) — samme mutér-og-logg-mønster som
+          resten av dev-verktøyene. Plassert VED SIDEN AV kunde-panelet
+          (samme top, right forskjøvet) i stedet for stablet under — unngår
+          at panelenes (varierende) høyde kolliderer med hverandre, og holder
+          begge unna glassmonteret med varene til venstre. */}
+      {IS_DEV_COORDS && (() => {
+        const m = mirrorTrau.find(x => x.id === calMirrorId)
+        return (
+          <div style={{
+            position: 'fixed', top: 320, right: 256, zIndex: 90, width: 224,
+            background: 'rgba(10,14,26,0.94)', border: '1px solid #c084fc55',
+            borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
+          }}>
+            <div style={{ color: '#c084fc', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>🪞 Speil-kalibrering</div>
+            <select
+              value={calMirrorId}
+              onChange={e => setCalMirrorId(e.target.value)}
+              style={{
+                width: '100%', marginBottom: 8, background: '#0a0e1a',
+                color: '#f1f5f9', border: '1px solid #c084fc44', borderRadius: 6,
+                padding: '3px 6px', fontSize: 11, fontFamily: "'Outfit', sans-serif",
+              }}
+            >
+              {mirrorTrau.map(x => (
+                <option key={x.id} value={x.id} style={{ background: '#0a0e1a', color: '#f1f5f9' }}>{x.id} ({x.mirrorsTrauId})</option>
+              ))}
+            </select>
+            {m && (
+              <>
+                <CalSlider label="mirrorScale" value={m.mirrorScale ?? 1} min={0.2} max={6} step={0.05}
+                  onChange={v => setMirrorScale(m, v)} fmt={v => `${Math.round(v * 100)}%`} />
+                <CalSlider label="mirrorTiltX (forover)" value={m.mirrorTiltX ?? 0} min={-80} max={80} step={1}
+                  onChange={v => setMirrorTiltX(m, v)} fmt={v => `${v.toFixed(0)}°`} />
+                <CalSlider label="mirrorTiltY (sidelengs)" value={m.mirrorTiltY ?? 0} min={-80} max={80} step={1}
+                  onChange={v => setMirrorTiltY(m, v)} fmt={v => `${v.toFixed(0)}°`} />
+              </>
+            )}
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>
+              Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Stillas-etikett nederst */}
       <div style={{

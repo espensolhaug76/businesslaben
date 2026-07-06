@@ -319,9 +319,11 @@ export const STOREFRONT_DISPLAY_ZONES: { id: 'disk' | 'bakvegg' | 'hylle_venstre
 /** Kunde-soner i interiøret (INTERIØR-NIVÅ) — prosent av interiørbildet
  *  [x, y, b, h]. Trace-t av Espen med ?dev=1 på /inne. ENESTE kilde til
  *  kunde-plasseringen: SPAWN = der kunden dukker opp (bakerst), STAND =
- *  ståplassen hun går fram til. All plassering i InteriorView leser herfra. */
-export const INTERIOR_CUSTOMER_SPAWN: [number, number, number, number] = [46.1, 23.8, 8, 31]
-export const INTERIOR_CUSTOMER_STAND: [number, number, number, number] = [41.9, 57, 17.6, 15.6]
+ *  ståplassen hun går fram til. All plassering i InteriorView leser herfra.
+ *  Trace-t av Espen mot interior-kasse.png 2026-07-02 — samme rektangel for
+ *  begge (oppgitt likt). */
+export const INTERIOR_CUSTOMER_SPAWN: [number, number, number, number] = [42.6, 26, 27.1, 50.5]
+export const INTERIOR_CUSTOMER_STAND: [number, number, number, number] = [42.6, 26, 27.1, 50.5]
 
 /** Disk-monterens utstillingsflate (INTERIØR-NIVÅ) — prosent av interiørbildet
  *  [x, y, b, h]. Andre flate for vareeksponering (fixtureId='monter');
@@ -330,6 +332,43 @@ export const INTERIOR_CUSTOMER_STAND: [number, number, number, number] = [41.9, 
  *  er et rimelig estimat — trace-bar med ?dev=1 på /inne (sone-tracer →
  *  «Bruk siste på disk», verdien logges for innliming hit). */
 export const INTERIOR_DISK_DISPLAY: [number, number, number, number] = [14, 74, 72, 22]
+
+/** Speil-soner (INTERIØR-NIVÅ, bakfra-vy på /inne) — prosent av
+ *  interior-kasse.png [x, y, b, h]. Glassmonteret er synlig i bakgrunnen til
+ *  venstre fra denne kameravinkelen; disse sonene er der varene fra
+ *  counterLayout (den FRONTALE MonterScene-monteren) speiles inn som ambient
+ *  bakgrunnsliv — IKKE en redigeringsflate, kun tilnærmet plassering.
+ *  `mirrorsTrauId` er EKSPLISITT satt av Espen (hvilket fysisk trau er synlig
+ *  i akkurat DENNE sonen fra denne kameravinkelen) — ikke utledet/gjettet.
+ *  `mirrorScale` (default 1) er PER SONE dev-kalibrering (?dev=1-panel i
+ *  InteriorView) — hver sone sitter et annet sted i fotoet med annen skala,
+ *  så én universal formel for alle så rart ut. `mirrorTiltX`/`mirrorTiltY`
+ *  (grader, default 0) er EKTE 3D-vinkler (perspective + rotateX/rotateY),
+ *  ikke en flat rotate() — en flat rotasjon bare spinner bildet side-til-side
+ *  i skjermplanet og kan ikke få en vare til å se ut som den ligger PÅ en
+ *  hylle. TiltX = vippet forover/bakover (toppen nærmere/fjernere kamera),
+ *  TiltY = vridd sidelengs. Nøyaktig 6 fysiske speil-soner (ikke 7 —
+ *  speil-7/trau-17 fra 2026-07-02 var en duplikat-sone, samme fysiske plass
+ *  som speil-1/trau-18, feil identifisert første gang). Trace-t av Espen mot
+ *  interior-kasse.png 2026-07-03. */
+export interface InteriorMirrorTrau {
+  id: string
+  rect: [number, number, number, number]
+  mirrorsTrauId: string
+  mirrorScale?: number
+  mirrorTiltX?: number
+  mirrorTiltY?: number
+}
+// mirrorScale/mirrorTiltX/mirrorTiltY kalibrert visuelt av Espen (?dev=1
+// speil-kalibreringspanelet) 2026-07-06.
+export const INTERIOR_MIRROR_TRAU: InteriorMirrorTrau[] = [
+  { id: 'speil-1', rect: [0, 54.5, 17.3, 6.6], mirrorsTrauId: 'trau-18', mirrorScale: 3.85, mirrorTiltX: 29, mirrorTiltY: 0 },
+  { id: 'speil-2', rect: [1, 66.9, 7.6, 4], mirrorsTrauId: 'trau-15', mirrorScale: 6, mirrorTiltX: 0, mirrorTiltY: 7 },
+  { id: 'speil-3', rect: [0, 70, 5.7, 4.4], mirrorsTrauId: 'trau-13', mirrorScale: 3.75, mirrorTiltX: 41, mirrorTiltY: 0 },
+  { id: 'speil-4', rect: [8.8, 66.7, 6.8, 7.3], mirrorsTrauId: 'trau-16', mirrorScale: 3.6, mirrorTiltX: 0, mirrorTiltY: 0 },
+  { id: 'speil-5', rect: [0.2, 78.3, 8.7, 11.5], mirrorsTrauId: 'trau-8', mirrorScale: 1.8, mirrorTiltX: 19, mirrorTiltY: 0 },
+  { id: 'speil-6', rect: [9.3, 78.6, 7.3, 10.3], mirrorsTrauId: 'trau-7', mirrorScale: 2.0, mirrorTiltX: 26, mirrorTiltY: 0 },
+]
 
 /** Trau i den FRONTALE monter-scenen (kunde-siden) — prosent av
  *  monter-frontal-bildet [x, y, b, h]. Hvert trau er en lager-flate som

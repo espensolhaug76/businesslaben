@@ -51,7 +51,12 @@ function productHue(id: string): number {
 // hverandre. Trenger en vare mer plass enn bredden tillater, stables resten
 // BAKOVER/FRAMOVER i dybden (maks 3 rader) i stedet for å krympe flisene.
 const MAX_ROWS = 3
-function trauCols(trauId: string): number {
+// Eksportert (ikke bare internt i denne fila): InteriorView sitt speil-lag
+// (bakfra-vy på /inne) trenger SAMME antall-logikk som disken selv, så
+// speilet viser riktig ANTALL fliser — ikke bare riktig vare — og dermed
+// faktisk speiler oppsettet i disken i stedet for alltid å vise ett stykk.
+// eslint-disable-next-line react-refresh/only-export-components
+export function trauCols(trauId: string): number {
   return trauId === 'trau-17' || trauId === 'trau-18' ? 4 : 1
 }
 // Presentasjonsvalg (DEL 3, spillermekanikk) — tetthet justerer kapasiteten
@@ -65,7 +70,8 @@ const DENSITY_OPTIONS: TrauDensity[] = ['tett', 'standard', 'luftig']
  *  trauets egen kapasitet (bredde × maks rader i dybden × spillerens
  *  tetthetsvalg) etter lagermengde (full / halv / lav / tom). Hvert trau er
  *  en egen, selvstendig flate — ingen overflyt til naboer. */
-function tileCount(product: Product, trauId: string, density: TrauDensity): number {
+// eslint-disable-next-line react-refresh/only-export-components
+export function tileCount(product: Product, trauId: string, density: TrauDensity): number {
   if (product.stock <= 0) return 0
   const capacity = Math.max(1, Math.round(trauCols(trauId) * MAX_ROWS * DENSITY_MULT[density]))
   const r = product.stock / Math.max(1, product.maxDemandPerMonth)
