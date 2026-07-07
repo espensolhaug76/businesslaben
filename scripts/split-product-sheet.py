@@ -8,9 +8,11 @@ Pipeline per ark:
   3) sorter blobs i lese-rekkefølge (rad for rad, venstre->høyre)
   4) kropp hver blob til sin alfa-bounding-box (+pad) og lagre som <navn>.png
 
-To ark-familier, skilt på filnavn-prefiks (avgjør både mappe og navnekart):
+Tre ark-familier, skilt på filnavn-prefiks (avgjør både mappe og navnekart):
   products-ark-NN-raw.png  -> public/assets/raw/products/<navn>.png
   customers-ark-NN-raw.png -> public/assets/raw/customers/<navn>.png
+  fixtures-ark-NN-raw.png  -> public/assets/raw/fixtures/<navn>.png  (klesbutikk-
+                              møbler: stativ/dukke/bord/hylle — jobb/klesbutikk)
 
 Re-kjørbar for flere ark: legg nye ark i riktig mappe under public/assets/raw/
 og legg navnekartet i PRODUCTS_NAME_MAPS/CUSTOMERS_NAME_MAPS under ark-nummeret
@@ -28,6 +30,9 @@ from collections import deque
 
 PRODUCTS_DIR  = "/home/espen/adventure-web/public/assets/raw/products"
 CUSTOMERS_DIR = "/home/espen/adventure-web/public/assets/raw/customers"
+# Fixtures-arkene (klesbutikk-møbler) er BRANSJE-2-arbeid som bor på grenen
+# jobb/klesbutikk — les fra og skriv til DEN worktreen, ikke main-worktreen.
+FIXTURES_DIR  = "/home/espen/adventure-web-klesbutikk/public/assets/raw/fixtures"
 
 # Navnekart per ark-nummer, i LESE-rekkefølge (rad for rad, venstre->høyre).
 PRODUCTS_NAME_MAPS = {
@@ -48,6 +53,20 @@ PRODUCTS_NAME_MAPS = {
 # (Storbestillingen).
 CUSTOMERS_NAME_MAPS = {
     "02": ["usikre", "prutekunden", "allergikeren", "storbestiller"],
+}
+# Klesbutikk-møbler (DEL 1, jobb/klesbutikk). Ark 01 = 2x2, lese-rekkefølge
+# (rad for rad, v->h): rad 1 = klesstativ, dame-dukke; rad 2 = bord, hylle.
+# ✦-glyfen nederst til høyre er nano-bananas AI-vannmerke — den blir en egen
+# blob og skal IKKE inn i noe møbel-utklipp (kastes etterpå, se rapporten).
+# Ark 02 har ANNET innhold (herre-/barne-dukke, to stativstørrelser, to bord)
+# og mangler foreløpig navnekart — legges til når Espen har bekreftet navnene.
+FIXTURES_NAME_MAPS = {
+    "01": ["stativ", "dukke", "bord", "hylle"],
+    # Ark 02 (lese-rekkefølge v->h, øverst->nederst): herre-dukke, barne-dukke,
+    # stort stativ (DUPLIKAT av ark-01s stativ -> SKIP), lite stativ, enkelt
+    # bord (DUPLIKAT av ark-01s bord -> SKIP), podium-bord. 'SKIP' skriver ingen
+    # fil for den bloben (se skrive-løkka).
+    "02": ["dukke-mann", "dukke-barn", "SKIP", "stativ-liten", "SKIP", "bord-podium"],
 }
 
 ALPHA_THRESHOLD = 40      # alfa over dette = «vare-piksel»
@@ -119,6 +138,8 @@ def resolve_family(path):
     base = os.path.basename(path)
     if base.startswith("customers-ark"):
         return CUSTOMERS_DIR, CUSTOMERS_NAME_MAPS, CUSTOMERS_DIR
+    if base.startswith("fixtures-ark"):
+        return FIXTURES_DIR, FIXTURES_NAME_MAPS, FIXTURES_DIR
     return PRODUCTS_DIR, PRODUCTS_NAME_MAPS, PRODUCTS_DIR
 
 
@@ -159,8 +180,9 @@ def main():
         nn = ark_number(inp)
         names = name_maps.get(nn or "", [])
         if not names:
-            print(f"FEIL: ingen navn oppgitt og intet kart for ark '{nn}'. Legg til i "
-                  f"{'CUSTOMERS_NAME_MAPS' if out_dir == CUSTOMERS_DIR else 'PRODUCTS_NAME_MAPS'}.")
+            map_name = {CUSTOMERS_DIR: 'CUSTOMERS_NAME_MAPS',
+                        FIXTURES_DIR: 'FIXTURES_NAME_MAPS'}.get(out_dir, 'PRODUCTS_NAME_MAPS')
+            print(f"FEIL: ingen navn oppgitt og intet kart for ark '{nn}'. Legg til i {map_name}.")
             sys.exit(1)
 
     import numpy as np
@@ -195,6 +217,12 @@ def main():
     area_by_idx = {b[0]: b[5] for b in boxes}
     for k, (idx, x0, y0, x1, y1) in enumerate(ordered):
         name = names[k] if k < len(names) else f"ukjent-{k+1}"
+        # 'SKIP' i navnekartet = blob som IKKE skal lagres (f.eks. et møbel som
+        # er duplikat av et allerede splittet fra et annet ark). Vi teller den
+        # fortsatt i lese-rekkefølgen så etterfølgende navn treffer riktig blob.
+        if name.upper() == "SKIP":
+            print(f"  {'(SKIP)':18s} {x1-x0:>4}x{y1-y0:<4}  -> hopper over blob #{k+1} (duplikat)")
+            continue
         l = max(0, x0 - PAD); t = max(0, y0 - PAD); r = min(W, x1 + PAD); b = min(H, y1 + PAD)
         clip = cut.crop((l, t, r, b))
         # rapport: halo-sjekk (whiteish semi-transparente kantpiksler)
