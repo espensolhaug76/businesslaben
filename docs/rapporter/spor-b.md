@@ -21,7 +21,8 @@ Sist oppdatert: 2026-07-07.
 | Sone-lås + skew-infrastruktur | ✅ FERDIG, committet + pushet |
 | Skew kun butikkvegg + forsvinnende-sprite-fiks | ✅ FERDIG, committet + pushet |
 | Møbelplassering (fri) + vareplass-modell | ✅ FERDIG (fri plassering senere erstattet av snap) |
-| Ankerplasser (snap-slots) + anker-tracer | ✅ FERDIG, committet + pushet |
+| Ankerplasser (snap-slots) + anker-tracer | ✅ FERDIG (snap senere erstattet av gulvplan) |
+| Gulvplan (perspektiv) + dybde-plassering | ✅ FERDIG, committet + pushet |
 
 Grenen `jobb/klesbutikk` er pushet til origin. **Ikke aktiv bransje** —
 `KLESBUTIKK` er fortsatt IKKE registrert i `INDUSTRY_DEFINITIONS`.
@@ -166,11 +167,43 @@ skala. INGEN fri flytting, INGEN størrelsesendring (den UI-en er fjernet).
 ⚓ Ankere (anker-tracer) · 🧭 Soner (sone-tracer). Uten dev: kun møbel-snapping,
 markører usynlige.
 
-**➡️ Til Espen (valider i Chrome, `/dev/klesbutikk?dev=1`):** ⚓ Ankere-modus →
-klikk/juster de 6 (+ evt. flere) ankerplassene til de sitter der møblene skal
-stå, sett `tillatteTyper` per plass, «Logg array» og lim inn i
-`KLESBUTIKK.ankerplasser` (industryDefinition.ts). Deretter 🪑 Møbler → sjekk at
-møblene snapper riktig. `scale`/marker-tuning kan justeres i samme slengen.
+(Ankerplass-modellen ble erstattet av gulvplanet under.)
+
+## ✅ Gulvplan (perspektiv) + dybde-plassering (siste runde)
+
+**DESIGNENDRING:** Anker-snapping erstattet av et GULVPLAN (perspektivmodell).
+Møbler plasseres fritt på gulvet; fotpunktet klemmes til et trapes og skalaen
+interpoleres av dybden. INGEN manuell skalering (UI fjernet).
+
+**DEL 1 — gulvplan-kalibrering:**
+- `Gulvplan { hjørner: {fremV, fremH, bakV, bakH}, scaleFront, scaleBack }`
+  (industryDefinition.ts) — 4 trapes-hjørner i **% av scenebildet**. Nytt felt
+  `IndustryDefinition.gulvplan?` (kun klesbutikk); `Ankerplass`/`ankerplasser`
+  fjernet. **Grove defaults** lagt inn (tregulvet som trapes).
+- `?dev=1` → **📐 Gulvplan**-modus: dra de 4 hjørnene (trapes-overlay), juster
+  `scaleFront`/`scaleBack` med ± mot to preview-dukker (helt foran / helt bak),
+  «Logg objekt» → konsollen (mutér-og-logg). Muterer `KLESBUTIKK.gulvplan` live.
+
+**DEL 2 — gulvbasert plassering** (`KlesbutikkStillas.tsx`, Interiør · 🪑 Møbler):
+- Dra møbel fra paletten ut på gulvet → fotpunktet klemmes til trapeset (invers
+  bilineær mapping), **skala interpoleres av dybden** (foran stort → bak lite),
+  live preview under draget. **Tegnerekkefølge** sorteres på fotpunkt-y (foran
+  dekker bak). Flytt = dra fritt på planet (rescalerer i dybden). Høyreklikk =
+  fjern. Overlapp tillatt.
+- **HYLLE er veggmontert:** eget mål = butikkvegg-sonen (KLESBUTIKK_BUTIKKVEGG),
+  fast skala (`HYLLE_WALL_SCALE`); kun hylla lander der.
+- Vareplass-modellen (klesbutikkFixtures.ts) UENDRET — markørene følger møbelets
+  pos/skala (barn av møbel-boksen). `?dev=1` viser dem.
+- **State:** `KlesbutikkFixtureItem` er nå `{ id, fixtureId, fotpunkt }`
+  (fotpunkt i % av scenebildet) — erstatter plassId-modellen.
+
+**Tre dev-moduser** (?dev=1): 🪑 Møbler · 📐 Gulvplan · 🧭 Soner.
+
+**➡️ Til Espen (valider i Chrome, `/dev/klesbutikk?dev=1`):** 📐 Gulvplan → dra
+de 4 hjørnene så trapeset dekker tregulvet, juster front/bak-skala mot preview-
+dukkene til dybden ser riktig ut, «Logg objekt» → lim inn i `KLESBUTIKK.gulvplan`
+(industryDefinition.ts). Deretter 🪑 Møbler → sjekk at skyving i dybden ser
+naturlig ut. HYLLE-veggsonen kan re-traces i 🧭 Soner ved behov.
 
 ---
 

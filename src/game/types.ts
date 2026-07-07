@@ -190,16 +190,20 @@ export type KlesbutikkFixtureId =
   | 'stativ' | 'stativ-liten' | 'hylle' | 'bord' | 'bord-podium'
   | 'dukke' | 'dukke-mann' | 'dukke-barn'
 
-/** Ett møbel SNAPPET til en ankerplass (Ankerplass i KLESBUTIKK-definisjonen).
- *  Møbler plasseres IKKE fritt — de snapper til forhåndsdefinerte plasser med
- *  låst posisjon og skala. Derfor lagrer state kun koblingen plassId → møbeltype
- *  (`{ plassId → møbelType }`); posisjon/skala/vareplasser leses fra
- *  ankerplassen og møbeldefinisjonen. Én møbeltype per plass (å snappe et nytt
- *  møbel på en opptatt plass ERSTATTER det forrige). */
+/** Fotpunkt (der møbelets bunn står) i PROSENT av scenebildet (interiøret). */
+export interface Fotpunkt { x: number; y: number }
+
+/** Ett møbel plassert på GULVPLANET (perspektivmodell). Møbelet plasseres fritt
+ *  på gulv-trapeset (eller på veggen for hylla); `fotpunkt` er bunn-punktet i %
+ *  av scenebildet. Skalaen lagres IKKE — den interpoleres av dybden i
+ *  gulvplanet (KLESBUTIKK.gulvplan) ved opptegning, så alt reskalerer riktig når
+ *  Espen kalibrerer front/bak-skala. Tegnerekkefølge sorteres på `fotpunkt.y`
+ *  (møbler foran dekker møbler bak). Samme møbeltype kan plasseres flere ganger,
+ *  derav unik `id`. */
 export interface KlesbutikkFixtureItem {
-  /** Ankerplassen møbelet står på (Ankerplass.id). */
-  plassId: string
+  id: string
   fixtureId: KlesbutikkFixtureId
+  fotpunkt: Fotpunkt
 }
 
 // ── Staff ────────────────────────────────────────────────────────────────────

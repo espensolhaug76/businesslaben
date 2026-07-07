@@ -16,7 +16,7 @@
 // bærer en annen bransje, IKKE et ferdig bransje-2-innhold, og er bevisst
 // IKKE registrert i INDUSTRY_DEFINITIONS (ikke aktiv).
 
-import type { Industry, KlesbutikkFixtureId } from '../types'
+import type { Industry } from '../types'
 import { INDUSTRY_CATALOG, INDUSTRY_META, type IndustryCatalogItem } from './industries'
 import {
   MONTER_TRAU, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, STOREFRONT_HOTSPOTS,
@@ -104,22 +104,25 @@ export interface ForsyningTekst {
   utsolgtHint: string
 }
 
-/** Møbeltype som kan snappe til en ankerplass (= én av de 8 fixture-spritene). */
-export type MøbelType = KlesbutikkFixtureId
+/** Et punkt i PROSENT av scenebildet (interiøret). */
+export interface GulvPunkt { x: number; y: number }
 
-/** En forhåndsdefinert ANKERPLASS (snap-slot) i klesbutikk-interiøret. Møbler
- *  plasseres ikke fritt — de snapper hit med plassens LÅSTE posisjon og skala.
- *  Koordinatene er i PROSENT av scenebildet (interiøret), bunn-ankret
- *  (`y` = der møbelets bunn står). `scale` er en multiplikator på møbelets
- *  `baseWFrac` (rendret bredde-brøk av scenebildet = baseWFrac × scale).
- *  `tillatteTyper` avgjør hvilke møbeltyper som kan snappe hit. Kalibreres med
- *  ?dev=1-ankerplass-traceren i KlesbutikkStillas og låses her. */
-export interface Ankerplass {
-  id: string
-  x: number
-  y: number
-  scale: number
-  tillatteTyper: MøbelType[]
+/** GULVPLANET (perspektivmodell) møbler plasseres på. Et trapes definert av 4
+ *  hjørner (i % av scenebildet): fremkant venstre/høyre (nærmest kamera) og
+ *  bakkant venstre/høyre (lengst bak). Et møbels fotpunkt klemmes inn i trapeset,
+ *  og skalaen interpoleres lineært av dybden: `scaleFront` helt foran (v=0) →
+ *  `scaleBack` helt bak (v=1). Skala = multiplikator på møbelets `baseWFrac`
+ *  (rendret bredde-brøk = baseWFrac × skala). Kalibreres med ?dev=1-gulvplan-
+ *  traceren i KlesbutikkStillas og låses her. */
+export interface Gulvplan {
+  hjørner: {
+    fremV: GulvPunkt
+    fremH: GulvPunkt
+    bakV: GulvPunkt
+    bakH: GulvPunkt
+  }
+  scaleFront: number
+  scaleBack: number
 }
 
 export interface IndustryDefinition {
@@ -146,9 +149,9 @@ export interface IndustryDefinition {
   scenariePool: string[]
   personaBudsjett: PersonaBudsjett
   svinnRegel: SvinnRegel
-  /** Ankerplasser (snap-slots) for fri-utseende, men FASTE møbelplasser i
-   *  interiøret — kun klesbutikk i dag (kafeen bruker trau-monteren). */
-  ankerplasser?: Ankerplass[]
+  /** Gulvplanet (perspektivmodell) møbler plasseres fritt på — kun klesbutikk
+   *  i dag (kafeen bruker trau-monteren). */
+  gulvplan?: Gulvplan
 }
 
 export const CAFE: IndustryDefinition = {
@@ -260,19 +263,17 @@ export const KLESBUTIKK: IndustryDefinition = {
   scenariePool: [],
   personaBudsjett: { kind: 'kategori', table: FASHION_BUDGETS, step: 100 },
   svinnRegel: 'sesong',
-  // Ankerplasser — GROVE default-plasser (% av klesbutikk-interior.jpg,
-  // bunn-ankret). IKKE Espen-kalibrert ennå: trace/juster med ?dev=1-
-  // ankerplass-traceren i KlesbutikkStillas og lim de loggede verdiene inn HIT.
-  // 'gulv'-plassene tar de fleste stående møbler; hylla er vegghengt; to
-  // dukke-plasser. tillatteTyper avgjør hvilke møbler som kan snappe hit.
-  ankerplasser: [
-    { id: 'plass-1', x: 44, y: 63, scale: 0.34, tillatteTyper: ['stativ', 'stativ-liten', 'bord', 'bord-podium', 'dukke', 'dukke-mann', 'dukke-barn'] },
-    { id: 'plass-2', x: 52, y: 64, scale: 0.34, tillatteTyper: ['stativ', 'stativ-liten', 'bord', 'bord-podium', 'dukke', 'dukke-mann', 'dukke-barn'] },
-    { id: 'plass-3', x: 60, y: 63, scale: 0.34, tillatteTyper: ['stativ', 'stativ-liten', 'bord', 'bord-podium', 'dukke', 'dukke-mann', 'dukke-barn'] },
-    { id: 'plass-4', x: 56, y: 50, scale: 0.42, tillatteTyper: ['hylle'] },
-    { id: 'plass-5', x: 47, y: 66, scale: 0.30, tillatteTyper: ['dukke', 'dukke-mann', 'dukke-barn'] },
-    { id: 'plass-6', x: 63, y: 60, scale: 0.30, tillatteTyper: ['dukke', 'dukke-mann', 'dukke-barn'] },
-  ],
+  // Gulvplan — GROVE default-hjørner (% av klesbutikk-interior.jpg): tregulvet
+  // som trapes, fremkant nederst (nær kamera), bakkant der gulvet møter veggene.
+  // IKKE Espen-kalibrert ennå: dra hjørnene + juster front/bak-skala med ?dev=1-
+  // gulvplan-traceren i KlesbutikkStillas og lim det loggede objektet inn HIT.
+  gulvplan: {
+    hjørner: {
+      fremV: { x: 8, y: 98 }, fremH: { x: 98, y: 92 },
+      bakV: { x: 40, y: 66 }, bakH: { x: 82, y: 63 },
+    },
+    scaleFront: 0.42, scaleBack: 0.24,
+  },
 }
 
 /** Registeret over bransjer som FAKTISK har en definisjon. Bevisst kun
