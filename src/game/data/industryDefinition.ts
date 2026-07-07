@@ -16,7 +16,7 @@
 // bærer en annen bransje, IKKE et ferdig bransje-2-innhold, og er bevisst
 // IKKE registrert i INDUSTRY_DEFINITIONS (ikke aktiv).
 
-import type { Industry } from '../types'
+import type { Industry, KlesbutikkFixtureId } from '../types'
 import { INDUSTRY_CATALOG, INDUSTRY_META, type IndustryCatalogItem } from './industries'
 import {
   MONTER_TRAU, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, STOREFRONT_HOTSPOTS,
@@ -104,6 +104,24 @@ export interface ForsyningTekst {
   utsolgtHint: string
 }
 
+/** Møbeltype som kan snappe til en ankerplass (= én av de 8 fixture-spritene). */
+export type MøbelType = KlesbutikkFixtureId
+
+/** En forhåndsdefinert ANKERPLASS (snap-slot) i klesbutikk-interiøret. Møbler
+ *  plasseres ikke fritt — de snapper hit med plassens LÅSTE posisjon og skala.
+ *  Koordinatene er i PROSENT av scenebildet (interiøret), bunn-ankret
+ *  (`y` = der møbelets bunn står). `scale` er en multiplikator på møbelets
+ *  `baseWFrac` (rendret bredde-brøk av scenebildet = baseWFrac × scale).
+ *  `tillatteTyper` avgjør hvilke møbeltyper som kan snappe hit. Kalibreres med
+ *  ?dev=1-ankerplass-traceren i KlesbutikkStillas og låses her. */
+export interface Ankerplass {
+  id: string
+  x: number
+  y: number
+  scale: number
+  tillatteTyper: MøbelType[]
+}
+
 export interface IndustryDefinition {
   id: Industry
   navn: string
@@ -128,6 +146,9 @@ export interface IndustryDefinition {
   scenariePool: string[]
   personaBudsjett: PersonaBudsjett
   svinnRegel: SvinnRegel
+  /** Ankerplasser (snap-slots) for fri-utseende, men FASTE møbelplasser i
+   *  interiøret — kun klesbutikk i dag (kafeen bruker trau-monteren). */
+  ankerplasser?: Ankerplass[]
 }
 
 export const CAFE: IndustryDefinition = {
@@ -239,6 +260,19 @@ export const KLESBUTIKK: IndustryDefinition = {
   scenariePool: [],
   personaBudsjett: { kind: 'kategori', table: FASHION_BUDGETS, step: 100 },
   svinnRegel: 'sesong',
+  // Ankerplasser — GROVE default-plasser (% av klesbutikk-interior.jpg,
+  // bunn-ankret). IKKE Espen-kalibrert ennå: trace/juster med ?dev=1-
+  // ankerplass-traceren i KlesbutikkStillas og lim de loggede verdiene inn HIT.
+  // 'gulv'-plassene tar de fleste stående møbler; hylla er vegghengt; to
+  // dukke-plasser. tillatteTyper avgjør hvilke møbler som kan snappe hit.
+  ankerplasser: [
+    { id: 'plass-1', x: 44, y: 63, scale: 0.34, tillatteTyper: ['stativ', 'stativ-liten', 'bord', 'bord-podium', 'dukke', 'dukke-mann', 'dukke-barn'] },
+    { id: 'plass-2', x: 52, y: 64, scale: 0.34, tillatteTyper: ['stativ', 'stativ-liten', 'bord', 'bord-podium', 'dukke', 'dukke-mann', 'dukke-barn'] },
+    { id: 'plass-3', x: 60, y: 63, scale: 0.34, tillatteTyper: ['stativ', 'stativ-liten', 'bord', 'bord-podium', 'dukke', 'dukke-mann', 'dukke-barn'] },
+    { id: 'plass-4', x: 56, y: 50, scale: 0.42, tillatteTyper: ['hylle'] },
+    { id: 'plass-5', x: 47, y: 66, scale: 0.30, tillatteTyper: ['dukke', 'dukke-mann', 'dukke-barn'] },
+    { id: 'plass-6', x: 63, y: 60, scale: 0.30, tillatteTyper: ['dukke', 'dukke-mann', 'dukke-barn'] },
+  ],
 }
 
 /** Registeret over bransjer som FAKTISK har en definisjon. Bevisst kun

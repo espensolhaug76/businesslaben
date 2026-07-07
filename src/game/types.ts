@@ -190,24 +190,16 @@ export type KlesbutikkFixtureId =
   | 'stativ' | 'stativ-liten' | 'hylle' | 'bord' | 'bord-podium'
   | 'dukke' | 'dukke-mann' | 'dukke-barn'
 
-/** Ett FRITT plassert møbel i butikkvegg-sonen (KLESBUTIKK_BUTIKKVEGG) — samme
- *  frie-plassering-mønster som WindowDisplayItem, IKKE et trau. Overlapp er
- *  tillatt (ingen kollisjon i v1), og samme møbeltype kan plasseres flere
- *  ganger, derav en unik `id` per instans.
- *
- *  Koordinatene er BRØK (0–1) av butikkvegg-sonen. `x` = senter, `y` = BUNN
- *  (møblene er bunn-ankret — de «står på gulvet»). `scale` er en
- *  størrelses-multiplikator oppå møbelets `baseWFrac` (default 1). Vareplassene
- *  følger møbelets geometri og skala automatisk (se klesbutikkFixtures.ts). */
+/** Ett møbel SNAPPET til en ankerplass (Ankerplass i KLESBUTIKK-definisjonen).
+ *  Møbler plasseres IKKE fritt — de snapper til forhåndsdefinerte plasser med
+ *  låst posisjon og skala. Derfor lagrer state kun koblingen plassId → møbeltype
+ *  (`{ plassId → møbelType }`); posisjon/skala/vareplasser leses fra
+ *  ankerplassen og møbeldefinisjonen. Én møbeltype per plass (å snappe et nytt
+ *  møbel på en opptatt plass ERSTATTER det forrige). */
 export interface KlesbutikkFixtureItem {
-  id: string
+  /** Ankerplassen møbelet står på (Ankerplass.id). */
+  plassId: string
   fixtureId: KlesbutikkFixtureId
-  /** Senter-x som brøk 0–1 av butikkvegg-sonens bredde. */
-  x: number
-  /** BUNN-y som brøk 0–1 av sonens høyde (bunn-ankret). */
-  y: number
-  /** Størrelses-multiplikator oppå møbelets baseWFrac. Default 1. */
-  scale: number
 }
 
 // ── Staff ────────────────────────────────────────────────────────────────────

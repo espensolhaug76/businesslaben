@@ -20,7 +20,8 @@ Sist oppdatert: 2026-07-07.
 | DEL 3 — stillas-scener + dev-rute | ✅ FERDIG, committet + pushet |
 | Sone-lås + skew-infrastruktur | ✅ FERDIG, committet + pushet |
 | Skew kun butikkvegg + forsvinnende-sprite-fiks | ✅ FERDIG, committet + pushet |
-| Møbelplassering (fri) + vareplass-modell | ✅ FERDIG, committet + pushet |
+| Møbelplassering (fri) + vareplass-modell | ✅ FERDIG (fri plassering senere erstattet av snap) |
+| Ankerplasser (snap-slots) + anker-tracer | ✅ FERDIG, committet + pushet |
 
 Grenen `jobb/klesbutikk` er pushet til origin. **Ikke aktiv bransje** —
 `KLESBUTIKK` er fortsatt IKKE registrert i `INDUSTRY_DEFINITIONS`.
@@ -130,11 +131,46 @@ vindusutstillingen). Skew-demoen + skew-panelet er **fjernet** fra stillaset;
 **Nye/endrede typer/state:** `KlesbutikkFixtureId` + `KlesbutikkFixtureItem`
 (types.ts), `GameState.klesbutikkFixtureLayout`, action `SET_KLESBUTIKK_FIXTURES`.
 
-**➡️ Til Espen (valider i Chrome, `/dev/klesbutikk`):** dra møbler inn, flytt/
-skaler/fjern; skru på `?dev=1` for vareplass-markørene. Marker-posisjonene
-(`slotRows` i klesbutikkFixtures.ts) er tunbare øyemål — meld/juster hvis de
-ikke sitter på stang/hylle/torso. `?dev=1` har også en «🧭 Sone-tracer»-bryter
-(av som standard) hvis du vil re-trace sonene.
+Marker-posisjonene (`slotRows` i klesbutikkFixtures.ts) er tunbare øyemål.
+
+## ✅ Ankerplasser (snap-slots) + anker-tracer (siste runde)
+
+**DESIGNENDRING:** Fri drag/skalering var ikke brukervennlig → erstattet med
+ANKERPLASSER. Møbler snapper til forhåndsdefinerte plasser med LÅST posisjon og
+skala. INGEN fri flytting, INGEN størrelsesendring (den UI-en er fjernet).
+
+**DEL 1 — datamodell + tracing:**
+- `Ankerplass { id, x, y, scale, tillatteTyper: MøbelType[] }` (industryDefinition.ts),
+  koordinater i **% av scenebildet**, bunn-ankret. `scale` = multiplikator på
+  møbelets `baseWFrac` (rendret bredde-brøk = baseWFrac × scale). Nytt felt
+  `IndustryDefinition.ankerplasser?` (kun klesbutikk).
+- **6 grove default-plasser** lagt inn i `KLESBUTIKK.ankerplasser` (3 gulv-
+  plasser for stående møbler, 1 vegghengt hylle-plass, 2 dukke-plasser). IKKE
+  kalibrert ennå.
+- `?dev=1` → **⚓ Ankere**-modus: klikk i bildet for ny plass, juster `scale`
+  med ±, toggle tillatte typer, «Logg array» → konsollen (samme mutér-og-logg
+  som sone-traceren). Muterer `KLESBUTIKK.ankerplasser` live.
+
+**DEL 2 — snap-interaksjon** (`KlesbutikkStillas.tsx`, Interiør · 🪑 Møbler):
+- Dra møbel fra paletten → kompatible plasser markeres (ring), nærmeste innen
+  snap-avstand fylles grønt → slipp = snapper inn med plassens pos/skala.
+  Slipp utenfor snap-avstand = avbryt. Opptatt plass = **erstatt**. Høyreklikk
+  møbel = fjern.
+- Vareplass-modellen fra forrige runde er UENDRET; markørene er barn av
+  møbel-boksen og følger den snappede pos/skala automatisk. `?dev=1` viser dem.
+- **State:** `KlesbutikkFixtureItem` er nå `{ plassId, fixtureId }` (koblingen
+  plass→type), lagret i `state.klesbutikkFixtureLayout` (samme action). Egen
+  `GameProvider` rundt dev-scenen som før.
+
+**Tre dev-moduser** (topbar, ?dev=1): 🪑 Møbler (snap + vareplass-markører) ·
+⚓ Ankere (anker-tracer) · 🧭 Soner (sone-tracer). Uten dev: kun møbel-snapping,
+markører usynlige.
+
+**➡️ Til Espen (valider i Chrome, `/dev/klesbutikk?dev=1`):** ⚓ Ankere-modus →
+klikk/juster de 6 (+ evt. flere) ankerplassene til de sitter der møblene skal
+stå, sett `tillatteTyper` per plass, «Logg array» og lim inn i
+`KLESBUTIKK.ankerplasser` (industryDefinition.ts). Deretter 🪑 Møbler → sjekk at
+møblene snapper riktig. `scale`/marker-tuning kan justeres i samme slengen.
 
 ---
 
