@@ -204,6 +204,11 @@ export interface KlesbutikkFixtureItem {
   id: string
   fixtureId: KlesbutikkFixtureId
   fotpunkt: Fotpunkt
+  /** SPEILING: møbelet (m/plagg+dukker) rendres horisontalt speilvendt
+   *  (scaleX(-1)) i scenen. Toggle i plantegningen (klikk = ↔). Boolsk nå;
+   *  kan senere utvides til en `retning`-streng (f.eks. 'front'|'venstre'|
+   *  'høyre'|'bak') hvis flere vinkler trengs — behold da `vendt` som avledet. */
+  vendt?: boolean
 }
 
 /** Ett plagg auto-snappet til en vareplass på et plassert møbel (BRANSJE 2,

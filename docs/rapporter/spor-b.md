@@ -384,6 +384,39 @@ planens kanter treffer gulvet i scenen.
 
 ---
 
+## NATTJOBB 2 — DEL 2: SPEILING (↔) per møbelinstans
+
+**Mål:** kunne vende et enkelt møbel (m/plagg og dukker) horisontalt, så butikken
+ikke lenger «bare ser mot kamera».
+
+**State:** nytt felt `vendt?: boolean` på `KlesbutikkFixtureItem` (`types.ts`).
+Utvidbart som bedt om: kommentaren dokumenterer at feltet senere kan bli en
+`retning`-streng (`'front'|'venstre'|'høyre'|'bak'`) med `vendt` avledet — uten å
+bryte lagringsformatet i mellomtiden.
+
+**Toggle (plantegningen):** **klikk** på et møbelikon = speil (↔). Dra = flytt
+(uendret). Klikk vs. dra skilles med en 4 px bevegelsesterskel i `startMove`:
+beveger pekeren seg < 4 px før slipp ⇒ toggle `vendt`; ellers ⇒ vanlig flytting.
+Vendte ikoner får **cyan ramme + `↔` i navnelappen + speilvendt ikon** (og
+navnelappen speiles tilbake så teksten er lesbar). Høyreklikk = fjern (uendret).
+
+**Render (scenen):** `FurnitureSprite` legger `scaleX(-1)` PÅ møbelboksens
+transform (`translate(-50%,-100%) scaleX(-1)`) når `vendt`. Boksen speiles om
+sitt eget senter — den blir liggende på samme fotpunkt. Fordi plagg og påkledde
+dukker er **barn av boksen**, speiles de MED (hele boksen), automatisk via CSS —
+ingen egen plagg-transform trengs.
+
+**Verifisert (headless Chromium):** klikk-toggle i plan setter `vendt` (↔-lapp +
+cyan ramme + speilvendt ikon); scenens `[data-furniture-box]` får `scaleX(-1)`;
+ny klikk fjerner det igjen. Dra flytter fortsatt (ingen utilsiktet toggle).
+Ingen konsollfeil. `tsc -b` + `vite build` grønt.
+
+**➡️ Til Espen (valider i Chrome):** i 📋 Plan, klikk et møbel for å speile det,
+bytt til 🛍 Scene og sjekk at møbelet + plaggene/dukka vender riktig vei. Kombiner
+med heng/brett/dukke-styling for å se at alt følger speilingen.
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.

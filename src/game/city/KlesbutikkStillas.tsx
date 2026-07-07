@@ -245,7 +245,7 @@ function KlesbutikkStillasInner() {
         background: 'rgba(10,14,26,0.85)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
         padding: '0.4rem 1rem', color: '#cbd5e1', fontSize: 12, whiteSpace: 'nowrap',
       }}>{scene.id === 'interior' && mode === 'plan'
-        ? '📋 Plantegning (ovenfra): dra møbler inn fra paletten, dra for å flytte, høyreklikk = fjern. Scene-fanen viser resultatet.'
+        ? '📋 Plantegning (ovenfra): dra inn fra paletten · dra = flytt · klikk = speil (↔) · høyreklikk = fjern. Scene-fanen viser resultatet.'
         : scene.id === 'interior' && mode === 'gulvplan'
           ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
           : scene.id === 'interior' && mode === 'veggpunkt'
@@ -267,12 +267,13 @@ function plaggType(p: Plagg): VareplassType {
 // sprite-bildeforhold.
 function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacity, onPointerDown, onRemove,
   itemBySlot, dragType, dragFixtureFilter, targetPlassId, onRemovePlagg, selectedPlassId, onPlaggDown, onPlaggScale, onPlaggReset,
-  overrideSprite, onUndress }: {
+  overrideSprite, onUndress, vendt }: {
   fixtureId: KlesbutikkFixtureId
   foot: Fotpunkt
   widthFrac: number
   showSlots: boolean
   opacity?: number
+  vendt?: boolean
   onPointerDown?: (e: React.PointerEvent) => void
   onRemove?: () => void
   itemId?: string
@@ -305,7 +306,10 @@ function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacit
         : onRemove ? `${def.navn} — dra for å flytte, høyreklikk for å fjerne` : def.navn}
       style={{
         position: 'absolute', left: `${foot.x}%`, top: `${foot.y}%`,
-        width: `${widthFrac * 100}%`, transform: 'translate(-50%, -100%)',
+        width: `${widthFrac * 100}%`,
+        // SPEILING: scaleX(-1) etter translate ⇒ hele boksen (møbel + plagg +
+        // dukker, som er barn) speiles horisontalt om sitt eget senter, på plass.
+        transform: `translate(-50%, -100%)${vendt ? ' scaleX(-1)' : ''}`,
         zIndex: Math.round(foot.y * 10),
         pointerEvents: onPointerDown ? 'auto' : 'none',
         cursor: onPointerDown ? 'grab' : 'default', touchAction: 'none', opacity: opacity ?? 1,
@@ -430,13 +434,21 @@ function PlanView() {
   }
   function startMove(id: string, e: React.PointerEvent) {
     e.preventDefault(); e.stopPropagation()
+    const x0 = e.clientX, y0 = e.clientY; let moved = false
     setDrag({ kind: 'move', id })
     const onMove = (ev: PointerEvent) => {
+      if (!moved && Math.abs(ev.clientX - x0) < 4 && Math.abs(ev.clientY - y0) < 4) return
+      moved = true
       const pp = planUV(ev.clientX, ev.clientY); if (!pp) return
       const next = itemsRef.current.map(i => i.id === id ? { ...i, fotpunkt: planToFoot(g, pp.u, pp.v) } : i)
       itemsRef.current = next; setItems(next)
     }
-    const onUp = () => { window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true); setDrag(null); dispatch({ type: 'SET_KLESBUTIKK_FIXTURES', items: itemsRef.current }) }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true)
+      setDrag(null)
+      if (moved) dispatch({ type: 'SET_KLESBUTIKK_FIXTURES', items: itemsRef.current })
+      else commit(itemsRef.current.map(i => i.id === id ? { ...i, vendt: !i.vendt } : i)) // klikk uten dra = speil ↔
+    }
     window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
   }
   const remove = (id: string) => commit(itemsRef.current.filter(i => i.id !== id))
@@ -468,14 +480,16 @@ function PlanView() {
             <div key={it.id}
               onPointerDown={e => startMove(it.id, e)}
               onContextMenu={e => { e.preventDefault(); remove(it.id) }}
-              title={`${def.navn} — dra for å flytte, høyreklikk = fjern`}
+              title={`${def.navn} — dra = flytt · klikk = speil (↔) · høyreklikk = fjern`}
               style={{
                 position: 'absolute', left: `${px}%`, top: `${py}%`, width: `${ic.w}%`, height: `${ic.h}%`,
-                transform: 'translate(-50%, -50%)', background: ic.color, border: '1px solid rgba(0,0,0,0.55)',
+                transform: `translate(-50%, -50%)${it.vendt ? ' scaleX(-1)' : ''}`, background: ic.color,
+                border: it.vendt ? '1px solid #38bdf8' : '1px solid rgba(0,0,0,0.55)',
                 borderRadius: ic.round ? '50% / 45%' : 3, cursor: moving ? 'grabbing' : 'grab', touchAction: 'none',
-                boxShadow: moving ? '0 0 8px rgba(255,255,255,0.6)' : '0 1px 3px rgba(0,0,0,0.4)',
+                boxShadow: moving ? '0 0 8px rgba(255,255,255,0.6)' : it.vendt ? '0 0 6px rgba(56,189,248,0.7)' : '0 1px 3px rgba(0,0,0,0.4)',
               }}>
-              <span style={{ position: 'absolute', left: '50%', top: '108%', transform: 'translateX(-50%)', fontSize: 9, fontWeight: 700, color: '#e8ddc8', whiteSpace: 'nowrap', textShadow: '0 1px 2px #000', pointerEvents: 'none' }}>{def.navn}</span>
+              {/* Navnelapp — scaleX(-1) på nytt så teksten leses riktig når møbelet er vendt */}
+              <span style={{ position: 'absolute', left: '50%', top: '108%', transform: `translateX(-50%)${it.vendt ? ' scaleX(-1)' : ''}`, fontSize: 9, fontWeight: 700, color: '#e8ddc8', whiteSpace: 'nowrap', textShadow: '0 1px 2px #000', pointerEvents: 'none' }}>{def.navn}{it.vendt ? ' ↔' : ''}</span>
             </div>
           )
         })}
@@ -500,7 +514,7 @@ function PlanView() {
             ))}
           </div>
           <div style={{ fontSize: 10, color: '#64748b', marginTop: 8, lineHeight: 1.4 }}>
-            Dra inn på planen. Bytt til 🛍 Scene for å style med plagg/dukker.
+            Dra inn på planen · klikk et møbel = speil (↔). Bytt til 🛍 Scene for å style med plagg/dukker.
           </div>
         </div>, document.body)}
 
@@ -714,7 +728,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
         const overrideSprite = dressed ? dukkeById(dressed.plaggId)?.sprite : undefined
         return (
           <FurnitureSprite key={it.id} fixtureId={it.fixtureId} itemId={it.id} foot={it.fotpunkt} widthFrac={w}
-            showSlots={showSlots}
+            showSlots={showSlots} vendt={it.vendt}
             onPointerDown={interactive ? (e => startMove(it.id, e)) : undefined}
             onRemove={interactive ? () => remove(it.id) : undefined}
             itemBySlot={itemByFurniture[it.id]}
