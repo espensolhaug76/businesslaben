@@ -6,6 +6,7 @@ import { GameProvider, useGame } from '../GameContext'
 import { KLESBUTIKK, type Gulvplan } from '../data/industryDefinition'
 import { KLESBUTIKK_FIXTURES, fixtureDef, vareplasser, kapasitet, type VareplassType } from '../data/klesbutikkFixtures'
 import { KLESBUTIKK_PLAGG, plaggById, spriteFor, baseFit, NULL_FIT, type Plagg, type DukkeType } from '../data/klesbutikkPlagg'
+import { KLESBUTIKK_DUKKER, dukkeById, FIXTURE_FOR_DUKKETYPE, type Dukketype } from '../data/klesbutikkDukker'
 import type { KlesbutikkFixtureId, Fotpunkt, KlesbutikkPlaggItem, ElevFit } from '../types'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Target, type DrawZone, type Rect } from './ZoneTracer'
@@ -224,7 +225,8 @@ function plaggType(p: Plagg): VareplassType {
 // plagg-snappingen kan finne dem via getBoundingClientRect — uavhengig av
 // sprite-bildeforhold.
 function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacity, onPointerDown, onRemove,
-  itemBySlot, dragType, targetPlassId, onRemovePlagg, selectedPlassId, onPlaggDown, onPlaggScale, onPlaggReset }: {
+  itemBySlot, dragType, dragFixtureFilter, targetPlassId, onRemovePlagg, selectedPlassId, onPlaggDown, onPlaggScale, onPlaggReset,
+  overrideSprite, onUndress }: {
   fixtureId: KlesbutikkFixtureId
   foot: Fotpunkt
   widthFrac: number
@@ -235,22 +237,31 @@ function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacit
   itemId?: string
   itemBySlot?: Record<number, KlesbutikkPlaggItem>
   dragType?: VareplassType | null
+  dragFixtureFilter?: KlesbutikkFixtureId | null
   targetPlassId?: string | null
   onRemovePlagg?: (slotIndex: number) => void
   selectedPlassId?: string | null
   onPlaggDown?: (slotIndex: number, e: React.PointerEvent) => void
   onPlaggScale?: (slotIndex: number, delta: number) => void
   onPlaggReset?: (slotIndex: number) => void
+  /** Påkledd dukke-sprite som ERSTATTER den nakne dukka (dukke-bytte). */
+  overrideSprite?: string
+  onUndress?: () => void
 }) {
   const def = fixtureDef(fixtureId)
   if (!def) return null
   const vps = itemId ? vareplasser(def) : []
+  // Høyreklikk: kledd dukke ⇒ ta av (naken tilbake); ellers ⇒ fjern møbel.
+  const ctxMenu = (overrideSprite && onUndress)
+    ? (e: React.MouseEvent) => { e.preventDefault(); onUndress() }
+    : onRemove ? (e: React.MouseEvent) => { e.preventDefault(); onRemove() } : undefined
   return (
     <div
       data-furniture-box={itemId}
       onPointerDown={onPointerDown}
-      onContextMenu={onRemove ? (e => { e.preventDefault(); onRemove() }) : undefined}
-      title={onRemove ? `${def.navn} — dra for å flytte, høyreklikk for å fjerne` : def.navn}
+      onContextMenu={ctxMenu}
+      title={overrideSprite ? `${def.navn} (påkledd) — dra for å flytte, høyreklikk = ta av`
+        : onRemove ? `${def.navn} — dra for å flytte, høyreklikk for å fjerne` : def.navn}
       style={{
         position: 'absolute', left: `${foot.x}%`, top: `${foot.y}%`,
         width: `${widthFrac * 100}%`, transform: 'translate(-50%, -100%)',
@@ -259,15 +270,15 @@ function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacit
         cursor: onPointerDown ? 'grab' : 'default', touchAction: 'none', opacity: opacity ?? 1,
       }}
     >
-      <img src={def.sprite} alt={def.navn} draggable={false}
+      <img src={overrideSprite ?? def.sprite} alt={def.navn} draggable={false}
         style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.45))', pointerEvents: 'none' }} />
 
       {vps.map((s, i) => {
         const plassId = `${itemId}:${i}`
         const item = itemBySlot?.[i]
         const plagg = item ? plaggById(item.plaggId) : undefined
-        const free = !plagg
-        const compat = !!dragType && dragType === s.type && free
+        const free = !plagg && !overrideSprite
+        const compat = !!dragType && dragType === s.type && free && (!dragFixtureFilter || dragFixtureFilter === fixtureId)
         const isTarget = targetPlassId === plassId
         const selected = selectedPlassId === plassId
         const plaggSprite = plagg ? spriteFor(plagg, s.type, s.variant) : undefined
@@ -286,7 +297,7 @@ function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacit
         return (
           <div key={i}>
             {/* Slot-anker (alltid i DOM for snap-deteksjon) */}
-            <div data-plass={plassId} data-type={s.type} data-free={free ? '1' : '0'}
+            <div data-plass={plassId} data-type={s.type} data-fixture={fixtureId} data-free={free ? '1' : '0'}
               style={{ position: 'absolute', left: `${s.x * 100}%`, top: `${s.y * 100}%`, width: 1, height: 1, pointerEvents: 'none' }} />
             {/* Snappet plagg */}
             {plaggSprite && (
@@ -357,7 +368,9 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   // Plagg-snapping (presentasjonslag)
   const [plaggItems, setPlaggItems] = useState(state.klesbutikkPlaggLayout)
   const plaggRef = useRef(plaggItems)
-  const [dragPlagg, setDragPlagg] = useState<{ plaggId: string; type: VareplassType } | null>(null)
+  // `id` = plaggId (heng/brett) ELLER påkledd-dukke-id (antrekk-bytte).
+  // `fixtureFilter` (kun dukke-bytte) begrenser antrekk-plasser til matchende dukketype.
+  const [dragPlagg, setDragPlagg] = useState<{ id: string; type: VareplassType; sprite: string; fixtureFilter?: KlesbutikkFixtureId } | null>(null)
   const [plaggGhost, setPlaggGhost] = useState<{ x: number; y: number } | null>(null)
   const [targetPlassId, setTargetPlassId] = useState<string | null>(null)
   const commitPlagg = (next: typeof plaggItems) => { plaggRef.current = next; setPlaggItems(next); dispatch({ type: 'SET_KLESBUTIKK_PLAGG', items: next }) }
@@ -418,11 +431,12 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
 
   // Nærmeste LEDIGE, kompatible vareplass til (cx,cy) — leser slot-ankrene
   // (data-plass) fra DOM-en, så vi slipper sprite-bildeforhold-matematikk.
-  function nearestSlot(type: VareplassType, cx: number, cy: number): string | null {
+  function nearestSlot(type: VareplassType, cx: number, cy: number, fixtureFilter?: KlesbutikkFixtureId): string | null {
     const r = overlayRef.current?.getBoundingClientRect(); if (!r) return null
     let best: string | null = null, bestD = Infinity
     document.querySelectorAll<HTMLElement>('[data-plass]').forEach(el => {
       if (el.dataset.type !== type || el.dataset.free !== '1') return
+      if (fixtureFilter && el.dataset.fixture !== fixtureFilter) return
       const b = el.getBoundingClientRect(); const sx = b.left + b.width / 2, sy = b.top + b.height / 2
       const d = Math.hypot(cx - sx, cy - sy)
       if (d < bestD) { bestD = d; best = el.dataset.plass ?? null }
@@ -430,22 +444,30 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
     return best && bestD <= 0.07 * r.width ? best : null
   }
 
-  function startPlaggDrag(plaggId: string, e: React.PointerEvent) {
+  // Felles drag → snap (plagg ELLER påkledd dukke). `id` lagres i plaggId-feltet.
+  function beginSnapDrag(id: string, type: VareplassType, sprite: string, e: React.PointerEvent, fixtureFilter?: KlesbutikkFixtureId) {
     e.preventDefault()
-    const p = plaggById(plaggId); if (!p) return
-    const type = plaggType(p)
-    setDragPlagg({ plaggId, type }); setPlaggGhost({ x: e.clientX, y: e.clientY }); setTargetPlassId(null)
+    setDragPlagg({ id, type, sprite, fixtureFilter }); setPlaggGhost({ x: e.clientX, y: e.clientY }); setTargetPlassId(null)
     const onMove = (ev: PointerEvent) => {
       setPlaggGhost({ x: ev.clientX, y: ev.clientY })
-      setTargetPlassId(nearestSlot(type, ev.clientX, ev.clientY))
+      setTargetPlassId(nearestSlot(type, ev.clientX, ev.clientY, fixtureFilter))
     }
     const onUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true)
-      const target = nearestSlot(type, ev.clientX, ev.clientY)
+      const target = nearestSlot(type, ev.clientX, ev.clientY, fixtureFilter)
       setDragPlagg(null); setPlaggGhost(null); setTargetPlassId(null)
-      if (target) commitPlagg([...plaggRef.current.filter(pi => pi.plassId !== target), { plassId: target, plaggId }])
+      if (target) commitPlagg([...plaggRef.current.filter(pi => pi.plassId !== target), { plassId: target, plaggId: id }])
     }
     window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
+  }
+  function startPlaggDrag(plaggId: string, e: React.PointerEvent) {
+    const p = plaggById(plaggId); if (!p) return
+    const sprite = p.spriteHengFront ?? p.spriteBrett ?? p.spriteAntrekk ?? ''
+    beginSnapDrag(plaggId, plaggType(p), sprite, e)
+  }
+  function startDukkeDrag(dukkeId: string, e: React.PointerEvent) {
+    const dk = dukkeById(dukkeId); if (!dk) return
+    beginSnapDrag(dukkeId, 'antrekk', dk.sprite, e, FIXTURE_FOR_DUKKETYPE[dk.dukketype])
   }
 
   const removePlaggAt = (itemId: string, slot: number) => {
@@ -525,6 +547,11 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
       {sorted.map(it => {
         const def = fixtureDef(it.fixtureId); if (!def) return null
         const w = def.baseWFrac * scaleFor(g, it.fotpunkt)
+        // DUKKE-BYTTE: er dukka kledd på (antrekk-slot 0 opptatt av en påkledd
+        // dukke)? → erstatt naken dukke-sprite med den påkledde.
+        const isDukke = DUKKE_TYPER.includes(it.fixtureId)
+        const dressed = isDukke ? itemByFurniture[it.id]?.[0] : undefined
+        const overrideSprite = dressed ? dukkeById(dressed.plaggId)?.sprite : undefined
         return (
           <FurnitureSprite key={it.id} fixtureId={it.fixtureId} itemId={it.id} foot={it.fotpunkt} widthFrac={w}
             showSlots={showSlots}
@@ -532,12 +559,15 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
             onRemove={interactive ? () => remove(it.id) : undefined}
             itemBySlot={itemByFurniture[it.id]}
             dragType={dragPlagg?.type ?? null}
+            dragFixtureFilter={dragPlagg?.fixtureFilter ?? null}
             targetPlassId={targetPlassId}
             onRemovePlagg={interactive ? (slot => removePlaggAt(it.id, slot)) : undefined}
             selectedPlassId={selAntrekk}
             onPlaggDown={interactive ? ((slot, e) => startAntrekkDrag(`${it.id}:${slot}`, e)) : undefined}
             onPlaggScale={interactive ? ((slot, d) => scaleElev(`${it.id}:${slot}`, d)) : undefined}
-            onPlaggReset={interactive ? (slot => resetElev(`${it.id}:${slot}`)) : undefined} />
+            onPlaggReset={interactive ? (slot => resetElev(`${it.id}:${slot}`)) : undefined}
+            overrideSprite={overrideSprite}
+            onUndress={interactive ? () => removePlaggAt(it.id, 0) : undefined} />
         )
       })}
 
@@ -584,26 +614,43 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
           position: 'fixed', top: 56, left: 16, zIndex: 95, width: 168, maxHeight: '78vh', overflowY: 'auto',
           background: 'rgba(10,14,26,0.94)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12, padding: '10px', fontFamily: "'Outfit', sans-serif",
         }}>
-          <div style={{ color: '#f1f5f9', fontSize: 12, fontWeight: 800, marginBottom: 4 }}>👕 Plagg</div>
+          <div style={{ color: '#f1f5f9', fontSize: 12, fontWeight: 800, marginBottom: 4 }}>👕 Plagg &amp; dukker</div>
           <div style={{ fontSize: 9, color: '#64748b', marginBottom: 8, lineHeight: 1.4 }}>
-            Dra til en vareplass: heng→stativ, brett→hylle/bord, antrekk→dukke.
+            Dra: heng→stativ, brett→hylle/bord, påkledd dukke→matchende naken dukke.
           </div>
-          {(['heng', 'brett', 'antrekk'] as VareplassType[]).map(t => {
+          {/* Heng + brett (vanlige plagg) */}
+          {(['heng', 'brett'] as VareplassType[]).map(t => {
             const list = KLESBUTIKK_PLAGG.filter(p => plaggType(p) === t)
             const thumb = (p: Plagg) => p.spriteHengFront ?? p.spriteBrett ?? p.spriteAntrekk
             return (
               <div key={t} style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: SLOT_COLOR[t], marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  {t === 'heng' ? 'Hengende' : t === 'brett' ? 'Brettet' : 'Antrekk'}
+                  {t === 'heng' ? 'Hengende' : 'Brettet'}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
                   {list.map(p => (
                     <div key={p.id} onPointerDown={e => startPlaggDrag(p.id, e)} title={p.navn}
-                      style={{
-                        aspectRatio: '1', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6, cursor: 'grab', touchAction: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 2,
-                      }}>
+                      style={{ aspectRatio: '1', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, cursor: 'grab', touchAction: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 2 }}>
                       <img src={thumb(p)} alt="" draggable={false} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          {/* Påkledde dukker (erstatter ghost-antrekk) — gruppert på dukketype */}
+          {(['dame', 'herre', 'barn'] as Dukketype[]).map(dt => {
+            const list = KLESBUTIKK_DUKKER.filter(d => d.dukketype === dt)
+            return (
+              <div key={dt} style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#f472b6', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  🧍 Påkledd {dt}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                  {list.map(d => (
+                    <div key={d.id} onPointerDown={e => startDukkeDrag(d.id, e)} title={`${d.navn} (${d.dukketype})`}
+                      style={{ aspectRatio: '0.5', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, cursor: 'grab', touchAction: 'none', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 2 }}>
+                      <img src={d.sprite} alt="" draggable={false} style={{ maxWidth: '100%', maxHeight: '100%' }} />
                     </div>
                   ))}
                 </div>
@@ -612,16 +659,13 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
           })}
         </div>, document.body)}
 
-      {/* Plagg-drag-spøkelse */}
-      {dragPlagg && plaggGhost && (() => {
-        const p = plaggById(dragPlagg.plaggId); if (!p) return null
-        const spr = p.spriteHengFront ?? p.spriteBrett ?? p.spriteAntrekk
-        return createPortal(
-          <img src={spr} alt="" draggable={false} style={{
-            position: 'fixed', left: plaggGhost.x, top: plaggGhost.y, width: 54, transform: 'translate(-50%, -50%)',
-            zIndex: 9999, pointerEvents: 'none', opacity: targetPlassId ? 0.95 : 0.6, filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))',
-          }} />, document.body)
-      })()}
+      {/* Drag-spøkelse (plagg eller påkledd dukke) */}
+      {dragPlagg && plaggGhost && createPortal(
+        <img src={dragPlagg.sprite} alt="" draggable={false} style={{
+          position: 'fixed', left: plaggGhost.x, top: plaggGhost.y,
+          width: dragPlagg.type === 'antrekk' ? 46 : 54, transform: 'translate(-50%, -50%)',
+          zIndex: 9999, pointerEvents: 'none', opacity: targetPlassId ? 0.95 : 0.6, filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))',
+        }} />, document.body)}
 
       {/* ?dev=1: ANTREKK-FIT-KALIBRATOR (grunnlinje) for valgt antrekk på dukke */}
       {IS_DEV_COORDS && selInfo && createPortal(

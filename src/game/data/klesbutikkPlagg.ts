@@ -61,34 +61,17 @@ const BRETT_IDS = [
   'skjorter-stabel', 'chinos-stabel', 'hoodies-stabel', 'flanell-stabel', 'shorts-stabel', 'cardigans-stabel', 'skjerf-stabel', 'luer-stabel',
 ]
 
-// Antrekk — antrekk-plasser (dukke / dukke-mann / dukke-barn); rendres over dukka.
-const ANTREKK_IDS = [
-  'casual-antrekk', 'dress-antrekk', 'sport-antrekk-1', 'sport-antrekk-2',
-  'casual-dame', 'business-dame', 'sommer-dame', 'vinter-dame', 'casual-barn', 'sport-barn', 'sommer-barn-antrekk', 'vinter-barn-antrekk',
-]
-
-// GROVE first-pass antrekk-fit (visuell inspeksjon; Espen kalibrerer via ?dev=1
-// og låser). Utelatt id ⇒ NULL_FIT. `default` gjelder alle dukketyper med mindre
-// `perDukke` overstyrer. offsetX/offsetY = brøk av dukke-boksen; scale = mult.
-const ANTREKK_FIT: Record<string, AntrekkFit> = {
-  'casual-antrekk': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'dress-antrekk': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'sport-antrekk-1': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'sport-antrekk-2': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'casual-dame': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'business-dame': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'sommer-dame': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'vinter-dame': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'casual-barn': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'sport-barn': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'sommer-barn-antrekk': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-  'vinter-barn-antrekk': { default: { offsetX: 0, offsetY: 0, scale: 1 } },
-}
+// ANTREKK-PLAGG (ghost-antrekk) er FJERNET fra paletten/plaggdata: rendret over
+// naken dukke avslørte illusjonen (grå kropp skinte gjennom). Erstattet av
+// PÅKLEDDE DUKKER (src/game/data/klesbutikkDukker.ts) som bytter ut den nakne
+// dukke-spriten. Sprite-FILENE (casual-antrekk.png osv.) blir liggende i klar/
+// for senere omdisponering (f.eks. vindusutstilling). `Fit`/`AntrekkFit`/
+// `baseFit` + `spriteAntrekk`-feltet beholdes i koden (brukes ikke i dukke-
+// bytte-pathen, men ikke slettet — jf. oppdrag).
 
 export const KLESBUTIKK_PLAGG: Plagg[] = [
   ...HENG_IDS.map(id => ({ id, navn: navnAv(id), spriteHengFront: P(id) })),
   ...BRETT_IDS.map(id => ({ id, navn: navnAv(id), spriteBrett: P(id) })),
-  ...ANTREKK_IDS.map(id => ({ id, navn: navnAv(id), spriteAntrekk: P(id), antrekkFit: ANTREKK_FIT[id] })),
 ]
 
 /** Grunnlinje-passform for et antrekk på en gitt dukketype. */

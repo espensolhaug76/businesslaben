@@ -24,7 +24,8 @@ Sist oppdatert: 2026-07-07.
 | Ankerplasser (snap-slots) + anker-tracer | ✅ FERDIG (snap senere erstattet av gulvplan) |
 | Gulvplan (perspektiv) + dybde-plassering | ✅ FERDIG, committet + pushet |
 | Klesark-splitt + plaggdata + plagg-auto-snap | ✅ FERDIG, committet + pushet |
-| Antrekk-passform (antrekkFit) + elevstyrt påkledning | ✅ FERDIG, committet + pushet |
+| Antrekk-passform (antrekkFit) + elevstyrt påkledning | ✅ FERDIG (antrekk-på-dukke senere erstattet av dukke-bytte) |
+| Påkledde dukker: splitt + dukke-bytte | ✅ FERDIG, committet + pushet |
 
 Grenen `jobb/klesbutikk` er pushet til origin. **Ikke aktiv bransje** —
 `KLESBUTIKK` er fortsatt IKKE registrert i `INDUSTRY_DEFINITIONS`.
@@ -281,6 +282,62 @@ scale ±, reset, dev-logg, persist over fanebytte. `tsc -b` + `vite build` grøn
 antrekket → 🎚️-kalibratoren dukker opp. Kalibrer alle antrekk (og evt. perDukke),
 «Logg fit», lim inn i `ANTREKK_FIT`. Test elev-laget: dra/skaler/tilbakestill
 antrekket på dukka.
+
+## ✅ Påkledde dukker: splitt + dukke-bytte (siste runde)
+
+**BAKGRUNN/DESIGNENDRING:** Ghost-antrekk rendret OVER naken dukke avslørte
+illusjonen (grå kropp skinte gjennom). Ny retning: en PÅKLEDD DUKKE-SPRITE
+ERSTATTER den nakne dukka. `antrekkFit`/`elevFit` er BEHOLDT i koden (dead code,
+kodet rundt — ikke slettet), men brukes ikke i denne pathen.
+
+**DEL 1 — 5 dukke-ark splittet → 20 påkledde dukke-sprites**
+(`public/assets/raw/klar-dukke/`), ny `klar-dukke-ark-*`-familie i
+`split-product-sheet.py`. u2net (mannequiner høykontrast, ingen dropp).
+**Navnekart per blob (verifisert visuelt 2026-07-07), 1 rad × 4 per ark:**
+- ark 01 (mixed): `blazer-herre` · `sommerkjole-dame` · `denim-herre` · `joggedress-herre`
+- ark 02 (dame): `bluse-skjort-dame` · `trenchcoat-dame` · `strikkekjole-dame` · `blazer-jeans-dame`
+- ark 03 (dame): `vinterkappe-dame` · `linskjortekjole-dame` · `treningsjakke-dame` · `velurkjole-dame`
+- ark 05 (herre): `dress-herre` · `ullfrakk-herre` · `hoodie-herre` · `dunparkas-herre`
+- ark 06 (barn): `regnfrakk-barn` · `hoodie-jeans-barn` · `blomsterkjole-barn` · `vinterdress-barn`
+- Fordeling: 7 herre, 9 dame, 4 barn = 20.
+
+**AVVIK/ANTAKELSER (flagget):**
+- Espens commit-tekst (`0990d78`, «herre/dame/dame-sesong/herre-2/barn») matcher
+  ikke ark-innholdet 1:1 — ark 01 er MIXED (3 herre + 1 dame), ikke ren herre.
+  Navnene er satt etter FAKTISK innhold, ikke commit-teksten.
+- **`blazer-jeans-dame` (ark 02 blob 4)**: visuelt kjønns-tvetydig (blazer skjuler
+  torso). Antatt DAME (arket er ellers dame). **Espen bør validere kjønnet.**
+- **✦-vannmerket** lå på siste blob (nederst-h.) i hvert ark → fjernet:
+  klone-patch (joggedress/blazer-jeans/dunparkas rene) + diffusjon-inpaint
+  (velurkjole/vinterdress — liten glatt flekk igjen, men ingen ✦).
+
+**DEL 2 — datalag** (`src/game/data/klesbutikkDukker.ts`, nytt, tunbart):
+`PåkleddDukke { id, navn, dukketype: 'dame'|'herre'|'barn', sprite }` + de 20
+registrert + `FIXTURE_FOR_DUKKETYPE` (dame→dukke, herre→dukke-mann, barn→dukke-barn).
+Ghost-antrekk-entriene FJERNET fra `klesbutikkPlagg.ts` (spriteAntrekk-koblingen);
+sprite-FILENE blir liggende i `klar/` (omdisponering til vindu er en senere jobb).
+Klespaletten viser nå «Påkledd dame/herre/barn» i stedet for Antrekk-gruppa.
+
+**DEL 3 — dukke-bytte** (`KlesbutikkStillas.tsx`, Interiør · 🪑 Møbler):
+- Dra påkledd dukke → kun LEDIGE antrekksplasser på dukker med MATCHENDE dukketype
+  markeres (`data-fixture`-filter i snap-deteksjonen) → slipp = den nakne
+  dukke-spriten SKJULES (`overrideSprite`) og påkledd sprite rendres bunn-ankret
+  på samme fotpunkt med samme gulvplan-skala (arver alt fra møbelinstansen).
+- Høyreklikk på kledd dukke = **ta av** (naken tilbake); høyreklikk naken = fjern møbel.
+  Flytting av dukka flytter påkledd variant med (samme sprite).
+- **State:** gjenbruker `klesbutikkPlaggLayout` (`plassId → dukkeId` i plaggId-feltet)
+  + `SET_KLESBUTIKK_PLAGG` — ingen ny state-mekanikk.
+
+Verifisert (headless Chromium): matchende snap kler på (naken→påkledd sprite),
+feil dukketype avvises, høyreklikk tar av, flytting følger, persist over fanebytte,
+ingen konsollfeil. `tsc -b` + `vite build` grønt. Skjermbilde: dukka er nå en HEL
+påkledd sprite (ingen grå kropp/illusjon).
+
+**➡️ Til Espen (valider i Chrome, `/dev/klesbutikk`, 🪑 Møbler):** plasser
+dame/herre/barn-dukker, dra påkledde dukker fra paletten (scroll ned) → sjekk at
+riktig dukketype kler på og at resultatet ser helt ut. **Valider spesielt
+kjønnet på `blazer-jeans-dame`.** Klespaletten er blitt lang (40 heng + 12 brett
++ 20 dukker) — vurder om den bør deles i faner senere.
 
 ---
 
