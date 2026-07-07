@@ -176,6 +176,47 @@ er URØRT.
 
 ---
 
+## 10. Bakgrunnssalg — jevn kundestrøm uten samtale
+
+**Modell:** kundemøtene er dagens UTVALG (pedagogikk), bakgrunnssalget er
+VOLUMET. Ved OPEN_DAY beregnes dagens antall bakgrunnskunder (deterministisk,
+seedet per dag):
+`kunder = basetrafikk(lokale) × rykte(0,5+rykte/100) × pris(snitt rec/retail,
+klem 0,7–1,15) × eksponering(fylte trau/vindu, klem 0,7–1,15) ×
+markedsføring(budsjett, klem 1,0–1,3) × baseMultiplier`. Hver bakgrunnskunde
+kjøper 1–2 varer fra det som har lager OG pris (retailPrice, trekker stock);
+tomt lager ⇒ tapt salg (stk + estimert kr = snitt retail). INGEN XP/rykte fra
+bakgrunnssalg (passivt).
+
+**Drypp:** salget fordeles i (meetingsPerDay + 1) bolker — én bolk etter hvert
+fullførte kundemøte (RESOLVE_SALES_SCENARIO), RESTEN ved CLOSE_DAY (før svinn).
+Disken tømmes synlig utover dagen; penger inn løpende. Seed persisteres mellom
+bolker (`state.dayBackground = { kunderIgjen, bolkerIgjen, seed }`).
+
+**Filer:** `src/game/data/balance.ts` (ALLE tunbare tall — én fil å justere),
+`src/game/data/backgroundSales.ts` (ren motor: faktorer, beregnBakgrunnskunder,
+simulerBakgrunnsbolk, dagSeed). Wiring i GameContext (OPEN_DAY/RESOLVE/CLOSE_DAY).
+`basetrafikk` per lokale ligger i balance.ts (nøklet på lokale-id) — sentrum-l2
+høyest (gågata), grovt korrelert med leie. Slås opp via `state.rentedLocationId`
+(ingen ny districts.ts-endring).
+
+**Rapportering:** DayResult/dayStats utvidet med meetings, bakgrunnKunder/Stk/Kr,
+tapteSalgStk/Kr. Dagsoppgjør viser «🛎️ Kundemøter: N · X kr», «👥 Øvrige kunder:
+N · Y kr», «🚫 Tapte salg: M (tomt lager)». RESULTAT = (møter + bakgrunn) −
+varekost − svinn. Utsolgt-hintet (og stockoutHappened) settes nå av tapteSalg.
+Økonomi-fanens dagsliste teller totalt solgt (møter + bakgrunn); månedsoppgjøret
+teller bakgrunnssalget med automatisk (via `resultat`). Fikset: `highSvinn`-hintet
+måles nå mot SAMLET omsetning (ellers slo det ut på en dag uten kundemøter).
+
+**Balanse (mål 3 000–5 000 kr dagsmargin ved rimelig drift, ~47 000 faste):**
+verifisert headless. Velfylt dag (sentrum-l1 base 95, godt lager, priser =
+anbefalt, 4 trau eksponert, rykte 50) → **109 kunder, resultat +3 578 kr**. Snitt
+~34,5 kr margin/kunde. Sentrum-l2 (base 110, rykte ~55, full eksponering) →
+~130 kunder → ~+4 200 (midt i båndet). Uten eksponering (tom disk) → faktor 0,7
+→ 67 kunder → +2 023 (under båndet — displaying lønner seg). Deterministisk
+(samme dag → samme strøm). ALL balanse i balance.ts; Espen finpusser etter
+spilltest (juster `baseMultiplier` for samlet volum).
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen (TODO):** bevisst UTELATT fra månedstrekket. Et
@@ -195,3 +236,8 @@ er URØRT.
   rader er det en ny mekanikk i `TrauContents`.
 - **`svinnRegel: 'sesong/kolleksjon'`** er kun et navn (klesbutikk) — ikke
   implementert i `CLOSE_DAY`.
+- **Bakgrunnssalg-balanse** (pkt. 10) er kalibrert grovt, ikke spilltestet.
+  Alle tall i `balance.ts`; sentrum-l1/l5 er dyrere enn l2 men har lavere
+  basetrafikk (l2 er «sweet spot» per oppgaven) — vurder om dyre lokaler bør
+  få mer trafikk for å forsvare leia. Eksponering krever manuell trau-plassering
+  (`eksponeringReferanse = 4`); en tom disk gir 0,7-faktor.
