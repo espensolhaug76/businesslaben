@@ -281,6 +281,67 @@ ENDRER bakgrunnsbalansen vs pkt. 10 (tapte salg treffer nå per produkt uansett
 lager) — må RE-VERIFISERES mot 3 000–5 000-båndet etter Espens spilltest; juster
 `baseMultiplier`.
 
+## 12. Bemanning — org-kart, vaktliste og kapasitet (docs/BEMANNING.md)
+
+> **Status: bygget + verifisert headless (reducer/kapasitet), IKKE Chrome-
+> validert av Espen ennå.** DEL 0 (spillklokka, pkt. 11) er committet som
+> milepæl. Bemanning-koden (DEL 1–4) ligger UCOMMITTET til Espen validerer.
+> Kontrakt: `docs/BEMANNING.md` (kv1011 — organisering/bemanningsplanlegging).
+
+**Pedagogikk:** eleven bygger organisasjonen fysisk (ansett → benk → org-kart →
+vaktliste) og erfarer avveiningen kapasitet vs. lønnskost. For få på vakt = kø
+og tapte salg; for mange = lønna spiser dagsresultatet. En ansatt uten vakter
+koster fullt og bidrar null.
+
+**DEL 2 — datamodell:** `Employee` fikk `navn` (generert norsk navn), `grenId?`
+(org-plassering; undefined = personalbenken) og `vakt? {fra,til}` (klokke-
+minutter). Ny state `playerShift`. Nyansatt lander på BENKEN (udisponert).
+Rollenavn per bransje via `IndustryDefinition.roller` (kafé: selger →
+«Barista/butikkmedarbeider»). **Fjernet** den flate «+10% salgsvolum per selger»
+(`engine.employeeBonus`, dev-only simulateMonth) — selgerens bidrag er nå
+KAPASITET i den daglige motoren. Markedsfører/Økonom uendret.
+**Avvik fra prompt-kontrakten:** beholdt de engelske feltnavnene `role`/`level`/
+`monthlySalary` (ikke stilling/nivå/månedslønn) for å unngå å rippe opp engine/
+reducer/UI — konseptuelt identisk, all UI er bokmål.
+
+**DEL 3 — org-kart + vaktliste (Personale-fanen, `DashboardOverlay`):**
+Org-kart: Daglig leder (spilleren) fast på topp; tre grener Salg/Markedsføring/
+Økonomi (HTML5 drag'n'drop). Kort dras benk↔gren; en gren aksepterer KUN sin
+egen rolle (selger→salg osv.). Udisponerte står synlig på benken (koster full
+lønn). Vaktliste: timegrid 09:00–17:00 (8 én-times luker), én dagsmal.
+Pointer-drag «strekker» en vakt over timene (`VaktRad`); klikk ✕ fjerner. Kun
+selgere disponert i Salg-grenen + spillerkortet (gratis, Junior-kapasitet) får
+rader. Nye reducer-actions: `ASSIGN_EMPLOYEE_BRANCH`, `SET_EMPLOYEE_SHIFT`,
+`SET_PLAYER_SHIFT`. «Avslutt arbeidsforhold» = ✕ på kortet (FIRE_EMPLOYEE).
+
+**DEL 4 — kapasitet i bakgrunnssalget:** `balance.kapasitetPerTime`
+{ junior 15, senior 22, ekspert 30 } kunder/time. Ren motor:
+`backgroundSales.kapasitetPaaVakt(employees, playerShift, klokkeMinutt)` —
+summerer selgere på vakt (+ spiller = Junior) ved klokkeslettet. **Regel «ingen
+vaktplan = kun spilleren» (ingen regresjon dag 1):** er ingen vakt satt i det
+hele tatt, driver spilleren alene på Junior-kapasitet hele dagen. `TICK` opp-
+arbeider kapasitet i en pool (`DayBackground.kapasitetRest`, flyttall) og
+betjener `min(ankomne, floor(pool))`; overskytende → `dayStats.koKunder` (tapt
+salg, årsak «kø»). Dagspulsen viser kø live («⏳ Kø — N kunder gikk»);
+dagsoppgjøret splitter tapte salg i «tomt lager» vs «kø». Månedslønn uendret
+(`economy.ts`) — ansatt uten vakter koster fullt, bidrar null (poenget).
+
+**BUG FUNNET + FIKSET under verifisering:** kapasiteten ble FØRST bare opp-
+arbeidet på tick der en kunde faktisk ankom (accrual lå inne i `if (ankomne>0)`),
+så idle-kapasitet mellom kunder gikk tapt → solo-junior fikk spuriøs kø selv på
+en rolig dag (1 betjent + 3 kø av 4 kunder). Flyttet accrual UT så pool bygger
+seg hvert tick. Etter fiks: dag-1 solo (default basetrafikk, ~min 54) betjener
+alle 4 kunder, 0 kø — ingen regresjon.
+
+**Verifisert headless (Playwright):** kapasitet/kø-pathen kjører uten
+konsollfeil; dag-1 solo holder unna (0 kø rolig dag), kø-linja rendrer når
+kapasitet sprenges. Personale-fanen rendrer org-kart + benk + vaktliste;
+ansettelse lander på benken med bransje-rollenavn og nivå-kapasitet (15/22/30 t).
+`tsc -b` grønn. **NB (balanse-flagg):** Junior-terskel ≈ 120 kunder/dag
+(15/t × 8t). En travel l2-dag (høyt rykte + markedsføring) kan gi mild kø selv
+dag 1 — juster `kapasitetPerTime` i balance.ts etter spilltest. DnD-samspillet
+(dra kort/strekk vakt) gjenstår for Espens Chrome-validering.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen (TODO):** bevisst UTELATT fra månedstrekket. Et
