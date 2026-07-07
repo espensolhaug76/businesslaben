@@ -35,10 +35,12 @@ interface Scene {
   rect: Rect
   targets: Target[]
   drawZones: DrawZone[]
-  /** Definisjons-objektet skew-verdiene skrives til (muteres live av sliderne). */
-  skew: SkewHolder
+  /** Definisjons-objektet skew-verdiene skrives til (muteres live av sliderne).
+   *  KUN butikkveggen (lager-sone) har skew — vinduet er en styling-flate med
+   *  fri, oppreist plassering, så fasade-scenen lar dette stå udefinert. */
+  skew?: SkewHolder
   /** Hvor Espen limer de loggede skew-verdiene tilbake i industryDefinition.ts. */
-  skewPastePath: string
+  skewPastePath?: string
   /** Fixture-sprite som forhåndsviser «innholdet» i sonen (skew påføres den). */
   previewSprite: string
 }
@@ -53,8 +55,7 @@ const SCENES: Scene[] = [
     rect: KLESBUTIKK_VINDU,
     targets: [{ id: 'vindu', label: 'vindu', get: () => KLESBUTIKK_VINDU, set: r => writeRect(KLESBUTIKK_VINDU, r) }],
     drawZones: [{ rect: KLESBUTIKK_VINDU, color: '#50dcff', label: 'vindu' }],
-    skew: KLESBUTIKK.flater.styling,
-    skewPastePath: 'KLESBUTIKK.flater.styling',
+    // Ingen skew: vindus-innholdet står oppreist (styling-flate, fri plassering).
     previewSprite: '/assets/raw/fixtures/dukke.png',
   },
   {
@@ -76,14 +77,16 @@ export default function KlesbutikkStillas() {
   const navigate = useNavigate()
   const [sceneId, setSceneId] = useState<Scene['id']>('fasade')
   const [imgFailed, setImgFailed] = useState(false)
+  const [spriteFailed, setSpriteFailed] = useState(false)
   const [skewOpen, setSkewOpen] = useState(true)
   // Re-render når ZoneTracer/skew-sliderne skriver nye verdier i runtime.
   const [, setRev] = useState(0)
   const scene = SCENES.find(s => s.id === sceneId)!
-  const sx = scene.skew.skewX ?? 0
-  const sy = scene.skew.skewY ?? 0
+  const sx = scene.skew?.skewX ?? 0
+  const sy = scene.skew?.skewY ?? 0
 
   function setSkew(field: 'skewX' | 'skewY', v: number) {
+    if (!scene.skew) return
     scene.skew[field] = v
     console.log(`[KlesbutikkStillas] ${scene.id} ${field} = ${v} — lim inn i ${scene.skewPastePath} (industryDefinition.ts)`)
     setRev(r => r + 1)
@@ -106,7 +109,7 @@ export default function KlesbutikkStillas() {
         {SCENES.map(s => (
           <button
             key={s.id}
-            onClick={() => { setSceneId(s.id); setImgFailed(false) }}
+            onClick={() => { setSceneId(s.id); setImgFailed(false); setSpriteFailed(false) }}
             style={{
               background: s.id === sceneId ? 'rgba(125,211,252,0.18)' : 'transparent',
               color: s.id === sceneId ? '#e0f2fe' : '#94a3b8',
@@ -160,9 +163,12 @@ export default function KlesbutikkStillas() {
           </div>
         )}
 
-        {/* INNHOLD-FORHÅNDSVISNING: én fixture-sprite bunn-ankret i sonen, med
-            skew påført — så skjær-lenet er synlig mens Espen kalibrerer. Ren
-            stedfortreder for den ekte inventar-plasseringen (kommer senere). */}
+        {/* INNHOLD-FORHÅNDSVISNING: én fixture-sprite bunn-ankret i sonen. Skew
+            påføres KUN når sonen har det (butikkveggen) — vindus-innholdet står
+            oppreist. Robust mot bilde-lastefeil: `<img>`-en har reservert boks
+            (bredde satt, ikke bare maxWidth) + onError-fallback, så en brutt
+            sprite kollapser IKKE til 0×0 og «forsvinner» (skjedde når en gammel
+            service worker på localhost feilet fetch-en, se main.tsx). */}
         <div style={{
           position: 'absolute',
           left: `${scene.rect[0]}%`, top: `${scene.rect[1]}%`,
@@ -170,17 +176,30 @@ export default function KlesbutikkStillas() {
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
           pointerEvents: 'none',
         }}>
-          <img
-            src={scene.previewSprite}
-            alt=""
-            draggable={false}
-            style={{
-              maxWidth: '70%', maxHeight: '92%', objectFit: 'contain',
-              transform: `skewX(${sx}deg) skewY(${sy}deg)`,
-              transformOrigin: 'bottom center',
-              opacity: 0.9, filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.45))',
-            }}
-          />
+          {!spriteFailed ? (
+            <img
+              src={scene.previewSprite}
+              alt=""
+              draggable={false}
+              onError={() => setSpriteFailed(true)}
+              style={{
+                width: '70%', height: '92%', objectFit: 'contain', objectPosition: 'bottom center',
+                transform: scene.skew ? `skewX(${sx}deg) skewY(${sy}deg)` : undefined,
+                transformOrigin: 'bottom center',
+                opacity: 0.9, filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.45))',
+              }}
+            />
+          ) : (
+            <div style={{
+              width: '60%', height: '70%',
+              border: '1px dashed rgba(255,255,255,0.4)', borderRadius: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#cbd5e1', fontSize: 11, textAlign: 'center', padding: '0 8px',
+              background: 'rgba(10,14,26,0.35)',
+            }}>
+              sprite mangler<br />({scene.previewSprite.split('/').pop()})
+            </div>
+          )}
         </div>
 
         {/* Uten ?dev=1: tegn sonene som statiske referanse-rammer, så stillaset
@@ -212,9 +231,10 @@ export default function KlesbutikkStillas() {
         )}
       </div>
 
-      {/* ?dev=1: SKEW-KALIBRERING for aktiv scene — skjærvinkel på sonens
-          innhold, mutér-og-logg (samme mønster som speil-kalibreringen). */}
-      {IS_DEV_COORDS && (
+      {/* ?dev=1: SKEW-KALIBRERING — KUN på scener med en skew-sone (butikkveggen
+          på Interiør-fanen). Vindus-sonen er styling-flate uten skew. Skjærvinkel
+          på sonens innhold, mutér-og-logg (samme mønster som speil-kalibreringen). */}
+      {IS_DEV_COORDS && scene.skew && (
         <div style={{ position: 'fixed', top: 56, left: 16, zIndex: 90, width: 224 }}>
           <CalPanel title="📐 Skew-kalibrering" color="#f472b6" open={skewOpen} onToggle={() => setSkewOpen(o => !o)}>
             <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6 }}>

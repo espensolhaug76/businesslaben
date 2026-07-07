@@ -46,11 +46,6 @@ export interface LagerFlate {
  *  klipper mot er en bransje-referanse. */
 export interface StylingFlate {
   zone: [number, number, number, number]
-  /** Content-lean (CSS-skjær, grader, valgfri default 0) for det som eksponeres
-   *  I vindussonen — dev-kalibreres i KlesbutikkStillas (?dev=1). Speiler
-   *  MonterTrau.skewX/skewY for lager-sonen. */
-  skewX?: number
-  skewY?: number
 }
 
 /** Ekstra eksponeringsflate utover styling/lager — for kafé: tavla
@@ -222,9 +217,10 @@ export const KLESBUTIKK: IndustryDefinition = {
   oppstartssortiment: [],
   flater: {
     // Vindusutstillingen (mot gata) — Espen-trace-t sone på klesbutikk-fasaden
-    // (KLESBUTIKK_VINDU i districts.ts). skewX/skewY = content-lean, default 0,
-    // dev-kalibreres i KlesbutikkStillas når fixture-sprites rendres.
-    styling: { zone: KLESBUTIKK_VINDU, skewX: 0, skewY: 0 },
+    // (KLESBUTIKK_VINDU i districts.ts). INGEN skew: vinduet er styling-flate
+    // med fri komposisjon der sprites står oppreist (jf. WindowDisplay). Skew
+    // (content-lean) gjelder KUN lager-sonen (butikkveggen) under.
+    styling: { zone: KLESBUTIKK_VINDU },
     lager: {
       // Interiør-scenen (klesbutikk-interior.jpg). «Trauet» er foreløpig ÉN
       // Espen-trace-t butikkvegg-sone (KLESBUTIKK_BUTIKKVEGG) — hovedekspone-

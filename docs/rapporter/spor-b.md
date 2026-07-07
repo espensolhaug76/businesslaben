@@ -19,6 +19,7 @@ Sist oppdatert: 2026-07-07.
 | DEL 2 — KLESBUTIKK-definisjonen | ✅ FERDIG, committet + pushet |
 | DEL 3 — stillas-scener + dev-rute | ✅ FERDIG, committet + pushet |
 | Sone-lås + skew-infrastruktur | ✅ FERDIG, committet + pushet |
+| Skew kun butikkvegg + forsvinnende-sprite-fiks | ✅ FERDIG, committet + pushet |
 
 Grenen `jobb/klesbutikk` er pushet til origin. **Ikke aktiv bransje** —
 `KLESBUTIKK` er fortsatt IKKE registrert i `INDUSTRY_DEFINITIONS`.
@@ -50,11 +51,11 @@ tegnet, `?dev=1` gir sone-tracer + skew-kalibrering.
 - `KLESBUTIKK_VINDU = [13, 53.9, 26.1, 30.1]`
 - `KLESBUTIKK_BUTIKKVEGG = [39.6, 29, 25, 36.5]`
 
-**Skew-infrastruktur** (content-lean per sone, default 0 = ingen skjær):
-- `StylingFlate` (industryDefinition.ts) fikk `skewX?`/`skewY?`; `MonterTrau`
-  (districts.ts) fikk `skewX?`/`skewY?`. Kafeen setter dem ikke (⇒ 0).
-- `KLESBUTIKK.flater.styling` og `…lager.trau[0]` (butikkvegg) har begge
-  `skewX: 0, skewY: 0`.
+**Skew-infrastruktur** (content-lean, default 0 = ingen skjær). NB: senere
+strammet inn til KUN butikkveggen — se «Skew kun butikkvegg»-seksjonen under:
+- `MonterTrau` (districts.ts) fikk `skewX?`/`skewY?`. Kafeen setter dem ikke (⇒ 0).
+  (`StylingFlate` fikk dem først, men de er FJERNET igjen — vinduet skal ikke lene.)
+- `…lager.trau[0]` (butikkvegg) har `skewX: 0, skewY: 0`.
 - `KlesbutikkStillas` (?dev=1): **📐 Skew-kalibrering**-panel med skewX/skewY-
   slidere (samme mutér-og-logg-mønster som speil-kalibreringen i InteriorView).
   Muterer definisjons-objektet live og logger `… — lim inn i
@@ -65,6 +66,34 @@ tegnet, `?dev=1` gir sone-tracer + skew-kalibrering.
 **Espen kalibrerer skew** når den ekte fixture-plasseringen rendres — infra er
 klar: åpne `/dev/klesbutikk?dev=1`, dra skew-sliderne, meld/lim verdiene inn i
 `industryDefinition.ts`.
+
+## ✅ Skew kun butikkvegg + forsvinnende-sprite-fiks (siste runde)
+
+**DEL 1 — skew fjernet fra vindussonen.** Vinduet er en styling-flate med fri,
+oppreist plassering (jf. WindowDisplay), så det skal ikke lene innhold:
+- `StylingFlate` mistet `skewX?/skewY?`; `KLESBUTIKK.flater.styling = { zone }`
+  (uten skew). `MonterTrau.skewX/skewY` (butikkvegg) beholdt.
+- `KlesbutikkStillas`: `Scene.skew` er nå valgfri (kun Interiør har den).
+  Skew-kalibreringspanelet vises KUN på Interiør-fanen og styrer kun
+  `…lager.trau[0]`. Vindus-spriten (dukke) rendres uten transform.
+
+**DEL 2 — forsvinnende sprite på Interiør-fanen. ROT­ÅRSAK (diagnostisert med
+headless Chromium, ikke gjettet):**
+Preview-`<img>`-en hadde bare `maxWidth/maxHeight` i prosent, INGEN reservert
+boks, og INGEN `onError`. Når bilde-fetchen feiler blir `<img>` en brutt bilde
+med `naturalWidth = 0` → boksen kollapser til **0×0** og spriten «forsvinner».
+Utløseren er den gamle **service workeren** på localhost (se `main.tsx`:
+«FetchEvent network error») som fanger fetch-en og feiler den ~1 s etter last —
+derav «rendres og forsvinner etter ~1 sekund». Scene-bildet overlevde fordi det
+HAR reservert boks (`width/height:100%`) + `onError`→fallback; spriten hadde
+ingen av delene. Reprodusert ved å `route.abort()` sprite-requesten: boks 0×0,
+`naturalWidth 0`, fortsatt i DOM — bekreftet mekanismen.
+**Fiks:** spriten fikk reservert boks (`width:70% height:92%`, `objectFit:
+contain`, bunn-ankret) + `onError`→synlig «sprite mangler (…)»-fallback (samme
+mønster som scene-bildet). En brutt sprite degraderer nå til en synlig 202×192-
+plassholder i stedet for å kollapse. `spriteFailed` nullstilles ved fanebytte.
+NB: for å SE selve spriten må Espen også tømme den gamle service workeren
+(hard-reload / `main.tsx` avregistrerer den på neste last).
 
 ---
 
