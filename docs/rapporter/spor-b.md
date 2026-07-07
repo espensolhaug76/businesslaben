@@ -190,8 +190,9 @@ interpoleres av dybden. INGEN manuell skalering (UI fjernet).
   live preview under draget. **Tegnerekkefølge** sorteres på fotpunkt-y (foran
   dekker bak). Flytt = dra fritt på planet (rescalerer i dybden). Høyreklikk =
   fjern. Overlapp tillatt.
-- **HYLLE er veggmontert:** eget mål = butikkvegg-sonen (KLESBUTIKK_BUTIKKVEGG),
-  fast skala (`HYLLE_WALL_SCALE`); kun hylla lander der.
+- **Hylla står på gulvet som alle andre** (rettet etter tilbakemelding: den var
+  først veggmontert med fast skala og kunne ikke flyttes frem/tilbake — nå er
+  wall-mount-spesialtilfellet fjernet, hylla dybde-skalerer og flyttes fritt).
 - Vareplass-modellen (klesbutikkFixtures.ts) UENDRET — markørene følger møbelets
   pos/skala (barn av møbel-boksen). `?dev=1` viser dem.
 - **State:** `KlesbutikkFixtureItem` er nå `{ id, fixtureId, fotpunkt }`
@@ -203,7 +204,7 @@ interpoleres av dybden. INGEN manuell skalering (UI fjernet).
 de 4 hjørnene så trapeset dekker tregulvet, juster front/bak-skala mot preview-
 dukkene til dybden ser riktig ut, «Logg objekt» → lim inn i `KLESBUTIKK.gulvplan`
 (industryDefinition.ts). Deretter 🪑 Møbler → sjekk at skyving i dybden ser
-naturlig ut. HYLLE-veggsonen kan re-traces i 🧭 Soner ved behov.
+naturlig ut (alle møbler, også hylla, står på gulvet og skalerer med dybden).
 
 ---
 

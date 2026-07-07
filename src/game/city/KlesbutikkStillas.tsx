@@ -22,8 +22,6 @@ import ZoneTracer, { type Target, type DrawZone, type Rect } from './ZoneTracer'
 
 const INTERIOR_IMG = '/assets/raw/klesbutikk-interior.jpg'
 const FASADE_IMG = '/assets/raw/klesbutikk-fasade.png'
-/** Fast skala for den veggmonterte hylla (multiplikator på baseWFrac). */
-const HYLLE_WALL_SCALE = 0.42
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
@@ -70,18 +68,15 @@ function invBilinear(p: Pt, g: Gulvplan): { u: number; v: number } {
   return { u, v }
 }
 
-/** Klem et fotpunkt til gulvet (eller til veggsonen for hylla). */
-function clampFoot(g: Gulvplan, wall: Rect, fixtureId: KlesbutikkFixtureId, p: Pt): Fotpunkt {
-  if (fixtureId === 'hylle') {
-    return { x: clamp(p.x, wall[0], wall[0] + wall[2]), y: clamp(p.y, wall[1], wall[1] + wall[3]) }
-  }
+/** Klem et fotpunkt til gulv-trapeset. Alle møbler (også hylla) står på gulvet
+ *  og kan flyttes fritt frem/tilbake i dybden. */
+function clampFoot(g: Gulvplan, p: Pt): Fotpunkt {
   const { u, v } = invBilinear(p, g)
   return quadPoint(g, clamp(u, 0, 1), clamp(v, 0, 1))
 }
 
-/** Skala for et møbel: dybde-interpolert på gulvet, fast på veggen. */
-function scaleFor(g: Gulvplan, fixtureId: KlesbutikkFixtureId, foot: Fotpunkt): number {
-  if (fixtureId === 'hylle') return HYLLE_WALL_SCALE
+/** Dybde-interpolert skala for et møbel (foran stort → bak lite). */
+function scaleFor(g: Gulvplan, foot: Fotpunkt): number {
   return lerp(g.scaleFront, g.scaleBack, clamp(invBilinear(foot, g).v, 0, 1))
 }
 
@@ -106,9 +101,9 @@ const SCENES: Scene[] = [
   },
   {
     id: 'interior', label: '🛍 Interiør', img: INTERIOR_IMG, aspect: 1024 / 572,
-    hint: 'Dra møbler fra paletten ut på gulvet — de skalerer med dybden. Hylla henger på veggen. Høyreklikk = fjern.',
+    hint: 'Dra møbler fra paletten ut på gulvet — de skalerer med dybden. Dra for å flytte, høyreklikk = fjern.',
     target: { id: 'butikkvegg', label: 'butikkvegg', get: () => KLESBUTIKK_BUTIKKVEGG, set: r => writeRect(KLESBUTIKK_BUTIKKVEGG, r) },
-    drawZone: { rect: KLESBUTIKK_BUTIKKVEGG, color: '#ffa03c', label: 'butikkvegg (hylle-vegg)', surface: true },
+    drawZone: { rect: KLESBUTIKK_BUTIKKVEGG, color: '#ffa03c', label: 'butikkvegg', surface: true },
   },
 ]
 
@@ -253,7 +248,6 @@ function FurnitureSprite({ fixtureId, foot, widthFrac, showSlots, opacity, onPoi
 function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlots: boolean }) {
   const { state, dispatch } = useGame()
   const g = KLESBUTIKK.gulvplan!
-  const wall = KLESBUTIKK_BUTIKKVEGG
   const overlayRef = useRef<HTMLDivElement>(null)
   const [items, setItems] = useState(state.klesbutikkFixtureLayout)
   const itemsRef = useRef(items)
@@ -271,14 +265,14 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
     setNewType(fixtureId); setGhostFoot(null)
     const onMove = (ev: PointerEvent) => {
       const r = overlayRef.current?.getBoundingClientRect(); if (!r) return
-      setGhostFoot(clampFoot(g, wall, fixtureId, pctAt(ev.clientX, ev.clientY, r)))
+      setGhostFoot(clampFoot(g, pctAt(ev.clientX, ev.clientY, r)))
     }
     const onUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true)
       const r = overlayRef.current?.getBoundingClientRect()
       setNewType(null); setGhostFoot(null)
       if (!r || !inBounds(ev.clientX, ev.clientY, r)) return    // sluppet utenfor scenen ⇒ avbryt
-      const foot = clampFoot(g, wall, fixtureId, pctAt(ev.clientX, ev.clientY, r))
+      const foot = clampFoot(g, pctAt(ev.clientX, ev.clientY, r))
       commit([...itemsRef.current, { id: uid(), fixtureId, fotpunkt: foot }])
     }
     window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
@@ -289,7 +283,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
     const item = itemsRef.current.find(i => i.id === id); if (!item) return
     const onMove = (ev: PointerEvent) => {
       const r = overlayRef.current?.getBoundingClientRect(); if (!r) return
-      const foot = clampFoot(g, wall, item.fixtureId, pctAt(ev.clientX, ev.clientY, r))
+      const foot = clampFoot(g, pctAt(ev.clientX, ev.clientY, r))
       const next = itemsRef.current.map(i => i.id === id ? { ...i, fotpunkt: foot } : i)
       itemsRef.current = next; setItems(next)
     }
@@ -307,24 +301,18 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
 
   return (
     <div ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      {/* Gulv-trapes + vegg-guide (kun i redigeringsmodus) */}
+      {/* Gulv-trapes (kun i redigeringsmodus) */}
       {interactive && (
-        <>
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-            <polygon points={`${A.x},${A.y} ${B.x},${B.y} ${D.x},${D.y} ${C.x},${C.y}`}
-              fill="rgba(125,211,252,0.05)" stroke="rgba(125,211,252,0.32)" strokeWidth={0.3} />
-          </svg>
-          <div style={{
-            position: 'absolute', left: `${wall[0]}%`, top: `${wall[1]}%`, width: `${wall[2]}%`, height: `${wall[3]}%`,
-            border: '1px dashed rgba(255,160,60,0.4)', pointerEvents: 'none',
-          }} />
-        </>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+          <polygon points={`${A.x},${A.y} ${B.x},${B.y} ${D.x},${D.y} ${C.x},${C.y}`}
+            fill="rgba(125,211,252,0.05)" stroke="rgba(125,211,252,0.32)" strokeWidth={0.3} />
+        </svg>
       )}
 
       {/* Plasserte møbler (z-sortert på fotpunkt-y) */}
       {sorted.map(it => {
         const def = fixtureDef(it.fixtureId); if (!def) return null
-        const w = def.baseWFrac * scaleFor(g, it.fixtureId, it.fotpunkt)
+        const w = def.baseWFrac * scaleFor(g, it.fotpunkt)
         return (
           <FurnitureSprite key={it.id} fixtureId={it.fixtureId} foot={it.fotpunkt} widthFrac={w}
             showSlots={showSlots}
@@ -337,7 +325,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
       {newType && ghostFoot && (() => {
         const def = fixtureDef(newType); if (!def) return null
         return <FurnitureSprite fixtureId={newType} foot={ghostFoot}
-          widthFrac={def.baseWFrac * scaleFor(g, newType, ghostFoot)} showSlots={false} opacity={0.6} />
+          widthFrac={def.baseWFrac * scaleFor(g, ghostFoot)} showSlots={false} opacity={0.6} />
       })()}
 
       {/* Palett (portal) */}
@@ -350,7 +338,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {KLESBUTIKK_FIXTURES.map(def => (
               <div key={def.id} onPointerDown={e => startNew(def.id, e)}
-                title={`${def.navn} — dra ut på ${def.id === 'hylle' ? 'veggen' : 'gulvet'} (${kapasitet(def)} vareplasser)`}
+                title={`${def.navn} — dra ut på gulvet (${kapasitet(def)} vareplasser)`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.04)',
                   border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, padding: '5px 7px', cursor: 'grab', userSelect: 'none', touchAction: 'none',
@@ -360,7 +348,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9', lineHeight: 1.15 }}>{def.navn}</div>
-                  <div style={{ fontSize: 9, color: '#64748b' }}>{def.id === 'hylle' ? 'vegg · ' : ''}{kapasitet(def)} plasser</div>
+                  <div style={{ fontSize: 9, color: '#64748b' }}>{kapasitet(def)} plasser</div>
                 </div>
               </div>
             ))}
