@@ -341,6 +341,49 @@ kjønnet på `blazer-jeans-dame`.** Klespaletten er blitt lang (40 heng + 12 bre
 
 ---
 
+## NATTJOBB 2 — DEL 1: PLANTEGNING (ovenfra) som primær møbelplassering
+
+**Bakgrunn (Espens tilbakemelding):** perspektiv-draget ga dårlig dybdefølelse,
+og alt «så mot kamera». Løsning: flytt selve PLASSERINGEN til en plantegning
+(ovenfra), og la perspektivscenen bli resultat-/stylingvisning.
+
+**Hva som er bygget (`KlesbutikkStillas.tsx`):**
+- Ny modus-veksling i interiør: **📋 Plan** (default) og **🛍 Scene**. Dev-
+  knappene (📐 Gulvplan, 🧭 Soner) ligger fortsatt bak `?dev=1`.
+- `PlanView` — en 2D-plan tegnet med rene div-er (INGEN nye assets):
+  - Rektangel = butikkgulvet. **Topp = BAKVEGG** (utstillingsveggen), **bunn =
+    front (mot kunde/kamera)**, **venstre vegg** har skjematisk **vindu** og
+    **dør** for orientering.
+  - Møbler dras inn fra **🪑 Møbler**-paletten (høyre) som **skjematiske
+    toppikoner** (avlange ovaler for stativ, rektangler for hylle/bord, sirkler
+    for dukker) med navnelapp. Fri flytting (dra), **høyreklikk = fjern**.
+- **Delt state — én layout, to visninger:** planen og scenen leser/skriver SAMME
+  `klesbutikkFixtureLayout`. Møbelets `fotpunkt` (scene-%) utledes av plan-
+  posisjonen og omvendt, via de eksisterende bilineære helperne:
+  - `planToFoot(g,u,v) = quadPoint(g,u,v)` — plan-(u,v) → scene-fotpunkt.
+  - `footToPlan(g,foot)` — invers-bilineær (`invBilinear`) → plan-%.
+  Plan-Y er vendt (topp=bak=v1, bunn=front=v0). Flytt i plan ⇒ møbelet flytter
+  seg i scenen, og motsatt.
+
+**VALG (minst kode) — notert som bedt om:** perspektivscenens møbel-flytting og
+møbel-paletten er **BEHOLDT som de var**. Planen er *additiv*: begge visninger
+er fullt funksjonelle mot samme state, og ingen eksisterende scene-kode måtte
+rives. (Alternativet — å fjerne flytting i scenen — ga ingen forenkling som
+veide opp for tapt fleksibilitet.)
+
+**Verifisert (headless Chromium):** dra to møbler inn på planen → begge dukker
+opp; bytt til 🛍 Scene → begge rendres i perspektiv på utledet fotpunkt; flytt
+et ikon i planen → posisjon endres; høyreklikk → fjernes. Ingen konsollfeil.
+`tsc -b` + `vite build` grønt.
+
+**➡️ Til Espen (valider i Chrome, `/dev/klesbutikk`):** åpne 📋 Plan, plasser
+møbler ovenfra, veksle til 🛍 Scene og sjekk at plasseringen kjennes riktig i
+perspektiv. Selve **plan↔scene-mappingen** avhenger av `gulvplan`-hjørnene
+(fortsatt grove) — når du er klar, kalibrer dem via 📐 Gulvplan (`?dev=1`) så
+planens kanter treffer gulvet i scenen.
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.

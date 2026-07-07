@@ -89,7 +89,33 @@ function scaleFor(g: Gulvplan, foot: Fotpunkt): number {
   return lerp(g.scaleFront, g.scaleBack, clamp(invBilinear(foot, g).v, 0, 1))
 }
 
-type DevMode = 'møbler' | 'gulvplan' | 'sone'
+// ── Plantegning (ovenfra) ↔ fotpunkt ─────────────────────────────────────────
+// Planet er trapesets (u,v) BRETTET UT til et rektangel: x = u (bredde),
+// y = dybde der TOPPEN av planet = bakkant (v=1) og BUNNEN = fremkant (v=0).
+// Plan og perspektivscene er dermed to visninger av SAMME fotpunkt-layout.
+function footToPlan(g: Gulvplan, foot: Fotpunkt): { px: number; py: number } {
+  const { u, v } = invBilinear(foot, g)
+  return { px: clamp(u, 0, 1) * 100, py: (1 - clamp(v, 0, 1)) * 100 }
+}
+function planToFoot(g: Gulvplan, u: number, v: number): Fotpunkt {
+  return quadPoint(g, clamp(u, 0, 1), clamp(v, 0, 1))
+}
+
+/** Skjematisk toppikon per møbel (% av planet): bredde/dybde + form/farge. */
+const PLAN_ICON: Record<KlesbutikkFixtureId, { w: number; h: number; round: boolean; color: string }> = {
+  'stativ': { w: 20, h: 5, round: true, color: '#c98a3c' },
+  'stativ-liten': { w: 13, h: 5, round: true, color: '#c98a3c' },
+  'hylle': { w: 17, h: 7, round: false, color: '#8a6a3a' },
+  'bord': { w: 14, h: 9, round: false, color: '#8a6a3a' },
+  'bord-podium': { w: 14, h: 9, round: false, color: '#a07a44' },
+  'dukke': { w: 6, h: 6, round: true, color: '#d16aa8' },
+  'dukke-mann': { w: 6.5, h: 6.5, round: true, color: '#d16aa8' },
+  'dukke-barn': { w: 5, h: 5, round: true, color: '#d16aa8' },
+}
+
+// plan/scene er tilgjengelig UTEN ?dev=1 (to hovedvisninger av samme layout);
+// gulvplan/veggpunkt/sone er dev-tracere.
+type DevMode = 'plan' | 'scene' | 'gulvplan' | 'sone' | 'veggpunkt'
 
 interface Scene {
   id: 'fasade' | 'interior'
@@ -124,12 +150,13 @@ function KlesbutikkStillasInner() {
   const navigate = useNavigate()
   const [sceneId, setSceneId] = useState<Scene['id']>('interior')
   const [imgFailed, setImgFailed] = useState(false)
-  const [devMode, setDevMode] = useState<DevMode>('møbler')
+  const [devMode, setDevMode] = useState<DevMode>('plan')
   const [, setRev] = useState(0)
   const bump = () => setRev(r => r + 1)
   const scene = SCENES.find(s => s.id === sceneId)!
-  const mode: DevMode = IS_DEV_COORDS ? devMode : 'møbler'
-  const showSlots = IS_DEV_COORDS && mode === 'møbler'
+  // Uten dev: kun plan/scene. Dev-tracere faller tilbake til scene uten ?dev=1.
+  const mode: DevMode = IS_DEV_COORDS ? devMode : (devMode === 'plan' ? 'plan' : 'scene')
+  const showSlots = IS_DEV_COORDS && mode === 'scene'
 
   return (
     <div style={{
@@ -145,16 +172,22 @@ function KlesbutikkStillasInner() {
         {SCENES.map(s => (
           <button key={s.id} onClick={() => { setSceneId(s.id); setImgFailed(false) }} style={tabStyle(s.id === sceneId)}>{s.label}</button>
         ))}
-        {IS_DEV_COORDS && (
-          <span style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
-            {scene.id === 'interior' && (['møbler', 'gulvplan'] as DevMode[]).map(m => (
-              <button key={m} onClick={() => setDevMode(m)} style={tabStyle(mode === m)}>
-                {m === 'møbler' ? '🪑 Møbler' : '📐 Gulvplan'}
-              </button>
-            ))}
-            <button onClick={() => setDevMode('sone')} style={tabStyle(mode === 'sone')}>🧭 Soner</button>
-          </span>
-        )}
+        <span style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
+          {scene.id === 'interior' && (
+            <>
+              <button onClick={() => setDevMode('plan')} style={tabStyle(mode === 'plan')}>📋 Plan</button>
+              <button onClick={() => setDevMode('scene')} style={tabStyle(mode === 'scene')}>🛍 Scene</button>
+            </>
+          )}
+          {IS_DEV_COORDS && (
+            <>
+              {scene.id === 'interior' && (
+                <button onClick={() => setDevMode('gulvplan')} style={tabStyle(mode === 'gulvplan')}>📐 Gulvplan</button>
+              )}
+              <button onClick={() => setDevMode('sone')} style={tabStyle(mode === 'sone')}>🧭 Soner</button>
+            </>
+          )}
+        </span>
         <span style={{ color: '#64748b', fontSize: 11, marginLeft: 4 }}>
           KLESBUTIKK-stillas{IS_DEV_COORDS ? '' : ' · ?dev=1 for markører/tracer'}
         </span>
@@ -166,50 +199,58 @@ function KlesbutikkStillasInner() {
         borderRadius: 10, padding: '5px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
       }}>← Forsiden</button>
 
-      <div style={{
-        position: 'relative', aspectRatio: `${scene.aspect}`,
-        width: `min(96vw, calc(86vh * ${scene.aspect}))`, height: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-      }}>
-        {!imgFailed ? (
-          <img src={scene.img} alt={scene.label} draggable={false} onError={() => setImgFailed(true)}
-            style={{ width: '100%', height: '100%', display: 'block', userSelect: 'none' }} />
-        ) : (
-          <div style={{
-            position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #3a4656 0%, #2e3744 100%)',
-            border: '1px dashed rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#94a3b8', fontSize: 14, textAlign: 'center', padding: '0 2rem',
-          }}>Scenebilde mangler<br />({scene.img})</div>
-        )}
-
-        {scene.id === 'interior' ? (
-          <>
-            {(mode === 'møbler' || mode === 'sone') && (
-              <FloorLayer interactive={mode === 'møbler'} showSlots={showSlots} />
-            )}
-            {mode === 'gulvplan' && <GulvplanTracer bump={bump} />}
-          </>
-        ) : (
-          mode !== 'sone' && (
+      {scene.id === 'interior' && mode === 'plan' ? (
+        <PlanView />
+      ) : (
+        <div style={{
+          position: 'relative', aspectRatio: `${scene.aspect}`,
+          width: `min(96vw, calc(86vh * ${scene.aspect}))`, height: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+        }}>
+          {!imgFailed ? (
+            <img src={scene.img} alt={scene.label} draggable={false} onError={() => setImgFailed(true)}
+              style={{ width: '100%', height: '100%', display: 'block', userSelect: 'none' }} />
+          ) : (
             <div style={{
-              position: 'absolute', left: `${scene.drawZone.rect[0]}%`, top: `${scene.drawZone.rect[1]}%`,
-              width: `${scene.drawZone.rect[2]}%`, height: `${scene.drawZone.rect[3]}%`,
-              border: `1px dashed ${scene.drawZone.color}66`, pointerEvents: 'none',
-            }} />
-          )
-        )}
+              position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #3a4656 0%, #2e3744 100%)',
+              border: '1px dashed rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#94a3b8', fontSize: 14, textAlign: 'center', padding: '0 2rem',
+            }}>Scenebilde mangler<br />({scene.img})</div>
+          )}
 
-        {mode === 'sone' && (
-          <ZoneTracer key={scene.id} onApply={bump} targets={[scene.target]} drawZones={[scene.drawZone]} />
-        )}
-      </div>
+          {scene.id === 'interior' ? (
+            <>
+              {(mode === 'scene' || mode === 'sone') && (
+                <FloorLayer interactive={mode === 'scene'} showSlots={showSlots} />
+              )}
+              {mode === 'gulvplan' && <GulvplanTracer bump={bump} />}
+            </>
+          ) : (
+            mode !== 'sone' && (
+              <div style={{
+                position: 'absolute', left: `${scene.drawZone.rect[0]}%`, top: `${scene.drawZone.rect[1]}%`,
+                width: `${scene.drawZone.rect[2]}%`, height: `${scene.drawZone.rect[3]}%`,
+                border: `1px dashed ${scene.drawZone.color}66`, pointerEvents: 'none',
+              }} />
+            )
+          )}
+
+          {mode === 'sone' && (
+            <ZoneTracer key={scene.id} onApply={bump} targets={[scene.target]} drawZones={[scene.drawZone]} />
+          )}
+        </div>
+      )}
 
       <div style={{
         position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 80,
         background: 'rgba(10,14,26,0.85)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
         padding: '0.4rem 1rem', color: '#cbd5e1', fontSize: 12, whiteSpace: 'nowrap',
-      }}>{scene.id === 'interior' && mode === 'gulvplan'
-        ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
-        : scene.hint}</div>
+      }}>{scene.id === 'interior' && mode === 'plan'
+        ? '📋 Plantegning (ovenfra): dra møbler inn fra paletten, dra for å flytte, høyreklikk = fjern. Scene-fanen viser resultatet.'
+        : scene.id === 'interior' && mode === 'gulvplan'
+          ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
+          : scene.id === 'interior' && mode === 'veggpunkt'
+            ? 'Veggpunkt-tracer: klikk = nytt punkt, dra = flytt, ± = scale, «Logg array».'
+            : scene.hint}</div>
     </div>
   )
 }
@@ -351,6 +392,125 @@ function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacit
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ── PLANTEGNING (ovenfra) — primær møbelplassering ───────────────────────────
+// 2D-plan der møbler dras inn/flyttes som skjematiske toppikoner. Deler SAMME
+// state (klesbutikkFixtureLayout) med perspektivscenen: fotpunkt utledes av
+// plan-posisjonen (planToFoot) og omvendt (footToPlan), så endring ett sted
+// synes begge steder. Ingen nye assets — alt tegnet med div-er.
+function PlanView() {
+  const { state, dispatch } = useGame()
+  const g = KLESBUTIKK.gulvplan!
+  const planRef = useRef<HTMLDivElement>(null)
+  const [items, setItems] = useState(state.klesbutikkFixtureLayout)
+  const itemsRef = useRef(items)
+  const [drag, setDrag] = useState<{ kind: 'new'; fixtureId: KlesbutikkFixtureId } | { kind: 'move'; id: string } | null>(null)
+  const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
+
+  const commit = (next: typeof items) => { itemsRef.current = next; setItems(next); dispatch({ type: 'SET_KLESBUTIKK_FIXTURES', items: next }) }
+  const planUV = (cx: number, cy: number) => {
+    const r = planRef.current?.getBoundingClientRect(); if (!r) return null
+    return { u: (cx - r.left) / r.width, v: 1 - (cy - r.top) / r.height, inside: cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom }
+  }
+
+  function startNew(fixtureId: KlesbutikkFixtureId, e: React.PointerEvent) {
+    e.preventDefault()
+    setDrag({ kind: 'new', fixtureId }); setGhost({ x: e.clientX, y: e.clientY })
+    const onMove = (ev: PointerEvent) => setGhost({ x: ev.clientX, y: ev.clientY })
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true)
+      setDrag(null); setGhost(null)
+      const pp = planUV(ev.clientX, ev.clientY); if (!pp || !pp.inside) return
+      commit([...itemsRef.current, { id: uid(), fixtureId, fotpunkt: planToFoot(g, pp.u, pp.v) }])
+    }
+    window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
+  }
+  function startMove(id: string, e: React.PointerEvent) {
+    e.preventDefault(); e.stopPropagation()
+    setDrag({ kind: 'move', id })
+    const onMove = (ev: PointerEvent) => {
+      const pp = planUV(ev.clientX, ev.clientY); if (!pp) return
+      const next = itemsRef.current.map(i => i.id === id ? { ...i, fotpunkt: planToFoot(g, pp.u, pp.v) } : i)
+      itemsRef.current = next; setItems(next)
+    }
+    const onUp = () => { window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true); setDrag(null); dispatch({ type: 'SET_KLESBUTIKK_FIXTURES', items: itemsRef.current }) }
+    window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
+  }
+  const remove = (id: string) => commit(itemsRef.current.filter(i => i.id !== id))
+
+  return (
+    <div style={{ position: 'relative', aspectRatio: '1.35', width: 'min(94vw, calc(82vh * 1.35))', height: 'auto' }}>
+      {/* Plan-gulv (skjematisk) */}
+      <div ref={planRef} style={{
+        position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden', touchAction: 'none',
+        background: 'repeating-linear-gradient(90deg, #3a2c1e, #3a2c1e 5.5%, #423523 5.5%, #423523 11%)',
+        border: '2px solid #5a4632', boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+      }}>
+        {/* Bakvegg (topp) — utstillingsveggen */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '7%', background: '#4a5568', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e2e8f0', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', pointerEvents: 'none' }}>◄ BAKVEGG · utstilling ►</div>
+        {/* Vindu + dør på venstre vegg */}
+        <div style={{ position: 'absolute', left: 0, top: '22%', width: '2.5%', height: '38%', background: 'rgba(125,211,252,0.55)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', left: '3.5%', top: '38%', color: '#7dd3fc', fontSize: 10, pointerEvents: 'none' }}>vindu</div>
+        <div style={{ position: 'absolute', left: 0, top: '68%', width: '2.5%', height: '13%', background: 'rgba(201,138,60,0.7)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', left: '3.5%', top: '71%', color: '#c98a3c', fontSize: 10, pointerEvents: 'none' }}>dør</div>
+        {/* Front (bunn) */}
+        <div style={{ position: 'absolute', bottom: 3, left: 0, right: 0, textAlign: 'center', color: '#94a3b8', fontSize: 10, pointerEvents: 'none' }}>front (mot kunde / kamera)</div>
+
+        {/* Møbel-toppikoner */}
+        {items.map(it => {
+          const ic = PLAN_ICON[it.fixtureId]; const def = fixtureDef(it.fixtureId); if (!ic || !def) return null
+          const { px, py } = footToPlan(g, it.fotpunkt)
+          const moving = drag?.kind === 'move' && drag.id === it.id
+          return (
+            <div key={it.id}
+              onPointerDown={e => startMove(it.id, e)}
+              onContextMenu={e => { e.preventDefault(); remove(it.id) }}
+              title={`${def.navn} — dra for å flytte, høyreklikk = fjern`}
+              style={{
+                position: 'absolute', left: `${px}%`, top: `${py}%`, width: `${ic.w}%`, height: `${ic.h}%`,
+                transform: 'translate(-50%, -50%)', background: ic.color, border: '1px solid rgba(0,0,0,0.55)',
+                borderRadius: ic.round ? '50% / 45%' : 3, cursor: moving ? 'grabbing' : 'grab', touchAction: 'none',
+                boxShadow: moving ? '0 0 8px rgba(255,255,255,0.6)' : '0 1px 3px rgba(0,0,0,0.4)',
+              }}>
+              <span style={{ position: 'absolute', left: '50%', top: '108%', transform: 'translateX(-50%)', fontSize: 9, fontWeight: 700, color: '#e8ddc8', whiteSpace: 'nowrap', textShadow: '0 1px 2px #000', pointerEvents: 'none' }}>{def.navn}</span>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Møbel-palett (portal) */}
+      {createPortal(
+        <div style={{
+          position: 'fixed', top: 56, right: 16, zIndex: 95, width: 158, maxHeight: '76vh', overflowY: 'auto',
+          background: 'rgba(10,14,26,0.94)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12, padding: '10px', fontFamily: "'Outfit', sans-serif",
+        }}>
+          <div style={{ color: '#f1f5f9', fontSize: 12, fontWeight: 800, marginBottom: 8 }}>🪑 Møbler</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {KLESBUTIKK_FIXTURES.map(def => (
+              <div key={def.id} onPointerDown={e => startNew(def.id, e)} title={`${def.navn} — dra inn på planen`}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, padding: '5px 7px', cursor: 'grab', userSelect: 'none', touchAction: 'none' }}>
+                <div style={{ width: 30, height: 30, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={def.sprite} alt="" draggable={false} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9', lineHeight: 1.15 }}>{def.navn}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: '#64748b', marginTop: 8, lineHeight: 1.4 }}>
+            Dra inn på planen. Bytt til 🛍 Scene for å style med plagg/dukker.
+          </div>
+        </div>, document.body)}
+
+      {/* Palett-drag-spøkelse */}
+      {drag?.kind === 'new' && ghost && (() => {
+        const def = fixtureDef(drag.fixtureId); if (!def) return null
+        return createPortal(
+          <img src={def.sprite} alt="" draggable={false} style={{ position: 'fixed', left: ghost.x, top: ghost.y, width: 46, transform: 'translate(-50%, -50%)', zIndex: 9999, pointerEvents: 'none', opacity: 0.8 }} />,
+          document.body)
+      })()}
     </div>
   )
 }
