@@ -20,6 +20,7 @@ Sist oppdatert: 2026-07-07.
 | DEL 3 — stillas-scener + dev-rute | ✅ FERDIG, committet + pushet |
 | Sone-lås + skew-infrastruktur | ✅ FERDIG, committet + pushet |
 | Skew kun butikkvegg + forsvinnende-sprite-fiks | ✅ FERDIG, committet + pushet |
+| Møbelplassering (fri) + vareplass-modell | ✅ FERDIG, committet + pushet |
 
 Grenen `jobb/klesbutikk` er pushet til origin. **Ikke aktiv bransje** —
 `KLESBUTIKK` er fortsatt IKKE registrert i `INDUSTRY_DEFINITIONS`.
@@ -94,6 +95,46 @@ mønster som scene-bildet). En brutt sprite degraderer nå til en synlig 202×19
 plassholder i stedet for å kollapse. `spriteFailed` nullstilles ved fanebytte.
 NB: for å SE selve spriten må Espen også tømme den gamle service workeren
 (hard-reload / `main.tsx` avregistrerer den på neste last).
+
+## ✅ Møbelplassering (fri) + vareplass-modell (siste runde)
+
+**DESIGNENDRING:** Butikkveggen er IKKE et trau. Møbler plasseres FRITT (som
+vindusutstillingen). Skew-demoen + skew-panelet er **fjernet** fra stillaset;
+`MonterTrau.skewX/skewY` ligger igjen ubrukt (kafeen rører dem ikke).
+
+**DEL 1 — møbelplassering** (`KlesbutikkStillas.tsx`, Interiør-fanen):
+- Møbelpalett (portal, høyre) med de 8 fixture-spritene. Dra inn på butikkvegg-
+  sonen (samme frie-drag-mønster som `WindowDisplay`), bunn-ankret, overlapp
+  tillatt (ingen kollisjon v1). Samme møbeltype kan plasseres flere ganger
+  (unik `id` per instans).
+- Per møbel: flytt (drag), størrelse (± i verktøylinja på valgt møbel, 40–250 %),
+  fjern (✕ / høyreklikk / dra ut). Klikk = velg.
+- Persisteres i `state.klesbutikkFixtureLayout` via `SET_KLESBUTIKK_FIXTURES`
+  (samme mønster som `counterLayout`). Dev-ruta ligger utenfor GamePage sin
+  provider, så scenen er pakket i en **egen `GameProvider`**. In-memory (som
+  resten av spillet — ingen localStorage); overlever fanebytte, ikke full reload.
+
+**DEL 2 — vareplass-modell** (`src/game/data/klesbutikkFixtures.ts`, nytt datalag):
+- Hvert møbel definerer vareplasser via `slotRows` (TUNBAR `count` + geometri),
+  ikke hardkodet i komponenten. `vareplasser()` utleder jevnt fordelte punkter;
+  `kapasitet()` summerer. Plassene er normaliserte (0–1) i møbelets sprite-boks,
+  så de **følger møbelets plasserte geometri og skalerer med størrelsen** gratis
+  (markørene er absolutte barn i møbel-boksen).
+- Kapasitet i dag (tunbar): stativ 6 heng · stativ-liten 4 heng · hylle 3×4=12
+  brett · bord 3 brett · podiumbord 1+3 brett · dukke/-mann/-barn 1 antrekk.
+- Hver plass har `type: 'heng' | 'brett' | 'antrekk'` — klar for at plagg-sprites
+  auto-snapper (hengende/brettet/antrekk) i NESTE jobb.
+- `?dev=1` viser plassene som fargede markører (heng=cyan, brett=amber,
+  antrekk=rosa) på møblene. Uten dev: usynlige (flytt/størrelse virker likevel).
+
+**Nye/endrede typer/state:** `KlesbutikkFixtureId` + `KlesbutikkFixtureItem`
+(types.ts), `GameState.klesbutikkFixtureLayout`, action `SET_KLESBUTIKK_FIXTURES`.
+
+**➡️ Til Espen (valider i Chrome, `/dev/klesbutikk`):** dra møbler inn, flytt/
+skaler/fjern; skru på `?dev=1` for vareplass-markørene. Marker-posisjonene
+(`slotRows` i klesbutikkFixtures.ts) er tunbare øyemål — meld/juster hvis de
+ikke sitter på stang/hylle/torso. `?dev=1` har også en «🧭 Sone-tracer»-bryter
+(av som standard) hvis du vil re-trace sonene.
 
 ---
 

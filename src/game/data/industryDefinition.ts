@@ -217,19 +217,18 @@ export const KLESBUTIKK: IndustryDefinition = {
   oppstartssortiment: [],
   flater: {
     // Vindusutstillingen (mot gata) — Espen-trace-t sone på klesbutikk-fasaden
-    // (KLESBUTIKK_VINDU i districts.ts). INGEN skew: vinduet er styling-flate
-    // med fri komposisjon der sprites står oppreist (jf. WindowDisplay). Skew
-    // (content-lean) gjelder KUN lager-sonen (butikkveggen) under.
+    // (KLESBUTIKK_VINDU i districts.ts). Styling-flate med fri komposisjon der
+    // sprites står oppreist (jf. WindowDisplay).
     styling: { zone: KLESBUTIKK_VINDU },
     lager: {
-      // Interiør-scenen (klesbutikk-interior.jpg). «Trauet» er foreløpig ÉN
-      // Espen-trace-t butikkvegg-sone (KLESBUTIKK_BUTIKKVEGG) — hovedekspone-
-      // ringen kunden møter. Ekte inventar-plasser (stativ/hylle/bord/dukke, se
-      // docs/BRANSJE2_KLESBUTIKK.md) kommer som egne soner senere. skewX/skewY =
-      // content-lean, default 0 (dev-kalibreres i KlesbutikkStillas). Speilingen
-      // gjenbruker samme interiørbilde (ingen egen bakfra-vy tegnet ennå).
+      // Interiør-scenen (klesbutikk-interior.jpg). Butikkveggen er IKKE et trau:
+      // møbler plasseres FRITT (bunn-ankret) i KLESBUTIKK_BUTIKKVEGG-sonen —
+      // state.klesbutikkFixtureLayout, redigert i KlesbutikkStillas. Denne ene
+      // «trau»-oppføringen beholdes kun som sonens geometri-referanse for typen;
+      // trauCols/skew brukes ikke for klesbutikk. Speilingen gjenbruker samme
+      // interiørbilde (ingen egen bakfra-vy tegnet ennå).
       sceneImage: '/assets/raw/klesbutikk-interior.jpg',
-      trau: [{ id: 'butikkvegg', rect: KLESBUTIKK_BUTIKKVEGG, skewX: 0, skewY: 0 }],
+      trau: [{ id: 'butikkvegg', rect: KLESBUTIKK_BUTIKKVEGG }],
       trauCols: () => 1,
       speil: { sceneImage: '/assets/raw/klesbutikk-interior.jpg', trau: [] },
     },

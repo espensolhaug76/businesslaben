@@ -182,6 +182,34 @@ export interface TrauItem {
   skewAdjust?: number
 }
 
+// ── Klesbutikk-inventar (BRANSJE 2, jobb/klesbutikk) ──────────────────────────
+
+/** De 8 splittede møbel-spritene (public/assets/raw/fixtures/). Definisjonene
+ *  (sprite, størrelse, vareplasser) bor i game/data/klesbutikkFixtures.ts. */
+export type KlesbutikkFixtureId =
+  | 'stativ' | 'stativ-liten' | 'hylle' | 'bord' | 'bord-podium'
+  | 'dukke' | 'dukke-mann' | 'dukke-barn'
+
+/** Ett FRITT plassert møbel i butikkvegg-sonen (KLESBUTIKK_BUTIKKVEGG) — samme
+ *  frie-plassering-mønster som WindowDisplayItem, IKKE et trau. Overlapp er
+ *  tillatt (ingen kollisjon i v1), og samme møbeltype kan plasseres flere
+ *  ganger, derav en unik `id` per instans.
+ *
+ *  Koordinatene er BRØK (0–1) av butikkvegg-sonen. `x` = senter, `y` = BUNN
+ *  (møblene er bunn-ankret — de «står på gulvet»). `scale` er en
+ *  størrelses-multiplikator oppå møbelets `baseWFrac` (default 1). Vareplassene
+ *  følger møbelets geometri og skala automatisk (se klesbutikkFixtures.ts). */
+export interface KlesbutikkFixtureItem {
+  id: string
+  fixtureId: KlesbutikkFixtureId
+  /** Senter-x som brøk 0–1 av butikkvegg-sonens bredde. */
+  x: number
+  /** BUNN-y som brøk 0–1 av sonens høyde (bunn-ankret). */
+  y: number
+  /** Størrelses-multiplikator oppå møbelets baseWFrac. Default 1. */
+  scale: number
+}
+
 // ── Staff ────────────────────────────────────────────────────────────────────
 
 export interface Employee {
@@ -404,6 +432,10 @@ export interface GameState {
   /** Disk-monterens trau-oppsett (frontal scene): hvilken vare i hvilket trau.
    *  Tom liste = tomme trau. Se TrauItem. */
   counterLayout: TrauItem[]
+  /** Klesbutikkens frie møbelplassering i butikkvegg-sonen (BRANSJE 2,
+   *  KlesbutikkStillas dev-scene). Tom liste = ingen møbler. Se
+   *  KlesbutikkFixtureItem. Ikke koblet til onboarding/spillflyten ennå. */
+  klesbutikkFixtureLayout: KlesbutikkFixtureItem[]
   marketingBudget: {
     socialMedia: number
     google: number
