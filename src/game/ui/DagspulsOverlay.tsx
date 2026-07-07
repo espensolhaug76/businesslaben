@@ -94,6 +94,21 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
           <PulsKort label="Tapte salg" value={`${state.dayStats.tapteSalgStk}`} sub={state.dayStats.tapteSalgStk > 0 ? 'tomt lager' : 'ingen'} color={state.dayStats.tapteSalgStk > 0 ? '#ef4444' : '#64748b'} />
         </div>
 
+        {/* BEMANNING: kø live — kunder som gikk fordi kapasiteten på vakt var
+            for lav. Vises kun når det faktisk står folk igjen i kø. */}
+        {state.dayStats.koKunder > 0 && (
+          <div style={{
+            background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.45)',
+            borderRadius: 12, padding: '0.55rem 0.9rem', display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ fontSize: 18 }}>⏳</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>
+              Kø — {state.dayStats.koKunder} {state.dayStats.koKunder === 1 ? 'kunde gikk' : 'kunder gikk'}
+            </span>
+            <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>sett flere på vakt</span>
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.9rem' }}>
           {/* Ticker */}
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '0.9rem 1rem', minHeight: 190 }}>

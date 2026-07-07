@@ -16,7 +16,7 @@
 // bærer en annen bransje, IKKE et ferdig bransje-2-innhold, og er bevisst
 // IKKE registrert i INDUSTRY_DEFINITIONS (ikke aktiv).
 
-import type { Industry } from '../types'
+import type { Industry, EmployeeRole } from '../types'
 import { INDUSTRY_CATALOG, INDUSTRY_META, type IndustryCatalogItem } from './industries'
 import {
   MONTER_TRAU, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, STOREFRONT_HOTSPOTS,
@@ -127,6 +127,11 @@ export interface IndustryDefinition {
   scenariePool: string[]
   personaBudsjett: PersonaBudsjett
   svinnRegel: SvinnRegel
+  /** BEMANNING (docs/BEMANNING.md): bransje-spesifikke JOBBTITLER per rolle.
+   *  Org-kartets grener er faste (Salg/Markedsføring/Økonomi), men tittelen på
+   *  kortet varierer med bransjen — kafeens «Selger» er en «Barista/
+   *  butikkmedarbeider». UI leser disse i stedet for hardkodede rollenavn. */
+  roller: Record<EmployeeRole, string>
 }
 
 export const CAFE: IndustryDefinition = {
@@ -182,6 +187,11 @@ export const CAFE: IndustryDefinition = {
   scenariePool: CAFE_SCENARIO_IDS,
   personaBudsjett: { kind: 'besok', table: CAFE_SPEND },
   svinnRegel: 'ferskvare-daglig',
+  roller: {
+    selger: 'Barista/butikkmedarbeider',
+    markedsforer: 'Markedsfører',
+    okonom: 'Økonom',
+  },
 }
 
 /** Bransje 2 (DEL 3) — TOM/MINIMAL STUB. Beviser at IndustryDefinition kan
@@ -230,6 +240,11 @@ export const KLESBUTIKK: IndustryDefinition = {
   scenariePool: [],
   personaBudsjett: { kind: 'kategori', table: FASHION_BUDGETS, step: 100 },
   svinnRegel: 'sesong/kolleksjon',
+  roller: {
+    selger: 'Butikkmedarbeider',
+    markedsforer: 'Markedsfører',
+    okonom: 'Økonom',
+  },
 }
 
 /** Registeret over bransjer som FAKTISK har en definisjon. Bevisst kun

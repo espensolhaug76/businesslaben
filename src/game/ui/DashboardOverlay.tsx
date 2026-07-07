@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
@@ -8,7 +8,8 @@ import { SCENARIOS } from '../sales/scenarios'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader } from '../data/economy'
-import type { Product, DistributionChannel } from '../types'
+import { BALANCE } from '../data/balance'
+import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, OrgGren, Shift } from '../types'
 import type { Loan } from '../types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
@@ -1805,104 +1806,197 @@ function MarkedsforingTab() {
   )
 }
 
-// ── Personale ─────────────────────────────────────────────────────────────────
+// ── Personale (BEMANNING — org-kart, vaktliste, kapasitet) ────────────────────
+// docs/BEMANNING.md er kontrakten. Flyt: ansett → PERSONALBENKEN → ORG-KART
+// (hvem er hva) → VAKTLISTE (når jobber de). Selgeren bidrar nå KAPASITET på
+// vakt (backgroundSales.kapasitetPaaVakt), ikke lenger en flat +10%.
 
-type EmployeeRole = 'selger' | 'markedsforer' | 'okonom'
-type EmployeeLevel = 'junior' | 'senior' | 'ekspert'
-
-const ROLE_INFO: Record<EmployeeRole, { label: string; emoji: string; desc: string }> = {
-  selger:       { label: 'Selger',       emoji: '🛍️', desc: '+10% salgsvolum per ansatt' },
-  markedsforer: { label: 'Markedsfører', emoji: '📢', desc: '+8% markedseffekt per ansatt' },
-  okonom:       { label: 'Økonom',       emoji: '📊', desc: '-5% kostnader per ansatt' },
+const ROLE_META: Record<EmployeeRole, { emoji: string; gren: OrgGren }> = {
+  selger:       { emoji: '🛍️', gren: 'salg' },
+  markedsforer: { emoji: '📢', gren: 'markedsforing' },
+  okonom:       { emoji: '📊', gren: 'okonomi' },
 }
 const LEVEL_INFO: Record<EmployeeLevel, { label: string; salary: number }> = {
   junior:  { label: 'Junior',  salary: 15_000 },
   senior:  { label: 'Senior',  salary: 25_000 },
   ekspert: { label: 'Ekspert', salary: 40_000 },
 }
+const GRENER: { id: OrgGren; navn: string; rolle: EmployeeRole; farge: string }[] = [
+  { id: 'salg',          navn: 'Salg',          rolle: 'selger',       farge: '#00d4aa' },
+  { id: 'markedsforing', navn: 'Markedsføring',  rolle: 'markedsforer', farge: '#38bdf8' },
+  { id: 'okonomi',       navn: 'Økonomi',        rolle: 'okonom',       farge: '#f59e0b' },
+]
+
+// Norske navn til nyansatte (BEMANNING) — fornavn + etternavn, valgt tilfeldig
+// i ansett-handleren (ikke i render).
+const FORNAVN = ['Ingrid', 'Jonas', 'Sara', 'Mathias', 'Emma', 'Oliver', 'Nora', 'Aksel', 'Maja', 'Henrik', 'Sofie', 'Filip', 'Thea', 'Elias', 'Frida', 'Kasper']
+const ETTERNAVN = ['Berg', 'Haugen', 'Dahl', 'Lund', 'Moen', 'Solberg', 'Nilsen', 'Aas', 'Ruud', 'Vik', 'Strand', 'Fossum']
+function tilfeldigNavn(): string {
+  const f = FORNAVN[Math.floor(Math.random() * FORNAVN.length)]
+  const e = ETTERNAVN[Math.floor(Math.random() * ETTERNAVN.length)]
+  return `${f} ${e}`
+}
+
+// Vaktliste-timegrid: 8 én-times luker 09:00–17:00.
+const VAKT_START_TIME = BALANCE.klokke.apneMinutt / 60   // 9
+const VAKT_SLUTT_TIME = BALANCE.klokke.stengMinutt / 60  // 17
+const VAKT_LUKER = Array.from({ length: VAKT_SLUTT_TIME - VAKT_START_TIME }, (_, k) => VAKT_START_TIME + k)
+function hhmm(min: number): string { return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` }
+function rolleNavn(role: EmployeeRole): string { return getActiveIndustryDefinition().roller[role] }
 
 function PersonaleTab() {
   const { state, dispatch } = useGame()
   const [role, setRole] = useState<EmployeeRole>('selger')
   const [level, setLevel] = useState<EmployeeLevel>('junior')
+  const [dragId, setDragId] = useState<string | null>(null)      // kortet som dras (org-kart)
+  const [overGren, setOverGren] = useState<OrgGren | 'benk' | null>(null) // hover-mål
 
   const salary = LEVEL_INFO[level].salary
   const canAfford = state.money >= salary
+  const def = getActiveIndustryDefinition()
 
   function hire() {
     if (!canAfford) return
-    dispatch({
-      type: 'HIRE_EMPLOYEE',
-      employee: {
-        id: `emp_${Date.now()}`,
-        role,
-        level,
-        monthlySalary: salary,
-      },
-    })
+    dispatch({ type: 'HIRE_EMPLOYEE', employee: {
+      id: `emp_${Date.now()}`, navn: tilfeldigNavn(), role, level, monthlySalary: salary,
+    } })
   }
+
+  const benk = state.employees.filter(e => !e.grenId)
+  const selgereIVakt = state.employees.filter(e => e.role === 'selger' && e.grenId === 'salg')
+
+  // HTML5 drag'n'drop: slipp et kort i en gren (kun rollens egen gren aksepterer)
+  // eller tilbake på benken (grenId null).
+  function slipp(mål: OrgGren | null) {
+    const id = dragId
+    setDragId(null); setOverGren(null)
+    if (!id) return
+    const emp = state.employees.find(e => e.id === id)
+    if (!emp) return
+    if (mål !== null && ROLE_META[emp.role].gren !== mål) return  // feil gren — avvis
+    dispatch({ type: 'ASSIGN_EMPLOYEE_BRANCH', id, grenId: mål })
+  }
+
+  const dropProps = (mål: OrgGren | 'benk') => ({
+    onDragOver: (e: React.DragEvent) => { e.preventDefault(); setOverGren(mål) },
+    onDragLeave: () => setOverGren(g => (g === mål ? null : g)),
+    onDrop: () => slipp(mål === 'benk' ? null : mål),
+  })
 
   return (
     <div>
-      <div style={{ marginBottom: '1.25rem' }}>
+      <div style={{ marginBottom: '1.1rem' }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Personale</h3>
         <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
-          Ansett og si opp ansatte. Lønn trekkes månedlig automatisk.
+          Ansett → benk → dra inn i org-kartet (hvem er hva) → dra selgere inn i
+          vaktlisten (når de jobber). Lønn trekkes månedlig — også for udisponerte.
         </p>
       </div>
 
-      {/* Current employees */}
-      {state.employees.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.5rem' }}>
-          {state.employees.map(e => {
-            const ri = ROLE_INFO[e.role as EmployeeRole]
-            const li = LEVEL_INFO[e.level as EmployeeLevel]
-            return (
-              <div key={e.id} style={{
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '1rem', padding: '0.9rem 1rem',
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-              }}>
-                <span style={{ fontSize: 28 }}>{ri?.emoji ?? '👤'}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>
-                    {li?.label ?? e.level} {ri?.label ?? e.role}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>
-                    {ri?.desc ?? ''} · {formatKr(e.monthlySalary)}/mnd
-                  </div>
-                </div>
-                <button
-                  onClick={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })}
-                  style={{
-                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                    borderRadius: 8, padding: '0.4rem 0.9rem',
-                    color: '#ef4444', fontWeight: 700, fontSize: 13,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  Si opp
-                </button>
+      {/* ORG-KART */}
+      <SectionTittel emoji="🏢" tekst="Organisasjonskart" />
+      <div style={{ textAlign: 'center', marginBottom: '0.6rem' }}>
+        <div style={{
+          display: 'inline-block', background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.4)',
+          borderRadius: 12, padding: '0.5rem 1.1rem',
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#ffd700' }}>👑 Daglig leder — Deg</div>
+          <div style={{ fontSize: 10, color: '#94a3b8' }}>Gratis arbeidskraft · Junior-kapasitet</div>
+        </div>
+        <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.2)', margin: '0 auto' }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.55rem', marginBottom: '1rem' }}>
+        {GRENER.map(g => {
+          const folk = state.employees.filter(e => e.grenId === g.id)
+          const aktiv = overGren === g.id
+          return (
+            <div key={g.id} {...dropProps(g.id)} style={{
+              background: aktiv ? `${g.farge}1e` : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${aktiv ? g.farge : 'rgba(255,255,255,0.09)'}`,
+              borderRadius: 12, padding: '0.6rem 0.55rem', minHeight: 96,
+              transition: 'background 0.12s, border 0.12s',
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: g.farge, marginBottom: 2 }}>{g.navn}</div>
+              <div style={{ fontSize: 9.5, color: '#64748b', marginBottom: '0.5rem' }}>{def.roller[g.rolle]}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                {folk.map(e => (
+                  <DragCard key={e.id} emp={e} farge={g.farge}
+                    onDragStart={() => setDragId(e.id)}
+                    onFire={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })} />
+                ))}
+                {folk.length === 0 && <div style={{ fontSize: 10, color: '#475569', fontStyle: 'italic' }}>Dra et kort hit</div>}
               </div>
-            )
-          })}
-          <div style={{
-            background: 'rgba(255,255,255,0.03)', borderRadius: '0.75rem',
-            padding: '0.6rem 1rem', fontSize: 14,
-            display: 'flex', justifyContent: 'space-between',
-          }}>
-            <span style={{ color: '#64748b' }}>Total lønn per måned:</span>
-            <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(state.monthlyPayroll)}</span>
-          </div>
-        </div>
-      ) : (
-        <div style={{ textAlign: 'center', color: '#475569', padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ fontSize: 36, marginBottom: '0.5rem' }}>👥</div>
-          <p style={{ fontSize: 14 }}>Ingen ansatte ennå.</p>
-        </div>
-      )}
+            </div>
+          )
+        })}
+      </div>
 
-      {/* Hire form */}
+      {/* PERSONALBENK */}
+      <div {...dropProps('benk')} style={{
+        background: overGren === 'benk' ? 'rgba(148,163,184,0.14)' : 'rgba(255,255,255,0.02)',
+        border: `1px dashed ${overGren === 'benk' ? '#94a3b8' : 'rgba(255,255,255,0.14)'}`,
+        borderRadius: 12, padding: '0.7rem 0.8rem', marginBottom: '1.4rem',
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+          🪑 PERSONALBENK · udisponert ({benk.length})
+        </div>
+        {benk.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+            {benk.map(e => (
+              <DragCard key={e.id} emp={e} farge="#94a3b8" compact
+                onDragStart={() => setDragId(e.id)}
+                onFire={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })} />
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: '#475569' }}>
+            {state.employees.length === 0 ? 'Ingen ansatte ennå — ansett nedenfor.' : 'Alle er disponert i org-kartet.'}
+          </div>
+        )}
+      </div>
+
+      {/* VAKTLISTE */}
+      <SectionTittel emoji="🗓️" tekst="Vaktliste · dagsmal (gjelder alle dager)" />
+      <div style={{
+        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 12, padding: '0.75rem', marginBottom: '1.4rem',
+      }}>
+        {/* Timeakse */}
+        <div style={{ display: 'flex', paddingLeft: 128, marginBottom: 4 }}>
+          {VAKT_LUKER.map(t => (
+            <div key={t} style={{ flex: 1, fontSize: 9, color: '#64748b', textAlign: 'left' }}>{String(t).padStart(2, '0')}</div>
+          ))}
+          <div style={{ width: 24 }} />
+        </div>
+        <VaktRad navn="👑 Deg" sub="Daglig leder · gratis" farge="#ffd700" vakt={state.playerShift}
+          onSet={v => dispatch({ type: 'SET_PLAYER_SHIFT', vakt: v })} />
+        {selgereIVakt.map(e => (
+          <VaktRad key={e.id} navn={e.navn} sub={`${rolleNavn('selger')} · ${LEVEL_INFO[e.level].label}`}
+            farge="#00d4aa" vakt={e.vakt ?? null}
+            onSet={v => dispatch({ type: 'SET_EMPLOYEE_SHIFT', id: e.id, vakt: v })} />
+        ))}
+        {selgereIVakt.length === 0 && (
+          <div style={{ fontSize: 12, color: '#64748b', padding: '0.4rem 0 0.1rem' }}>
+            Dra selgere inn i <span style={{ color: '#00d4aa' }}>Salg</span>-grenen for å kunne sette dem på vakt.
+          </div>
+        )}
+        <div style={{ fontSize: 10.5, color: '#475569', marginTop: '0.6rem', lineHeight: 1.5 }}>
+          Dra over timene for å sette en vakt · klikk vakten for å fjerne. For få på
+          vakt = kø og tapte salg; for mange = lønna spiser dagsresultatet.
+        </div>
+      </div>
+
+      {/* Total lønn */}
+      <div style={{
+        background: 'rgba(255,255,255,0.03)', borderRadius: '0.75rem',
+        padding: '0.6rem 1rem', fontSize: 14, marginBottom: '1.4rem',
+        display: 'flex', justifyContent: 'space-between',
+      }}>
+        <span style={{ color: '#64748b' }}>Total lønn per måned:</span>
+        <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(state.monthlyPayroll)}</span>
+      </div>
+
+      {/* ANSETT */}
       <div style={{
         background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: '1rem', padding: '1.25rem',
@@ -1912,19 +2006,23 @@ function PersonaleTab() {
         <div style={{ marginBottom: '0.75rem' }}>
           <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Stilling</div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {(Object.keys(ROLE_INFO) as EmployeeRole[]).map(r => (
+            {(Object.keys(ROLE_META) as EmployeeRole[]).map(r => (
               <button key={r} onClick={() => setRole(r)} style={{
                 flex: 1, background: role === r ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
                 border: `1px solid ${role === r ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
                 borderRadius: '0.6rem', padding: '0.6rem 0.4rem',
                 cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
               }}>
-                <div style={{ fontSize: 18, marginBottom: 2 }}>{ROLE_INFO[r].emoji}</div>
-                <div style={{ fontSize: 12, fontWeight: 700 }}>{ROLE_INFO[r].label}</div>
+                <div style={{ fontSize: 18, marginBottom: 2 }}>{ROLE_META[r].emoji}</div>
+                <div style={{ fontSize: 11.5, fontWeight: 700 }}>{rolleNavn(r)}</div>
               </button>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>{ROLE_INFO[role].desc}</div>
+          <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+            {role === 'selger'
+              ? 'Går på gulvvakt og betjener bakgrunnskunder (kapasitet stiger med nivå).'
+              : 'Bidrar til månedseffekten sin — går ikke på gulvvakt.'}
+          </div>
         </div>
 
         <div style={{ marginBottom: '1rem' }}>
@@ -1939,6 +2037,9 @@ function PersonaleTab() {
               }}>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>{LEVEL_INFO[lv].label}</div>
                 <div style={{ fontSize: 11, color: '#64748b' }}>{formatKr(LEVEL_INFO[lv].salary)}/mnd</div>
+                {role === 'selger' && (
+                  <div style={{ fontSize: 10, color: '#00d4aa', marginTop: 1 }}>{BALANCE.kapasitetPerTime[lv]}/t</div>
+                )}
               </button>
             ))}
           </div>
@@ -1958,9 +2059,105 @@ function PersonaleTab() {
           }}
         >
           {canAfford
-            ? `✅ Ansett ${LEVEL_INFO[level].label} ${ROLE_INFO[role].label} — ${formatKr(salary)}/mnd`
+            ? `✅ Ansett ${LEVEL_INFO[level].label} ${rolleNavn(role)} — ${formatKr(salary)}/mnd`
             : '💸 Ikke råd til denne ansettelsen'}
         </button>
+      </div>
+    </div>
+  )
+}
+
+function SectionTittel({ emoji, tekst }: { emoji: string; tekst: string }) {
+  return (
+    <div style={{ fontSize: 12, fontWeight: 800, color: '#cbd5e1', letterSpacing: '0.03em', marginBottom: '0.55rem' }}>
+      {emoji} {tekst}
+    </div>
+  )
+}
+
+function DragCard({ emp, farge, compact, onDragStart, onFire }: {
+  emp: Employee; farge: string; compact?: boolean; onDragStart: () => void; onFire: () => void
+}) {
+  return (
+    <div
+      draggable
+      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
+      title="Dra for å flytte"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        background: `${farge}14`, border: `1px solid ${farge}44`, borderRadius: 8,
+        padding: compact ? '0.3rem 0.5rem' : '0.35rem 0.45rem', cursor: 'grab',
+        maxWidth: compact ? 190 : '100%',
+      }}
+    >
+      <span style={{ fontSize: 15 }}>{ROLE_META[emp.role].emoji}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.navn}</div>
+        <div style={{ fontSize: 9.5, color: '#94a3b8' }}>{LEVEL_INFO[emp.level].label} · {formatKr(emp.monthlySalary)}</div>
+      </div>
+      <button onClick={onFire} title="Avslutt arbeidsforhold" style={{
+        background: 'transparent', border: 'none', color: '#ef4444', fontSize: 13,
+        cursor: 'pointer', fontFamily: 'inherit', padding: '0 2px', lineHeight: 1,
+      }}>✕</button>
+    </div>
+  )
+}
+
+function VaktRad({ navn, sub, farge, vakt, onSet }: {
+  navn: string; sub: string; farge: string; vakt: Shift | null; onSet: (v: Shift | null) => void
+}) {
+  const [drag, setDrag] = useState<{ a: number; b: number } | null>(null)
+  const dragRef = useRef<{ a: number; b: number } | null>(null)
+
+  function ned(k: number) {
+    const d = { a: k, b: k }; dragRef.current = d; setDrag(d)
+    const opp = () => {
+      window.removeEventListener('pointerup', opp)
+      const dd = dragRef.current; dragRef.current = null; setDrag(null)
+      if (!dd) return
+      const lo = Math.min(dd.a, dd.b), hi = Math.max(dd.a, dd.b)
+      onSet({ fra: (VAKT_START_TIME + lo) * 60, til: (VAKT_START_TIME + hi + 1) * 60 })
+    }
+    window.addEventListener('pointerup', opp)
+  }
+  function inn(k: number) {
+    if (!dragRef.current) return
+    const d = { ...dragRef.current, b: k }; dragRef.current = d; setDrag(d)
+  }
+
+  const dekket = (k: number) => {
+    if (drag) { const lo = Math.min(drag.a, drag.b), hi = Math.max(drag.a, drag.b); return k >= lo && k <= hi }
+    if (!vakt) return false
+    const s = (VAKT_START_TIME + k) * 60
+    return s >= vakt.fra && s + 60 <= vakt.til
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+      <div style={{ width: 128, flexShrink: 0, paddingRight: 6 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{navn}</div>
+        <div style={{ fontSize: 9, color: '#64748b' }}>{sub}</div>
+      </div>
+      <div style={{ flex: 1, display: 'flex', gap: 2, touchAction: 'none' }}>
+        {VAKT_LUKER.map((_, k) => (
+          <div key={k}
+            onPointerDown={e => { e.preventDefault(); ned(k) }}
+            onPointerEnter={() => inn(k)}
+            style={{
+              flex: 1, height: 24, borderRadius: 4, cursor: 'pointer',
+              background: dekket(k) ? farge : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${dekket(k) ? farge : 'rgba(255,255,255,0.08)'}`,
+              transition: 'background 0.08s',
+            }}
+          />
+        ))}
+      </div>
+      <div style={{ width: 24, flexShrink: 0, textAlign: 'right' }}>
+        {vakt
+          ? <button onClick={() => onSet(null)} title={`${hhmm(vakt.fra)}–${hhmm(vakt.til)} · fjern`} style={{
+              background: 'transparent', border: 'none', color: '#ef4444', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', padding: 0,
+            }}>✕</button>
+          : null}
       </div>
     </div>
   )

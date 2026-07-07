@@ -3,6 +3,7 @@ import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
   GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement, DayBackground,
+  OrgGren, Shift,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
@@ -13,7 +14,7 @@ import { DAY_CONFIG } from './data/dayConfig'
 import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
 import { manedligeFasteKostnader } from './data/economy'
-import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter } from './data/backgroundSales'
+import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { BALANCE } from './data/balance'
 import { scenariosForIndustry, scenariosForMix } from './sales/scenarios'
 
@@ -22,6 +23,7 @@ import { scenariosForIndustry, scenariosForMix } from './sales/scenarios'
 const EMPTY_DAY_STATS = {
   soldStk: 0, soldKr: 0, varekostKr: 0,
   bakgrunnKunder: 0, bakgrunnStk: 0, bakgrunnKr: 0, tapteSalgStk: 0, tapteSalgKr: 0,
+  koKunder: 0,
   reputationDelta: 0, xpEarned: 0, stockoutHappened: false,
 }
 
@@ -161,6 +163,7 @@ const initialState: GameState = {
 
   employees: [],
   monthlyPayroll: 0,
+  playerShift: null,
 
   targetAudience: {
     geography: null,
@@ -235,6 +238,9 @@ type Action =
   | { type: 'SET_TARGET_AUDIENCE'; audience: GameState['targetAudience'] }
   | { type: 'HIRE_EMPLOYEE'; employee: Employee }
   | { type: 'FIRE_EMPLOYEE'; id: string }
+  | { type: 'ASSIGN_EMPLOYEE_BRANCH'; id: string; grenId: OrgGren | null }
+  | { type: 'SET_EMPLOYEE_SHIFT'; id: string; vakt: Shift | null }
+  | { type: 'SET_PLAYER_SHIFT'; vakt: Shift | null }
   | { type: 'APPLY_MONTH_RESULT'; result: MonthResult }
   | { type: 'ADD_MESSAGE'; message: InboxMessage }
   | { type: 'READ_MESSAGE'; id: string }
@@ -644,6 +650,27 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, employees, monthlyPayroll }
     }
 
+    // BEMANNING — org-kart: disponer et kort i en gren (grenId satt) eller
+    // send det tilbake til personalbenken (grenId null). Ren plassering, ingen
+    // lønns-/kapasitetseffekt her (lønn er uendret; kapasitet styres av vakt).
+    case 'ASSIGN_EMPLOYEE_BRANCH': {
+      const employees = state.employees.map(e =>
+        e.id === action.id ? { ...e, grenId: action.grenId ?? undefined } : e)
+      return { ...state, employees }
+    }
+
+    // BEMANNING — vaktliste: sett/fjern en ansatts gulvvakt (kun selgere settes
+    // på vakt fra UI). Kapasitet leses per klokketick i TICK.
+    case 'SET_EMPLOYEE_SHIFT': {
+      const employees = state.employees.map(e =>
+        e.id === action.id ? { ...e, vakt: action.vakt ?? undefined } : e)
+      return { ...state, employees }
+    }
+
+    // BEMANNING — spillerens egen gulvvakt (gratis, Junior-kapasitet).
+    case 'SET_PLAYER_SHIFT':
+      return { ...state, playerShift: action.vakt }
+
     case 'APPLY_MONTH_RESULT': {
       const r = action.result
       const newXp = state.xp + r.xpEarned
@@ -845,7 +872,7 @@ function reducer(state: GameState, action: Action): GameState {
         windowDisplayLayout: state.windowDisplayLayout,
         markedsforingBudsjett: Object.values(state.marketingBudget).reduce((s, v) => s + v, 0),
       })
-      const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed }
+      const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed, kapasitetRest: 0 }
 
       // SPILLKLOKKE: planlegg dagens kundemøter på klokkeslett (avtagende antall
       // fra dag 3). Scenariene trekkes uten gjentakelse til poolen er tømt.
@@ -889,27 +916,48 @@ function reducer(state: GameState, action: Action): GameState {
       let dayBackground = state.dayBackground
 
       if (state.dayBackground) {
-        // Så mange kunder BØR være prosessert ved dette klokkeslettet.
+        // BEMANNING (kapasitet): betjeningskapasitet opparbeides HVERT tikk
+        // (også når ingen kunde kom akkurat da — idle-kapasitet «venter» litt),
+        // = kapasitet/time på vakt × spillminutter per tikk / 60. Kunder utover
+        // ledig kapasitet når de kommer → tapt salg med årsak «kø».
+        const klokkeMinutt = BALANCE.klokke.apneMinutt + nyMinutt
+        const kapPerTick = kapasitetPaaVakt(state.employees, state.playerShift, klokkeMinutt) * BALANCE.klokke.minutterPerTick / 60
+        let pool = state.dayBackground.kapasitetRest + kapPerTick
+
+        // Så mange kunder BØR ha kommet innom ved dette klokkeslettet.
         const mål = Math.round(state.dayBackground.total * (nyMinutt / Math.max(1, DAG_VARIGHET)))
-        const n = Math.max(0, mål - state.dayBackground.prosessert)
-        if (n > 0) {
-          const r = simulerBakgrunnsbolk(state.products, n, state.dayBackground.seed)
+        const ankomne = Math.max(0, mål - state.dayBackground.prosessert)
+        const betjent = Math.min(ankomne, Math.floor(pool))
+        const koKunder = ankomne - betjent
+        pool -= betjent
+        // Ubrukt kapasitet bankes ikke opp i det uendelige (staff-tid tapes) —
+        // hold igjen inntil ~ett tikk med slakk for å glatte avrunding.
+        pool = Math.min(pool, kapPerTick + 1)
+
+        let seed = state.dayBackground.seed
+        if (betjent > 0) {
+          // Kun de BETJENTE kundene når disken (kan så tape til tomt lager).
+          const r = simulerBakgrunnsbolk(state.products, betjent, state.dayBackground.seed)
           products = r.products
           money = state.money + r.bakgrunnKr
+          seed = r.seed
           dayStats = {
-            ...state.dayStats,
-            varekostKr: state.dayStats.varekostKr + r.varekostKr,
-            bakgrunnKunder: state.dayStats.bakgrunnKunder + r.bakgrunnKunder,
-            bakgrunnStk: state.dayStats.bakgrunnStk + r.bakgrunnStk,
-            bakgrunnKr: state.dayStats.bakgrunnKr + r.bakgrunnKr,
-            tapteSalgStk: state.dayStats.tapteSalgStk + r.tapteSalgStk,
-            tapteSalgKr: state.dayStats.tapteSalgKr + r.tapteSalgKr,
-            stockoutHappened: state.dayStats.stockoutHappened || r.tapteSalgStk > 0,
+            ...dayStats,
+            varekostKr: dayStats.varekostKr + r.varekostKr,
+            bakgrunnKunder: dayStats.bakgrunnKunder + r.bakgrunnKunder,
+            bakgrunnStk: dayStats.bakgrunnStk + r.bakgrunnStk,
+            bakgrunnKr: dayStats.bakgrunnKr + r.bakgrunnKr,
+            tapteSalgStk: dayStats.tapteSalgStk + r.tapteSalgStk,
+            tapteSalgKr: dayStats.tapteSalgKr + r.tapteSalgKr,
+            stockoutHappened: dayStats.stockoutHappened || r.tapteSalgStk > 0,
           }
-          dayProductStats = mergeProductStats(state.dayProductStats, r.perProdukt)
-          dayTicker = [...r.ticker, ...state.dayTicker].slice(0, TICKER_MAX)
-          dayBackground = { ...state.dayBackground, prosessert: state.dayBackground.prosessert + r.bakgrunnKunder, seed: r.seed }
+          dayProductStats = mergeProductStats(dayProductStats, r.perProdukt)
+          dayTicker = [...r.ticker, ...dayTicker].slice(0, TICKER_MAX)
         }
+        if (koKunder > 0) dayStats = { ...dayStats, koKunder: dayStats.koKunder + koKunder }
+        // `prosessert` teller ALLE ankomne (betjent + kø) så drypp-kurven ikke
+        // etterbetjener kø-tapte kunder senere. kapasitetRest persisteres.
+        dayBackground = { ...state.dayBackground, prosessert: state.dayBackground.prosessert + ankomne, seed, kapasitetRest: pool }
       }
 
       // Spawn ETT forfalt kundemøte (klokka pauser til det er ferdig).
@@ -984,6 +1032,7 @@ function reducer(state: GameState, action: Action): GameState {
         svinnKr,
         tapteSalgStk,
         tapteSalgKr,
+        koKunder: state.dayStats.koKunder,
         resultat: soldKr + bakgrunnKr - varekostKr - svinnKr,
         reputationDelta: state.dayStats.reputationDelta,
         xpEarned: state.dayStats.xpEarned,

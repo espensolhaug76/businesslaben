@@ -67,4 +67,13 @@ export const BALANCE = {
   moterOpplaering: 4,   // dag 1..opplaeringsDager
   moterSenere: 2,       // fra dag (opplaeringsDager + 1)
   opplaeringsDager: 2,
+
+  /** BEMANNING (docs/BEMANNING.md): hvor mange bakgrunnskunder ÉN person på
+   *  vakt rekker å betjene per klokketime, stigende med nivå. Spilleren
+   *  (daglig leder) teller som Junior. Kunder utover samlet kapasitet på vakt
+   *  i en time → tapte salg med årsak «kø». Referanse: en velbesøkt dag ligger
+   *  på ~15–20 kunder/time, så én Junior holder en rolig dag alene, men en
+   *  travel dag (høyt rykte + markedsføring) krever flere/bedre folk på gulvet.
+   *  Espen finpusser etter spilltest — ALT her, ikke i motoren. */
+  kapasitetPerTime: { junior: 15, senior: 22, ekspert: 30 } as Record<string, number>,
 }

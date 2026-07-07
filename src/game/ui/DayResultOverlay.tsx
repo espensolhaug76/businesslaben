@@ -73,8 +73,15 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
           <SalgLinje ikon="🛎️" tittel={`Kundemøter: ${r.meetings}`} hoyre={formatKr(r.soldKr)} color="#22c55e" />
           <SalgLinje ikon="👥" tittel={`Øvrige kunder: ${r.bakgrunnKunder}`} hoyre={formatKr(r.bakgrunnKr)} color="#38bdf8" />
-          {r.tapteSalgStk > 0 && (
-            <SalgLinje ikon="🚫" tittel={`Tapte salg: ${r.tapteSalgStk} (tomt lager)`} hoyre={`~${formatKr(r.tapteSalgKr)}`} color="#ef4444" />
+          {/* BEMANNING: tapte salg splittes på ÅRSAK. «Tomt lager» = varen var
+              utsolgt (r.tapteSalgStk inkluderer stengt-tidlig-bortfall, som har
+              egen linje under, så trekk det fra her). «Kø» = for lite kapasitet
+              på vakt (r.koKunder). */}
+          {(r.tapteSalgStk - r.bortfallStk) > 0 && (
+            <SalgLinje ikon="🚫" tittel={`Tapte salg: ${r.tapteSalgStk - r.bortfallStk} (tomt lager)`} hoyre="—" color="#ef4444" />
+          )}
+          {r.koKunder > 0 && (
+            <SalgLinje ikon="⏳" tittel={`Tapte salg: ${r.koKunder} (kø — for få på vakt)`} hoyre="—" color="#f59e0b" />
           )}
           {/* SPILLKLOKKE: stengte eleven før 17:00, bortfalt de resterende
               bakgrunnskundene — egen linje, adskilt fra tomt-lager-tap. */}

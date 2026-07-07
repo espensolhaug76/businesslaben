@@ -184,11 +184,30 @@ export interface TrauItem {
 
 // ── Staff ────────────────────────────────────────────────────────────────────
 
+export type EmployeeRole = 'selger' | 'markedsforer' | 'okonom'
+export type EmployeeLevel = 'junior' | 'senior' | 'ekspert'
+
+/** Org-kart-gren (BEMANNING, docs/BEMANNING.md). 1:1 med rolle:
+ *  selger→salg, markedsforer→markedsforing, okonom→okonomi. */
+export type OrgGren = 'salg' | 'markedsforing' | 'okonomi'
+
+/** Vaktvindu på dagsmalen — absolutte klokke-minutter (540 = 09:00, 1020 =
+ *  17:00). Én dagsmal gjelder alle dager (ingen ukedager i spillet). */
+export interface Shift { fra: number; til: number }
+
 export interface Employee {
   id: string
-  role: 'selger' | 'markedsforer' | 'okonom'
-  level: 'junior' | 'senior' | 'ekspert'
+  /** Generert norsk navn (BEMANNING) — kortene i org-kart/vaktliste. */
+  navn: string
+  role: EmployeeRole
+  level: EmployeeLevel
   monthlySalary: number
+  /** Org-kart-plassering (BEMANNING): satt = disponert i en gren, undefined =
+   *  står på PERSONALBENKEN (udisponert, men koster fortsatt full lønn). */
+  grenId?: OrgGren
+  /** Gulvvakt på dagsmalen (kun selgere kan settes på vakt). Undefined = ikke
+   *  satt på vakt ⇒ koster lønn, bidrar 0 kapasitet. */
+  vakt?: Shift
 }
 
 // ── Monthly result ───────────────────────────────────────────────────────────
@@ -315,6 +334,8 @@ export interface DayResult {
   /** Tapte salg: bakgrunnskunder som ikke fikk kjøpt (tomt lager) + estimert kr. */
   tapteSalgStk: number
   tapteSalgKr: number
+  /** BEMANNING: bakgrunnskunder tapt til KØ (for lite kapasitet på vakt). */
+  koKunder: number
   /** salg (møter + bakgrunn) − varekost − svinn. */
   resultat: number
   reputationDelta: number
@@ -341,6 +362,10 @@ export interface DayBackground {
   prosessert: number
   /** PRNG-seed (avanseres per forbrukt trekk). */
   seed: number
+  /** BEMANNING (kapasitet): opparbeidet, ennå ubrukt betjeningskapasitet
+   *  (flyttall — glatter ut at kapasitet/tick < 1 kunde). Kunder som kommer
+   *  når `Math.floor(pool)` er tom → tapt salg med årsak «kø». */
+  kapasitetRest: number
 }
 
 /** Et planlagt kundemøte på et klokkeslett (SPILLKLOKKE). Kunden spawner når
@@ -430,6 +455,9 @@ export interface GameState {
     /** Tapte bakgrunnssalg pga tomt lager (stk + estimert kr). */
     tapteSalgStk: number
     tapteSalgKr: number
+    /** BEMANNING: bakgrunnskunder som gikk fordi køen var full (kapasitet
+     *  på vakt < kundestrøm). Adskilt fra tomt-lager-tap i dagsoppgjøret. */
+    koKunder: number
     reputationDelta: number
     xpEarned: number
     /** Minst ett salgsforsøk i dag traff en utsolgt vare (møte eller bakgrunn). */
@@ -505,6 +533,9 @@ export interface GameState {
   // Staff
   employees: Employee[]
   monthlyPayroll: number
+  /** BEMANNING: spillerens (daglig leder) egen gulvvakt på dagsmalen. Gratis
+   *  arbeidskraft (lønn 0) med Junior-kapasitet. Null = ikke satt på vakt. */
+  playerShift: Shift | null
 
   // Target audience
   targetAudience: {

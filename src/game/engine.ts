@@ -148,10 +148,11 @@ function channelMonthlyCost(channels: string[]): number {
   return channels.reduce((s, c) => s + (costs[c] ?? 0), 0)
 }
 
-function employeeBonus(employees: GameState['employees']): number {
-  const salesCount = employees.filter(e => e.role === 'selger').length
-  return 1.0 + salesCount * 0.10
-}
+// BEMANNING: den gamle flate «+10% salgsvolum per selger» er FJERNET. Selgernes
+// bidrag er nå KAPASITET i den daglige bakgrunnssalgs-motoren (per vakt, se
+// backgroundSales.kapasitetPaaVakt / GameContext TICK), ikke en månedlig
+// volummultiplikator her. Markedsfører/Økonom beholder dagens månedseffekter
+// (de har ingen egen faktor i denne dev-only simulateMonth i dag).
 
 function rollPestEvent(month: number): PestEvent | null {
   if (Math.random() > 0.30) return null  // 30% chance
@@ -165,7 +166,7 @@ function rollPestEvent(month: number): PestEvent | null {
 
 export function simulateMonth(state: GameState): MonthResult {
   const { currentMonth: month, products, channels, marketingBudget, reputation,
-          locationZone, monthlyRent, employees, monthlyPayroll, industry, monthlyLoanPayment } = state
+          locationZone, monthlyRent, monthlyPayroll, industry, monthlyLoanPayment } = state
 
   const totalMarketing = Object.values(marketingBudget).reduce((s, v) => s + v, 0)
   const pest = rollPestEvent(month)
@@ -175,7 +176,6 @@ export function simulateMonth(state: GameState): MonthResult {
   const repMod    = reputationModifier(reputation)
   const reachMod  = channelReach(channels)
   const marginFac = channelMarginFactor(channels)
-  const empBonus  = employeeBonus(employees)
   const seasonal  = (SEASONAL[industry] ?? SEASONAL.default)[month - 1] ?? 1.0
   const pestDemand = pest?.demandModifier ?? 1.0
   const pestCost   = pest?.costModifier   ?? 1.0
@@ -189,7 +189,7 @@ export function simulateMonth(state: GameState): MonthResult {
   for (const p of products) {
     if (p.stock <= 0) continue
     const priceMod = priceModifier(p.retailPrice, p.recommendedPrice)
-    const demand = p.maxDemandPerMonth * priceMod * mktMod * locMod * repMod * reachMod * empBonus * seasonal * pestDemand * targetMod
+    const demand = p.maxDemandPerMonth * priceMod * mktMod * locMod * repMod * reachMod * seasonal * pestDemand * targetMod
     const rawUnits = Math.round(demand * (0.80 + Math.random() * 0.40))
     const unitsSold = Math.max(0, Math.min(rawUnits, p.stock))
     totalUnits   += unitsSold

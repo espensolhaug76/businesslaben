@@ -8,7 +8,7 @@
 // og kundemøtene planlegges på klokkeslett ved OPEN_DAY.
 
 import { BALANCE } from './balance'
-import type { ScheduledMeeting, TickerLinje } from '../types'
+import type { ScheduledMeeting, TickerLinje, Employee, Shift } from '../types'
 
 function clamp(v: number, lo: number, hi: number): number { return Math.max(lo, Math.min(hi, v)) }
 
@@ -113,6 +113,32 @@ export function planleggMoter(antall: number, scenarioIds: string[], seed: numbe
     moter.push({ minutt, scenarioId, spawned: false, done: false })
   }
   return moter.sort((a, b) => a.minutt - b.minutt)
+}
+
+// ── Bemanning: kapasitet på vakt (BEMANNING) ──────────────────────────────────
+
+function dekker(vakt: Shift | undefined | null, klokkeMinutt: number): boolean {
+  return !!vakt && klokkeMinutt >= vakt.fra && klokkeMinutt < vakt.til
+}
+
+/** Samlet betjeningskapasitet (bakgrunnskunder per TIME) på gulvet ved et gitt
+ *  klokkeslett. Kun selgere på vakt teller, pluss spilleren (Junior-kapasitet)
+ *  hvis spillervakta dekker tidspunktet.
+ *
+ *  DEL 4-regel «ingen vakt satt = kun spilleren» (ingen regresjon dag 1): er
+ *  det IKKE lagt noen vaktplan i det hele tatt (ingen ansatt-vakt og ingen
+ *  spillervakt), driver spilleren alene hele dagen på Junior-kapasitet. */
+export function kapasitetPaaVakt(employees: Employee[], playerShift: Shift | null, klokkeMinutt: number): number {
+  const junior = BALANCE.kapasitetPerTime.junior ?? 0
+  const harVaktplan = playerShift != null || employees.some(e => e.vakt)
+  if (!harVaktplan) return junior // soloatferd (dag 1)
+
+  let sum = 0
+  for (const e of employees) {
+    if (e.role === 'selger' && dekker(e.vakt, klokkeMinutt)) sum += BALANCE.kapasitetPerTime[e.level] ?? junior
+  }
+  if (dekker(playerShift, klokkeMinutt)) sum += junior
+  return sum
 }
 
 // ── Salgs-simulering per bolk/tick ────────────────────────────────────────────
