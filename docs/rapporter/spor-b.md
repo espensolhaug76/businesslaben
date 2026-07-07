@@ -23,6 +23,7 @@ Sist oppdatert: 2026-07-07.
 | Møbelplassering (fri) + vareplass-modell | ✅ FERDIG (fri plassering senere erstattet av snap) |
 | Ankerplasser (snap-slots) + anker-tracer | ✅ FERDIG (snap senere erstattet av gulvplan) |
 | Gulvplan (perspektiv) + dybde-plassering | ✅ FERDIG, committet + pushet |
+| Klesark-splitt + plaggdata + plagg-auto-snap | ✅ FERDIG, committet + pushet |
 
 Grenen `jobb/klesbutikk` er pushet til origin. **Ikke aktiv bransje** —
 `KLESBUTIKK` er fortsatt IKKE registrert i `INDUSTRY_DEFINITIONS`.
@@ -205,6 +206,50 @@ de 4 hjørnene så trapeset dekker tregulvet, juster front/bak-skala mot preview
 dukkene til dybden ser riktig ut, «Logg objekt» → lim inn i `KLESBUTIKK.gulvplan`
 (industryDefinition.ts). Deretter 🪑 Møbler → sjekk at skyving i dybden ser
 naturlig ut (alle møbler, også hylla, står på gulvet og skalerer med dybden).
+
+## ✅ Klesark-splitt + plaggdata + plagg-auto-snap (siste runde)
+
+**DEL 1 — 9 klesark splittet → 64 plagg-sprites** (`public/assets/raw/klar/`),
+ny `klar-ark-*`-familie i `split-product-sheet.py`. **VIKTIG-funn:**
+- De fysiske ark-numrene matchet IKKE oppdragets logiske nummerering — innholdet
+  var stokket om. Navnekart keyet på FYSISK arknr., matchet visuelt.
+- **Profil-arket (logisk 03) MANGLER** — fysisk ark 05 er en DUPLIKAT av 04.
+  Profil-varianten faller derfor tilbake til front til arket leveres.
+- ark-01 trengte `--model isnet-general-use` (u2net droppet lyse brettede
+  stabler); resten u2net.
+- **✦-vannmerket** lå inne i det nederste-høyre plagget på 6 ark → fjernet
+  manuelt etter split (klone-patch/diffusjon-inpaint): sport-antrekk-2,
+  dunvest-dame, ullfrakk, kjeledress-barn, vattert-vest, luer-stabel.
+  (luer-stabel har en liten glatt flekk igjen, men ingen ✦.)
+
+**DEL 2 — plaggdata** (`src/game/data/klesbutikkPlagg.ts`, nytt tunbart datalag):
+`Plagg { id, navn, spriteHengFront?, spriteHengProfil?, spriteBrett?,
+spriteAntrekk? }` + `spriteFor()`/`passerType()`. 40 heng, 12 brett, 12 antrekk.
+`spriteHengProfil` er TOM (profil-arket mangler). `klesbutikkFixtures.ts`:
+heng-plasser fikk `variant: 'front' | 'profil'`; **stativ + lite stativ =
+'profil'** (faller tilbake til front når profil-spriten mangler).
+
+**DEL 3 — plagg-auto-snap** (`KlesbutikkStillas.tsx`, Interiør · 🪑 Møbler):
+- **Klespalett** (venstre) gruppert Hengende/Brettet/Antrekk. Dra plagg →
+  kompatible LEDIGE vareplasser på plasserte møbler markeres → slipp = snapper
+  med riktig sprite-variant (**profil→front på stativ, brett på hylle/bord,
+  antrekk rendret over dukke-spriten**). Én vare per plass; høyreklikk = fjern.
+- Plaggene er barn av møbel-boksen → **følger møbelet ved flytting** og skalerer
+  med plass-geometrien. Snap-deteksjon leser slot-ankrene (`data-plass`) fra
+  DOM-en (unngår sprite-bildeforhold-matte).
+- **State:** `klesbutikkPlaggLayout: { plassId, plaggId }[]`
+  (`plassId = ${fixtureItemId}:${slotIndex}`), action `SET_KLESBUTIKK_PLAGG`.
+  Rent presentasjonslag — ingen katalog/lager/pris ennå.
+
+Verifisert med headless Chromium: heng→stativ (front-fallback), brett→hylle,
+antrekk→dukke, plagg-følger-møbel, høyreklikk-fjern, persist over fanebytte.
+`tsc -b` + `vite build` grønt.
+
+**➡️ Til Espen:** valider i Chrome (`/dev/klesbutikk`, 🪑 Møbler): plasser
+stativ/hylle/dukke, dra plagg fra klespaletten — sjekk profil-på-stang (front
+inntil profil-arket kommer), brett-på-hylle/bord, antrekk-på-dukke, og at plagg
+følger møbelet når du flytter det. **Trengs fra deg:** «heng profil»-arket
+(logisk 03: denimjakke-p osv.) som eget ark, så kobler jeg på ekte profil-sprites.
 
 ---
 

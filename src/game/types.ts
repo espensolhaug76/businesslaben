@@ -206,6 +206,15 @@ export interface KlesbutikkFixtureItem {
   fotpunkt: Fotpunkt
 }
 
+/** Ett plagg auto-snappet til en vareplass på et plassert møbel (BRANSJE 2,
+ *  presentasjonslag). `plassId` identifiserer ÉN vareplass på ett møbel:
+ *  `${fixtureItemId}:${slotIndex}`. Én vare per plass. Rendres med riktig
+ *  sprite-variant (profil/brett/antrekk) fra plaggets definisjon. */
+export interface KlesbutikkPlaggItem {
+  plassId: string
+  plaggId: string
+}
+
 // ── Staff ────────────────────────────────────────────────────────────────────
 
 export interface Employee {
@@ -432,6 +441,9 @@ export interface GameState {
    *  KlesbutikkStillas dev-scene). Tom liste = ingen møbler. Se
    *  KlesbutikkFixtureItem. Ikke koblet til onboarding/spillflyten ennå. */
   klesbutikkFixtureLayout: KlesbutikkFixtureItem[]
+  /** Plagg auto-snappet til vareplasser på møblene (presentasjonslag,
+   *  KlesbutikkStillas). Tom liste = ingen plagg. Se KlesbutikkPlaggItem. */
+  klesbutikkPlaggLayout: KlesbutikkPlaggItem[]
   marketingBudget: {
     socialMedia: number
     google: number

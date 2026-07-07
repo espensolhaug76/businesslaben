@@ -22,11 +22,14 @@ import type { KlesbutikkFixtureId } from '../types'
 
 export type VareplassType = 'heng' | 'brett' | 'antrekk'
 
-/** Én ferdig utregnet vareplass — normalisert punkt (0–1) i møbelets sprite-boks. */
+/** Én ferdig utregnet vareplass — normalisert punkt (0–1) i møbelets sprite-boks.
+ *  `variant` gjelder KUN heng-plasser: 'profil' på stativ/lite stativ (plaggene
+ *  henger på skrå/i profil på stanga), 'front' ellers. */
 export interface Vareplass {
   x: number
   y: number
   type: VareplassType
+  variant?: 'front' | 'profil'
 }
 
 /** En rad med jevnt fordelte plasser. `count` = TUNBAR kapasitet for raden. */
@@ -39,6 +42,8 @@ interface SlotRow {
   xTo: number
   /** Antall plasser i raden (kapasitet). `1` sentreres på (xFrom+xTo)/2. */
   count: number
+  /** Heng-variant ('profil' på stativ). Default 'front' når utelatt. */
+  variant?: 'front' | 'profil'
 }
 
 export interface KlesbutikkFixtureDef {
@@ -56,12 +61,12 @@ const S = (n: string) => `/assets/raw/fixtures/${n}.png`
 export const KLESBUTIKK_FIXTURES: KlesbutikkFixtureDef[] = [
   {
     id: 'stativ', navn: 'Klesstativ', sprite: S('stativ'), baseWFrac: 0.52,
-    // Hengeplasser jevnt langs stanga nær toppen.
-    slotRows: [{ type: 'heng', y: 0.16, xFrom: 0.12, xTo: 0.88, count: 6 }],
+    // Hengeplasser jevnt langs stanga nær toppen — plaggene henger i PROFIL.
+    slotRows: [{ type: 'heng', variant: 'profil', y: 0.16, xFrom: 0.12, xTo: 0.88, count: 6 }],
   },
   {
     id: 'stativ-liten', navn: 'Lite stativ', sprite: S('stativ-liten'), baseWFrac: 0.34,
-    slotRows: [{ type: 'heng', y: 0.18, xFrom: 0.14, xTo: 0.86, count: 4 }],
+    slotRows: [{ type: 'heng', variant: 'profil', y: 0.18, xFrom: 0.14, xTo: 0.86, count: 4 }],
   },
   {
     id: 'hylle', navn: 'Hylle', sprite: S('hylle'), baseWFrac: 0.5,
@@ -115,7 +120,7 @@ export function vareplasser(def: KlesbutikkFixtureDef): Vareplass[] {
       const x = row.count === 1
         ? (row.xFrom + row.xTo) / 2
         : row.xFrom + (i * (row.xTo - row.xFrom)) / (row.count - 1)
-      out.push({ x, y: row.y, type: row.type })
+      out.push({ x, y: row.y, type: row.type, variant: row.variant })
     }
   }
   return out

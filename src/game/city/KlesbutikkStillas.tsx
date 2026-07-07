@@ -5,6 +5,7 @@ import { KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG } from '../../data/districts'
 import { GameProvider, useGame } from '../GameContext'
 import { KLESBUTIKK, type Gulvplan } from '../data/industryDefinition'
 import { KLESBUTIKK_FIXTURES, fixtureDef, vareplasser, kapasitet, type VareplassType } from '../data/klesbutikkFixtures'
+import { KLESBUTIKK_PLAGG, plaggById, spriteFor, type Plagg } from '../data/klesbutikkPlagg'
 import type { KlesbutikkFixtureId, Fotpunkt } from '../types'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Target, type DrawZone, type Rect } from './ZoneTracer'
@@ -205,8 +206,18 @@ function KlesbutikkStillasInner() {
   )
 }
 
+/** Plaggets primærtype (bestemmer hvilke vareplasser det passer på). */
+function plaggType(p: Plagg): VareplassType {
+  return p.spriteHengFront || p.spriteHengProfil ? 'heng' : p.spriteBrett ? 'brett' : 'antrekk'
+}
+
 // ── Ett møbel rendret på gulvet/veggen (bunn-ankret, dybde-skalert) ───────────
-function FurnitureSprite({ fixtureId, foot, widthFrac, showSlots, opacity, onPointerDown, onRemove }: {
+// Vareplassene er barn av møbel-boksen, så SNAPPEDE PLAGG følger møbelets
+// posisjon/skala automatisk. Slot-ankrene (data-plass) er alltid i DOM-en så
+// plagg-snappingen kan finne dem via getBoundingClientRect — uavhengig av
+// sprite-bildeforhold.
+function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacity, onPointerDown, onRemove,
+  plaggBySlot, dragType, targetPlassId, onRemovePlagg }: {
   fixtureId: KlesbutikkFixtureId
   foot: Fotpunkt
   widthFrac: number
@@ -214,9 +225,15 @@ function FurnitureSprite({ fixtureId, foot, widthFrac, showSlots, opacity, onPoi
   opacity?: number
   onPointerDown?: (e: React.PointerEvent) => void
   onRemove?: () => void
+  itemId?: string
+  plaggBySlot?: Record<number, string>
+  dragType?: VareplassType | null
+  targetPlassId?: string | null
+  onRemovePlagg?: (slotIndex: number) => void
 }) {
   const def = fixtureDef(fixtureId)
   if (!def) return null
+  const vps = itemId ? vareplasser(def) : []
   return (
     <div
       onPointerDown={onPointerDown}
@@ -232,14 +249,60 @@ function FurnitureSprite({ fixtureId, foot, widthFrac, showSlots, opacity, onPoi
     >
       <img src={def.sprite} alt={def.navn} draggable={false}
         style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.45))', pointerEvents: 'none' }} />
-      {showSlots && vareplasser(def).map((s, i) => (
-        <div key={i} title={s.type} style={{
-          position: 'absolute', left: `${s.x * 100}%`, top: `${s.y * 100}%`,
-          width: 9, height: 9, transform: 'translate(-50%, -50%)', borderRadius: '50%',
-          background: SLOT_COLOR[s.type], border: '1px solid rgba(0,0,0,0.55)',
-          boxShadow: '0 0 0 1px rgba(255,255,255,0.5)', pointerEvents: 'none',
-        }} />
-      ))}
+
+      {vps.map((s, i) => {
+        const plassId = `${itemId}:${i}`
+        const plaggId = plaggBySlot?.[i]
+        const plagg = plaggId ? plaggById(plaggId) : undefined
+        const free = !plagg
+        const compat = !!dragType && dragType === s.type && free
+        const isTarget = targetPlassId === plassId
+        // Plagg-rendering per type: heng = topp-ankret (henger ned), brett =
+        // bunn-ankret (ligger på flaten), antrekk = sentrert over dukka.
+        const pw = s.type === 'antrekk' ? 84 : 20
+        const pTransform = s.type === 'heng' ? 'translate(-50%, -6%)'
+          : s.type === 'brett' ? 'translate(-50%, -100%)' : 'translate(-50%, -50%)'
+        const plaggSprite = plagg ? spriteFor(plagg, s.type, s.variant) : undefined
+        return (
+          <div key={i}>
+            {/* Slot-anker (alltid i DOM for snap-deteksjon) */}
+            <div data-plass={plassId} data-type={s.type} data-free={free ? '1' : '0'}
+              style={{ position: 'absolute', left: `${s.x * 100}%`, top: `${s.y * 100}%`, width: 1, height: 1, pointerEvents: 'none' }} />
+            {/* Snappet plagg */}
+            {plaggSprite && (
+              <img
+                src={plaggSprite} alt={plagg!.navn} draggable={false}
+                onContextMenu={onRemovePlagg ? (e => { e.preventDefault(); e.stopPropagation(); onRemovePlagg(i) }) : undefined}
+                title={onRemovePlagg ? `${plagg!.navn} — høyreklikk for å fjerne` : plagg!.navn}
+                style={{
+                  position: 'absolute', left: `${s.x * 100}%`, top: `${s.y * 100}%`,
+                  width: `${pw}%`, height: 'auto', transform: pTransform,
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
+                  pointerEvents: onRemovePlagg ? 'auto' : 'none', cursor: 'context-menu',
+                }} />
+            )}
+            {/* Highlight ledige kompatible plasser under plagg-drag */}
+            {compat && (
+              <div style={{
+                position: 'absolute', left: `${s.x * 100}%`, top: `${s.y * 100}%`,
+                width: isTarget ? 18 : 12, height: isTarget ? 18 : 12, transform: 'translate(-50%, -50%)',
+                borderRadius: '50%', border: `2px solid ${isTarget ? '#22e6a4' : '#7dd3fc'}`,
+                background: isTarget ? 'rgba(34,230,164,0.35)' : 'rgba(125,211,252,0.15)',
+                boxShadow: isTarget ? '0 0 10px rgba(34,230,164,0.7)' : 'none', pointerEvents: 'none',
+              }} />
+            )}
+            {/* Dev-markør (kalibrering) */}
+            {showSlots && (
+              <div title={s.type} style={{
+                position: 'absolute', left: `${s.x * 100}%`, top: `${s.y * 100}%`,
+                width: 9, height: 9, transform: 'translate(-50%, -50%)', borderRadius: '50%',
+                background: SLOT_COLOR[s.type], border: '1px solid rgba(0,0,0,0.55)',
+                boxShadow: '0 0 0 1px rgba(255,255,255,0.5)', pointerEvents: 'none',
+              }} />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -253,6 +316,21 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   const itemsRef = useRef(items)
   const [newType, setNewType] = useState<KlesbutikkFixtureId | null>(null)
   const [ghostFoot, setGhostFoot] = useState<Fotpunkt | null>(null)
+
+  // Plagg-snapping (presentasjonslag)
+  const [plaggItems, setPlaggItems] = useState(state.klesbutikkPlaggLayout)
+  const plaggRef = useRef(plaggItems)
+  const [dragPlagg, setDragPlagg] = useState<{ plaggId: string; type: VareplassType } | null>(null)
+  const [plaggGhost, setPlaggGhost] = useState<{ x: number; y: number } | null>(null)
+  const [targetPlassId, setTargetPlassId] = useState<string | null>(null)
+  const commitPlagg = (next: typeof plaggItems) => { plaggRef.current = next; setPlaggItems(next); dispatch({ type: 'SET_KLESBUTIKK_PLAGG', items: next }) }
+
+  // itemId → { slotIndex → plaggId }
+  const plaggByItem: Record<string, Record<number, string>> = {}
+  for (const pi of plaggItems) {
+    const [fid, si] = pi.plassId.split(':')
+    ;(plaggByItem[fid] ??= {})[Number(si)] = pi.plaggId
+  }
 
   const commit = (next: typeof items) => { itemsRef.current = next; setItems(next); dispatch({ type: 'SET_KLESBUTIKK_FIXTURES', items: next }) }
   const persist = () => dispatch({ type: 'SET_KLESBUTIKK_FIXTURES', items: itemsRef.current })
@@ -296,6 +374,41 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
 
   const remove = (id: string) => commit(itemsRef.current.filter(i => i.id !== id))
 
+  // Nærmeste LEDIGE, kompatible vareplass til (cx,cy) — leser slot-ankrene
+  // (data-plass) fra DOM-en, så vi slipper sprite-bildeforhold-matematikk.
+  function nearestSlot(type: VareplassType, cx: number, cy: number): string | null {
+    const r = overlayRef.current?.getBoundingClientRect(); if (!r) return null
+    let best: string | null = null, bestD = Infinity
+    document.querySelectorAll<HTMLElement>('[data-plass]').forEach(el => {
+      if (el.dataset.type !== type || el.dataset.free !== '1') return
+      const b = el.getBoundingClientRect(); const sx = b.left + b.width / 2, sy = b.top + b.height / 2
+      const d = Math.hypot(cx - sx, cy - sy)
+      if (d < bestD) { bestD = d; best = el.dataset.plass ?? null }
+    })
+    return best && bestD <= 0.07 * r.width ? best : null
+  }
+
+  function startPlaggDrag(plaggId: string, e: React.PointerEvent) {
+    e.preventDefault()
+    const p = plaggById(plaggId); if (!p) return
+    const type = plaggType(p)
+    setDragPlagg({ plaggId, type }); setPlaggGhost({ x: e.clientX, y: e.clientY }); setTargetPlassId(null)
+    const onMove = (ev: PointerEvent) => {
+      setPlaggGhost({ x: ev.clientX, y: ev.clientY })
+      setTargetPlassId(nearestSlot(type, ev.clientX, ev.clientY))
+    }
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true)
+      const target = nearestSlot(type, ev.clientX, ev.clientY)
+      setDragPlagg(null); setPlaggGhost(null); setTargetPlassId(null)
+      if (target) commitPlagg([...plaggRef.current.filter(pi => pi.plassId !== target), { plassId: target, plaggId }])
+    }
+    window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
+  }
+
+  const removePlaggAt = (itemId: string, slot: number) =>
+    commitPlagg(plaggRef.current.filter(pi => pi.plassId !== `${itemId}:${slot}`))
+
   const sorted = [...items].sort((a, b) => a.fotpunkt.y - b.fotpunkt.y)
   const { fremV: A, fremH: B, bakV: C, bakH: D } = g.hjørner
 
@@ -314,10 +427,14 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
         const def = fixtureDef(it.fixtureId); if (!def) return null
         const w = def.baseWFrac * scaleFor(g, it.fotpunkt)
         return (
-          <FurnitureSprite key={it.id} fixtureId={it.fixtureId} foot={it.fotpunkt} widthFrac={w}
+          <FurnitureSprite key={it.id} fixtureId={it.fixtureId} itemId={it.id} foot={it.fotpunkt} widthFrac={w}
             showSlots={showSlots}
             onPointerDown={interactive ? (e => startMove(it.id, e)) : undefined}
-            onRemove={interactive ? () => remove(it.id) : undefined} />
+            onRemove={interactive ? () => remove(it.id) : undefined}
+            plaggBySlot={plaggByItem[it.id]}
+            dragType={dragPlagg?.type ?? null}
+            targetPlassId={targetPlassId}
+            onRemovePlagg={interactive ? (slot => removePlaggAt(it.id, slot)) : undefined} />
         )
       })}
 
@@ -357,6 +474,51 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
             Dra ut på gulvet (skalerer med dybden) · dra plassert møbel for å flytte · høyreklikk = fjern
           </div>
         </div>, document.body)}
+
+      {/* Klespalett (portal, venstre) — dra plagg til kompatible vareplasser */}
+      {interactive && createPortal(
+        <div style={{
+          position: 'fixed', top: 56, left: 16, zIndex: 95, width: 168, maxHeight: '78vh', overflowY: 'auto',
+          background: 'rgba(10,14,26,0.94)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12, padding: '10px', fontFamily: "'Outfit', sans-serif",
+        }}>
+          <div style={{ color: '#f1f5f9', fontSize: 12, fontWeight: 800, marginBottom: 4 }}>👕 Plagg</div>
+          <div style={{ fontSize: 9, color: '#64748b', marginBottom: 8, lineHeight: 1.4 }}>
+            Dra til en vareplass: heng→stativ, brett→hylle/bord, antrekk→dukke.
+          </div>
+          {(['heng', 'brett', 'antrekk'] as VareplassType[]).map(t => {
+            const list = KLESBUTIKK_PLAGG.filter(p => plaggType(p) === t)
+            const thumb = (p: Plagg) => p.spriteHengFront ?? p.spriteBrett ?? p.spriteAntrekk
+            return (
+              <div key={t} style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: SLOT_COLOR[t], marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {t === 'heng' ? 'Hengende' : t === 'brett' ? 'Brettet' : 'Antrekk'}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                  {list.map(p => (
+                    <div key={p.id} onPointerDown={e => startPlaggDrag(p.id, e)} title={p.navn}
+                      style={{
+                        aspectRatio: '1', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 6, cursor: 'grab', touchAction: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 2,
+                      }}>
+                      <img src={thumb(p)} alt="" draggable={false} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>, document.body)}
+
+      {/* Plagg-drag-spøkelse */}
+      {dragPlagg && plaggGhost && (() => {
+        const p = plaggById(dragPlagg.plaggId); if (!p) return null
+        const spr = p.spriteHengFront ?? p.spriteBrett ?? p.spriteAntrekk
+        return createPortal(
+          <img src={spr} alt="" draggable={false} style={{
+            position: 'fixed', left: plaggGhost.x, top: plaggGhost.y, width: 54, transform: 'translate(-50%, -50%)',
+            zIndex: 9999, pointerEvents: 'none', opacity: targetPlassId ? 0.95 : 0.6, filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))',
+          }} />, document.body)
+      })()}
     </div>
   )
 }
