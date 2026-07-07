@@ -41,6 +41,10 @@ FIXTURES_DIR  = "/home/espen/adventure-web-klesbutikk/public/assets/raw/fixtures
 # raw-mappe (input) og out-mappe (output) ULIKE for denne familien.
 KLAR_RAW_DIR  = "/home/espen/adventure-web-klesbutikk/public/assets/raw"
 KLAR_DIR      = "/home/espen/adventure-web-klesbutikk/public/assets/raw/klar"
+# Klar-dukke-arkene (PÅKLEDDE DUKKER): rå-ark i raw/ (klar-dukke-ark-NN-raw.png),
+# utklipp til raw/klar-dukke/. 4 påkledde dukker per ark (1 rad).
+KLAR_DUKKE_RAW_DIR = "/home/espen/adventure-web-klesbutikk/public/assets/raw"
+KLAR_DUKKE_DIR     = "/home/espen/adventure-web-klesbutikk/public/assets/raw/klar-dukke"
 
 # Navnekart per ark-nummer, i LESE-rekkefølge (rad for rad, venstre->høyre).
 PRODUCTS_NAME_MAPS = {
@@ -116,6 +120,21 @@ KLAR_NAME_MAPS = {
            "casual-barn", "sport-barn", "sommer-barn-antrekk", "vinter-barn-antrekk"],
 }
 
+# PÅKLEDDE DUKKER (klar-dukke-ark-NN, jobb/klesbutikk). 5 ark × 4 blobs = 20
+# påkledde dukke-sprites. Keyet på FYSISK arknr. (04 hoppet over av Espen).
+# Navn = beskrivende bokmål kebab-case etter FAKTISK innhold, verifisert visuelt
+# 2026-07-07. Dukketype (dame/herre/barn) er notert i klesbutikkDukker.ts.
+# NB: ark 02 blob 4 (blazer+jeans) = visuelt kjønns-tvetydig, antatt DAME (arket
+# er ellers dame) — flagget i spor-b.md. ✦-vannmerket nederst t.h. fjernes etter
+# split (som klar-familien).
+KLAR_DUKKE_NAME_MAPS = {
+    "01": ["blazer-herre", "sommerkjole-dame", "denim-herre", "joggedress-herre"],
+    "02": ["bluse-skjort-dame", "trenchcoat-dame", "strikkekjole-dame", "blazer-jeans-dame"],
+    "03": ["vinterkappe-dame", "linskjortekjole-dame", "treningsjakke-dame", "velurkjole-dame"],
+    "05": ["dress-herre", "ullfrakk-herre", "hoodie-herre", "dunparkas-herre"],
+    "06": ["regnfrakk-barn", "hoodie-jeans-barn", "blomsterkjole-barn", "vinterdress-barn"],
+}
+
 ALPHA_THRESHOLD = 40      # alfa over dette = «vare-piksel»
 MIN_AREA_FRAC   = 0.004   # blobs mindre enn 0.4 % av arealet kastes (støy/krummer)
 PAD             = 6       # piksler luft rundt hvert utklipp
@@ -187,6 +206,8 @@ def resolve_family(path):
         return CUSTOMERS_DIR, CUSTOMERS_NAME_MAPS, CUSTOMERS_DIR
     if base.startswith("fixtures-ark"):
         return FIXTURES_DIR, FIXTURES_NAME_MAPS, FIXTURES_DIR
+    if base.startswith("klar-dukke-ark"):
+        return KLAR_DUKKE_RAW_DIR, KLAR_DUKKE_NAME_MAPS, KLAR_DUKKE_DIR
     if base.startswith("klar-ark"):
         return KLAR_RAW_DIR, KLAR_NAME_MAPS, KLAR_DIR
     return PRODUCTS_DIR, PRODUCTS_NAME_MAPS, PRODUCTS_DIR
@@ -231,7 +252,8 @@ def main():
         if not names:
             map_name = {CUSTOMERS_DIR: 'CUSTOMERS_NAME_MAPS',
                         FIXTURES_DIR: 'FIXTURES_NAME_MAPS',
-                        KLAR_DIR: 'KLAR_NAME_MAPS'}.get(out_dir, 'PRODUCTS_NAME_MAPS')
+                        KLAR_DIR: 'KLAR_NAME_MAPS',
+                        KLAR_DUKKE_DIR: 'KLAR_DUKKE_NAME_MAPS'}.get(out_dir, 'PRODUCTS_NAME_MAPS')
             print(f"FEIL: ingen navn oppgitt og intet kart for ark '{nn}'. Legg til i {map_name}.")
             sys.exit(1)
 
