@@ -7,6 +7,7 @@ import DashboardOverlay from './ui/DashboardOverlay'
 import SalesScenarioOverlay from './ui/SalesScenarioOverlay'
 import YearEndOverlay from './ui/YearEndOverlay'
 import DayResultOverlay from './ui/DayResultOverlay'
+import OpeningOrderOverlay from './ui/OpeningOrderOverlay'
 import RentPanel from './ui/panels/RentPanel'
 import StartupScreen from './screens/StartupScreen'
 import CityMapView from './city/CityMapView'
@@ -83,15 +84,14 @@ function GameContent() {
       finansiering: 'bank',
       personlighet: 'analytisk',
     })
-    // INNKJØP/LEVERING (docs/INNKJOP_LEVERING.md, DEL 1): dev-seedet legger
-    // IKKE lenger inn et eget demo-sortiment. Startlageret kommer nå fra den
-    // GENERELLE åpningsleveransen (IndustryDefinition.oppstartssortiment),
-    // som legges ferdig ankommet på lager ved RENT_LOCATION — samme vei for
-    // dev (?skip → manuell leie) og vanlig spill. Kaffe settes som
+    // INNKJØP/LEVERING (docs/INNKJOP_LEVERING.md): dev-seedet legger IKKE inn
+    // noe demo-sortiment. Startlageret velger eleven selv i ÅPNINGSBESTILLINGEN
+    // (OpeningOrderOverlay), som dukker opp straks etter manuell leie — samme
+    // vei for dev (?skip → klikk «TIL LEIE») og vanlig spill. Kaffe settes som
     // hovedprodukt for plakat-stedfortrederen på disken (id-en lagres; varen
-    // finnes så snart lokalet er leid).
+    // finnes så snart eleven har lagt den i åpningsbestillingen).
     dispatch({ type: 'SET_MAIN_PRODUCT', id: 'coffee' })
-    console.log('[DEV] StartupScreen skipped, seeded defaults (åpningsleveranse ved leie)')
+    console.log('[DEV] StartupScreen skipped, seeded defaults (åpningsbestilling ved leie)')
   }, [state.phase, dispatch])
 
   // DEL 4: lytt etter dev-trigger fra dashbordet («Øv salg»). Åpner
@@ -221,7 +221,16 @@ function GameContent() {
       <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} initialTab={dashboardTab as any} />
       <SalesScenarioOverlay open={salesOpen} onClose={closeSales} scenarioId={salesScenarioId} />
       <YearEndOverlay />
-      <DayResultOverlay />
+      {/* Dagsoppgjør: «Bestill til i morgen» åpner dashbordet på Produkter uten
+          å avansere dagen; oppgjøret skjules mens dashbordet ligger over (det
+          har høyere z-index) og kommer tilbake når det lukkes. */}
+      <DayResultOverlay
+        dashboardOpen={dashboardOpen}
+        onOpenProducts={() => { setDashboardTab('produkter'); setDashboardOpen(true); setOverlay(true) }}
+      />
+      {/* Åpningsbestilling — vises straks etter leie (gates internt på
+          rentedLocationId && !openingOrderPlaced). */}
+      <OpeningOrderOverlay />
 
       {vacantInfo && (
         <RentPanel

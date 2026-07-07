@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import type { MonterTrau } from '../../data/districts'
 import { useGame } from '../GameContext'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
+import { DAY_CONFIG } from '../data/dayConfig'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
@@ -84,7 +85,18 @@ const DENSITY_OPTIONS: TrauDensity[] = ['tett', 'standard', 'luftig']
 export function tileCount(product: Product, trauId: string, density: TrauDensity): number {
   if (product.stock <= 0) return 0
   const capacity = Math.max(1, Math.round(trauCols(trauId) * MAX_ROWS * DENSITY_MULT[density]))
-  const r = product.stock / Math.max(1, product.maxDemandPerMonth)
+  // «Full» trau måles mot et rimelig DAGSLAGER, ikke en hel måneds
+  // etterspørsel. REGRESJONSFIKS (2026-07-07): før innkjøp/levering-runden ga
+  // «dra vare til trau» en full startbatch (= maxDemandPerMonth, ~220 stk), så
+  // r=1 og trauet var fullt. Nå har varer realistisk dagslager (20–30 stk) fra
+  // åpningsleveranse/bestilling; r mot MÅNEDS-etterspørselen ble da ~0,1 → kun
+  // 1 flis (og skew fikk ingen ekstra rad å vinkle → så ut som ren sidelengs-
+  // forskyvning). Referansen er derfor dagsetterspørsel (maxDemandPerMonth /
+  // handledager): et fullt dagslager fyller trauet akkurat som før
+  // refaktoreringen, og trauet tømmes gradvis utover dagen. Selve
+  // plasseringen/skew/scale i TrauContents er UENDRET.
+  const dailyFull = Math.max(1, product.maxDemandPerMonth / DAY_CONFIG.daysPerMonth)
+  const r = product.stock / dailyFull
   const frac = r >= 0.66 ? 1 : r >= 0.33 ? 0.625 : 0.25
   return Math.max(1, Math.round(capacity * frac))
 }

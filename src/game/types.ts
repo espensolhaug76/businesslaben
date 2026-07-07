@@ -379,6 +379,10 @@ export interface GameState {
   /** Siste morgenleveranse (OPEN_DAY) — driver «📦 Varer ankommet»-pilla i
    *  interiørscenen. Null når ingenting ankom / etter at pilla er lukket. */
   lastDelivery: DeliveryNote | null
+  /** Åpningsbestilling (docs/INNKJOP_LEVERING.md): false rett etter leie ⇒
+   *  OpeningOrderOverlay vises til eleven har lagt inn (eller bevisst hoppet
+   *  over) sitt selvvalgte startlager. Settes av PLACE_OPENING_ORDER. */
+  openingOrderPlaced: boolean
 
   // Products & selling
   products: Product[]

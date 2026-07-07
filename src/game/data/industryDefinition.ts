@@ -78,6 +78,31 @@ export interface OppstartsvareLinje {
   qty: number
 }
 
+/** Forsynings-/leveringstekst (docs/INNKJOP_LEVERING.md, DEL 2). Koden holder
+ *  seg GENERISK (Bestilling/incomingOrders/leadTime/ankomstDag) — den
+ *  bransje-SPESIFIKKE ordlyden bor her, så kafeen kan si «bakes ferske» i stedet
+ *  for «leveres», og en klesbutikk kan si «bestilt mot sesong». UI leser disse
+ *  i stedet for hardkodede strenger. `ankomstEtikett`/`klarMelding` er
+ *  funksjoner (som trauCols/matches) — ikke serialiserbare ennå, men
+ *  konsistent med resten av definisjonen. */
+export interface ForsyningTekst {
+  /** OpeningOrderOverlay: overskrift. */
+  åpningsordreTittel: string
+  /** OpeningOrderOverlay: løftet om når varene er klare (ingen ventetid dag 1). */
+  åpningsordreLøfte: string
+  /** OpeningOrderOverlay: bekreft-knappen. */
+  åpningsordreKnapp: string
+  /** Produkter-fanens «underveis»-seksjon: overskrift. */
+  underveisTittel: string
+  /** Produkter-fanens «underveis»-linje: etikett gitt ankomstdag. */
+  ankomstEtikett: (dag: number) => string
+  /** Morgenpille (OPEN_DAY) når varer er klare — gitt en ferdig formatert
+   *  «antall × navn, …»-streng. */
+  klarMelding: (linjer: string) => string
+  /** Dagsoppgjørets framoverpekende utsolgt-hint. */
+  utsolgtHint: string
+}
+
 export interface IndustryDefinition {
   id: Industry
   navn: string
@@ -85,6 +110,8 @@ export interface IndustryDefinition {
   beskrivelse: string
   startingMoney: number
   katalog: IndustryCatalogItem[]
+  /** Bransje-spesifikk forsynings-/leveringstekst (DEL 2). */
+  forsyning: ForsyningTekst
   /** Åpningssortiment (DEL 1) — et rimelig startlager som ligger ferdig
    *  ankommet ved innflytting (RENT_LOCATION), trukket fra startkapitalen.
    *  Tom liste = ingen åpningsleveranse. */
@@ -109,13 +136,25 @@ export const CAFE: IndustryDefinition = {
   beskrivelse: INDUSTRY_META.cafe.description,
   startingMoney: INDUSTRY_META.cafe.startingMoney,
   katalog: INDUSTRY_CATALOG.cafe,
-  // Åpningssortiment (DEL 1) — kafeens rimelige startlager, ferdig ankommet
-  // ved innflytting. Blanding av drikke (kaffe, ikke ferskvare — holder over
-  // natten) og trau-ferskvarer (croissant/kanelbolle/rundstykke — svinner ved
-  // stenging), så både salg, svinn og etterfylling kan øves fra dag 1. Grovt
-  // rundstykke bevisst < 40 så Storbestillingen (Fredrik, 40 stk) demonstrerer
-  // ærlig delleveranse mot faktisk lager. Total innkjøpskostnad ~1 100 kr av
-  // 150 000 startkapital.
+  // Kafé-ordlyd (DEL 2): bakeriet BAKER ferske varer over natten — ikke
+  // «leveres». Åpningsbestillingen er klar ved åpning (ingen ventetid).
+  forsyning: {
+    åpningsordreTittel: '🥐 Åpningsbestilling',
+    åpningsordreLøfte: 'Varene bakes ferske til åpningsdagen og står klare når du åpner butikken.',
+    åpningsordreKnapp: 'Bak til åpningsdagen',
+    underveisTittel: '🥐 BAKES TIL I MORGEN',
+    ankomstEtikett: dag => `Ferskt dag ${dag}`,
+    klarMelding: linjer => `🥐 Ferske varer klare: ${linjer}`,
+    utsolgtHint: 'Du gikk tom — tapte salg. Bestill i kveld, så er varene ferske i disken i morgen tidlig.',
+  },
+  // Åpningssortiment — nå FORSLAGET som forhåndsutfyller elevens
+  // åpningsbestilling (OpeningOrderOverlay), ikke lenger et automatisk seed.
+  // Eleven kan justere/fjerne/utvide. Blanding av drikke (kaffe, ikke
+  // ferskvare — holder over natten) og trau-ferskvarer (croissant/kanelbolle/
+  // rundstykke — svinner ved stenging), så både salg, svinn og etterfylling
+  // kan øves fra dag 1. Grovt rundstykke bevisst < 40 så Storbestillingen
+  // (Fredrik, 40 stk) demonstrerer ærlig delleveranse mot faktisk lager. Total
+  // ~1 100 kr av 150 000 startkapital.
   oppstartssortiment: [
     { catalogId: 'coffee', qty: 40 },
     { catalogId: 'croissant', qty: 20 },
@@ -158,6 +197,17 @@ export const KLESBUTIKK: IndustryDefinition = {
   beskrivelse: INDUSTRY_META.fashion.description,
   startingMoney: INDUSTRY_META.fashion.startingMoney,
   katalog: INDUSTRY_CATALOG.fashion,
+  // Klesbutikk-ordlyd (stub, DEL 2): plagg BESTILLES mot sesong, ikke bakes.
+  // Nøytral/generisk tekst inntil bransje 2 bygges ut.
+  forsyning: {
+    åpningsordreTittel: '👗 Åpningsbestilling',
+    åpningsordreLøfte: 'Plaggene henger klare i butikken til åpningsdagen.',
+    åpningsordreKnapp: 'Bestill til åpningsdagen',
+    underveisTittel: '📦 BESTILT',
+    ankomstEtikett: dag => `Klart dag ${dag}`,
+    klarMelding: linjer => `📦 Nye varer i hyllene: ${linjer}`,
+    utsolgtHint: 'Du gikk tom — tapte salg. Bestill mer av det som selger.',
+  },
   // Ingen åpningssortiment definert for stubben ennå (en ekte klesbutikk ville
   // fått sitt eget startlager her).
   oppstartssortiment: [],

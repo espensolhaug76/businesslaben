@@ -1,10 +1,16 @@
 import { motion } from 'framer-motion'
 import { useGame } from '../GameContext'
+import { getActiveIndustryDefinition } from '../data/industryDefinition'
 
 // ─── DAGSOPPGJØR (DEL 4, Dagssyklus) ──────────────────────────────────────────
-// Vises når dayPhase === 'oppgjør' (satt av CLOSE_DAY). Selvstyrt som
-// YearEndOverlay — ingen props, leser state direkte, gates internt.
-// «Start ny dag» dispatcher START_NEW_DAY (dagteller + evt. månedsrull).
+// Vises når dayPhase === 'oppgjør' (satt av CLOSE_DAY). Leser state direkte,
+// gates internt. «Start ny dag» dispatcher START_NEW_DAY (dagteller + evt.
+// månedsrull). «Bestill til i morgen» (onOpenProducts) åpner dashbordet på
+// Produkter-fanen UTEN å avansere dagen — dayPhase forblir 'oppgjør', og
+// bestillinger lagt nå får ankomstDag = dayNumber+1 («ferskt neste dag»).
+// Mens dashbordet ligger over (dashboardOpen), skjules oppgjøret så det ikke
+// dekker dashbordet (oppgjøret har høyere z-index); det kommer tilbake når
+// dashbordet lukkes (dayPhase er fortsatt 'oppgjør').
 
 const MONTH_NAMES = ['Januar', 'Februar', 'Mars', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Desember']
 
@@ -14,9 +20,14 @@ function formatKr(n: number) { return `${Math.round(n).toLocaleString('nb-NO')} 
  *  andelen av dagens salgsinntekt. Rent pedagogisk merke, ingen konsekvens. */
 const HIGH_SVINN_SHARE = 0.3
 
-export default function DayResultOverlay() {
+export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
+  /** Åpne dashbordet på Produkter-fanen uten å avansere dagen. */
+  onOpenProducts: () => void
+  /** Dashbordet ligger over oppgjøret akkurat nå ⇒ skjul oppgjøret. */
+  dashboardOpen: boolean
+}) {
   const { state, dispatch } = useGame()
-  if (state.dayPhase !== 'oppgjør' || !state.lastDayResult) return null
+  if (state.dayPhase !== 'oppgjør' || !state.lastDayResult || dashboardOpen) return null
 
   const r = state.lastDayResult
   const resultColor = r.resultat >= 0 ? '#22c55e' : '#ef4444'
@@ -73,29 +84,52 @@ export default function DayResultOverlay() {
           </div>
         </div>
 
-        {/* Pedagogiske hint — mild tone, aldri straffende */}
+        {/* Pedagogiske hint — mild tone, aldri straffende. KLIKKBARE: fører
+            rett til Produkter-fanen (bestill inn til i morgen) uten å avansere
+            dagen. */}
         {(highSvinn || r.stockoutHappened) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
             {highSvinn && (
-              <div style={{
-                background: 'rgba(250,204,21,0.08)', border: '1px solid rgba(250,204,21,0.3)',
-                borderRadius: '0.75rem', padding: '0.7rem 0.9rem', fontSize: 13, color: '#fde68a', lineHeight: 1.5,
-              }}>
-                💡 Mye ble kastet — vurder mindre innkjøp eller færre ferskvarer i disken.
-              </div>
+              <button
+                onClick={onOpenProducts}
+                title="Åpne Produkter-fanen og juster innkjøpet"
+                style={{
+                  textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer',
+                  background: 'rgba(250,204,21,0.08)', border: '1px solid rgba(250,204,21,0.3)',
+                  borderRadius: '0.75rem', padding: '0.7rem 0.9rem', fontSize: 13, color: '#fde68a', lineHeight: 1.5,
+                }}
+              >
+                💡 Mye ble kastet — vurder mindre innkjøp eller færre ferskvarer i disken. <span style={{ textDecoration: 'underline' }}>Juster innkjøpet →</span>
+              </button>
             )}
             {r.stockoutHappened && (
-              <div style={{
-                background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.3)',
-                borderRadius: '0.75rem', padding: '0.7rem 0.9rem', fontSize: 13, color: '#7dd3fc', lineHeight: 1.5,
-              }}>
-                💡 Du gikk tom — tapte salg. Bestill i kveld, så er varene i disken i morgen tidlig.
-              </div>
+              <button
+                onClick={onOpenProducts}
+                title="Åpne Produkter-fanen og bestill inn til i morgen"
+                style={{
+                  textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer',
+                  background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.3)',
+                  borderRadius: '0.75rem', padding: '0.7rem 0.9rem', fontSize: 13, color: '#7dd3fc', lineHeight: 1.5,
+                }}
+              >
+                💡 {getActiveIndustryDefinition().forsyning.utsolgtHint} <span style={{ textDecoration: 'underline' }}>Bestill nå →</span>
+              </button>
             )}
           </div>
         )}
 
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={onOpenProducts}
+            title="Bestill inn varer til i morgen uten å avslutte dagen"
+            style={{
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 99, padding: '0.8rem 1.6rem', color: '#cbd5e1',
+              fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            🥐 Bestill til i morgen
+          </button>
           <button
             onClick={() => dispatch({ type: 'START_NEW_DAY' })}
             style={{

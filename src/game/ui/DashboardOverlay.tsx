@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
-import { getIndustryDefinitionFor } from '../data/industryDefinition'
+import { getIndustryDefinitionFor, getActiveIndustryDefinition } from '../data/industryDefinition'
 import WindowDisplayEditor from '../city/WindowDisplay'
 import { SCENARIOS } from '../sales/scenarios'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
@@ -1340,14 +1340,16 @@ function ProdukterTab() {
       )}
 
       {/* Underveis — bestillinger som ennå ikke er ankommet (leveringstid,
-          docs/INNKJOP_LEVERING.md). Vare, antall, «ankommer dag N». */}
+          docs/INNKJOP_LEVERING.md). Ordlyden er bransjens (DEL 2): kafeen sier
+          «bakes til i morgen» / «Ferskt dag N», ikke «leveres» — via
+          forsyning.underveisTittel/ankomstEtikett. */}
       {state.incomingOrders.length > 0 && (
         <div style={{
           background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.25)',
           borderRadius: '1rem', padding: '0.75rem 1rem', marginBottom: '1.25rem',
         }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: '#7dd3fc', letterSpacing: '0.04em', marginBottom: '0.6rem' }}>
-            🚚 UNDERVEIS
+            {getActiveIndustryDefinition().forsyning.underveisTittel}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
             {state.incomingOrders.map((o, i) => (
@@ -1359,7 +1361,7 @@ function ProdukterTab() {
                 <span style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 12 }}>{productName(o.productId)}</span>
                 <span style={{ color: '#7dd3fc', fontSize: 12 }}>{o.qty} stk</span>
                 <span style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8' }}>
-                  📦 Ankommer dag {o.ankomstDag}
+                  {getActiveIndustryDefinition().forsyning.ankomstEtikett(o.ankomstDag)}
                 </span>
               </div>
             ))}

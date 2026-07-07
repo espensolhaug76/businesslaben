@@ -285,9 +285,11 @@ export default function InteriorView({ districtId, lokaleId }: {
         <BackButton onClick={() => navigate(`/game/d/${districtId}/l/${lokaleId}`)} label="← Ut til fasaden" />
       </div>
 
-      {/* MORGENLEVERANSE (docs/INNKJOP_LEVERING.md) — «📦 Varer ankommet»-pille
-          når state.lastDelivery er satt (OPEN_DAY la ankomne bestillinger på
-          lager). Avvisbar med ✕ (CLEAR_DELIVERY). Toppmidtstilt under HUD. */}
+      {/* MORGENLEVERANSE (docs/INNKJOP_LEVERING.md) — «varer klare»-pille når
+          state.lastDelivery er satt (OPEN_DAY la ankomne bestillinger på
+          lager). Ordlyden er bransjens (DEL 2): kafeen sier «ferske varer
+          klare», ikke «leveres» — via ACTIVE_DEF.forsyning.klarMelding.
+          Avvisbar med ✕ (CLEAR_DELIVERY). Toppmidtstilt under HUD. */}
       {state.lastDelivery && (
         <div style={{
           position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 82,
@@ -298,7 +300,7 @@ export default function InteriorView({ districtId, lokaleId }: {
           maxWidth: 520, boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
         }}>
           <span>
-            📦 Varer ankommet: {state.lastDelivery.lines.map(l => `${l.qty} × ${l.name}`).join(', ')}
+            {ACTIVE_DEF.forsyning.klarMelding(state.lastDelivery.lines.map(l => `${l.qty} × ${l.name}`).join(', '))}
           </span>
           <button
             onClick={() => dispatch({ type: 'CLEAR_DELIVERY' })}

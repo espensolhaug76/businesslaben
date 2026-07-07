@@ -112,6 +112,7 @@ const initialState: GameState = {
 
   incomingOrders: [],
   lastDelivery: null,
+  openingOrderPlaced: false,
 
   products: [],
   mainProductId: null,
@@ -189,6 +190,9 @@ type Action =
   | { type: 'SET_COUNTER_LAYOUT'; items: TrauItem[] }
   | { type: 'RESOLVE_SALES_SCENARIO'; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number; stockout?: boolean }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
+  // Åpningsbestilling (docs/INNKJOP_LEVERING.md): elevens ene selvvalgte
+  // startlager, ferdig på lager dag 1 (ingen ventetid). Tom liste tillates.
+  | { type: 'PLACE_OPENING_ORDER'; items: { productId: string; qty: number }[] }
   | { type: 'SET_MARKETING'; budget: GameState['marketingBudget'] }
   | { type: 'SET_APPEAL'; appealType: GameState['appealType'] }
   | { type: 'SET_CHANNELS'; channels: DistributionChannel[] }
@@ -273,35 +277,10 @@ function reducer(state: GameState, action: Action): GameState {
       }
 
     case 'RENT_LOCATION': {
-      // DEL 1 (docs/INNKJOP_LEVERING.md) — ÅPNINGSLEVERANSE: ved innflytting
-      // ligger et rimelig startsortiment FERDIG ANKOMMET på lager, trukket fra
-      // startkapitalen. Fra dag 2 gjelder normal bestilling med leveringstid.
-      // Kun når sortimentet er tomt (første leie): hindrer dobbelt-seeding ved
-      // en evt. re-leie og respekterer et ev. dev-forhåndsseedet sortiment.
-      const def = getActiveIndustryDefinition()
-      let openingProducts = state.products
-      let openingCost = 0
-      if (state.products.length === 0 && def.oppstartssortiment.length > 0) {
-        openingProducts = def.oppstartssortiment
-          .map(o => {
-            const item = def.katalog.find(c => c.id === o.catalogId)
-            return item ? { ...catalogToProduct(item), stock: Math.max(0, o.qty) } : null
-          })
-          .filter((p): p is Product => p !== null)
-        openingCost = openingProducts.reduce((s, p) => s + p.costPrice * p.stock, 0)
-      }
-
-      const openingMessage: InboxMessage | null = openingProducts !== state.products
-        ? {
-            id: `msg_opening_${Date.now()}`,
-            type: 'supplier',
-            title: '📦 Åpningsleveransen er på plass',
-            body: `Startsortimentet er levert og står på lager (${openingCost.toLocaleString('nb-NO')} kr trukket). Fra og med i morgen bestiller du selv i Produkter-fanen — varene ankommer neste morgen.`,
-            date: `År 1, Måned 1`,
-            read: false,
-          }
-        : null
-
+      // Innkjøp/levering (docs/INNKJOP_LEVERING.md): startlageret seedes IKKE
+      // automatisk lenger — eleven gjør en ÅPNINGSBESTILLING selv (se
+      // OpeningOrderOverlay + PLACE_OPENING_ORDER), som vises straks etter
+      // leie (rentedLocationId satt + openingOrderPlaced=false).
       const newMessages: InboxMessage[] = [
         ...state.messages,
         {
@@ -312,20 +291,16 @@ function reducer(state: GameState, action: Action): GameState {
           date: `År 1, Måned 1`,
           read: false,
         },
-        ...(openingMessage ? [openingMessage] : []),
       ]
       return {
         ...state,
-        money: state.money - openingCost,
-        products: openingProducts,
-        p1_complete: openingProducts.length > 0 ? true : state.p1_complete,
         rentedLocationId: action.id,
         locationZone: action.zone,
         monthlyRent: action.rent,
         storageCapacity: action.capacity,
         phase: 'setting_up',
         messages: newMessages,
-        unreadCount: state.unreadCount + newMessages.length - state.messages.length,
+        unreadCount: state.unreadCount + 1,
         tutorialStep: state.tutorialStep === 2 ? 3 : state.tutorialStep,
         progress: { ...state.progress, locationChosen: true },
       }
@@ -457,6 +432,35 @@ function reducer(state: GameState, action: Action): GameState {
         products,
         incomingOrders: [...state.incomingOrders, order],
         p1_complete: true,
+      }
+    }
+
+    case 'PLACE_OPENING_ORDER': {
+      // Åpningsbestilling (docs/INNKJOP_LEVERING.md): elevens ene selvvalgte
+      // startlager. I motsetning til ORDER_PRODUCT (leveringstid) ligger disse
+      // FERDIG på lager dag 1 morgen — for kafé «bakes ferske til
+      // åpningsdagen», ingen ventetid. Kjøres én gang (openingOrderPlaced
+      // gater OpeningOrderOverlay). Tom bestilling er lov (eleven ble advart):
+      // ingen varer, ingen kostnad, men flagget settes så overlayet lukkes.
+      const def = getActiveIndustryDefinition()
+      const products: Product[] = []
+      let cost = 0
+      for (const { productId, qty } of action.items) {
+        if (qty <= 0) continue
+        const item = def.katalog.find(c => c.id === productId)
+        if (!item) continue
+        products.push({ ...catalogToProduct(item), stock: qty })
+        cost += item.costPrice * qty
+      }
+      return {
+        ...state,
+        // UI hindrer overforbruk (Bekreft er sperret når sum > kapital), så
+        // kostnaden trekkes rett av — defensivt kan money bli negativ, samme
+        // som resten av økonomien tåler (konkurs-sporet).
+        money: state.money - cost,
+        products,
+        openingOrderPlaced: true,
+        p1_complete: products.length > 0 ? true : state.p1_complete,
       }
     }
 
