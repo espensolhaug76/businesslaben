@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
-  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote,
+  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
@@ -12,6 +12,7 @@ import { updateFlags } from '../strategies/innovation/flagSystem'
 import { DAY_CONFIG } from './data/dayConfig'
 import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
+import { manedligeFasteKostnader } from './data/economy'
 
 // ─── XP thresholds ──────────────────────────────────────────────────────────
 
@@ -109,6 +110,7 @@ const initialState: GameState = {
   dayStats: { soldStk: 0, soldKr: 0, varekostKr: 0, reputationDelta: 0, xpEarned: 0, stockoutHappened: false },
   lastDayResult: null,
   dayHistory: [],
+  lastMonthSettlement: null,
 
   incomingOrders: [],
   lastDelivery: null,
@@ -216,6 +218,8 @@ type Action =
   | { type: 'START_NEW_DAY' }
   // Innkjøp/levering (docs/INNKJOP_LEVERING.md): lukk «Varer ankommet»-pilla.
   | { type: 'CLEAR_DELIVERY' }
+  // Økonomi-samling (DEL 2): lukk månedsoppgjør-overlayet.
+  | { type: 'DISMISS_MONTH_SETTLEMENT' }
   | { type: 'RESET' }
 
 // ─── Plan quality helper ─────────────────────────────────────────────────────
@@ -845,15 +849,35 @@ function reducer(state: GameState, action: Action): GameState {
       const nextDayNumber = state.dayNumber + 1
       const rollsMonth = nextDayNumber > DAY_CONFIG.daysPerMonth
       // Samme envelope-formel som APPLY_MONTH_RESULT (nextMonth/isYearEnd) —
-      // gjenbrukt ARITMETIKK, ikke selve handlingen: runde 1 kobler kun
-      // dag-telleren på månedstallet, uten å trigge PEST-hendelser eller
-      // måneds-rapport-fasen (egen, større simulering, bevisst utenfor
-      // scope her — se rapport-kommentaren i oppgaven).
+      // gjenbrukt ARITMETIKK, ikke selve handlingen. PEST-hendelsene/måneds-
+      // rapport-fasen (APPLY_MONTH_RESULT) er en egen, urørt flyt.
       const nextMonth = state.currentMonth + 1
       const isYearEnd = nextMonth > 12
 
+      // ØKONOMI-SAMLING (DEL 2): ved MÅNEDSRULL bygges et månedsoppgjør fra
+      // månedens dagsresultater, og faste kostnader trekkes fra kassa. Faste =
+      // husleie + lønn + forsikring + markedsføring (manedligeFasteKostnader —
+      // samme kilde som Økonomi-fanens burn/netto). LÅNEAVDRAG er en dokumentert
+      // TODO der (krever amortisering — ligger i den urørte APPLY_MONTH_RESULT-
+      // flyten). Dagsresultatet dekker allerede varekost/svinn, så
+      // månedsresultat = sum(dagsresultat) − faste.
+      let money = state.money
+      let settlement: MonthSettlement | null = state.lastMonthSettlement
+      if (rollsMonth) {
+        const mdays = state.dayHistory.filter(d => d.month === state.currentMonth && d.year === state.currentYear)
+        const inntekt = mdays.reduce((s, d) => s + d.resultat, 0)
+        const { linjer: kostnadslinjer, sum: fasteKostnader } = manedligeFasteKostnader(state)
+        money = state.money - fasteKostnader
+        settlement = {
+          month: state.currentMonth, year: state.currentYear,
+          inntekt, kostnadslinjer, fasteKostnader,
+          resultat: inntekt - fasteKostnader, antallDager: mdays.length,
+        }
+      }
+
       return {
         ...state,
+        money,
         dayNumber: rollsMonth ? 1 : nextDayNumber,
         currentMonth: rollsMonth ? (isYearEnd ? 1 : nextMonth) : state.currentMonth,
         currentYear: rollsMonth && isYearEnd ? state.currentYear + 1 : state.currentYear,
@@ -862,12 +886,17 @@ function reducer(state: GameState, action: Action): GameState {
         lastDayResult: null,
         // Rydd bort en evt. gammel «Varer ankommet»-pille før neste morgen.
         lastDelivery: null,
+        lastMonthSettlement: settlement,
       }
     }
 
     case 'CLEAR_DELIVERY':
       // Lukk morgenleveranse-pilla (interiørscenen).
       return state.lastDelivery ? { ...state, lastDelivery: null } : state
+
+    case 'DISMISS_MONTH_SETTLEMENT':
+      // Lukk månedsoppgjør-overlayet (ØKONOMI-SAMLING DEL 2).
+      return state.lastMonthSettlement ? { ...state, lastMonthSettlement: null } : state
 
     case 'RESET':
       return initialState

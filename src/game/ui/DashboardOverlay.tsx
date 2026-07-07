@@ -6,6 +6,8 @@ import { getIndustryDefinitionFor, getActiveIndustryDefinition } from '../data/i
 import WindowDisplayEditor from '../city/WindowDisplay'
 import { SCENARIOS } from '../sales/scenarios'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
+import { DAY_CONFIG } from '../data/dayConfig'
+import { manedligeFasteKostnader } from '../data/economy'
 import type { Product, DistributionChannel } from '../types'
 import type { Loan } from '../types'
 
@@ -960,7 +962,7 @@ function OkonomiTab() {
   const [loanAmount, setLoanAmount] = useState(250_000)
   const [loanMonths, setLoanMonths] = useState(24)
 
-  const { money, loans, totalDebt, monthlyLoanPayment, businessPlan, monthlyRent, monthlyPayroll, marketingBudget } = state
+  const { money, loans, totalDebt, monthlyLoanPayment, businessPlan } = state
 
   const interestRates = [0.15, 0.12, 0.09, 0.07, 0.05, 0.05]
   const RATE_LABELS = ['15 %', '12 %', '9 %', '7 %', '5 %', '5 %']
@@ -983,10 +985,23 @@ function OkonomiTab() {
     { months: 36, label: '36 måneder (lave avdrag, mye renter)' },
   ]
 
-  const monthlyCosts = monthlyRent + monthlyPayroll + monthlyLoanPayment + Object.values(marketingBudget).reduce((s, v) => s + v, 0) + 2000
-  const estRevenue = state.products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
-  const netFlow = estRevenue - monthlyCosts
-  const burnRate = monthlyCosts
+  // Burn/kostnader viser det som FAKTISK trekkes ved månedsrull (husleie + lønn
+  // + forsikring + markedsføring) — samme kilde som reduceren
+  // (manedligeFasteKostnader). Låneavdrag er en dokumentert TODO (amortisering
+  // i den gamle flyten) og vises separat i kontantstrømmen, ikke i burn/netto.
+  const { linjer: fasteLinjer, sum: fasteMnd } = manedligeFasteKostnader(state)
+  // DEL 1 (Økonomi leser dagssyklusen): «opptjent denne måneden» = sum av
+  // dagsresultat (salg − varekost − svinn) for inneværende måned. Erstatter den
+  // gamle estRevenue-prognosen (produkt-anslag). Enkel projeksjon = snitt/dag ×
+  // antall handledager i måneden (DAY_CONFIG.daysPerMonth).
+  const monthDays = state.dayHistory.filter(d => d.month === state.currentMonth && d.year === state.currentYear)
+  const opptjentDenneMnd = monthDays.reduce((s, d) => s + d.resultat, 0)
+  const dagerFullført = monthDays.length
+  const snittPerDag = dagerFullført > 0 ? opptjentDenneMnd / dagerFullført : 0
+  const gjenståendeDager = Math.max(0, DAY_CONFIG.daysPerMonth - dagerFullført)
+  const projisertMnd = dagerFullført > 0 ? Math.round(opptjentDenneMnd + snittPerDag * gjenståendeDager) : 0
+  const netFlow = projisertMnd - fasteMnd
+  const burnRate = fasteMnd
   const runway = netFlow < 0 && money > 0 ? Math.max(0, Math.floor(money / Math.abs(netFlow))) : null
 
   function takeLoan() {
@@ -1041,33 +1056,91 @@ function OkonomiTab() {
 
       {/* Cash flow overview */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <KpiCard label="Egenkapital"      value={formatKr(money)}       color="#22c55e" icon="💰" />
-        <KpiCard label="Total gjeld"      value={formatKr(totalDebt)}   color={totalDebt > 0 ? '#f97316' : '#64748b'} icon="🏦" />
-        <KpiCard label="Kostnader/mnd"    value={formatKr(monthlyCosts)} color="#f97316" icon="📤" />
-        <KpiCard label="Est. inntekt/mnd" value={formatKr(estRevenue)}  color="#22c55e" icon="📈" />
+        <KpiCard label="Egenkapital"           value={formatKr(money)}             color="#22c55e" icon="💰" />
+        <KpiCard label="Total gjeld"           value={formatKr(totalDebt)}         color={totalDebt > 0 ? '#f97316' : '#64748b'} icon="🏦" />
+        <KpiCard label="Kostnader/mnd"         value={formatKr(fasteMnd)}          color="#f97316" icon="📤" />
+        <KpiCard label="Opptjent denne måneden" value={formatKr(opptjentDenneMnd)} color={opptjentDenneMnd >= 0 ? '#22c55e' : '#ef4444'} icon="📈" />
       </div>
 
-      {/* Cash flow detail */}
+      {/* Dagene denne måneden (DEL 1) — faktisk opptjening fra dagssyklusen, med
+          enkel projeksjon. Tom liste før første stengte dag. */}
       <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>KONTANTSTRØM</div>
-        {(
-          [
-            ['Husleie', monthlyRent],
-            ['Lønn', monthlyPayroll],
-            ['Låneavdrag', monthlyLoanPayment],
-            ['Markedsføring', Object.values(marketingBudget).reduce((s, v) => s + v, 0)],
-            ['Forsikring/div.', 2000],
-          ] as [string, number][]
-        ).map(([label, val]) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
-            <span style={{ color: '#64748b' }}>{label}</span>
-            <span style={{ color: '#f97316' }}>-{formatKr(val)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>DAGENE DENNE MÅNEDEN</div>
+          <div style={{ fontSize: 12, color: '#64748b' }}>
+            {dagerFullført} av {DAY_CONFIG.daysPerMonth} handledager
+          </div>
+        </div>
+        {monthDays.length === 0 ? (
+          <div style={{ fontSize: 13, color: '#475569', padding: '0.5rem 0' }}>
+            Ingen stengte dager ennå denne måneden — tallene fylles inn etter hvert dagsoppgjør.
+          </div>
+        ) : (
+          <>
+            {(() => {
+              const maxAbs = Math.max(1, ...monthDays.map(d => Math.abs(d.resultat)))
+              return monthDays.map(d => {
+                const pos = d.resultat >= 0
+                return (
+                  <div key={`${d.year}-${d.month}-${d.dayNumber}`} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
+                    <span style={{ fontSize: 12, color: '#94a3b8', width: 46, flexShrink: 0 }}>Dag {d.dayNumber}</span>
+                    {/* enkel resultat-bar (midtstilt 0) */}
+                    <div style={{ flex: 1, height: 14, position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.12)' }} />
+                      <div style={{
+                        position: 'absolute', left: pos ? '50%' : undefined, right: pos ? undefined : '50%',
+                        height: 8, borderRadius: 3, background: pos ? '#22c55e' : '#ef4444',
+                        width: `${(Math.abs(d.resultat) / maxAbs) * 48}%`,
+                      }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: '#64748b', width: 96, flexShrink: 0, textAlign: 'right' }}>
+                      {d.soldStk} solgt · {d.svinnStk} svinn
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, width: 78, flexShrink: 0, textAlign: 'right', color: pos ? '#22c55e' : '#ef4444' }}>
+                      {pos ? '+' : ''}{formatKr(d.resultat)}
+                    </span>
+                  </div>
+                )
+              })
+            })()}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '0.6rem', paddingTop: '0.6rem', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>Opptjent så langt</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: opptjentDenneMnd >= 0 ? '#22c55e' : '#ef4444' }}>
+                {opptjentDenneMnd >= 0 ? '+' : ''}{formatKr(opptjentDenneMnd)}
+              </span>
+            </div>
+            {gjenståendeDager > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginTop: '0.3rem' }}>
+                <span>Projisert måned (snitt {formatKr(Math.round(snittPerDag))}/dag × {gjenståendeDager} dager igjen)</span>
+                <span style={{ fontWeight: 700, color: projisertMnd >= 0 ? '#22c55e' : '#ef4444' }}>≈ {projisertMnd >= 0 ? '+' : ''}{formatKr(projisertMnd)}</span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Cash flow detail — de FAKTISKE faste kostnadene som trekkes ved
+          månedsrull (fasteLinjer). Låneavdrag vises separat som dokumentert
+          TODO når det finnes lån — ikke med i sum/netto ennå (amortisering
+          ligger i den gamle månedssimuleringen). */}
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>KONTANTSTRØM (trekkes ved månedsrull)</div>
+        {fasteLinjer.map(({ navn, belop }) => (
+          <div key={navn} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
+            <span style={{ color: '#64748b' }}>{navn}</span>
+            <span style={{ color: '#f97316' }}>-{formatKr(belop)}</span>
           </div>
         ))}
+        {monthlyLoanPayment > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: '0.3rem', fontStyle: 'italic' }}>
+            <span style={{ color: '#475569' }}>Låneavdrag (håndteres i månedssimulering — TODO)</span>
+            <span style={{ color: '#475569' }}>(-{formatKr(monthlyLoanPayment)})</span>
+          </div>
+        )}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
-          <span>Netto (estimert)</span>
-          <span style={{ color: estRevenue - monthlyCosts >= 0 ? '#22c55e' : '#ef4444' }}>
-            {estRevenue - monthlyCosts >= 0 ? '+' : ''}{formatKr(estRevenue - monthlyCosts)}
+          <span>Netto (projisert drift − kostnader)</span>
+          <span style={{ color: netFlow >= 0 ? '#22c55e' : '#ef4444' }}>
+            {netFlow >= 0 ? '+' : ''}{formatKr(netFlow)}
           </span>
         </div>
       </div>

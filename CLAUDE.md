@@ -50,3 +50,6 @@ Dette er REGLER, ikke historie. Les før du gjør noe; hold filen kort — under
 Før bransje-arbeid: les `docs/BRANSJE_DEFINISJON.md` + `docs/BRANSJE2_*.md` +
 `docs/INNKJOP_LEVERING.md` først. Motorene røres ikke; bransjer er
 data+bilder+scenarier.
+
+Kontekst fra tidligere runder (hva som er bygget, beslutninger, åpne TODO-er):
+`docs/rapporter/spor-a.md`.

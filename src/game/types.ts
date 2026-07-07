@@ -312,6 +312,25 @@ export interface DayResult {
   stockoutHappened: boolean
 }
 
+/** Månedsoppgjør (ØKONOMI-SAMLING DEL 2) — bygges ved månedsrull
+ *  (START_NEW_DAY) fra månedens dagsresultater, og trekker faste kostnader fra
+ *  kassa. Driver MonthResultOverlay. IKKE den gamle PEST-måneds-simuleringen
+ *  (APPLY_MONTH_RESULT/MonthResult) — det er en egen, urørt flyt. */
+export interface MonthSettlement {
+  month: number
+  year: number
+  /** Sum av dagsresultat (salg − varekost − svinn) for månedens stengte dager. */
+  inntekt: number
+  /** Nedbrytning av de faste månedskostnadene som trekkes ved rull. */
+  kostnadslinjer: { navn: string; belop: number }[]
+  /** Sum av kostnadslinjer. */
+  fasteKostnader: number
+  /** Månedsresultat = inntekt − fasteKostnader. */
+  resultat: number
+  /** Antall stengte handledager måneden faktisk fikk. */
+  antallDager: number
+}
+
 // ── Game state ───────────────────────────────────────────────────────────────
 
 export interface GameState {
@@ -367,9 +386,13 @@ export interface GameState {
   /** Siste fullførte dags oppgjørstall — DayResultOverlay vises når denne er
    *  satt (dayPhase === 'oppgjør'). Nullstilles av START_NEW_DAY. */
   lastDayResult: DayResult | null
-  /** Historikk over alle fullførte dager (DEL 3-forberedelse: «svinn-
-   *  statistikk kan kobles på uten omskriving» — ingen UI leser denne ennå). */
+  /** Historikk over alle fullførte dager — Økonomi-fanen (opptjent denne
+   *  måneden + dagsliste) og månedsoppgjøret leser denne. */
   dayHistory: DayResult[]
+  /** Siste månedsoppgjør (ØKONOMI-SAMLING DEL 2) — satt ved månedsrull i
+   *  START_NEW_DAY, driver MonthResultOverlay. Nullstilles av
+   *  DISMISS_MONTH_SETTLEMENT. */
+  lastMonthSettlement: MonthSettlement | null
 
   // ── Innkjøp underveis (docs/INNKJOP_LEVERING.md) ─────────────────────────
   /** Bestillinger som ennå ikke er ankommet. ORDER_PRODUCT legger til;

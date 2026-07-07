@@ -7,6 +7,7 @@ import DashboardOverlay from './ui/DashboardOverlay'
 import SalesScenarioOverlay from './ui/SalesScenarioOverlay'
 import YearEndOverlay from './ui/YearEndOverlay'
 import DayResultOverlay from './ui/DayResultOverlay'
+import MonthResultOverlay from './ui/MonthResultOverlay'
 import OpeningOrderOverlay from './ui/OpeningOrderOverlay'
 import RentPanel from './ui/panels/RentPanel'
 import StartupScreen from './screens/StartupScreen'
@@ -16,6 +17,7 @@ import StorefrontView from './city/StorefrontView'
 import InteriorView from './city/InteriorView'
 import MonterScene from './city/MonterScene'
 import { districtOfLokale } from '../data/districts'
+import { IS_DEV_COORDS } from './city/DevCoordHelper'
 
 // ── BYBILDE-ARKITEKTUR ────────────────────────────────────────────────────────
 // /game er nå bildebasert: master-kart → bydel → lokale (URL-styrt).
@@ -196,14 +198,18 @@ function GameContent() {
         </div>
       )}
 
-      {/* Simuler måneden — når alle 4P er fullført */}
-      {allPs && state.rentedLocationId && !simOpen && !dashboardOpen && (
+      {/* «Simuler måneden» (gammel PEST-månedssimulering) — DAGSSYKLUSEN eier nå
+          månedsrullen (START_NEW_DAY + månedsoppgjør), så denne er skjult bak
+          ?dev=1. SimulationModal/APPLY_MONTH_RESULT er urørt og gjenbrukes
+          senere som hendelser. */}
+      {IS_DEV_COORDS && allPs && state.rentedLocationId && !simOpen && !dashboardOpen && (
         <div style={{
           position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
           zIndex: 92, fontFamily: "'Outfit', sans-serif",
         }}>
           <button
             onClick={() => { setSimOpen(true); setOverlay(true) }}
+            title="Dev: gammel PEST-månedssimulering (dagssyklusen eier månedsrullen)"
             style={{
               background: 'linear-gradient(135deg, #22c55e, #16a34a)',
               border: 'none', borderRadius: 99, padding: '0.9rem 2.5rem',
@@ -211,7 +217,7 @@ function GameContent() {
               fontFamily: 'inherit', boxShadow: '0 0 24px rgba(34,197,94,0.4)',
             }}
           >
-            ▶ Simuler måneden
+            ▶ Simuler måneden <span style={{ fontSize: 12, opacity: 0.85 }}>(dev)</span>
           </button>
         </div>
       )}
@@ -228,6 +234,9 @@ function GameContent() {
         dashboardOpen={dashboardOpen}
         onOpenProducts={() => { setDashboardTab('produkter'); setDashboardOpen(true); setOverlay(true) }}
       />
+      {/* Månedsoppgjør — vises ved månedsrull (gates internt på
+          lastMonthSettlement). Egen flyt fra den gamle «Simuler måneden»/PEST. */}
+      <MonthResultOverlay />
       {/* Åpningsbestilling — vises straks etter leie (gates internt på
           rentedLocationId && !openingOrderPlaced). */}
       <OpeningOrderOverlay />
