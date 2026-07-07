@@ -342,6 +342,51 @@ ansettelse lander på benken med bransje-rollenavn og nivå-kapasitet (15/22/30 
 dag 1 — juster `kapasitetPerTime` i balance.ts etter spilltest. DnD-samspillet
 (dra kort/strekk vakt) gjenstår for Espens Chrome-validering.
 
+## 13. Organisasjonsdesign — eleven bygger org-kartet selv (docs/BEMANNING.md)
+
+> **Status: bygget + verifisert headless (render/reducer/refleksjon), IKKE
+> Chrome-validert.** Bemanning-milepælen (pkt. 12) er nå committet (`7a5d4c9`).
+> Denne koden (org-design) ligger UCOMMITTET til Espen validerer drag'n'drop.
+
+**DEL 1 — rollepalett + tomt kart:** Org-kartet starter med KUN Daglig leder.
+Rollene er nå DATADREVNE per bransje: `IndustryDefinition.roller` gikk fra
+`Record<rolle,string>` til `RolleDef[]` ({ id, funksjon, tittel, emoji, farge,
+vaktrolle, maanedseffekt, kjerne }). Kafé: kjerneroller Salg/Markedsføring/
+Økonomi + bransjeroller **Innkjøpsansvarlig** og **HMS-ansvarlig**. Eleven drar
+et rollekort fra paletten inn i kartet ⇒ `CREATE_ORG_ROLE` oppretter funksjonen
+(lagres i ny state `orgRoller: string[]`). Dra en TOM funksjon ned i paletten ⇒
+`REMOVE_ORG_ROLE` (reducer + UI blokkerer hvis noen er disponert i den —
+funksjons-headeren er kun draggbar når tom). Ansett-panelet viser KUN opprettede
+roller; ingen funksjoner ⇒ «Opprett en funksjon først»-hint. **Migrering:**
+`aktiveFunksjoner(orgRoller, employees)` tar unionen av `orgRoller` og alle
+disponerte `grenId` — en gammel state med ansatte i grener får grenene
+auto-opprettet, ingen brukket state.
+
+**Datamodell:** `EmployeeRole` er nå `string` (åpen, datadrevet — kjerne-ids
+beholdt: 'selger'/'markedsforer'/'okonom', + 'innkjop'/'hms'). Funksjon = rolle
+(1:1), så `grenId` = rolle-id når disponert / undefined på benk. `OrgGren`-typen
+fjernet. Bakgrunnssalgs-kapasiteten nøkler fortsatt på salgsrollen ('selger',
+`vaktrolle: true`) — motoren uendret.
+
+**DEL 2 — konsekvens + refleksjon (ALDRI fasit):** Motoreffekter uendret
+(Salg = kapasitet på vakt; Markedsføring/Økonomi som før; Innkjøp/HMS er ren
+org-forståelse uten motoreffekt). Ny ren regelmotor `data/orgRefleksjon.ts` —
+TUNBAR data (`REFLEKSJONSREGLER` + `ORG_REGEL_PARAM.okonomiOmsetningsterskel =
+100 000`): mangler Salg → «hvem betjener kundene når du ikke er der?»; mangler
+Økonomi over terskel → «hvem følger med på tallene?»; alle på benk → «du betaler
+lønn — hvem gjør hva?». Alle er SPØRSMÅL, ikke svar. «🔍 Se over organisasjonen»
+i Personale-fanen viser ALLE reglene som slår ut; `CLOSE_DAY` velger den ÉNE
+viktigste (høyest `prioritet`, `toppRefleksjon`) og legger den i
+`DayResult.refleksjon` → dagsoppgjøret viser maks én diskret 🤔-linje (ikke mas).
+
+**Verifisert headless (Playwright):** tomt kart-hint, full rollepalett
+(Salg/Markedsføring/Økonomi kjerne + Innkjøp/HMS bransje), ansett-gating,
+«Se over organisasjonen»-panel med spørsmål, og dagsoppgjørets 🤔-refleksjonslinje
+— alt rendrer, 0 funksjonsfeil (kun eksisterende tab-bar `border`-shorthand-
+advarsel). `tsc -b` grønn. **Gjenstår for Chrome:** selve drag'n'drop-samspillet
+(opprett funksjon / disponer kort / fjern funksjon) — HTML5-native DnD lar seg
+ikke simulere pålitelig headless.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen (TODO):** bevisst UTELATT fra månedstrekket. Et
