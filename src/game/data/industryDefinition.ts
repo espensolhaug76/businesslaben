@@ -125,6 +125,18 @@ export interface Gulvplan {
   scaleBack: number
 }
 
+/** VEGGHENGPUNKT — et fast punkt på butikkveggen der ett HENG-plagg (front-
+ *  variant) kan snappes rett på (uten møbel). `x`/`y` er % av scenebildet
+ *  (plaggets øvre anker), `scale` er multiplikator på plaggets grunnbredde.
+ *  Usynlig i spillet (plagget dekker opphenget). Kalibreres med ?dev=1-
+ *  veggpunkt-traceren i KlesbutikkStillas og låses her. */
+export interface Vegghengpunkt {
+  id: string
+  x: number
+  y: number
+  scale: number
+}
+
 export interface IndustryDefinition {
   id: Industry
   navn: string
@@ -152,6 +164,9 @@ export interface IndustryDefinition {
   /** Gulvplanet (perspektivmodell) møbler plasseres fritt på — kun klesbutikk
    *  i dag (kafeen bruker trau-monteren). */
   gulvplan?: Gulvplan
+  /** Faste vegghengpunkter på butikkveggen der heng-plagg snappes rett på
+   *  (uten møbel) — kun klesbutikk. Kalibreres med ?dev=1-veggpunkt-traceren. */
+  vegghengpunkter?: Vegghengpunkt[]
 }
 
 export const CAFE: IndustryDefinition = {
@@ -274,6 +289,15 @@ export const KLESBUTIKK: IndustryDefinition = {
     },
     scaleFront: 0.42, scaleBack: 0.24,
   },
+  // Vegghengpunkter — GROVE default-rekke (% av klesbutikk-interior.jpg): en rad
+  // opphengspunkter langs bakveggen. IKKE Espen-kalibrert: klikk/dra/±-skalér med
+  // ?dev=1-veggpunkt-traceren i KlesbutikkStillas, «Logg array» og lim inn HIT.
+  vegghengpunkter: [
+    { id: 'vh1', x: 30, y: 30, scale: 0.12 },
+    { id: 'vh2', x: 42, y: 30, scale: 0.12 },
+    { id: 'vh3', x: 54, y: 30, scale: 0.12 },
+    { id: 'vh4', x: 66, y: 30, scale: 0.12 },
+  ],
 }
 
 /** Registeret over bransjer som FAKTISK har en definisjon. Bevisst kun

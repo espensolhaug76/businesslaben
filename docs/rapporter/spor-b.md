@@ -417,6 +417,48 @@ med heng/brett/dukke-styling for å se at alt følger speilingen.
 
 ---
 
+## NATTJOBB 2 — DEL 3: VEGGHENGPUNKTER (heng-plagg rett på veggen)
+
+**Mål:** kunne henge enkeltplagg rett på butikkveggen (uten møbel) — som en ekte
+vegg-eksponering — med kalibrerbare, faste opphengspunkter.
+
+**Data (`industryDefinition.ts`):** ny type `Vegghengpunkt { id, x, y, scale }`
+(x/y = % av scenebildet = plaggets øvre anker; scale = brøk av scenebredden) +
+felt `vegghengpunkter?: Vegghengpunkt[]` på `IndustryDefinition`. KLESBUTIKK har
+**grove default-punkter** (`vh1`–`vh4`, en rad langs bakveggen, IKKE Espen-
+kalibrert). Usynlig i spillet — plagget dekker opphenget.
+
+**Snap (scenen, `FloorLayer`):** hvert veggpunkt legger et `data-plass`-anker
+(`data-type="heng"`, `data-fixture="vegg"`, `data-free`) rett i scene-overlayet.
+Dermed treffes de av den **eksisterende** snap-mekanikken (`nearestSlot`) helt
+gratis: et **heng-plagg** (front-variant, `spriteHengFront`) kan dras fra
+klespaletten og snappes rett på et **ledig** veggpunkt. `plassId = veggpunkt-id`
+(uten `:`, så de skilles fra møbel-slots `itemId:slot`). Gjenbruker
+`klesbutikkPlaggLayout` + `SET_KLESBUTIKK_PLAGG` — ingen ny state. Høyreklikk på
+vegg-plagget = fjern. Brett/antrekk-drag treffer ikke veggpunktene (feil type).
+
+**Dev-tracer (`?dev=1` → 📌 Veggpunkt):** samme mutér-og-logg-mønster som
+gulvplan-/sone-tracerne. Klikk på veggen = nytt punkt · dra et punkt = flytt ·
+velg + `±` = skalér · høyreklikk = fjern · **«Logg array» → konsoll** (ferdig
+formatert for innliming i `KLESBUTIKK.vegghengpunkter`). Et halvgjennomsiktig
+preview-plagg vises på hvert punkt så størrelsen kan vurderes mot faktisk innhold.
+
+**Utvidbart:** `scale` er per punkt; flere punkter legges til fritt i traceren.
+
+**Verifisert (headless Chromium):** 4 vegg-ankere i scenen; heng-plagg
+(Trenchcoat) dras → snapper til `vh1`, rendres på left 30 % / width 12 %
+(= scale 0.12), free-flagg blir `0,1,1,1`; høyreklikk fjerner. Tracer: klikk
+legger til punkt (4→5), `±` skalerer, «Logg array» logger objektet. Ingen
+konsollfeil. `tsc -b` + `vite build` grønt.
+
+**➡️ Til Espen (valider + KALIBRER i Chrome, `?dev=1`):** åpne 📌 Veggpunkt,
+dra/legg punktene dit du vil ha opphengene på veggen, skalér hvert punkt mot
+preview-plagget, «Logg array» og lim inn i `KLESBUTIKK.vegghengpunkter`
+(`industryDefinition.ts`). Test så i 🛍 Scene at heng-plagg snapper og henger
+riktig. **Punktene er grove defaults — de MÅ kalibreres av deg.**
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.
