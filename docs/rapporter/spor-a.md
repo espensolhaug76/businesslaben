@@ -217,6 +217,70 @@ anbefalt, 4 trau eksponert, rykte 50) → **109 kunder, resultat +3 578 kr**. Sn
 (samme dag → samme strøm). ALL balanse i balance.ts; Espen finpusser etter
 spilltest (juster `baseMultiplier` for samlet volum).
 
+## 11. Spillklokke — sanntidsdag, drypp per tick, dagspuls & per-produkt-rapport
+
+> **Status: bygget + verifisert headless, IKKE Chrome-validert av Espen ennå.**
+> DEL 0 (bakgrunnssalget, pkt. 10) er committet som milepæl (validert i Chrome).
+> DEL 1–4 (klokka) ligger UCOMMITTET i arbeidstreet til Espen validerer.
+> **Superseder pkt. 10 «Drypp»:** bolk-per-kundemøte er ERSTATTET av drypp per tick.
+
+**DEL 1 — spillklokke (09:00–17:00):** én `setInterval` i GamePage
+(`tickCtx`-ref så intervallet lages én gang, leser LIVE-state) dispatcher `TICK`
+hvert `BALANCE.klokke.tickMs` (750 ms) mens `dayPhase === 'åpen'`. `minutterPerTick`
+= 1 ⇒ full dag = 480 tick ≈ **6 min** åpningstid. Klokka PAUSER under
+salgsscenario (`salesOpen`), åpent dashbord (`dashboardOpen`) og aktivt
+kundemøte (`activeMeetingScenarioId`). Ved `dayMinute >= DAG_VARIGHET` (17:00)
+dispatches automatisk `CLOSE_DAY` (svinn + dagsoppgjør som før). Manuell tidlig-
+stenging beholdt; da bortfaller resterende bakgrunnskunder (`bortfallStk`, egen
+«stengt tidlig»-linje, adskilt fra tomt-lager-tap). ALLE tall i `balance.ts`
+(`klokke`, `moteForste/Siste`, `moteJitterMinutt`, `moterOpplaering/Senere`,
+`opplaeringsDager`).
+
+**DEL 2 — drypp per tick + planlagte møter:** `TICK` dryppet bakgrunnssalget
+LØPENDE: `mål = round(total × nyMinutt/DAG_VARIGHET)`, `n = mål − prosessert`,
+`simulerBakgrunnsbolk(products, n, seed)` (SAMME motor/seed som før). Penger +
+lager + ticker + per-produkt-stats oppdateres per tick; disken tømmes i sanntid.
+`DayBackground` er nå `{ total, prosessert, seed }` (var `{ kunderIgjen,
+bolkerIgjen, seed }`). Møtene planlegges på KLOKKESLETT ved OPEN_DAY
+(`planleggMoter`): `moterForDag(dag)` møter spredt jevnt mellom `moteForste`
+(10:00) og `moteSiste` (16:00) med seed-jitter, scenarier trukket UTEN gjentakelse
+til poolen tømmes. Antall avtar: dag 1–2 = 4 møter, fra dag 3 = 2. Kunden spawner
+når klokka passerer møtets minutt (`TICK` setter `activeMeetingScenarioId`);
+klokka stopper til møtet er løst (`RESOLVE_SALES_SCENARIO`) eller hoppet over
+(`SKIP_MEETING`, fyres av `closeSales`). **Koblingen kunde↔navigasjon er FJERNET**
+— InteriorView rendrer kunden UTELUKKENDE fra `activeMeetingScenarioId`
+(`getScenario`), ingen lokal pool/spawn/remount lenger (gamle `scenario`/`gone`/
+`prevPhaseRef`/`sales:closed`-effektene slettet).
+
+**DEL 3 — Dagspuls (`src/game/ui/DagspulsOverlay.tsx`):** fullskjerms livepanel
+over butikkscenen mens dagen ruller (z 150, samme visuelle språk som
+dagsoppgjøret): stor klokke + fremdriftsstripe, kundeteller (møter + øvrige),
+opptjent i dag (salg − varekost, før svinn), tapte salg, løpende ticker med siste
+bakgrunnssalg («2 × Kanelbolle — 78 kr», `state.dayTicker`, maks 8), og lagerstatus
+per utstilt vare (trau + vindu) som synker utover dagen. **Kundemøter AVBRYTER
+panelet:** gate på `activeMeetingScenarioId` ⇒ panelet forsvinner, scenariet spilles
+i butikkscenen, panelet kommer tilbake etterpå. Diskret «Minimer»-knapp (liten
+pille øverst, butikken synlig bak) + «Steng tidlig». Gates også på `dashboardOpen`.
+
+**DEL 4 — per-produkt-rapport:** `dayProductStats` (Record per produkt: solgt
+møter+bakgrunn, svinnStk, tapteSalgStk) akkumuleres per tick/møte og ved CLOSE_DAY
+(svinn). `simulerBakgrunnsbolk` bruker en **preferansemodell**: hver vare trekkes
+uniformt blant PRISEDE produkter uansett lager — har den lager ⇒ salg, ellers tapt
+salg attribuert til AKKURAT den varen (muliggjør per-produkt «gikk tomt»). DayResult
+får `tomtProdukter {navn, tapte}[]` og `svinnProdukter {navn, stk}[]` (topp 3 +
+«+N til»). Dagsoppgjøret viser to nye linjer «📦 Gikk tomt: …» og «🗑️ Svinn: …».
+«Bestill til i morgen» forhåndsmarkerer varene som gikk tomme i Produkter-fanen
+(rød ramme + «Gikk tomt i går»-merke, matcher på navn via `state.lastDayResult`).
+
+**Verifisert headless (Playwright, sentrum-l2, `?skip=1`):** klokka tikker
+09:01→09:19 på 14 s (≈1 min/tick), Dagspuls rendrer korrekt, bakgrunnssalg dryppes
+per tick, møte spawner ~10:45 (planleggMoter sentrerer 1. møte på ~105 min) ⇒
+Dagspuls gjemmes, Tom-kunden står okkludert bak disken, klokka pauser. 0
+konsollfeil. `tsc -b` grønn. **NB (balanse-flagg):** preferansemodellen (DEL 4)
+ENDRER bakgrunnsbalansen vs pkt. 10 (tapte salg treffer nå per produkt uansett
+lager) — må RE-VERIFISERES mot 3 000–5 000-båndet etter Espens spilltest; juster
+`baseMultiplier`.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen (TODO):** bevisst UTELATT fra månedstrekket. Et
