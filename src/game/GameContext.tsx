@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
-  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement,
+  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement, DayBackground,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
@@ -13,6 +13,15 @@ import { DAY_CONFIG } from './data/dayConfig'
 import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
 import { manedligeFasteKostnader } from './data/economy'
+import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed } from './data/backgroundSales'
+
+// Tom dagsstatistikk (BAKGRUNNSSALG-feltene inkludert) — brukt av initialState,
+// OPEN_DAY (nullstilling).
+const EMPTY_DAY_STATS = {
+  soldStk: 0, soldKr: 0, varekostKr: 0,
+  bakgrunnKunder: 0, bakgrunnStk: 0, bakgrunnKr: 0, tapteSalgStk: 0, tapteSalgKr: 0,
+  reputationDelta: 0, xpEarned: 0, stockoutHappened: false,
+}
 
 // ─── XP thresholds ──────────────────────────────────────────────────────────
 
@@ -107,7 +116,8 @@ const initialState: GameState = {
   dayNumber: 1,
   meetingsToday: 0,
   dayPhase: 'stengt',
-  dayStats: { soldStk: 0, soldKr: 0, varekostKr: 0, reputationDelta: 0, xpEarned: 0, stockoutHappened: false },
+  dayStats: { ...EMPTY_DAY_STATS },
+  dayBackground: null,
   lastDayResult: null,
   dayHistory: [],
   lastMonthSettlement: null,
@@ -378,22 +388,45 @@ function reducer(state: GameState, action: Action): GameState {
       // DELSALG (f.eks. 6 av 8 ønsket) og mersalg/storbestilling — ikke bare
       // helt tomme (qty===0) linjer. Beholder qty===0-sjekken som en robust
       // reserve (klemt salg i reduceren).
-      const stockoutNow = (action.stockout ?? false) || action.sales.some(l => l.qty === 0)
       const inDay = state.dayPhase === 'åpen'
+
+      // BAKGRUNNSSALG: én bolk passive kunder etter DETTE kundemøtet (drypp
+      // gjennom dagen). Kjøres på lageret ETTER møte-salget, kun i åpningstid og
+      // så lenge det er bolker igjen. INGEN XP/rykte fra bakgrunnssalg (passivt).
+      let bgProducts = products
+      const bg = { bakgrunnKunder: 0, bakgrunnStk: 0, bakgrunnKr: 0, varekostKr: 0, tapteSalgStk: 0, tapteSalgKr: 0 }
+      let nyDayBackground = state.dayBackground
+      if (inDay && state.dayBackground && state.dayBackground.bolkerIgjen > 0) {
+        const db = state.dayBackground
+        const n = Math.round(db.kunderIgjen / db.bolkerIgjen)
+        const r = simulerBakgrunnsbolk(products, n, db.seed)
+        bgProducts = r.products
+        bg.bakgrunnKunder = r.bakgrunnKunder; bg.bakgrunnStk = r.bakgrunnStk; bg.bakgrunnKr = r.bakgrunnKr
+        bg.varekostKr = r.varekostKr; bg.tapteSalgStk = r.tapteSalgStk; bg.tapteSalgKr = r.tapteSalgKr
+        nyDayBackground = { kunderIgjen: Math.max(0, db.kunderIgjen - n), bolkerIgjen: db.bolkerIgjen - 1, seed: r.seed }
+      }
+
+      const stockoutNow = (action.stockout ?? false) || action.sales.some(l => l.qty === 0) || bg.tapteSalgStk > 0
 
       return {
         ...state,
-        products,
-        money: state.money + revenue - Math.max(0, action.cost ?? 0),
+        products: bgProducts,
+        money: state.money + revenue + bg.bakgrunnKr - Math.max(0, action.cost ?? 0),
         reputation,
         xp: newXp,
         level: newLevel,
         xpToNextLevel: xpToNext,
+        dayBackground: nyDayBackground,
         meetingsToday: inDay ? state.meetingsToday + 1 : state.meetingsToday,
         dayStats: inDay ? {
           soldStk: state.dayStats.soldStk + soldStk,
           soldKr: state.dayStats.soldKr + revenue,
-          varekostKr: state.dayStats.varekostKr + varekost,
+          varekostKr: state.dayStats.varekostKr + varekost + bg.varekostKr,
+          bakgrunnKunder: state.dayStats.bakgrunnKunder + bg.bakgrunnKunder,
+          bakgrunnStk: state.dayStats.bakgrunnStk + bg.bakgrunnStk,
+          bakgrunnKr: state.dayStats.bakgrunnKr + bg.bakgrunnKr,
+          tapteSalgStk: state.dayStats.tapteSalgStk + bg.tapteSalgStk,
+          tapteSalgKr: state.dayStats.tapteSalgKr + bg.tapteSalgKr,
           reputationDelta: state.dayStats.reputationDelta + action.reputationDelta,
           xpEarned: state.dayStats.xpEarned + action.xpEarned,
           stockoutHappened: state.dayStats.stockoutHappened || stockoutNow,
@@ -782,6 +815,23 @@ function reducer(state: GameState, action: Action): GameState {
         }
       }
 
+      // BAKGRUNNSSALG: dagens passive kundestrøm beregnes NÅ (deterministisk,
+      // snapshot av lokasjon/rykte/priser/eksponering/markedsføring), og tappes
+      // i bolker gjennom dagen (én per kundemøte, resten ved CLOSE_DAY).
+      const kunder = beregnBakgrunnskunder({
+        lokaleId: state.rentedLocationId,
+        rykte: state.reputation,
+        products,
+        counterLayout: state.counterLayout,
+        windowDisplayLayout: state.windowDisplayLayout,
+        markedsforingBudsjett: Object.values(state.marketingBudget).reduce((s, v) => s + v, 0),
+      })
+      const dayBackground: DayBackground = {
+        kunderIgjen: kunder,
+        bolkerIgjen: DAY_CONFIG.meetingsPerDay + 1,
+        seed: dagSeed(state.dayNumber, state.currentMonth, state.currentYear),
+      }
+
       return {
         ...state,
         products,
@@ -790,7 +840,8 @@ function reducer(state: GameState, action: Action): GameState {
         shopOpen: true,
         dayPhase: 'åpen',
         meetingsToday: 0,
-        dayStats: { soldStk: 0, soldKr: 0, varekostKr: 0, reputationDelta: 0, xpEarned: 0, stockoutHappened: false },
+        dayStats: { ...EMPTY_DAY_STATS },
+        dayBackground,
       }
     }
 
@@ -805,40 +856,70 @@ function reducer(state: GameState, action: Action): GameState {
       // før denne omleggingen. En fremtidig 'sesong/kolleksjon'-regel er
       // reservert (se industryDefinition.ts) men ikke implementert ennå —
       // faller trygt til «ingen svinn» i stedet for å krasje.
+      // BAKGRUNNSSALG: RESTEN av dagens passive kunder handler ved stenging
+      // (disken tømmes helt) — FØR svinn, så leftover ferskvare kastes etter at
+      // dagens kunder har fått handlet.
+      let solgtProducts = state.products
+      const bg = { bakgrunnKunder: 0, bakgrunnStk: 0, bakgrunnKr: 0, varekostKr: 0, tapteSalgStk: 0, tapteSalgKr: 0 }
+      if (state.dayBackground && state.dayBackground.kunderIgjen > 0) {
+        const r = simulerBakgrunnsbolk(state.products, state.dayBackground.kunderIgjen, state.dayBackground.seed)
+        solgtProducts = r.products
+        bg.bakgrunnKunder = r.bakgrunnKunder; bg.bakgrunnStk = r.bakgrunnStk; bg.bakgrunnKr = r.bakgrunnKr
+        bg.varekostKr = r.varekostKr; bg.tapteSalgStk = r.tapteSalgStk; bg.tapteSalgKr = r.tapteSalgKr
+      }
+
       const svinnRegel = getActiveIndustryDefinition().svinnRegel
       let svinnStk = 0
       let svinnKr = 0
       const products = svinnRegel === 'ferskvare-daglig'
-        ? state.products.map(p => {
+        ? solgtProducts.map(p => {
             if (!p.ferskvare || p.stock <= 0) return p
             svinnStk += p.stock
             svinnKr += p.stock * p.costPrice
             return { ...p, stock: 0 }
           })
-        : state.products
+        : solgtProducts
+
+      // Dagstall inkl. bakgrunnssalgets siste bolk.
+      const soldKr = state.dayStats.soldKr
+      const varekostKr = state.dayStats.varekostKr + bg.varekostKr
+      const bakgrunnKunder = state.dayStats.bakgrunnKunder + bg.bakgrunnKunder
+      const bakgrunnStk = state.dayStats.bakgrunnStk + bg.bakgrunnStk
+      const bakgrunnKr = state.dayStats.bakgrunnKr + bg.bakgrunnKr
+      const tapteSalgStk = state.dayStats.tapteSalgStk + bg.tapteSalgStk
+      const tapteSalgKr = state.dayStats.tapteSalgKr + bg.tapteSalgKr
 
       const result: DayResult = {
         dayNumber: state.dayNumber,
         month: state.currentMonth,
         year: state.currentYear,
+        meetings: state.meetingsToday,
         soldStk: state.dayStats.soldStk,
-        soldKr: state.dayStats.soldKr,
-        varekostKr: state.dayStats.varekostKr,
+        soldKr,
+        bakgrunnKunder,
+        bakgrunnStk,
+        bakgrunnKr,
+        varekostKr,
         svinnStk,
         svinnKr,
-        resultat: state.dayStats.soldKr - state.dayStats.varekostKr - svinnKr,
+        tapteSalgStk,
+        tapteSalgKr,
+        // salg (møter + bakgrunn) − varekost − svinn.
+        resultat: soldKr + bakgrunnKr - varekostKr - svinnKr,
         reputationDelta: state.dayStats.reputationDelta,
         xpEarned: state.dayStats.xpEarned,
-        stockoutHappened: state.dayStats.stockoutHappened,
+        stockoutHappened: state.dayStats.stockoutHappened || tapteSalgStk > 0,
       }
 
       return {
         ...state,
         products,
+        money: state.money + bg.bakgrunnKr,
         shopOpen: false,
         dayPhase: 'oppgjør',
         lastDayResult: result,
         dayHistory: [...state.dayHistory, result],
+        dayBackground: null,
       }
     }
 

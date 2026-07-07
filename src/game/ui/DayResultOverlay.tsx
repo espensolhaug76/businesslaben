@@ -31,7 +31,9 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
 
   const r = state.lastDayResult
   const resultColor = r.resultat >= 0 ? '#22c55e' : '#ef4444'
-  const highSvinn = r.svinnKr > 0 && r.svinnKr >= r.soldKr * HIGH_SVINN_SHARE
+  // Mot SAMLET omsetning (møter + bakgrunn) — ellers slår hintet ut på en dag
+  // uten kundemøter (soldKr=0) selv med bittelite svinn.
+  const highSvinn = r.svinnKr > 0 && r.svinnKr >= (r.soldKr + r.bakgrunnKr) * HIGH_SVINN_SHARE
 
   return (
     <motion.div
@@ -60,14 +62,23 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           <p style={{ color: '#64748b', fontSize: 14 }}>Dag {r.dayNumber} · {MONTH_NAMES[r.month - 1]}</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          <StatCard label="Solgt" value={`${r.soldStk} stk`} sub={formatKr(r.soldKr)} color="#22c55e" />
+        {/* Salgslinjer — kundemøter (dagens UTVALG) vs øvrige/bakgrunnskunder
+            (VOLUMET), pluss tapte salg når disken gikk tom. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
+          <SalgLinje ikon="🛎️" tittel={`Kundemøter: ${r.meetings}`} hoyre={formatKr(r.soldKr)} color="#22c55e" />
+          <SalgLinje ikon="👥" tittel={`Øvrige kunder: ${r.bakgrunnKunder}`} hoyre={formatKr(r.bakgrunnKr)} color="#38bdf8" />
+          {r.tapteSalgStk > 0 && (
+            <SalgLinje ikon="🚫" tittel={`Tapte salg: ${r.tapteSalgStk} (tomt lager)`} hoyre={`~${formatKr(r.tapteSalgKr)}`} color="#ef4444" />
+          )}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem', marginBottom: '1.1rem' }}>
           <StatCard label="Svinn" value={`${r.svinnStk} stk`} sub={formatKr(r.svinnKr)} color="#ef4444" />
           <StatCard label="Rykte i dag" value={`${r.reputationDelta >= 0 ? '+' : ''}${r.reputationDelta}`} color={r.reputationDelta >= 0 ? '#38bdf8' : '#ef4444'} />
           <StatCard label="XP i dag" value={`+${r.xpEarned}`} color="#a855f7" />
         </div>
 
-        {/* Resultat — salg minus varekost minus svinn */}
+        {/* Resultat — samlet salg (møter + bakgrunn) minus varekost minus svinn */}
         <div style={{
           background: `${resultColor}12`, border: `1px solid ${resultColor}44`,
           borderRadius: '1rem', padding: '1rem 1.1rem', marginBottom: '1.1rem',
@@ -76,7 +87,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           <div>
             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>RESULTAT (salg − varekost − svinn)</div>
             <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
-              {formatKr(r.soldKr)} − {formatKr(r.varekostKr)} − {formatKr(r.svinnKr)}
+              {formatKr(r.soldKr + r.bakgrunnKr)} − {formatKr(r.varekostKr)} − {formatKr(r.svinnKr)}
             </div>
           </div>
           <div style={{ fontSize: 22, fontWeight: 900, color: resultColor }}>
@@ -152,6 +163,18 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
       <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 17, fontWeight: 800, color }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function SalgLinje({ ikon, tittel, hoyre, color }: { ikon: string; tittel: string; hoyre: string; color: string }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      background: `${color}0e`, border: `1px solid ${color}30`, borderRadius: 10, padding: '0.55rem 0.85rem',
+    }}>
+      <span style={{ fontSize: 13, color: '#cbd5e1' }}>{ikon} {tittel}</span>
+      <span style={{ fontSize: 14, fontWeight: 800, color }}>{hoyre}</span>
     </div>
   )
 }

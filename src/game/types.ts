@@ -297,19 +297,42 @@ export interface DayResult {
   dayNumber: number
   month: number
   year: number
+  /** Antall fullførte kundemøter (salgssamtaler) i dag. */
+  meetings: number
+  /** Kundemøte-salg (fra salgssamtalene). */
   soldStk: number
   soldKr: number
+  /** BAKGRUNNSSALG (passiv kundestrøm uten samtale) — antall kunder + solgt. */
+  bakgrunnKunder: number
+  bakgrunnStk: number
+  bakgrunnKr: number
+  /** Varekost for ALT salg i dag (møter + bakgrunn). */
   varekostKr: number
   /** Antall enheter ferskvare kastet (stock > 0 ved stenging). */
   svinnStk: number
   /** Kr tapt på svinn (stk × costPrice). */
   svinnKr: number
-  /** salg − varekost − svinn. */
+  /** Tapte salg: bakgrunnskunder som ikke fikk kjøpt (tomt lager) + estimert kr. */
+  tapteSalgStk: number
+  tapteSalgKr: number
+  /** salg (møter + bakgrunn) − varekost − svinn. */
   resultat: number
   reputationDelta: number
   xpEarned: number
-  /** Minst én utsolgt-hendelse i dag (se dayStats.stockoutHappened). */
+  /** Minst én utsolgt-hendelse i dag (møte-delsalg ELLER tapt bakgrunnssalg). */
   stockoutHappened: boolean
+}
+
+/** Dagens bakgrunnssalg-plan (BAKGRUNNSSALG) — beregnet ved OPEN_DAY, tappet i
+ *  bolker (én per kundemøte, resten ved CLOSE_DAY). Seed persisteres mellom
+ *  bolker så strømmen er deterministisk per dag. */
+export interface DayBackground {
+  /** Gjenstående bakgrunnskunder å prosessere i dag. */
+  kunderIgjen: number
+  /** Gjenstående bolker (starter på DAY_CONFIG.meetingsPerDay + 1). */
+  bolkerIgjen: number
+  /** PRNG-seed (avanseres per forbrukt trekk). */
+  seed: number
 }
 
 /** Månedsoppgjør (ØKONOMI-SAMLING DEL 2) — bygges ved månedsrull
@@ -375,14 +398,24 @@ export interface GameState {
   dayStats: {
     soldStk: number
     soldKr: number
-    /** Varekost (costPrice × qty) for det som ble solgt i dag — trengs for
-     *  oppgjørets «Resultat: salg − varekost − svinn». */
+    /** Varekost (costPrice × qty) for ALT salg i dag (møter + bakgrunn) —
+     *  trengs for oppgjørets «Resultat: salg − varekost − svinn». */
     varekostKr: number
+    /** BAKGRUNNSSALG akkumulert gjennom dagen (per bolk). */
+    bakgrunnKunder: number
+    bakgrunnStk: number
+    bakgrunnKr: number
+    /** Tapte bakgrunnssalg pga tomt lager (stk + estimert kr). */
+    tapteSalgStk: number
+    tapteSalgKr: number
     reputationDelta: number
     xpEarned: number
-    /** Minst ett salgsforsøk i dag traff en utsolgt vare (qty=0-linje). */
+    /** Minst ett salgsforsøk i dag traff en utsolgt vare (møte eller bakgrunn). */
     stockoutHappened: boolean
   }
+  /** Dagens bakgrunnssalg-plan (BAKGRUNNSSALG) — beregnet ved OPEN_DAY, tappet
+   *  i bolker gjennom dagen. Null utenom en handledag. */
+  dayBackground: DayBackground | null
   /** Siste fullførte dags oppgjørstall — DayResultOverlay vises når denne er
    *  satt (dayPhase === 'oppgjør'). Nullstilles av START_NEW_DAY. */
   lastDayResult: DayResult | null

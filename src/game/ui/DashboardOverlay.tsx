@@ -1094,7 +1094,7 @@ function OkonomiTab() {
                       }} />
                     </div>
                     <span style={{ fontSize: 11, color: '#64748b', width: 96, flexShrink: 0, textAlign: 'right' }}>
-                      {d.soldStk} solgt · {d.svinnStk} svinn
+                      {d.soldStk + d.bakgrunnStk} solgt · {d.svinnStk} svinn
                     </span>
                     <span style={{ fontSize: 12, fontWeight: 700, width: 78, flexShrink: 0, textAlign: 'right', color: pos ? '#22c55e' : '#ef4444' }}>
                       {pos ? '+' : ''}{formatKr(d.resultat)}
