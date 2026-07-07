@@ -210,9 +210,17 @@ export interface KlesbutikkFixtureItem {
  *  presentasjonslag). `plassId` identifiserer ÉN vareplass på ett møbel:
  *  `${fixtureItemId}:${slotIndex}`. Én vare per plass. Rendres med riktig
  *  sprite-variant (profil/brett/antrekk) fra plaggets definisjon. */
+/** Elevens finjustering av et antrekk OPPÅ den kalibrerte grunnlinja
+ *  (antrekkFit) — kun antrekk på dukker. `dx/dy` legges til grunnlinjas
+ *  offset (klemte grenser), `dScale` er ±0.2 relativt til grunnlinjas scale.
+ *  Pedagogisk visuell profilering; ingen scoring. «Tilbakestill» = fjern denne. */
+export interface ElevFit { dx: number; dy: number; dScale: number }
+
 export interface KlesbutikkPlaggItem {
   plassId: string
   plaggId: string
+  /** Elevens justering (kun antrekk på dukke). Fravær = grunnlinjefit. */
+  elevFit?: ElevFit
 }
 
 // ── Staff ────────────────────────────────────────────────────────────────────

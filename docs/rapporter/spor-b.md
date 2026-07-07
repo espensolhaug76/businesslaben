@@ -24,6 +24,7 @@ Sist oppdatert: 2026-07-07.
 | Ankerplasser (snap-slots) + anker-tracer | ✅ FERDIG (snap senere erstattet av gulvplan) |
 | Gulvplan (perspektiv) + dybde-plassering | ✅ FERDIG, committet + pushet |
 | Klesark-splitt + plaggdata + plagg-auto-snap | ✅ FERDIG, committet + pushet |
+| Antrekk-passform (antrekkFit) + elevstyrt påkledning | ✅ FERDIG, committet + pushet |
 
 Grenen `jobb/klesbutikk` er pushet til origin. **Ikke aktiv bransje** —
 `KLESBUTIKK` er fortsatt IKKE registrert i `INDUSTRY_DEFINITIONS`.
@@ -250,6 +251,36 @@ stativ/hylle/dukke, dra plagg fra klespaletten — sjekk profil-på-stang (front
 inntil profil-arket kommer), brett-på-hylle/bord, antrekk-på-dukke, og at plagg
 følger møbelet når du flytter det. **Trengs fra deg:** «heng profil»-arket
 (logisk 03: denimjakke-p osv.) som eget ark, så kobler jeg på ekte profil-sprites.
+
+## ✅ Antrekk-passform (antrekkFit) + elevstyrt påkledning (siste runde)
+
+To lag oppå auto-snappet antrekk-på-dukke:
+
+**Grunnlinje (data, dev-kalibrert):** `antrekkFit { default: Fit, perDukke? }`
+per antrekk (`Fit { offsetX, offsetY, scale }`), **SKULDER-ANKRET** (antrekket
+henger fra skuldrene, ikke sentrert — `ANTREKK_SHOULDER_Y`/`ANTREKK_BASE_W`).
+`perDukke` kan overstyre for dame/herre/barn (ulike kropper). `baseFit()` slår
+opp. First-pass = `{0,0,1}` for alle 12 (skulderankeret sitter bra i
+inspeksjon); Espen finjusterer.
+- **?dev=1 fit-kalibrator** (🎚️-panel når et antrekk er valgt): piltast-knapper
+  for offset + ± for scale + «per denne dukketypen»-checkbox, live preview,
+  «Logg fit» → konsoll for innliming i `ANTREKK_FIT` (klesbutikkPlagg.ts).
+
+**Elevstyrt påkledning (kv1012 visuell profilering):** oppå grunnlinja kan
+eleven **dra** antrekket (klemte grenser `±ELEV_MAX`), **skalere ±20 %**
+(scroll eller ±-knapp) og **«Tilbakestill»** til grunnlinja. Lagres per dukke
+i state som `elevFit { dx, dy, dScale }` (delta oppå `antrekkFit`). **Kun
+antrekk på dukker** — heng/brett er ren auto-snap uten justering. Ingen scoring
+— visuelt resultat er feedbacken.
+
+**State:** `KlesbutikkPlaggItem` fikk valgfri `elevFit`. Render =
+`baseFit + elevFit` (skulder-ankret). Verifisert (headless Chromium): drag,
+scale ±, reset, dev-logg, persist over fanebytte. `tsc -b` + `vite build` grønt.
+
+**➡️ Til Espen:** `/dev/klesbutikk?dev=1` → plasser dukke + antrekk, klikk
+antrekket → 🎚️-kalibratoren dukker opp. Kalibrer alle antrekk (og evt. perDukke),
+«Logg fit», lim inn i `ANTREKK_FIT`. Test elev-laget: dra/skaler/tilbakestill
+antrekket på dukka.
 
 ---
 

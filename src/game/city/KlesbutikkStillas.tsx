@@ -5,8 +5,8 @@ import { KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG } from '../../data/districts'
 import { GameProvider, useGame } from '../GameContext'
 import { KLESBUTIKK, type Gulvplan } from '../data/industryDefinition'
 import { KLESBUTIKK_FIXTURES, fixtureDef, vareplasser, kapasitet, type VareplassType } from '../data/klesbutikkFixtures'
-import { KLESBUTIKK_PLAGG, plaggById, spriteFor, type Plagg } from '../data/klesbutikkPlagg'
-import type { KlesbutikkFixtureId, Fotpunkt } from '../types'
+import { KLESBUTIKK_PLAGG, plaggById, spriteFor, baseFit, NULL_FIT, type Plagg, type DukkeType } from '../data/klesbutikkPlagg'
+import type { KlesbutikkFixtureId, Fotpunkt, KlesbutikkPlaggItem, ElevFit } from '../types'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Target, type DrawZone, type Rect } from './ZoneTracer'
 
@@ -28,6 +28,13 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const writeRect = (t: Rect, r: Rect) => { t[0] = r[0]; t[1] = r[1]; t[2] = r[2]; t[3] = r[3] }
 const SLOT_COLOR: Record<VareplassType, string> = { heng: '#50dcff', brett: '#ffb03c', antrekk: '#f472b6' }
+
+// Antrekk-passform: skulder-ankret over dukka.
+const ANTREKK_SHOULDER_Y = 0.13   // grunnlinje topp (skulderlinje) i dukke-boksen
+const ANTREKK_BASE_W = 0.82       // grunnbredde (brøk av dukke-boksens bredde)
+const ELEV_MAX = 0.22             // maks eleven kan dra offset (brøk av boksen)
+const ELEV_SCALE_MAX = 0.2        // eleven kan skalere ±20 % fra grunnlinja
+const DUKKE_TYPER: KlesbutikkFixtureId[] = ['dukke', 'dukke-mann', 'dukke-barn']
 
 let _uid = 0
 const uid = () => { try { return crypto.randomUUID() } catch { return `fx-${_uid++}` } }
@@ -217,7 +224,7 @@ function plaggType(p: Plagg): VareplassType {
 // plagg-snappingen kan finne dem via getBoundingClientRect — uavhengig av
 // sprite-bildeforhold.
 function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacity, onPointerDown, onRemove,
-  plaggBySlot, dragType, targetPlassId, onRemovePlagg }: {
+  itemBySlot, dragType, targetPlassId, onRemovePlagg, selectedPlassId, onPlaggDown, onPlaggScale, onPlaggReset }: {
   fixtureId: KlesbutikkFixtureId
   foot: Fotpunkt
   widthFrac: number
@@ -226,16 +233,21 @@ function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacit
   onPointerDown?: (e: React.PointerEvent) => void
   onRemove?: () => void
   itemId?: string
-  plaggBySlot?: Record<number, string>
+  itemBySlot?: Record<number, KlesbutikkPlaggItem>
   dragType?: VareplassType | null
   targetPlassId?: string | null
   onRemovePlagg?: (slotIndex: number) => void
+  selectedPlassId?: string | null
+  onPlaggDown?: (slotIndex: number, e: React.PointerEvent) => void
+  onPlaggScale?: (slotIndex: number, delta: number) => void
+  onPlaggReset?: (slotIndex: number) => void
 }) {
   const def = fixtureDef(fixtureId)
   if (!def) return null
   const vps = itemId ? vareplasser(def) : []
   return (
     <div
+      data-furniture-box={itemId}
       onPointerDown={onPointerDown}
       onContextMenu={onRemove ? (e => { e.preventDefault(); onRemove() }) : undefined}
       title={onRemove ? `${def.navn} — dra for å flytte, høyreklikk for å fjerne` : def.navn}
@@ -252,17 +264,25 @@ function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacit
 
       {vps.map((s, i) => {
         const plassId = `${itemId}:${i}`
-        const plaggId = plaggBySlot?.[i]
-        const plagg = plaggId ? plaggById(plaggId) : undefined
+        const item = itemBySlot?.[i]
+        const plagg = item ? plaggById(item.plaggId) : undefined
         const free = !plagg
         const compat = !!dragType && dragType === s.type && free
         const isTarget = targetPlassId === plassId
-        // Plagg-rendering per type: heng = topp-ankret (henger ned), brett =
-        // bunn-ankret (ligger på flaten), antrekk = sentrert over dukka.
-        const pw = s.type === 'antrekk' ? 84 : 20
-        const pTransform = s.type === 'heng' ? 'translate(-50%, -6%)'
-          : s.type === 'brett' ? 'translate(-50%, -100%)' : 'translate(-50%, -50%)'
+        const selected = selectedPlassId === plassId
         const plaggSprite = plagg ? spriteFor(plagg, s.type, s.variant) : undefined
+        // Plassering/størrelse per type. Antrekk = SKULDER-ANKRET over dukka med
+        // kalibrert grunnlinje (baseFit) + elevens finjustering (elevFit). Heng =
+        // topp-ankret (henger ned), brett = bunn-ankret (ligger på flaten).
+        const isAntrekk = s.type === 'antrekk'
+        const bf = isAntrekk && plagg ? baseFit(plagg, fixtureId as DukkeType) : NULL_FIT
+        const fx = bf.offsetX + (item?.elevFit?.dx ?? 0)
+        const fy = bf.offsetY + (item?.elevFit?.dy ?? 0)
+        const fs = bf.scale * (1 + (item?.elevFit?.dScale ?? 0))
+        const pStyle: React.CSSProperties = isAntrekk
+          ? { left: `${(0.5 + fx) * 100}%`, top: `${(ANTREKK_SHOULDER_Y + fy) * 100}%`, width: `${ANTREKK_BASE_W * fs * 100}%`, transform: 'translate(-50%, 0)' }
+          : { left: `${s.x * 100}%`, top: `${s.y * 100}%`, width: '20%', transform: s.type === 'heng' ? 'translate(-50%, -6%)' : 'translate(-50%, -100%)' }
+        const canAdjust = isAntrekk && !!onPlaggDown   // elevens påkledning (kun antrekk)
         return (
           <div key={i}>
             {/* Slot-anker (alltid i DOM for snap-deteksjon) */}
@@ -272,14 +292,31 @@ function FurnitureSprite({ fixtureId, itemId, foot, widthFrac, showSlots, opacit
             {plaggSprite && (
               <img
                 src={plaggSprite} alt={plagg!.navn} draggable={false}
+                onPointerDown={canAdjust ? (e => onPlaggDown!(i, e)) : undefined}
+                onWheel={canAdjust ? (e => onPlaggScale?.(i, e.deltaY < 0 ? 0.04 : -0.04)) : undefined}
                 onContextMenu={onRemovePlagg ? (e => { e.preventDefault(); e.stopPropagation(); onRemovePlagg(i) }) : undefined}
-                title={onRemovePlagg ? `${plagg!.navn} — høyreklikk for å fjerne` : plagg!.navn}
+                title={canAdjust ? `${plagg!.navn} — dra for å plassere, scroll/± for størrelse, høyreklikk = fjern`
+                  : onRemovePlagg ? `${plagg!.navn} — høyreklikk for å fjerne` : plagg!.navn}
                 style={{
-                  position: 'absolute', left: `${s.x * 100}%`, top: `${s.y * 100}%`,
-                  width: `${pw}%`, height: 'auto', transform: pTransform,
+                  position: 'absolute', ...pStyle, height: 'auto',
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
-                  pointerEvents: onRemovePlagg ? 'auto' : 'none', cursor: 'context-menu',
+                  outline: selected ? '2px dashed rgba(244,114,182,0.85)' : undefined,
+                  pointerEvents: onRemovePlagg ? 'auto' : 'none',
+                  cursor: canAdjust ? 'move' : 'context-menu', touchAction: 'none',
                 }} />
+            )}
+            {/* Elev-verktøylinje for valgt antrekk: størrelse ± / tilbakestill */}
+            {selected && canAdjust && (
+              <div onPointerDown={e => e.stopPropagation()} style={{
+                position: 'absolute', left: `${(0.5 + fx) * 100}%`, top: `${(ANTREKK_SHOULDER_Y + fy) * 100}%`,
+                transform: 'translate(-50%, -130%)', display: 'flex', gap: 3, alignItems: 'center',
+                background: 'rgba(10,14,26,0.92)', border: '1px solid #f472b688', borderRadius: 7, padding: '2px 4px', whiteSpace: 'nowrap',
+              }}>
+                <button style={miniBtn} title="Mindre" onClick={() => onPlaggScale?.(i, -0.05)}>−</button>
+                <span style={{ color: '#f9a8d4', fontSize: 10, fontFamily: 'monospace', minWidth: 30, textAlign: 'center' }}>{Math.round((1 + (item?.elevFit?.dScale ?? 0)) * 100)}%</span>
+                <button style={miniBtn} title="Større" onClick={() => onPlaggScale?.(i, 0.05)}>+</button>
+                <button style={miniBtn} title="Tilbakestill" onClick={() => onPlaggReset?.(i)}>⟲</button>
+              </div>
             )}
             {/* Highlight ledige kompatible plasser under plagg-drag */}
             {compat && (
@@ -325,12 +362,17 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   const [targetPlassId, setTargetPlassId] = useState<string | null>(null)
   const commitPlagg = (next: typeof plaggItems) => { plaggRef.current = next; setPlaggItems(next); dispatch({ type: 'SET_KLESBUTIKK_PLAGG', items: next }) }
 
-  // itemId → { slotIndex → plaggId }
-  const plaggByItem: Record<string, Record<number, string>> = {}
+  // itemId → { slotIndex → plaggItem }
+  const itemByFurniture: Record<string, Record<number, KlesbutikkPlaggItem>> = {}
   for (const pi of plaggItems) {
     const [fid, si] = pi.plassId.split(':')
-    ;(plaggByItem[fid] ??= {})[Number(si)] = pi.plaggId
+    ;(itemByFurniture[fid] ??= {})[Number(si)] = pi
   }
+  const [selAntrekk, setSelAntrekk] = useState<string | null>(null)   // valgt antrekk-plassId
+  const setPlaggLocal = (next: typeof plaggItems) => { plaggRef.current = next; setPlaggItems(next) }
+  const persistPlagg = () => dispatch({ type: 'SET_KLESBUTIKK_PLAGG', items: plaggRef.current })
+  const patchElev = (plassId: string, ef: ElevFit) =>
+    plaggRef.current.map(pi => pi.plassId === plassId ? { ...pi, elevFit: ef } : pi)
 
   const commit = (next: typeof items) => { itemsRef.current = next; setItems(next); dispatch({ type: 'SET_KLESBUTIKK_FIXTURES', items: next }) }
   const persist = () => dispatch({ type: 'SET_KLESBUTIKK_FIXTURES', items: itemsRef.current })
@@ -406,8 +448,65 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
     window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
   }
 
-  const removePlaggAt = (itemId: string, slot: number) =>
-    commitPlagg(plaggRef.current.filter(pi => pi.plassId !== `${itemId}:${slot}`))
+  const removePlaggAt = (itemId: string, slot: number) => {
+    const pid = `${itemId}:${slot}`
+    if (selAntrekk === pid) setSelAntrekk(null)
+    commitPlagg(plaggRef.current.filter(pi => pi.plassId !== pid))
+  }
+
+  // ── Elevens påkledning: dra antrekket på dukka (klemte grenser), scale ±20 %,
+  // tilbakestill. OPPÅ den kalibrerte grunnlinja (antrekkFit). Kun antrekk. ──
+  function startAntrekkDrag(plassId: string, e: React.PointerEvent) {
+    e.preventDefault(); e.stopPropagation()
+    setSelAntrekk(plassId)
+    const boxEl = (e.currentTarget as HTMLElement).closest('[data-furniture-box]') as HTMLElement | null
+    if (!boxEl) return
+    const cur = plaggRef.current.find(pi => pi.plassId === plassId)?.elevFit ?? { dx: 0, dy: 0, dScale: 0 }
+    const sx = e.clientX, sy = e.clientY
+    const onMove = (ev: PointerEvent) => {
+      const r = boxEl.getBoundingClientRect()
+      const ndx = clamp(cur.dx + (ev.clientX - sx) / r.width, -ELEV_MAX, ELEV_MAX)
+      const ndy = clamp(cur.dy + (ev.clientY - sy) / r.height, -ELEV_MAX, ELEV_MAX)
+      setPlaggLocal(patchElev(plassId, { dx: ndx, dy: ndy, dScale: cur.dScale }))
+    }
+    const onUp = () => { window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true); persistPlagg() }
+    window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
+  }
+  const scaleElev = (plassId: string, delta: number) => {
+    const cur = plaggRef.current.find(pi => pi.plassId === plassId)?.elevFit ?? { dx: 0, dy: 0, dScale: 0 }
+    setSelAntrekk(plassId)
+    commitPlagg(patchElev(plassId, { ...cur, dScale: clamp(cur.dScale + delta, -ELEV_SCALE_MAX, ELEV_SCALE_MAX) }))
+  }
+  const resetElev = (plassId: string) =>
+    commitPlagg(plaggRef.current.map(pi => pi.plassId === plassId ? { plassId: pi.plassId, plaggId: pi.plaggId } : pi))
+
+  // ── Dev-kalibrator: sett GRUNNLINJA (antrekkFit) for valgt antrekk × dukketype,
+  // mutér-og-logg (?dev=1). Skiller fra elevens elevFit (som ligger oppå). ──
+  const [calPerDukke, setCalPerDukke] = useState(false)
+  const [, setCalRev] = useState(0)
+  const selInfo = (() => {
+    if (!selAntrekk) return null
+    const [fid] = selAntrekk.split(':')
+    const fx = items.find(i => i.id === fid)
+    const pi = plaggItems.find(p => p.plassId === selAntrekk)
+    if (!fx || !pi || !DUKKE_TYPER.includes(fx.fixtureId)) return null
+    const plagg = plaggById(pi.plaggId); if (!plagg) return null
+    return { plagg, dukke: fx.fixtureId as DukkeType }
+  })()
+  const calBaseline = () => selInfo ? baseFit(selInfo.plagg, selInfo.dukke) : NULL_FIT
+  function calSet(f: { offsetX: number; offsetY: number; scale: number }) {
+    if (!selInfo) return
+    const { plagg, dukke } = selInfo
+    if (!plagg.antrekkFit) plagg.antrekkFit = { default: { ...NULL_FIT } }
+    if (calPerDukke) (plagg.antrekkFit.perDukke ??= {})[dukke] = f
+    else plagg.antrekkFit.default = f
+    setCalRev(r => r + 1)
+  }
+  const calNudge = (dx: number, dy: number, ds: number) => {
+    const c = calBaseline()
+    calSet({ offsetX: +(c.offsetX + dx).toFixed(3), offsetY: +(c.offsetY + dy).toFixed(3), scale: +clamp(c.scale + ds, 0.3, 2.5).toFixed(2) })
+  }
+  const calLog = () => selInfo && console.log(`[AntrekkFit] '${selInfo.plagg.id}': ${JSON.stringify(selInfo.plagg.antrekkFit)},  ← lim inn i ANTREKK_FIT (klesbutikkPlagg.ts)`)
 
   const sorted = [...items].sort((a, b) => a.fotpunkt.y - b.fotpunkt.y)
   const { fremV: A, fremH: B, bakV: C, bakH: D } = g.hjørner
@@ -431,10 +530,14 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
             showSlots={showSlots}
             onPointerDown={interactive ? (e => startMove(it.id, e)) : undefined}
             onRemove={interactive ? () => remove(it.id) : undefined}
-            plaggBySlot={plaggByItem[it.id]}
+            itemBySlot={itemByFurniture[it.id]}
             dragType={dragPlagg?.type ?? null}
             targetPlassId={targetPlassId}
-            onRemovePlagg={interactive ? (slot => removePlaggAt(it.id, slot)) : undefined} />
+            onRemovePlagg={interactive ? (slot => removePlaggAt(it.id, slot)) : undefined}
+            selectedPlassId={selAntrekk}
+            onPlaggDown={interactive ? ((slot, e) => startAntrekkDrag(`${it.id}:${slot}`, e)) : undefined}
+            onPlaggScale={interactive ? ((slot, d) => scaleElev(`${it.id}:${slot}`, d)) : undefined}
+            onPlaggReset={interactive ? (slot => resetElev(`${it.id}:${slot}`)) : undefined} />
         )
       })}
 
@@ -519,6 +622,43 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
             zIndex: 9999, pointerEvents: 'none', opacity: targetPlassId ? 0.95 : 0.6, filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))',
           }} />, document.body)
       })()}
+
+      {/* ?dev=1: ANTREKK-FIT-KALIBRATOR (grunnlinje) for valgt antrekk på dukke */}
+      {IS_DEV_COORDS && selInfo && createPortal(
+        <div onPointerDown={e => e.stopPropagation()} style={{
+          position: 'fixed', top: 56, left: 200, zIndex: 96, width: 194,
+          background: 'rgba(10,14,26,0.95)', border: '1px solid #f472b655', borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
+        }}>
+          <div style={{ color: '#f472b6', fontSize: 12, fontWeight: 800, marginBottom: 4 }}>🎚️ Antrekk-fit (grunnlinje)</div>
+          <div style={{ color: '#cbd5e1', fontSize: 10, fontFamily: 'monospace', marginBottom: 6 }}>
+            {selInfo.plagg.id} @ {selInfo.dukke}
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#94a3b8', fontSize: 10, marginBottom: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={calPerDukke} onChange={e => setCalPerDukke(e.target.checked)} />
+            per DENNE dukketypen (ellers default)
+          </label>
+          {(() => { const c = calBaseline(); return (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 3, width: 96, margin: '0 auto 6px' }}>
+                <span /><button style={miniBtn} title="opp" onClick={() => calNudge(0, -0.01, 0)}>↑</button><span />
+                <button style={miniBtn} title="venstre" onClick={() => calNudge(-0.01, 0, 0)}>←</button>
+                <span style={{ fontSize: 8, color: '#64748b', textAlign: 'center', alignSelf: 'center', fontFamily: 'monospace' }}>{c.offsetX.toFixed(2)}<br />{c.offsetY.toFixed(2)}</span>
+                <button style={miniBtn} title="høyre" onClick={() => calNudge(0.01, 0, 0)}>→</button>
+                <span /><button style={miniBtn} title="ned" onClick={() => calNudge(0, 0.01, 0)}>↓</button><span />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', marginBottom: 8 }}>
+                <span style={{ color: '#94a3b8', fontSize: 11 }}>scale</span>
+                <button style={miniBtn} onClick={() => calNudge(0, 0, -0.05)}>−</button>
+                <span style={{ color: '#f1f5f9', fontSize: 11, fontFamily: 'monospace', minWidth: 30, textAlign: 'center' }}>{c.scale.toFixed(2)}</span>
+                <button style={miniBtn} onClick={() => calNudge(0, 0, 0.05)}>+</button>
+              </div>
+            </>
+          )})()}
+          <button style={{ ...miniBtn, width: '100%', height: 26, fontSize: 11, fontWeight: 800 }} onClick={calLog}>Logg fit → konsoll</button>
+          <div style={{ fontSize: 9, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
+            Lim inn i ANTREKK_FIT (klesbutikkPlagg.ts). Nullstill elevens elevFit (⟲) før du kalibrerer grunnlinja.
+          </div>
+        </div>, document.body)}
     </div>
   )
 }
