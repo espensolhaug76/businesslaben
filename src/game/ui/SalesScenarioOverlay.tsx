@@ -84,6 +84,11 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
   const [picks, setPicks] = useState<ScoredPick[]>([])
   const [sales, setSales] = useState<SaleLine[]>([])
   const [costs, setCosts] = useState(0)            // DEL 3: kroner ut (omlevering/refusjon)
+  // BUGFIX (DEL 4): utsolgt/delsalg-flagg. Settes når et salgsforsøk ikke kunne
+  // dekkes fullt av lageret (delsalg ELLER helt tomt) — også mersalg og
+  // storbestilling. Gikk tidligere KUN via qty===0-linjer i reduceren, så
+  // delsalg (f.eks. 6 av 8 ønsket) aldri utløste utsolgt-hintet i dagsoppgjøret.
+  const [stockout, setStockout] = useState(false)
   const [pending, setPending] = useState<Pending | null>(null)
   const [phase, setPhase] = useState<'dialog' | 'result'>('dialog')
 
@@ -111,9 +116,10 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
       const hit = state.products.find(p => productMatchesNeed(p, choice.sell!.needTags))
       const wantQty = choice.sell.qty ?? 1
       if (!hit) extra = '(du fører ingen passende vare — ingen tilleggssalg)'
-      else if (hit.stock <= 0) extra = `(${hit.name} er utsolgt — ingen tilleggssalg)`
+      else if (hit.stock <= 0) { extra = `(${hit.name} er utsolgt — ingen tilleggssalg)`; setStockout(true) }
       else {
         const qty = Math.min(wantQty, hit.stock)
+        if (qty < wantQty) setStockout(true)   // delsalg på mersalget ⇒ utsolgt-signal
         sale = { productId: hit.id, name: hit.name, price: hit.retailPrice, qty, addon: choice.sell.addon }
         const sum = (qty * hit.retailPrice).toLocaleString('nb-NO')
         extra = qty < wantQty
@@ -133,6 +139,7 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
   // klem-mot-stock-regel som chooseFixed.
   function chooseProduct(product: Product, hit: boolean, wantQty: number) {
     const qty = Math.min(wantQty, product.stock)
+    if (qty < wantQty) setStockout(true)   // anbefalte varen dekket ikke ønsket antall (delsalg/utsolgt)
     const sale: SaleLine = { productId: product.id, name: product.name, price: product.retailPrice, qty }
     const text = hit
       ? 'Riktig! Det dekker akkurat behovet kunden hintet om.'
@@ -175,9 +182,17 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
       quality = enough ? 'good' : 'bad'
       text = enough
         ? 'Lageret dekker det faktisk — du lover trygt hele bestillingen.'
-        : 'Du lover flere enn du faktisk har på lager. Sprekker løftet i morgen, mister du tilliten hos en bedriftskunde.'
-      sale = { productId: product.id, name: product.name, price: product.retailPrice, qty: commitQty }
-      extra = `Lovet: ${commitQty} stk ${product.name} (lager: ${product.stock} stk)`
+        : 'Du lover flere enn du faktisk har på lager. Bare det du faktisk har kan leveres — resten av løftet sprekker, og tilliten hos en bedriftskunde med det.'
+      // BUGFIX (DEL 2): salget må følge FAKTISK lager, ikke det du lovet. Å love
+      // 40 med 0 på lager registrerte tidligere et salg på 40 (klemt først i
+      // reduceren, men resultatkortet viste 40 solgt). Nå klemmes det her, så
+      // et tomt løfte gir 0 solgt (og kvaliteten er 'bad').
+      const qty = Math.min(product.stock, commitQty)
+      sale = qty > 0 ? { productId: product.id, name: product.name, price: product.retailPrice, qty } : null
+      if (qty < commitQty) setStockout(true)
+      extra = enough
+        ? `Lovet: ${commitQty} stk ${product.name} (lager: ${product.stock} stk)`
+        : `Lovet ${commitQty}, men kan bare levere ${qty} (lager: ${product.stock} stk)`
     } else if (mode === 'partial') {
       quality = enough ? 'warn' : 'good'
       text = enough
@@ -185,6 +200,7 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
         : 'Ærlig og løsningsorientert: du tilbyr det du faktisk har, og resten når det er klart — bedre enn et løfte du ikke kan holde.'
       const qty = Math.min(product.stock, commitQty)
       sale = qty > 0 ? { productId: product.id, name: product.name, price: product.retailPrice, qty } : null
+      if (qty < commitQty) setStockout(true)   // delleveranse ⇒ noe kunne ikke innfris fra lager
       extra = `Tilbød: ${qty} stk nå (lager: ${product.stock} stk) + resten senere`
     } else {
       quality = enough ? 'bad' : 'warn'
@@ -234,18 +250,21 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
 
   function restart() {
     setStepId(scenario.steps[0]!.id)
-    setPicks([]); setSales([]); setCosts(0); setPending(null); setPhase('dialog')
+    setPicks([]); setSales([]); setCosts(0); setStockout(false); setPending(null); setPhase('dialog')
   }
 
   function finish() {
     const result = buildSalesResult(picks, sales, personaMatch, { costs, outcomeKind: scenario.outcomeKind })
     // DEL 3: skriv til spillstate (salg → økonomi/lager, kostnad, rykte, XP).
+    // DEL 4: stockout-flagget føres videre så dagsoppgjøret kan vise
+    // utsolgt-hintet også ved delsalg (ikke bare når en linje er helt tom).
     dispatch({
       type: 'RESOLVE_SALES_SCENARIO',
       sales: result.sales,
       cost: result.cost,
       reputationDelta: result.reputationDelta,
       xpEarned: result.xpEarned,
+      stockout,
     })
     onClose()
   }

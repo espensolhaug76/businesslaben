@@ -1277,12 +1277,22 @@ function ProdukterTab() {
     dispatch({ type: 'ORDER_PRODUCT', product, quantity: qty })
   }
 
+  // Navneoppslag for «Underveis» — bestillingen bærer kun productId; varen er
+  // ført (lagt i sortimentet) ved bestilling, så navnet finnes i state.products
+  // (fall tilbake til katalogen, deretter id-en, for robusthet).
+  function productName(id: string): string {
+    return state.products.find(p => p.id === id)?.name
+      ?? catalog.find(c => c.id === id)?.name
+      ?? id
+  }
+
   return (
     <div>
       <div style={{ marginBottom: '1.25rem' }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Varelager</h3>
         <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
-          Velg antall → klikk Bestill. Pengene trekkes med en gang.
+          Velg antall → klikk Bestill. Pengene trekkes med en gang, og varene
+          ankommer neste morgen.
         </p>
       </div>
 
@@ -1326,6 +1336,34 @@ function ProdukterTab() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Underveis — bestillinger som ennå ikke er ankommet (leveringstid,
+          docs/INNKJOP_LEVERING.md). Vare, antall, «ankommer dag N». */}
+      {state.incomingOrders.length > 0 && (
+        <div style={{
+          background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.25)',
+          borderRadius: '1rem', padding: '0.75rem 1rem', marginBottom: '1.25rem',
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#7dd3fc', letterSpacing: '0.04em', marginBottom: '0.6rem' }}>
+            🚚 UNDERVEIS
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            {state.incomingOrders.map((o, i) => (
+              <div key={`${o.productId}_${o.bestiltDag}_${i}`} style={{
+                display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem 0.75rem',
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 10, padding: '0.5rem 0.7rem',
+              }}>
+                <span style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 12 }}>{productName(o.productId)}</span>
+                <span style={{ color: '#7dd3fc', fontSize: 12 }}>{o.qty} stk</span>
+                <span style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8' }}>
+                  📦 Ankommer dag {o.ankomstDag}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

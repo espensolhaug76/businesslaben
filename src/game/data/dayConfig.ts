@@ -22,10 +22,15 @@ export interface DayConfig {
   scenarioMix: ScenarioMix
   /** Antall handledager før måneden ruller (dayNumber > dette ⇒ ny måned). */
   daysPerMonth: number
+  /** Leveringstid i handledager (docs/INNKJOP_LEVERING.md): bestill dag N →
+   *  varene ankommer morgenen dag N + leadTimeDays. Felles for alle varer i
+   *  dag (leverandør-differensiering kommer med leverandørkatalogen). */
+  leadTimeDays: number
 }
 
 export const DAY_CONFIG: DayConfig = {
   meetingsPerDay: 4,
   scenarioMix: 'alle',
   daysPerMonth: 12,
+  leadTimeDays: 1,
 }

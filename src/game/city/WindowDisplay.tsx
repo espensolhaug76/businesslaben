@@ -2,7 +2,6 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useGame } from '../GameContext'
 import { STOREFRONT_HOTSPOTS, INTERIOR_DISK_DISPLAY } from '../../data/districts'
-import { INDUSTRY_CATALOG, catalogToProduct, type IndustryCatalogItem } from '../data/industries'
 import type { Product, WindowDisplayItem, FixtureId } from '../types'
 import { FACADE_IMG } from './StorefrontView'
 
@@ -158,17 +157,12 @@ export function WindowDisplayLayer({ items, products, fixtureId = 'vindu', cardW
 
 // ── Editor for ÉN flate — fri plassering, fra dashbordet ──────────────────────
 
-/** Full starter-batch (samme mønster som MonterScene) — så varen har lager
- *  når den bæres inn i sortimentet ved plassering. */
-function starterStockFor(item: IndustryCatalogItem): number {
-  return item.maxDemandPerMonth
-}
-
-/** Én rad i katalog-paletten — ekte utklipp (samme sprite som trau-paletten i
- *  MonterScene), fallback til fargekort+emoji kun ved manglende/feilet sprite.
- *  Sprite-feil holdes lokalt, samme mønster som CardVisual. */
+/** Én rad i palett-lista — FØRTE varer (bestilt i Produkter-fanen), ekte
+ *  utklipp (samme sprite som trau-paletten i MonterScene), fallback til
+ *  fargekort+emoji kun ved manglende/feilet sprite. Sprite-feil holdes lokalt,
+ *  samme mønster som CardVisual. */
 function PaletteRow({ item, placed, onStart }: {
-  item: IndustryCatalogItem
+  item: Product
   placed: boolean
   onStart: (e: React.PointerEvent) => void
 }) {
@@ -205,10 +199,10 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
   const { state, dispatch } = useGame()
   const surfaceRef = useRef<HTMLDivElement>(null)
   const cardWFrac = fixture.cardWFrac
-  // HELE bransjekatalogen — ikke bare det eleven alt har bestilt. Ingen
-  // windowDisplay-filter: drikke (kaffe o.l.) er fin styling i et vindu, selv
-  // om feltet historisk gated trau-egnethet.
-  const catalog = INDUSTRY_CATALOG[state.industry] ?? []
+  // FØRTE varer (bestilt i Produkter-fanen), IKKE hele katalogen
+  // (docs/INNKJOP_LEVERING.md). Ingen windowDisplay-filter: drikke (kaffe o.l.)
+  // er fin styling i et vindu, selv om feltet historisk gated trau-egnethet.
+  const carried = state.products
 
   // Arbeidskopi for DENNE flaten (filtrert på fixtureId). Hver endring committes
   // umiddelbart. itemsRef holdes synkron i commit() og under drag (onMove) —
@@ -218,9 +212,10 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
   )
   const itemsRef = useRef(items)
 
-  // 'new' drag holder en KATALOG-id (paletten er katalogbasert); 'move'
-  // holder den ferdige produkt-id-en (allerede plassert = allerede båret inn).
-  const [drag, setDrag] = useState<{ kind: 'new'; catalogId: string } | { kind: 'move'; productId: string } | null>(null)
+  // Både 'new' og 'move' holder nå en produkt-id: paletten er FØRTE varer
+  // (state.products), så «new» = plasser en allerede ført vare første gang;
+  // «move» = flytt en som alt ligger på flaten.
+  const [drag, setDrag] = useState<{ kind: 'new'; productId: string } | { kind: 'move'; productId: string } | null>(null)
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
   const [dragOut, setDragOut] = useState(false)
 
@@ -251,12 +246,12 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
     return fx < 0 || fx > 1 || fy < 0 || fy > 1
   }
 
-  // Dra et NYTT produkt fra KATALOG-paletten inn på flaten. Ved slipp: bæres
-  // varen inn i sortimentet (om den ikke alt er der — samme «før + still ut»
-  // som MonterScene) med en full starter-batch, og plasseres.
-  function startNew(catalogId: string, e: React.PointerEvent) {
+  // Dra en FØRT vare fra paletten inn på flaten. Ved slipp plasseres den bare
+  // (den er allerede ført via bestilling — ingen CARRY_PRODUCT/startbatch her
+  // lenger, docs/INNKJOP_LEVERING.md).
+  function startNew(productId: string, e: React.PointerEvent) {
     e.preventDefault()
-    setDrag({ kind: 'new', catalogId })
+    setDrag({ kind: 'new', productId })
     setGhost({ x: e.clientX, y: e.clientY })
 
     const onMove = (ev: PointerEvent) => {
@@ -272,10 +267,8 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
       if (!rect) return
       const { fx, fy } = fracFromEvent(ev.clientX, ev.clientY, rect)
       if (isOutside(fx, fy)) return   // sluppet utenfor ⇒ avbryt
-      const item = catalog.find(c => c.id === catalogId)
-      if (!item) return
-      const product = catalogToProduct(item)
-      dispatch({ type: 'CARRY_PRODUCT', product, starterStock: starterStockFor(item) })
+      const product = state.products.find(p => p.id === productId)
+      if (!product) return
       const [cx, cy] = clampFrac(fx, fy, rect)
       const next = [
         ...itemsRef.current.filter(i => i.productId !== product.id),
@@ -423,21 +416,22 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
         </div>
       </div>
 
-      {/* Palett — HELE bransjekatalogen (ikke bare det som alt er bestilt). */}
+      {/* Palett — FØRTE varer (bestilt i Produkter-fanen), ikke hele katalogen. */}
       <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
         VARER
       </div>
-      {catalog.length === 0 ? (
+      {carried.length === 0 ? (
         <div style={{
-          textAlign: 'center', color: '#475569', padding: '1.5rem',
+          textAlign: 'center', color: '#94a3b8', padding: '1.5rem',
           background: 'rgba(255,255,255,0.02)', borderRadius: 12,
           border: '1px dashed rgba(255,255,255,0.1)', fontSize: 13,
         }}>
-          Ingen varer i katalogen for denne bransjen.
+          Ingen varer ført ennå — bestill varer i Produkter-fanen først, så
+          dukker de opp her.
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.6rem' }}>
-          {catalog.map(item => (
+          {carried.map(item => (
             <PaletteRow
               key={item.id}
               item={item}
@@ -452,9 +446,8 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
           DashboardOverlay (framer-motion) har transform på dialog-div'en, og en
           ancestor med transform gjør at position:fixed måles fra DEN. */}
       {drag?.kind === 'new' && ghost && (() => {
-        const item = catalog.find(c => c.id === drag.catalogId)
-        if (!item) return null
-        const p = catalogToProduct(item)
+        const p = state.products.find(pr => pr.id === drag.productId)
+        if (!p) return null
         return createPortal(
           <div style={{
             position: 'fixed', left: ghost.x, top: ghost.y,

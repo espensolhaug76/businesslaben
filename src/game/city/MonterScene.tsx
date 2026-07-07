@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { MonterTrau } from '../../data/districts'
 import { useGame } from '../GameContext'
-import { INDUSTRY_CATALOG, catalogToProduct, type IndustryCatalogItem } from '../data/industries'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
@@ -13,10 +12,13 @@ import type { Product, TrauDensity, TrauItem } from '../types'
 // ── MonterScene (FRONTAL MONTER — kunde-siden) ───────────────────────────────
 // Frontal vy av disk-monteren. Disken er en LAGER-flate: hvert TRAU fylles med
 // ÉN vares utklipp, flislagt etter lagermengde (full/halv/tom) med litt jitter.
-// Dra en trau-vare fra paletten til et trau = «før varen + still den ut».
-// Vare→trau persisteres i state (counterLayout), modellert så ferskhet/svinn
-// kan legges på senere. Tomt trau = ingenting. Bilde-basert (cover 16:9) —
-// monter-frontal.png er placeholder til Espen legger inn det ekte bildet.
+// Paletten viser KUN FØRTE varer (state.products) — varer eleven har bestilt i
+// Produkter-fanen (docs/INNKJOP_LEVERING.md), IKKE hele katalogen. Å dra en
+// palett-vare til et trau STILLER den bare ut (SET_COUNTER_LAYOUT) — føring
+// skjer ikke lenger gratis her (den skjer ved bestilling). Tomt sortiment ⇒
+// vennlig hint om å bestille. Vare→trau persisteres i state (counterLayout).
+// Tomt trau = ingenting. Bilde-basert (cover 16:9) — monter-frontal.png er
+// placeholder til Espen legger inn det ekte bildet.
 //
 // BRANSJE-DEFINISJON: trau-geometrien (MONTER_TRAU) og scenebildet leses fra
 // den AKTIVE bransjens IndustryDefinition (industryDefinition.ts), ikke
@@ -86,11 +88,6 @@ export function tileCount(product: Product, trauId: string, density: TrauDensity
   const frac = r >= 0.66 ? 1 : r >= 0.33 ? 0.625 : 0.25
   return Math.max(1, Math.round(capacity * frac))
 }
-/** Når man «fører» en vare: en full starter-batch så trauet fylles. */
-function starterStockFor(item: IndustryCatalogItem): number {
-  return item.maxDemandPerMonth
-}
-
 export default function MonterScene({ districtId, lokaleId }: {
   districtId: string
   lokaleId: string
@@ -100,7 +97,7 @@ export default function MonterScene({ districtId, lokaleId }: {
   const stageRef = useRef<HTMLDivElement>(null)
 
   const [imgFailed, setImgFailed] = useState(false)
-  const [drag, setDrag] = useState<{ catalogId: string } | null>(null)
+  const [drag, setDrag] = useState<{ productId: string } | null>(null)
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
   const [overTrau, setOverTrau] = useState<string | null>(null)
   const [failedSprites, setFailedSprites] = useState<Set<string>>(new Set())
@@ -118,8 +115,10 @@ export default function MonterScene({ districtId, lokaleId }: {
   const activeDef = getActiveIndustryDefinition()
   const monterImg = activeDef.flater.lager.sceneImage
   const monterTrau = activeDef.flater.lager.trau
-  const catalog = INDUSTRY_CATALOG[state.industry] ?? []
-  const trauVarer = catalog.filter(i => i.trauVare)
+  // Paletten = FØRTE trau-varer (bestilt i Produkter-fanen), IKKE hele
+  // katalogen (docs/INNKJOP_LEVERING.md). Varer uten lager vises fortsatt
+  // (de er ført, kan stilles ut) — trauet renders bare tomt til de restokkes.
+  const trauVarer = state.products.filter(p => p.trauVare)
   const layout = state.counterLayout
   // Full trau-liste denne økten: de faste (fra den aktive bransjens
   // lager-flate) + evt. dev-trau lagt til via traceren (?dev=1). N vilkårlige
@@ -164,13 +163,13 @@ export default function MonterScene({ districtId, lokaleId }: {
     return null
   }
 
-  /** «Før + still ut»: legg varen i sortimentet (om ny) og i DETTE trauet —
-   *  ett trau for seg, ingen påvirkning av andre trau. */
-  function placeInTrau(catalogId: string, trauId: string) {
-    const item = catalog.find(c => c.id === catalogId)
-    if (!item) return
-    const product = catalogToProduct(item)
-    dispatch({ type: 'CARRY_PRODUCT', product, starterStock: starterStockFor(item) })
+  /** «Still ut»: legg en ALLEREDE FØRT vare i DETTE trauet — ett trau for seg,
+   *  ingen påvirkning av andre trau. Føring skjer ikke her lenger (den skjer
+   *  ved bestilling i Produkter-fanen); paletten inneholder kun førte varer,
+   *  så oppslaget mot state.products treffer alltid. */
+  function placeInTrau(productId: string, trauId: string) {
+    const product = state.products.find(p => p.id === productId)
+    if (!product) return
     const next = [...layout.filter(t => t.trauId !== trauId), { trauId, productId: product.id }]
     dispatch({ type: 'SET_COUNTER_LAYOUT', items: next })
 
@@ -198,9 +197,9 @@ export default function MonterScene({ districtId, lokaleId }: {
   }
 
   // Dra en trau-vare fra paletten til et trau.
-  function startDrag(catalogId: string, e: React.PointerEvent) {
+  function startDrag(productId: string, e: React.PointerEvent) {
     e.preventDefault()
-    setDrag({ catalogId })
+    setDrag({ productId })
     setGhost({ x: e.clientX, y: e.clientY })
 
     const onMove = (ev: PointerEvent) => {
@@ -212,14 +211,14 @@ export default function MonterScene({ districtId, lokaleId }: {
       window.removeEventListener('pointerup', onUp, true)
       const target = trauForPoint(ev.clientX, ev.clientY)
       setDrag(null); setGhost(null); setOverTrau(null)
-      if (target) placeInTrau(catalogId, target)
+      if (target) placeInTrau(productId, target)
     }
     // Capture-fase (robust mot stopPropagation andre steder).
     window.addEventListener('pointermove', onMove, true)
     window.addEventListener('pointerup', onUp, true)
   }
 
-  const dragItem = drag ? catalog.find(c => c.id === drag.catalogId) ?? null : null
+  const dragItem = drag ? state.products.find(p => p.id === drag.productId) ?? null : null
 
   return (
     <div style={{
@@ -439,31 +438,32 @@ export default function MonterScene({ districtId, lokaleId }: {
         )
       })()}
 
-      {/* PALETT — trau-varer fra katalogen (drabare) */}
+      {/* PALETT — FØRTE trau-varer (bestilt i Produkter-fanen), drabare */}
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 85,
         background: 'rgba(10,14,26,0.92)', borderTop: '1px solid rgba(255,255,255,0.1)',
         padding: '0.6rem 1rem', backdropFilter: 'blur(8px)',
       }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 6 }}>
-          🧺 TRAU-VARER — dra opp i et trau for å føre og stille ut
+          🧺 TRAU-VARER — dra opp i et trau for å stille ut
         </div>
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
           {trauVarer.map(item => {
             const placed = layout.some(ti => ti.productId === item.id)
             const hue = productHue(item.id)
             const useSprite = item.sprite && !failedSprites.has(item.sprite)
+            const utsolgt = item.stock <= 0
             return (
               <div
                 key={item.id}
                 onPointerDown={e => startDrag(item.id, e)}
-                title={`${item.name} — dra opp i et trau`}
+                title={`${item.name} — ${item.stock} stk på lager · dra opp i et trau`}
                 style={{
                   flex: '0 0 auto', width: 76, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                   background: placed ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.04)',
                   border: `1px solid ${placed ? 'rgba(0,212,170,0.35)' : 'rgba(255,255,255,0.12)'}`,
                   borderRadius: 10, padding: '0.4rem', cursor: 'grab',
-                  userSelect: 'none', touchAction: 'none',
+                  userSelect: 'none', touchAction: 'none', opacity: utsolgt ? 0.6 : 1,
                 }}
               >
                 <div style={{ width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -476,12 +476,16 @@ export default function MonterScene({ districtId, lokaleId }: {
                       }}>{item.icon}</div>}
                 </div>
                 <span style={{ fontSize: 10, color: '#cbd5e1', textAlign: 'center', lineHeight: 1.1 }}>{item.name}</span>
-                {placed && <span style={{ fontSize: 11, color: '#00d4aa' }}>✓</span>}
+                <span style={{ fontSize: 9, color: utsolgt ? '#f87171' : '#00d4aa' }}>
+                  {utsolgt ? 'Utsolgt' : `${item.stock} stk`}{placed ? ' ✓' : ''}
+                </span>
               </div>
             )
           })}
           {trauVarer.length === 0 && (
-            <span style={{ fontSize: 12, color: '#475569' }}>Ingen trau-varer i katalogen for denne bransjen.</span>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>
+              Ingen varer ført ennå — bestill varer i dashbordet → Produkter, så dukker de opp her.
+            </span>
           )}
         </div>
       </div>

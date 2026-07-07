@@ -92,6 +92,31 @@ export interface Product {
   ferskvare?: boolean
 }
 
+// ── Innkjøp og leveringstid (docs/INNKJOP_LEVERING.md) ────────────────────────
+
+/** Én bestilling underveis. Penger trekkes ved bestilling (ORDER_PRODUCT);
+ *  varene legges på lager først når `ankomstDag` er nådd (OPEN_DAY). leadTime
+ *  er felles i dag (DAY_CONFIG.leadTimeDays) — leverandør-differensiering
+ *  kommer med leverandørkatalogen, ikke nå. */
+export interface Bestilling {
+  productId: string
+  qty: number
+  /** Handledag bestillingen ble lagt inn (state.dayNumber der og da). */
+  bestiltDag: number
+  /** Handledag varene ankommer = bestiltDag + DAY_CONFIG.leadTimeDays. Ordrer
+   *  med ankomstDag <= dayNumber legges på lager ved neste OPEN_DAY. */
+  ankomstDag: number
+  /** Total innkjøpskostnad (costPrice × qty) — trukket ved bestilling. */
+  costKr: number
+}
+
+/** Morgenmelding om ankomne varer (OPEN_DAY) — vises som en avvisbar pille i
+ *  interiørscenen. Null når ingenting ankom denne morgenen. */
+export interface DeliveryNote {
+  dayNumber: number
+  lines: { name: string; qty: number }[]
+}
+
 // ── Vareeksponering (fri plassering) ──────────────────────────────────────────
 
 /** Hvilken fysiske flate elementet ligger på. To flater deler samme state-liste
@@ -345,6 +370,15 @@ export interface GameState {
   /** Historikk over alle fullførte dager (DEL 3-forberedelse: «svinn-
    *  statistikk kan kobles på uten omskriving» — ingen UI leser denne ennå). */
   dayHistory: DayResult[]
+
+  // ── Innkjøp underveis (docs/INNKJOP_LEVERING.md) ─────────────────────────
+  /** Bestillinger som ennå ikke er ankommet. ORDER_PRODUCT legger til;
+   *  OPEN_DAY plukker ut de som har ankommet (ankomstDag <= dayNumber),
+   *  legger dem på lager og fjerner dem herfra. */
+  incomingOrders: Bestilling[]
+  /** Siste morgenleveranse (OPEN_DAY) — driver «📦 Varer ankommet»-pilla i
+   *  interiørscenen. Null når ingenting ankom / etter at pilla er lukket. */
+  lastDelivery: DeliveryNote | null
 
   // Products & selling
   products: Product[]

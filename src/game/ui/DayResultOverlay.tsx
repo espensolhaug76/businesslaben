@@ -89,7 +89,7 @@ export default function DayResultOverlay() {
                 background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.3)',
                 borderRadius: '0.75rem', padding: '0.7rem 0.9rem', fontSize: 13, color: '#7dd3fc', lineHeight: 1.5,
               }}>
-                💡 Du gikk tom — tapte salg. Vurder å bestille mer av det som selger.
+                💡 Du gikk tom — tapte salg. Bestill i kveld, så er varene i disken i morgen tidlig.
               </div>
             )}
           </div>

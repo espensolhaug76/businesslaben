@@ -15,7 +15,6 @@ import StorefrontView from './city/StorefrontView'
 import InteriorView from './city/InteriorView'
 import MonterScene from './city/MonterScene'
 import { districtOfLokale } from '../data/districts'
-import { INDUSTRY_CATALOG, catalogToProduct } from './data/industries'
 
 // ── BYBILDE-ARKITEKTUR ────────────────────────────────────────────────────────
 // /game er nå bildebasert: master-kart → bydel → lokale (URL-styrt).
@@ -84,33 +83,15 @@ function GameContent() {
       finansiering: 'bank',
       personlighet: 'analytisk',
     })
-    // Demo-sortiment med full/lav/tom lagerstatus så vindusutstillingen
-    // (lager-barometeret) kan itereres uten å klikke gjennom 4P-løypa.
-    // Bygget MED catalogToProduct() (samme vei som ekte bestilling/føring)
-    // — IKKE håndskrevne Product-literaler. Håndskrevne kopier manglet
-    // sprite/displayScale/category (de finnes bare på katalogens
-    // IndustryCatalogItem), og siden id-ene bevisst matcher katalogen (se
-    // under), gjorde CARRY_PRODUCT/ORDER_PRODUCT sin dedup-sjekk
-    // (`some(p => p.id === action.product.id)`) at en ekte bestilling/føring
-    // av f.eks. Croissant ble et no-op — trauet fortsatte å peke på den
-    // sprite-løse dev-seed-varianten, som falt tilbake til
-    // farge+ikon-plassholderen i stedet for det ekte bilde-utklippet.
-    const cafeCatalog = INDUSTRY_CATALOG.cafe
-    const coffeeItem = cafeCatalog.find(i => i.id === 'coffee')!
-    const croissantItem = cafeCatalog.find(i => i.id === 'croissant')!
-    const muffinItem = cafeCatalog.find(i => i.id === 'muffin-blabaer')!
-    dispatch({
-      type: 'SET_PRODUCTS',
-      products: [
-        { ...catalogToProduct(coffeeItem), stock: 40 },
-        { ...catalogToProduct(croissantItem), stock: 6 },
-        { ...catalogToProduct(muffinItem), stock: 0 },
-      ],
-    })
-    // Kaffe (windowDisplay: false) som hovedprodukt demonstrerer
-    // plakat-stedfortrederen på disken.
+    // INNKJØP/LEVERING (docs/INNKJOP_LEVERING.md, DEL 1): dev-seedet legger
+    // IKKE lenger inn et eget demo-sortiment. Startlageret kommer nå fra den
+    // GENERELLE åpningsleveransen (IndustryDefinition.oppstartssortiment),
+    // som legges ferdig ankommet på lager ved RENT_LOCATION — samme vei for
+    // dev (?skip → manuell leie) og vanlig spill. Kaffe settes som
+    // hovedprodukt for plakat-stedfortrederen på disken (id-en lagres; varen
+    // finnes så snart lokalet er leid).
     dispatch({ type: 'SET_MAIN_PRODUCT', id: 'coffee' })
-    console.log('[DEV] StartupScreen skipped, seeded defaults + demo-sortiment')
+    console.log('[DEV] StartupScreen skipped, seeded defaults (åpningsleveranse ved leie)')
   }, [state.phase, dispatch])
 
   // DEL 4: lytt etter dev-trigger fra dashbordet («Øv salg»). Åpner

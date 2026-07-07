@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
-  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult,
+  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
@@ -11,6 +11,7 @@ import { getEventsForMonth } from '../strategies/innovation/eventEngine'
 import { updateFlags } from '../strategies/innovation/flagSystem'
 import { DAY_CONFIG } from './data/dayConfig'
 import { getActiveIndustryDefinition } from './data/industryDefinition'
+import { catalogToProduct } from './data/industries'
 
 // ─── XP thresholds ──────────────────────────────────────────────────────────
 
@@ -109,6 +110,9 @@ const initialState: GameState = {
   lastDayResult: null,
   dayHistory: [],
 
+  incomingOrders: [],
+  lastDelivery: null,
+
   products: [],
   mainProductId: null,
   priceResearch: { purchasedProductIds: [] },
@@ -183,8 +187,7 @@ type Action =
   | { type: 'SET_MAIN_PRODUCT'; id: string }
   | { type: 'SET_WINDOW_DISPLAY'; fixtureId: WindowDisplayItem['fixtureId']; items: WindowDisplayItem[] }
   | { type: 'SET_COUNTER_LAYOUT'; items: TrauItem[] }
-  | { type: 'CARRY_PRODUCT'; product: Product; starterStock: number }
-  | { type: 'RESOLVE_SALES_SCENARIO'; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number }
+  | { type: 'RESOLVE_SALES_SCENARIO'; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number; stockout?: boolean }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   | { type: 'SET_MARKETING'; budget: GameState['marketingBudget'] }
   | { type: 'SET_APPEAL'; appealType: GameState['appealType'] }
@@ -207,6 +210,8 @@ type Action =
   | { type: 'OPEN_DAY' }
   | { type: 'CLOSE_DAY' }
   | { type: 'START_NEW_DAY' }
+  // Innkjøp/levering (docs/INNKJOP_LEVERING.md): lukk «Varer ankommet»-pilla.
+  | { type: 'CLEAR_DELIVERY' }
   | { type: 'RESET' }
 
 // ─── Plan quality helper ─────────────────────────────────────────────────────
@@ -268,6 +273,35 @@ function reducer(state: GameState, action: Action): GameState {
       }
 
     case 'RENT_LOCATION': {
+      // DEL 1 (docs/INNKJOP_LEVERING.md) — ÅPNINGSLEVERANSE: ved innflytting
+      // ligger et rimelig startsortiment FERDIG ANKOMMET på lager, trukket fra
+      // startkapitalen. Fra dag 2 gjelder normal bestilling med leveringstid.
+      // Kun når sortimentet er tomt (første leie): hindrer dobbelt-seeding ved
+      // en evt. re-leie og respekterer et ev. dev-forhåndsseedet sortiment.
+      const def = getActiveIndustryDefinition()
+      let openingProducts = state.products
+      let openingCost = 0
+      if (state.products.length === 0 && def.oppstartssortiment.length > 0) {
+        openingProducts = def.oppstartssortiment
+          .map(o => {
+            const item = def.katalog.find(c => c.id === o.catalogId)
+            return item ? { ...catalogToProduct(item), stock: Math.max(0, o.qty) } : null
+          })
+          .filter((p): p is Product => p !== null)
+        openingCost = openingProducts.reduce((s, p) => s + p.costPrice * p.stock, 0)
+      }
+
+      const openingMessage: InboxMessage | null = openingProducts !== state.products
+        ? {
+            id: `msg_opening_${Date.now()}`,
+            type: 'supplier',
+            title: '📦 Åpningsleveransen er på plass',
+            body: `Startsortimentet er levert og står på lager (${openingCost.toLocaleString('nb-NO')} kr trukket). Fra og med i morgen bestiller du selv i Produkter-fanen — varene ankommer neste morgen.`,
+            date: `År 1, Måned 1`,
+            read: false,
+          }
+        : null
+
       const newMessages: InboxMessage[] = [
         ...state.messages,
         {
@@ -278,16 +312,20 @@ function reducer(state: GameState, action: Action): GameState {
           date: `År 1, Måned 1`,
           read: false,
         },
+        ...(openingMessage ? [openingMessage] : []),
       ]
       return {
         ...state,
+        money: state.money - openingCost,
+        products: openingProducts,
+        p1_complete: openingProducts.length > 0 ? true : state.p1_complete,
         rentedLocationId: action.id,
         locationZone: action.zone,
         monthlyRent: action.rent,
         storageCapacity: action.capacity,
         phase: 'setting_up',
         messages: newMessages,
-        unreadCount: state.unreadCount + 1,
+        unreadCount: state.unreadCount + newMessages.length - state.messages.length,
         tutorialStep: state.tutorialStep === 2 ? 3 : state.tutorialStep,
         progress: { ...state.progress, locationChosen: true },
       }
@@ -356,7 +394,12 @@ function reducer(state: GameState, action: Action): GameState {
         xpToNext = xpForLevel(newLevel)
       }
 
-      const stockoutNow = action.sales.some(l => l.qty === 0)
+      // DEL 4-fix: utsolgt/tapt-salg-signal. Overlayet flagger nå eksplisitt
+      // når et salgsforsøk ikke kunne dekkes fullt av lageret — inkludert
+      // DELSALG (f.eks. 6 av 8 ønsket) og mersalg/storbestilling — ikke bare
+      // helt tomme (qty===0) linjer. Beholder qty===0-sjekken som en robust
+      // reserve (klemt salg i reduceren).
+      const stockoutNow = (action.stockout ?? false) || action.sales.some(l => l.qty === 0)
       const inDay = state.dayPhase === 'åpen'
 
       return {
@@ -384,31 +427,37 @@ function reducer(state: GameState, action: Action): GameState {
       // hver endring — ingen egen lagre-knapp.
       return { ...state, counterLayout: action.items }
 
-    case 'CARRY_PRODUCT': {
-      // «Før varen»: legg produktet i sortimentet hvis det ikke alt finnes, med
-      // en starter-batch så trauet fylles. Finnes det fra før, beholdes lageret.
-      // (Display-mekanikk — kobler IKKE på økonomi/innkjøp ennå.)
-      if (state.products.some(p => p.id === action.product.id)) return state
-      return {
-        ...state,
-        products: [...state.products, { ...action.product, stock: Math.max(0, action.starterStock) }],
-        p1_complete: true,
-      }
-    }
-
     case 'ORDER_PRODUCT': {
+      // Innkjøp med LEVERINGSTID (docs/INNKJOP_LEVERING.md): pengene trekkes
+      // NÅ, men varene legges IKKE på lager med en gang — de blir en
+      // Bestilling underveis som ankommer morgenen dag N + leadTimeDays
+      // (OPEN_DAY). Første bestilling av en katalogvare FØRER den (legges i
+      // sortimentet med stock 0) — så den kan prises umiddelbart, før
+      // leveringen kommer. Dette ERSTATTER den gamle gratis-startbatchen i
+      // CARRY_PRODUCT-flyten.
       const totalCost = action.product.costPrice * action.quantity
       if (state.money < totalCost || action.quantity <= 0) return state
-      const existingIdx = state.products.findIndex(p => p.id === action.product.id)
-      let newProducts: Product[]
-      if (existingIdx >= 0) {
-        newProducts = state.products.map(p =>
-          p.id === action.product.id ? { ...p, stock: p.stock + action.quantity } : p
-        )
-      } else {
-        newProducts = [...state.products, { ...action.product, stock: action.quantity }]
+
+      const alreadyCarried = state.products.some(p => p.id === action.product.id)
+      const products = alreadyCarried
+        ? state.products
+        : [...state.products, { ...action.product, stock: 0 }]
+
+      const order: Bestilling = {
+        productId: action.product.id,
+        qty: action.quantity,
+        bestiltDag: state.dayNumber,
+        ankomstDag: state.dayNumber + DAY_CONFIG.leadTimeDays,
+        costKr: totalCost,
       }
-      return { ...state, money: state.money - totalCost, products: newProducts, p1_complete: true }
+
+      return {
+        ...state,
+        money: state.money - totalCost,
+        products,
+        incomingOrders: [...state.incomingOrders, order],
+        p1_complete: true,
+      }
     }
 
     case 'SET_MARKETING':
@@ -703,8 +752,33 @@ function reducer(state: GameState, action: Action): GameState {
       // Kun gyldig fra stengt (defensiv no-op ellers — knappen skal uansett
       // ikke tilby dette utenom 'stengt', se InteriorView).
       if (state.dayPhase !== 'stengt') return state
+
+      // Innkjøp/levering (docs/INNKJOP_LEVERING.md): ankomne bestillinger
+      // (ankomstDag <= dagens nummer) legges på lager FØR dagen åpner; resten
+      // blir stående underveis. deliveryLines driver morgenmeldingen.
+      const arrived = state.incomingOrders.filter(o => o.ankomstDag <= state.dayNumber)
+      const stillPending = state.incomingOrders.filter(o => o.ankomstDag > state.dayNumber)
+
+      let products = state.products
+      const deliveryLines: DeliveryNote['lines'] = []
+      if (arrived.length > 0) {
+        const addByProduct = new Map<string, number>()
+        for (const o of arrived) addByProduct.set(o.productId, (addByProduct.get(o.productId) ?? 0) + o.qty)
+        products = state.products.map(p => {
+          const add = addByProduct.get(p.id) ?? 0
+          return add > 0 ? { ...p, stock: p.stock + add } : p
+        })
+        for (const [productId, qty] of addByProduct) {
+          const name = state.products.find(p => p.id === productId)?.name ?? productId
+          deliveryLines.push({ name, qty })
+        }
+      }
+
       return {
         ...state,
+        products,
+        incomingOrders: stillPending,
+        lastDelivery: deliveryLines.length > 0 ? { dayNumber: state.dayNumber, lines: deliveryLines } : null,
         shopOpen: true,
         dayPhase: 'åpen',
         meetingsToday: 0,
@@ -782,8 +856,14 @@ function reducer(state: GameState, action: Action): GameState {
         dayPhase: 'stengt',
         meetingsToday: 0,
         lastDayResult: null,
+        // Rydd bort en evt. gammel «Varer ankommet»-pille før neste morgen.
+        lastDelivery: null,
       }
     }
+
+    case 'CLEAR_DELIVERY':
+      // Lukk morgenleveranse-pilla (interiørscenen).
+      return state.lastDelivery ? { ...state, lastDelivery: null } : state
 
     case 'RESET':
       return initialState

@@ -63,11 +63,14 @@ export function buildSalesResult(
   const bad = picks.filter(p => p.quality === 'bad').length
   const behovstreff = picks.some(p => p.behovstreff)
 
-  // Tilfredshet 0–100. Base + bidrag per valgkvalitet, pluss små bonuser.
-  let satisfaction = 55 + good * 12 + warn * 3 - bad * 10
-  if (behovstreff) satisfaction += 10
-  if (personaMatch) satisfaction += 8
-  satisfaction = Math.max(10, Math.min(100, satisfaction))
+  // Tilfredshet 5–100 (ny skala, DEL 5-fiks 2026-07-07 — Espens tall). Base 50
+  // med tydelig straff for svake valg (warn −3, bad −12) og reell belønning for
+  // gode valg (good +10) + å treffe det skjulte behovet (+8). personaMatch er
+  // BEVISST fjernet herfra — den er nå en ren XP-bonus (+10 XP, se xpEarned
+  // under), ikke en tilfredshets-løftende «gratis» bonus. Gjelder både salg-
+  // og service-scenarier (samme formel). Terskler/rykte-mapping uendret.
+  let satisfaction = 50 + good * 10 - warn * 3 - bad * 12 + (behovstreff ? 8 : 0)
+  satisfaction = Math.max(5, Math.min(100, satisfaction))
 
   const revenue = sales.reduce((s, l) => s + l.price * l.qty, 0)
 

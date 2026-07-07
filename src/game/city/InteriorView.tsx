@@ -198,23 +198,33 @@ export default function InteriorView({ districtId, lokaleId }: {
     return () => clearTimeout(t)
   }, [])
 
-  // STENGT ⇒ ingen kunde (gates spawn — kunde-poolen skrus helt av).
-  // DAGSSYKLUS (DEL 2): så lenge butikken er ÅPEN og forrige kunde er `gone`,
-  // spawnes automatisk en NY kunde fra dagens pool — helt til
-  // meetingsToday når DAY_CONFIG.meetingsPerDay, da stopper spawningen
-  // (tydelig hint vises i stedet, se render under) og eleven må selv stenge
-  // for å gå til dagsoppgjøret. Var kunden IKKE gone (fortsatt der/i
-  // samtale) gjør dette ingenting — hun blir stående til scenen under
-  // (sales:closed) sier fra.
+  // ÅPEN ⇒ så lenge forrige kunde er `gone`, spawnes automatisk en NY kunde
+  // fra dagens pool — helt til meetingsToday når DAY_CONFIG.meetingsPerDay, da
+  // stopper spawningen (tydelig hint vises i stedet, se render under) og
+  // eleven må selv stenge for å gå til dagsoppgjøret.
+  //
+  // FIKS (DEL 3, dag-2-starter-feil): nøkler på `dayPhase === 'åpen'` (den
+  // AUTORITATIVE dag-tilstanden), ikke det avledede `shopOpen` — sammen med
+  // render-gaten under gjør det at en kunde umulig kan stå i scenen før eleven
+  // åpner. `justOpened` (dayPhase gikk fra ikke-åpen → åpen) tvinger dessuten
+  // en FRISK kunde ved hver dagåpning: en kunde som ble stående da butikken
+  // stengte TIDLIG (gone=false) blir ellers hengende igjen som «gårsdagens»
+  // kunde og dukker opp igjen når neste dag åpnes (spawn-guarden `!gone`
+  // hoppet ellers over henne). Midt på dagen (ikke justOpened) står en aktiv
+  // kunde (gone=false) i fred til sales:closed sier fra.
+  const prevPhaseRef = useRef(state.dayPhase)
   useEffect(() => {
-    if (!state.shopOpen || !gone) return
+    const justOpened = prevPhaseRef.current !== 'åpen' && state.dayPhase === 'åpen'
+    prevPhaseRef.current = state.dayPhase
+    if (state.dayPhase !== 'åpen') return
     if (state.meetingsToday >= DAY_CONFIG.meetingsPerDay) return
+    if (!gone && !justOpened) return   // aktiv kunde midt på dagen — la henne stå
     setScenario(randomScenario(DAY_SCENARIO_POOL))
     setGone(false)
     setShown(false)
     const t = setTimeout(() => setShown(true), 50)
     return () => clearTimeout(t)
-  }, [state.shopOpen, gone, state.meetingsToday])
+  }, [state.dayPhase, gone, state.meetingsToday])
 
   // Logg start-verdiene ved ?dev=1.
   useEffect(() => {
@@ -274,6 +284,32 @@ export default function InteriorView({ districtId, lokaleId }: {
       <div style={{ position: 'fixed', top: 64, left: 20, zIndex: 80 }}>
         <BackButton onClick={() => navigate(`/game/d/${districtId}/l/${lokaleId}`)} label="← Ut til fasaden" />
       </div>
+
+      {/* MORGENLEVERANSE (docs/INNKJOP_LEVERING.md) — «📦 Varer ankommet»-pille
+          når state.lastDelivery er satt (OPEN_DAY la ankomne bestillinger på
+          lager). Avvisbar med ✕ (CLEAR_DELIVERY). Toppmidtstilt under HUD. */}
+      {state.lastDelivery && (
+        <div style={{
+          position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 82,
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(16,185,129,0.16)', border: '1px solid rgba(16,185,129,0.55)',
+          borderRadius: 12, padding: '0.5rem 0.9rem', color: '#6ee7b7',
+          fontSize: 13, fontWeight: 700, fontFamily: "'Outfit', sans-serif",
+          maxWidth: 520, boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+        }}>
+          <span>
+            📦 Varer ankommet: {state.lastDelivery.lines.map(l => `${l.qty} × ${l.name}`).join(', ')}
+          </span>
+          <button
+            onClick={() => dispatch({ type: 'CLEAR_DELIVERY' })}
+            title="Lukk"
+            style={{
+              background: 'transparent', border: 'none', color: '#6ee7b7',
+              fontSize: 15, lineHeight: 1, cursor: 'pointer', padding: 2, fontFamily: 'inherit',
+            }}
+          >✕</button>
+        </div>
+      )}
 
       {/* ÅPEN/STENGT-bryter + «Stell disken», samlet nederst til venstre — de
           hører sammen (stengt butikk → stell disken i fred). IKKE øverst til
@@ -526,7 +562,7 @@ export default function InteriorView({ districtId, lokaleId }: {
             nullstilles ved remount (f.eks. en tur innom /disk og tilbake),
             så meetingsToday-sjekken her er nødvendig for å ikke spawne en
             ekstra kunde etter at dagen egentlig er ferdig. */}
-        {!gone && state.shopOpen && state.meetingsToday < DAY_CONFIG.meetingsPerDay && (
+        {!gone && state.dayPhase === 'åpen' && state.meetingsToday < DAY_CONFIG.meetingsPerDay && (
           <div
             onClick={talkToCustomer}
             onMouseEnter={() => setHover(true)}

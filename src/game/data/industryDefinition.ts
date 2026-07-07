@@ -69,6 +69,15 @@ export interface EkstraFlate {
  *  klesbutikk), IKKE en virkemåte som finnes ennå. */
 export type SvinnRegel = 'ferskvare-daglig' | 'sesong/kolleksjon'
 
+/** Én linje i åpningssortimentet (docs/INNKJOP_LEVERING.md, DEL 1) —
+ *  refererer en katalogvare (`catalogId`) og et antall som ligger FERDIG
+ *  ANKOMMET på lager ved innflytting (kostnaden trekkes fra startkapitalen).
+ *  Fra dag 2 gjelder normal bestilling med leveringstid. */
+export interface OppstartsvareLinje {
+  catalogId: string
+  qty: number
+}
+
 export interface IndustryDefinition {
   id: Industry
   navn: string
@@ -76,6 +85,10 @@ export interface IndustryDefinition {
   beskrivelse: string
   startingMoney: number
   katalog: IndustryCatalogItem[]
+  /** Åpningssortiment (DEL 1) — et rimelig startlager som ligger ferdig
+   *  ankommet ved innflytting (RENT_LOCATION), trukket fra startkapitalen.
+   *  Tom liste = ingen åpningsleveranse. */
+  oppstartssortiment: OppstartsvareLinje[]
   flater: {
     styling: StylingFlate
     lager: LagerFlate
@@ -96,6 +109,19 @@ export const CAFE: IndustryDefinition = {
   beskrivelse: INDUSTRY_META.cafe.description,
   startingMoney: INDUSTRY_META.cafe.startingMoney,
   katalog: INDUSTRY_CATALOG.cafe,
+  // Åpningssortiment (DEL 1) — kafeens rimelige startlager, ferdig ankommet
+  // ved innflytting. Blanding av drikke (kaffe, ikke ferskvare — holder over
+  // natten) og trau-ferskvarer (croissant/kanelbolle/rundstykke — svinner ved
+  // stenging), så både salg, svinn og etterfylling kan øves fra dag 1. Grovt
+  // rundstykke bevisst < 40 så Storbestillingen (Fredrik, 40 stk) demonstrerer
+  // ærlig delleveranse mot faktisk lager. Total innkjøpskostnad ~1 100 kr av
+  // 150 000 startkapital.
+  oppstartssortiment: [
+    { catalogId: 'coffee', qty: 40 },
+    { catalogId: 'croissant', qty: 20 },
+    { catalogId: 'kanelbolle', qty: 20 },
+    { catalogId: 'rundstykke-grovt', qty: 30 },
+  ],
   flater: {
     styling: { zone: STOREFRONT_HOTSPOTS.vindu },
     lager: {
@@ -132,6 +158,9 @@ export const KLESBUTIKK: IndustryDefinition = {
   beskrivelse: INDUSTRY_META.fashion.description,
   startingMoney: INDUSTRY_META.fashion.startingMoney,
   katalog: INDUSTRY_CATALOG.fashion,
+  // Ingen åpningssortiment definert for stubben ennå (en ekte klesbutikk ville
+  // fått sitt eget startlager her).
+  oppstartssortiment: [],
   flater: {
     // Samme fysiske vindu som kafeen (én storefront-fasade i dag) — en ekte
     // bransje 2 ville sannsynligvis fått egne fasadebilder/soner her.
