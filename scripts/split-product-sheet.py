@@ -8,11 +8,14 @@ Pipeline per ark:
   3) sorter blobs i lese-rekkefølge (rad for rad, venstre->høyre)
   4) kropp hver blob til sin alfa-bounding-box (+pad) og lagre som <navn>.png
 
-Tre ark-familier, skilt på filnavn-prefiks (avgjør både mappe og navnekart):
+Fire ark-familier, skilt på filnavn-prefiks (avgjør både mappe og navnekart):
   products-ark-NN-raw.png  -> public/assets/raw/products/<navn>.png
   customers-ark-NN-raw.png -> public/assets/raw/customers/<navn>.png
   fixtures-ark-NN-raw.png  -> public/assets/raw/fixtures/<navn>.png  (klesbutikk-
                               møbler: stativ/dukke/bord/hylle — jobb/klesbutikk)
+  klar-ark-NN-raw.png      -> public/assets/raw/klar/<navn>.png  (klesbutikk-
+                              PLAGG — jobb/klesbutikk; rå-arkene ligger i
+                              raw/, utklippene skrives til raw/klar/)
 
 Re-kjørbar for flere ark: legg nye ark i riktig mappe under public/assets/raw/
 og legg navnekartet i PRODUCTS_NAME_MAPS/CUSTOMERS_NAME_MAPS under ark-nummeret
@@ -33,6 +36,11 @@ CUSTOMERS_DIR = "/home/espen/adventure-web/public/assets/raw/customers"
 # Fixtures-arkene (klesbutikk-møbler) er BRANSJE-2-arbeid som bor på grenen
 # jobb/klesbutikk — les fra og skriv til DEN worktreen, ikke main-worktreen.
 FIXTURES_DIR  = "/home/espen/adventure-web-klesbutikk/public/assets/raw/fixtures"
+# Klar-arkene (klesbutikk-PLAGG): rå-arkene ligger i raw/ (klar-ark-NN-raw.png),
+# men utklippene skrives til en egen raw/klar/-mappe (mange filer). Derfor er
+# raw-mappe (input) og out-mappe (output) ULIKE for denne familien.
+KLAR_RAW_DIR  = "/home/espen/adventure-web-klesbutikk/public/assets/raw"
+KLAR_DIR      = "/home/espen/adventure-web-klesbutikk/public/assets/raw/klar"
 
 # Navnekart per ark-nummer, i LESE-rekkefølge (rad for rad, venstre->høyre).
 PRODUCTS_NAME_MAPS = {
@@ -67,6 +75,45 @@ FIXTURES_NAME_MAPS = {
     # bord (DUPLIKAT av ark-01s bord -> SKIP), podium-bord. 'SKIP' skriver ingen
     # fil for den bloben (se skrive-løkka).
     "02": ["dukke-mann", "dukke-barn", "SKIP", "stativ-liten", "SKIP", "bord-podium"],
+}
+
+# Klesbutikk-PLAGG (klar-ark-NN, jobb/klesbutikk). VIKTIG: de fysiske ark-numrene
+# (filnavnet) matcher IKKE oppdragets logiske nummerering — innholdet er stokket
+# om, ark-05 er en DUPLIKAT av ark-04, og «heng profil»-arket (logisk 03) MANGLER
+# helt. Navnekartene under er derfor keyet på FYSISK arknr., matchet visuelt mot
+# faktisk innhold 2026-07-07. Alle ark er 4x2 (lese-rekkefølge: rad 1 v->h, rad 2
+# v->h). ✦-VANNMERKET (nano-banana) OVERLAPPER det nederste-høyre plagget på 6
+# ark (fysisk 01/02/03/04/06/08) og havner INNE i det plaggets crop — det ble
+# fjernet MANUELT etter split (klone-patch/diffusjon) fra sport-antrekk-2,
+# dunvest-dame, ullfrakk, kjeledress-barn, vattert-vest, luer-stabel. Re-splitt
+# = gjenta ✦-fjerningen. MANGLER: «heng profil»-arket (logisk 03); fysisk 05 er
+# en DUPLIKAT av 04 — derfor intet "05"-navnekart.
+KLAR_NAME_MAPS = {
+    # fysisk 01 = brettede stabler (topprad) + herre-antrekk (bunnrad)
+    "01": ["t-skjorter-stabel", "jeans-stabel", "gensere-stabel", "cardigan-stabel",
+           "casual-antrekk", "dress-antrekk", "sport-antrekk-1", "sport-antrekk-2"],
+    # fysisk 02 = heng front DAME
+    "02": ["bluse", "cardigan-dame", "blazer-dame", "maxikjole",
+           "denimskjort", "trenchcoat", "strikkekjole", "dunvest-dame"],
+    # fysisk 03 = heng front (herre)
+    "03": ["denimjakke", "hvit-skjorte", "graa-genser", "brun-genser",
+           "sommerkjole", "hoodie", "blaa-genser", "ullfrakk"],
+    # fysisk 04 = heng front BARN
+    "04": ["regnjakke-barn", "hoodie-barn", "denimjakke-barn", "genser-barn",
+           "sommerkjole-barn", "parkas-barn", "tskjorte-barn", "kjeledress-barn"],
+    # fysisk 05 = DUPLIKAT av 04 (barn) — bevisst uten kart, ikke splitt den.
+    # fysisk 06 = heng VINTER
+    "06": ["dunparkas", "ullkaape", "skijakke", "fleecejakke",
+           "tykk-genser", "dunjakke", "softshell", "vattert-vest"],
+    # fysisk 07 = heng SOMMER
+    "07": ["linskjorte", "sommerkjole-2", "badeshorts", "tskjorte",
+           "bomberjakke", "singlet", "linbukse", "kimono"],
+    # fysisk 08 = brettede stabler
+    "08": ["skjorter-stabel", "chinos-stabel", "hoodies-stabel", "flanell-stabel",
+           "shorts-stabel", "cardigans-stabel", "skjerf-stabel", "luer-stabel"],
+    # fysisk 09 = antrekk (topprad dame, bunnrad barn)
+    "09": ["casual-dame", "business-dame", "sommer-dame", "vinter-dame",
+           "casual-barn", "sport-barn", "sommer-barn-antrekk", "vinter-barn-antrekk"],
 }
 
 ALPHA_THRESHOLD = 40      # alfa over dette = «vare-piksel»
@@ -140,6 +187,8 @@ def resolve_family(path):
         return CUSTOMERS_DIR, CUSTOMERS_NAME_MAPS, CUSTOMERS_DIR
     if base.startswith("fixtures-ark"):
         return FIXTURES_DIR, FIXTURES_NAME_MAPS, FIXTURES_DIR
+    if base.startswith("klar-ark"):
+        return KLAR_RAW_DIR, KLAR_NAME_MAPS, KLAR_DIR
     return PRODUCTS_DIR, PRODUCTS_NAME_MAPS, PRODUCTS_DIR
 
 
@@ -181,7 +230,8 @@ def main():
         names = name_maps.get(nn or "", [])
         if not names:
             map_name = {CUSTOMERS_DIR: 'CUSTOMERS_NAME_MAPS',
-                        FIXTURES_DIR: 'FIXTURES_NAME_MAPS'}.get(out_dir, 'PRODUCTS_NAME_MAPS')
+                        FIXTURES_DIR: 'FIXTURES_NAME_MAPS',
+                        KLAR_DIR: 'KLAR_NAME_MAPS'}.get(out_dir, 'PRODUCTS_NAME_MAPS')
             print(f"FEIL: ingen navn oppgitt og intet kart for ark '{nn}'. Legg til i {map_name}.")
             sys.exit(1)
 
