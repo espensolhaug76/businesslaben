@@ -387,6 +387,138 @@ advarsel). `tsc -b` grønn. **Gjenstår for Chrome:** selve drag'n'drop-samspill
 (opprett funksjon / disponer kort / fjern funksjon) — HTML5-native DnD lar seg
 ikke simulere pålitelig headless.
 
+## 14. Scenarioutvidelse — 8 nye kafé + 6 klesbutikk (kv1011/kv1012)
+
+> **Status: skrevet + verifisert headless (render + full gjennomspilling m/gren),
+> IKKE spilltestet av Espen. Ren INNHOLDSJOBB — motoren er urørt.** All kode i
+> `src/game/sales/scenarios.ts`. `tsc -b` grønn.
+
+**Konvensjoner (uendret motor):** base 50, good +10 / warn −3 / bad −12,
+behovstreff +8 (via `kind:'recommend'`), personaMatch = ren XP-bonus (+10 XP).
+Forgrening via `choice.next`; dynamiske steg `recommend` / `stock-commit` /
+`margin-discount`; `sell` med `qty`; `{price:id}`/`{stock:id}`-tokens.
+
+**Registrering:** de 8 kafé-scenariene er lagt i `SCENARIOS` (⇒ automatisk i
+`CAFE_SCENARIO_IDS` og dagens møte-pool). De 6 klesbutikk-scenariene ligger i en
+EGEN `FASHION_SCENARIOS` + `FASHION_SCENARIO_IDS` og er IKKE i `SCENARIOS` — de
+typesjekker og kan slås opp (`getScenario` søker nå `[...SCENARIOS,
+...FASHION_SCENARIOS]`), men aktiveres ikke (KLESBUTIKK er ikke registrert).
+
+### Globale antakelser / flagg
+- **Sprites (kafé):** de 8 nye peker foreløpig til EKSISTERENDE kunde-sprites som
+  midlertidige plassholdere, så ingenting vises brukket i spilltest. Kunde-img i
+  `InteriorView` har INGEN `onError`-fallback (motoren er urørt), derfor
+  plassholder framfor ny sti. Endelig asset-navn per scenario står under.
+- **Sprites (klesbutikk):** peker til `/assets/raw/customers/fashion/<navn>.png`
+  (finnes ikke ennå). Rendres ALDRI i dag siden bransjen er inaktiv, så ingen
+  brukket img. Må lages når bransje 2 aktiveres.
+- **Plagg-id-er (klesbutikk):** `needTags` treffer BÅDE antatt katalog-id OG
+  bokmålsnavn + synonymer (f.eks. `['hettegenser','hoodie','genser',…]`), så
+  oppslaget overlever om id-er endres. Antatt fashion-katalog (industries.ts):
+  `hoodie, tshirt, jeans, sneakers, cap, bag`. Justeres id-ene, bør tag-listene
+  få et raskt blikk, men de er bevisst brede.
+- **personaTag:** kafé-scenariene bruker kun de fire eksisterende tag-verdiene
+  (Karriereorienterte/Familieorienterte/Helsebevisste/Prisbevisste) så
+  målgruppe-bonusen kan matche. Fashion bruker plausible tags (Trendbevisste
+  m.m.) — irrelevant i praksis siden bransjen er inaktiv.
+- **Ingen navn-gjenbruk** fra eksisterende personaer (Kari/Tom/Sunniva/Roger/
+  Maren/Fredrik). Nye: Amira, Bjørn, Camilla, David, Emil, Live, Petter, Oda
+  (kafé) · Selma, Kristoffer, Ada, Vetle, Ronja, Sander (klesbutikk).
+
+### DEL 1 — kafé (8)
+
+1. **Kryssalget (Amira)** — *mersalg/kryssalg.* Kompetansemål: behovsavdekking +
+   relevant kryssalg (drikke til mat), timing. **Gren:** god = lavmælt, relevant
+   kryssalg (sell `KALD_DRIKKE` addon) → hopp til avslutt; warn = ingen mersalg;
+   bad = dynge på → **forgrening til `gjenoppr`** (gjenopprett stemningen: god =
+   ærlig retrett / warn = fortsetter maset / bad = stikk til kunden). Poeng:
+   relevans + timing slår volum; et pushy mersalg må repareres, ikke gjentas.
+2. **Angreretten (Bjørn)** — *forbrukervern: angrerett vs. butikkjøp.* Mål: vite
+   at angrerettloven gjelder FJERNSALG (nett/utenfor butikk), ikke butikkjøp
+   uten mangel. **Gren (KJERNE `rettigheter`):** god = korrekt (ingen lovpålagt
+   angrerett i butikk) + kulanse-bytte; warn = usikker; bad = FEILINFORMERER
+   (bekrefter en angrerett som ikke finnes). Ender i recommend av erstatningsvare
+   (bytte). Poeng: skille plikt fra service; feil fakta er feil selv når det
+   virker snilt.
+3. **Hastverkskunden (Camilla)** — *lese tidsramme, tilpasse tilbud.* Mål:
+   effektiv service, IKKE mersalg når tid er behovet. Kontrast til Morgenkunden
+   (der mersalg var riktig). **Gren:** `recommend BAKEVARE` (ferdigvare, ingen
+   venting); `fristelse`-steget: god = dropp mersalg, rask betaling → avslutt;
+   bad = push laget vare → **forgrening til `irritasjon`**. Poeng: timing avgjør
+   om et mersalg hjelper eller skader.
+4. **Gavekjøpet (David)** — *behovsavdekking i TO LEDD.* Mål: ved gavekjøp avdekk
+   MOTTAKERENS behov (hvem/anledning → hva de liker), ikke kjøperens smak.
+   **Gren:** `inn`/`hvem`/`hva` bygger to-ledds-avdekking; bad-valgene anbefaler
+   ut fra Davids egen smak eller overkjører «drikker ikke kaffe». Recommend
+   `SOT_TAGS` + mottaker-tilpasset mersalg (ikke-kaffe drikke). Poeng: gaven
+   handler om den som får den.
+5. **Studentrabatten (Emil)** — *prispolitikk + likebehandling.* Mål: konsistent
+   pris, rettferdig verdi (lojalitetskort) framfor tilfeldig «hysj-rabatt».
+   Kontrast til Prutekunden (aggressiv pruting) — her et rimelig spørsmål.
+   **Gren (KJERNE `politikk`):** god = samme pris for alle + kaffekort; warn =
+   hemmelig rabatt (forskjellsbehandling, undergraver prisintegritet); bad =
+   nedlatende avvisning. Poeng: rabatt skal være en ordning, ikke en forskjells-
+   behandling.
+6. **Likeverd (Live)** — *universell utforming / likeverdig service*
+   (`service`). Mål: møte kunde med nedsatt funksjonsevne kompetent og
+   likeverdig; førerhund har adgang; les menyen høyt; snakk TIL, ikke OM.
+   **Gren:** `inn` (velkommen + førerhund vs. nekte hund), `les` (beskriv vs.
+   vagt vs. velg for henne), `verdighet` (la henne ta tid vs. snakke høyt/sakte
+   vs. snakke om henne til køen), avslutt (tilby hjelp — men SPØR, ikke overta).
+   Poeng: verdighet + praktisk hjelp uten umyndiggjøring.
+7. **Ventetiden (Petter)** — *service recovery UTEN reklamasjon* (`service`).
+   Mål: kø er servicetap, ikke mangel; erkjenn, beklag uten «men», konkret
+   tiltak, RIMELIG kompensasjon. **Gren:** `inn` (eie vs. bortforklare vs.
+   avvise), `tiltak` (hent kollega vs. vagt vs. fraskrivelse), KJERNE
+   `kompensasjon` (liten gest `cost:39` vs. ingenting vs. OVERkompensasjon).
+   Poeng: proporsjonal gest slår både null og overdådig.
+8. **Førstegangskunden (Oda)** — *usikker førstegang, variant 2 (språklig
+   terskel).* Mål: oversett fagsjargong (flat white/cortado) til smak, ikke
+   nedlatende. Kontrast til Den usikre (anledning-basert). **Gren:** `oversett`
+   (smaks-spørsmål vs. mer sjargong vs. «bare ta en latte»), `preferanse`
+   (bygg på «mild» vs. ignorer vs. push sterkest). Recommend `VARM_DRIKKE`.
+   Poeng: møt kunden der hun er.
+
+### DEL 2 — klesbutikk (6, inaktive)
+
+9. **Størrelsesrådet (Selma)** — *passform uten å gjette størrelse.* Mål: spør om
+   ønsket passform, tilby prøving; ikke gjett/kommenter kropp. **Gren:** `inn`
+   (samarbeid vs. gjett størrelse vs. kroppskommentar), `passform` (tettsittende/
+   oversized), KJERNE `prov` (prøverom vs. gjett vs. «bytt hvis feil»). Recommend
+   `OVERDEL`.
+10. **Gavebyttet (Kristoffer)** — *gavebytte = kulanse, ikke lovkrav.* Mål: skille
+    plikt (ingen bytterett ved feil størrelse) fra service (kulanse +
+    byttekvittering). **Gren (KJERNE `kulanse`):** god = ærlig (ingen lovpålagt
+    bytterett) + hjelper gjerne; warn = «full bytterett alltid» (feil); bad =
+    «heldig som får lov» (nedlatende). Recommend `PLAGG` i riktig størrelse.
+11. **Sesongsalget (Ada)** — *ærlig prispolitikk / sesong.* Mål: ikke lyv om
+    «aldri salg», ikke falsk knapphet; legg fram avveiningen (sikre nå vs. sjanse
+    på salg der størrelsen kan være utsolgt). Kobler til `svinnRegel
+    'sesong/kolleksjon'`. **Gren:** `inn`/`politikk` (ærlig avveining vs. press
+    vs. løgn). Recommend `OVERDEL`.
+12. **Plaggreklamasjonen (Vetle)** — *forbrukervern: mangel vs. slitasje*
+    (`service`, enkel, INGEN eskalering). Mål: søm som ryker på to uker = mangel
+    (produksjonsfeil) → reklamasjonsrett. **Gren (KJERNE `vurder`):** god =
+    mangel + reklamasjonsrett; warn = usikker; bad = «slitasje» (faktafeil).
+    `losning`: omlevering (`cost:250`) vs. liten rabatt vs. «sy den selv».
+13. **Stilrådet (Ronja)** — *råd mot anledning/behov, helhet.* Mål: avdekk
+    anledningen (jobbintervju), råd mot den (ryddig, ikke trend/egen smak), tenk
+    antrekk. **Gren:** `inn`/`anledning` (kontekst vs. trend vs. egen smak);
+    `helhet`-mersalg: god = passende bukse (sell `BUKSE` addon) / bad = caps til
+    intervju (bryter anledningen). Recommend `OVERDEL`.
+14. **Budsjettkunden (Sander)** — *respekter budsjett, verdi, ikke oppsell.* Mål:
+    finn best verdi INNENFOR 500, vær ærlig, ikke press over grensa. **Gren:**
+    `inn` (ta budsjett på alvor vs. antyde for lavt vs. avvise), KJERNE `verdi`
+    (kvalitet per krone vs. «billigst» vs. press oppover), avslutt (ikke stikk om
+    «litt mer»). Recommend `ACCESSOAR` (varer innen 500, f.eks. caps).
+
+**Verifisert:** alle 14 åpner og rendrer hvert steg (0 konsollfeil); full
+gjennomspilling av Kryssalget bekreftet forgrening (bad kryssalg → `gjenoppr`) →
+resultatkort → Fullfør. `recommend`-steget kan aldri låse seg — det lister alltid
+hele sortimentet + «det fører vi ikke»-valget (ærlig = god når ingen vare
+matcher). **Gjenstår:** Espens spilltest av dialogkvalitet/scoring + endelige
+sprite-assets.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen (TODO):** bevisst UTELATT fra månedstrekket. Et
