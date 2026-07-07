@@ -127,6 +127,19 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           </div>
         </div>
 
+        {/* ORGANISASJONSDESIGN — ÉN diskret refleksjonslinje (spørsmål, aldri
+            fasit) når en org-regel slo ut. Ikke mas: maks én, dempet tone. */}
+        {r.refleksjon && (
+          <div style={{
+            background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.22)',
+            borderRadius: '0.75rem', padding: '0.6rem 0.9rem', marginBottom: '1.1rem',
+            display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#9ecbe6', lineHeight: 1.45,
+          }}>
+            <span style={{ flexShrink: 0 }}>🤔</span>
+            <span>{r.refleksjon}</span>
+          </div>
+        )}
+
         {/* Pedagogiske hint — mild tone, aldri straffende. KLIKKBARE: fører
             rett til Produkter-fanen (bestill inn til i morgen) uten å avansere
             dagen. */}

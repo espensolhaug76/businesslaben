@@ -9,7 +9,8 @@ import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_T
 import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader } from '../data/economy'
 import { BALANCE } from '../data/balance'
-import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, OrgGren, Shift } from '../types'
+import { aktiveFunksjoner, evaluerRefleksjon } from '../data/orgRefleksjon'
+import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
 import type { Loan } from '../types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
@@ -1806,26 +1807,24 @@ function MarkedsforingTab() {
   )
 }
 
-// ── Personale (BEMANNING — org-kart, vaktliste, kapasitet) ────────────────────
-// docs/BEMANNING.md er kontrakten. Flyt: ansett → PERSONALBENKEN → ORG-KART
-// (hvem er hva) → VAKTLISTE (når jobber de). Selgeren bidrar nå KAPASITET på
-// vakt (backgroundSales.kapasitetPaaVakt), ikke lenger en flat +10%.
+// ── Personale (ORGANISASJONSDESIGN — bygg kartet selv) ────────────────────────
+// docs/BEMANNING.md er kontrakten. Flyt: dra ROLLEKORT fra paletten inn i
+// org-kartet for å OPPRETTE funksjoner → ansett inn i dem → sett Salg på vakt.
+// Salgsrollen gir KAPASITET (backgroundSales.kapasitetPaaVakt); markedsføring/
+// økonomi beholder månedseffektene; andre roller er ren org-forståelse.
 
-const ROLE_META: Record<EmployeeRole, { emoji: string; gren: OrgGren }> = {
-  selger:       { emoji: '🛍️', gren: 'salg' },
-  markedsforer: { emoji: '📢', gren: 'markedsforing' },
-  okonom:       { emoji: '📊', gren: 'okonomi' },
-}
 const LEVEL_INFO: Record<EmployeeLevel, { label: string; salary: number }> = {
   junior:  { label: 'Junior',  salary: 15_000 },
   senior:  { label: 'Senior',  salary: 25_000 },
   ekspert: { label: 'Ekspert', salary: 40_000 },
 }
-const GRENER: { id: OrgGren; navn: string; rolle: EmployeeRole; farge: string }[] = [
-  { id: 'salg',          navn: 'Salg',          rolle: 'selger',       farge: '#00d4aa' },
-  { id: 'markedsforing', navn: 'Markedsføring',  rolle: 'markedsforer', farge: '#38bdf8' },
-  { id: 'okonomi',       navn: 'Økonomi',        rolle: 'okonom',       farge: '#f59e0b' },
-]
+
+// Rollepalett fra den aktive bransjen (IndustryDefinition.roller) — oppslag.
+function rolleDef(id: EmployeeRole): RolleDef | undefined {
+  return getActiveIndustryDefinition().roller.find(r => r.id === id)
+}
+function rolleTittel(id: EmployeeRole): string { return rolleDef(id)?.tittel ?? id }
+function rolleEmoji(id: EmployeeRole): string { return rolleDef(id)?.emoji ?? '👤' }
 
 // Norske navn til nyansatte (BEMANNING) — fornavn + etternavn, valgt tilfeldig
 // i ansett-handleren (ikke i render).
@@ -1842,45 +1841,58 @@ const VAKT_START_TIME = BALANCE.klokke.apneMinutt / 60   // 9
 const VAKT_SLUTT_TIME = BALANCE.klokke.stengMinutt / 60  // 17
 const VAKT_LUKER = Array.from({ length: VAKT_SLUTT_TIME - VAKT_START_TIME }, (_, k) => VAKT_START_TIME + k)
 function hhmm(min: number): string { return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` }
-function rolleNavn(role: EmployeeRole): string { return getActiveIndustryDefinition().roller[role] }
+
+// Dra-tilstand i org-kartet: et rollekort (opprett funksjon), en ansatt (flytt
+// benk↔funksjon) eller en funksjon (dra ut = fjern).
+type OrgDrag = { kind: 'nyRolle' | 'emp' | 'funksjon'; id: string }
 
 function PersonaleTab() {
   const { state, dispatch } = useGame()
   const [role, setRole] = useState<EmployeeRole>('selger')
   const [level, setLevel] = useState<EmployeeLevel>('junior')
-  const [dragId, setDragId] = useState<string | null>(null)      // kortet som dras (org-kart)
-  const [overGren, setOverGren] = useState<OrgGren | 'benk' | null>(null) // hover-mål
+  const [drag, setDrag] = useState<OrgDrag | null>(null)          // hva som dras
+  const [over, setOver] = useState<string | null>(null)           // hover-mål (highlight)
+  const [viserRefleksjon, setViserRefleksjon] = useState(false)
 
+  const alleRoller = getActiveIndustryDefinition().roller
+  // Funksjonene som finnes i kartet (orgRoller + migrering fra disponerte).
+  const funksjoner = aktiveFunksjoner(state.orgRoller, state.employees)
+  const opprettede = alleRoller.filter(r => funksjoner.includes(r.id))
+  const paletten = alleRoller.filter(r => !funksjoner.includes(r.id))
+  const benk = state.employees.filter(e => !e.grenId)
+  const salgsIVakt = state.employees.filter(e => e.grenId && rolleDef(e.role)?.vaktrolle)
+
+  // Ansett-rolle: kun opprettede funksjoner kan ansettes; fall til første.
+  const valgtRolle = opprettede.some(r => r.id === role) ? role : (opprettede[0]?.id ?? null)
   const salary = LEVEL_INFO[level].salary
   const canAfford = state.money >= salary
-  const def = getActiveIndustryDefinition()
 
   function hire() {
-    if (!canAfford) return
+    if (!valgtRolle || !canAfford) return
     dispatch({ type: 'HIRE_EMPLOYEE', employee: {
-      id: `emp_${Date.now()}`, navn: tilfeldigNavn(), role, level, monthlySalary: salary,
+      id: `emp_${Date.now()}`, navn: tilfeldigNavn(), role: valgtRolle, level, monthlySalary: salary,
     } })
   }
 
-  const benk = state.employees.filter(e => !e.grenId)
-  const selgereIVakt = state.employees.filter(e => e.role === 'selger' && e.grenId === 'salg')
-
-  // HTML5 drag'n'drop: slipp et kort i en gren (kun rollens egen gren aksepterer)
-  // eller tilbake på benken (grenId null).
-  function slipp(mål: OrgGren | null) {
-    const id = dragId
-    setDragId(null); setOverGren(null)
-    if (!id) return
-    const emp = state.employees.find(e => e.id === id)
-    if (!emp) return
-    if (mål !== null && ROLE_META[emp.role].gren !== mål) return  // feil gren — avvis
-    dispatch({ type: 'ASSIGN_EMPLOYEE_BRANCH', id, grenId: mål })
+  // Felles drop-sone: `accept` avgjør om målet tar imot dagens drag; `slipp`
+  // utfører handlingen. Rydder drag/hover uansett.
+  function sone(key: string, accept: (d: OrgDrag) => boolean, slipp: (d: OrgDrag) => void) {
+    return {
+      onDragOver: (e: React.DragEvent) => { if (drag && accept(drag)) { e.preventDefault(); setOver(key) } },
+      onDragLeave: () => setOver(o => (o === key ? null : o)),
+      onDrop: (e: React.DragEvent) => { e.preventDefault(); if (drag && accept(drag)) slipp(drag); setDrag(null); setOver(null) },
+    }
   }
+  const startDrag = (d: OrgDrag) => (e: React.DragEvent) => { e.dataTransfer.effectAllowed = 'move'; setDrag(d) }
+  const draggetEmp = (d: OrgDrag) => state.employees.find(e => e.id === d.id)
 
-  const dropProps = (mål: OrgGren | 'benk') => ({
-    onDragOver: (e: React.DragEvent) => { e.preventDefault(); setOverGren(mål) },
-    onDragLeave: () => setOverGren(g => (g === mål ? null : g)),
-    onDrop: () => slipp(mål === 'benk' ? null : mål),
+  const refleksjoner = evaluerRefleksjon({
+    harFunksjon: id => funksjoner.includes(id),
+    ansatte: state.employees.length,
+    disponerte: state.employees.filter(e => e.grenId).length,
+    omsetningMnd: state.dayHistory
+      .filter(d => d.month === state.currentMonth && d.year === state.currentYear)
+      .reduce((s, d) => s + d.soldKr + d.bakgrunnKr, 0),
   })
 
   return (
@@ -1888,12 +1900,13 @@ function PersonaleTab() {
       <div style={{ marginBottom: '1.1rem' }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Personale</h3>
         <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
-          Ansett → benk → dra inn i org-kartet (hvem er hva) → dra selgere inn i
-          vaktlisten (når de jobber). Lønn trekkes månedlig — også for udisponerte.
+          Bygg organisasjonen selv: dra roller fra paletten inn i kartet for å
+          opprette funksjoner → ansett inn i dem → sett Salg på vakt. Lønn
+          trekkes månedlig — også for udisponerte.
         </p>
       </div>
 
-      {/* ORG-KART */}
+      {/* ORG-KART — starter tomt (kun Daglig leder); eleven bygger det ut. */}
       <SectionTittel emoji="🏢" tekst="Organisasjonskart" />
       <div style={{ textAlign: 'center', marginBottom: '0.6rem' }}>
         <div style={{
@@ -1905,38 +1918,101 @@ function PersonaleTab() {
         </div>
         <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.2)', margin: '0 auto' }} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.55rem', marginBottom: '1rem' }}>
-        {GRENER.map(g => {
-          const folk = state.employees.filter(e => e.grenId === g.id)
-          const aktiv = overGren === g.id
-          return (
-            <div key={g.id} {...dropProps(g.id)} style={{
-              background: aktiv ? `${g.farge}1e` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${aktiv ? g.farge : 'rgba(255,255,255,0.09)'}`,
-              borderRadius: 12, padding: '0.6rem 0.55rem', minHeight: 96,
-              transition: 'background 0.12s, border 0.12s',
-            }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: g.farge, marginBottom: 2 }}>{g.navn}</div>
-              <div style={{ fontSize: 9.5, color: '#64748b', marginBottom: '0.5rem' }}>{def.roller[g.rolle]}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                {folk.map(e => (
-                  <DragCard key={e.id} emp={e} farge={g.farge}
-                    onDragStart={() => setDragId(e.id)}
-                    onFire={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })} />
-                ))}
-                {folk.length === 0 && <div style={{ fontSize: 10, color: '#475569', fontStyle: 'italic' }}>Dra et kort hit</div>}
+      <div {...sone('kart', d => d.kind === 'nyRolle', d => dispatch({ type: 'CREATE_ORG_ROLE', roleId: d.id }))}
+        style={{
+          background: over === 'kart' ? 'rgba(0,212,170,0.08)' : 'transparent',
+          border: `1px dashed ${over === 'kart' ? '#00d4aa' : 'rgba(255,255,255,0.12)'}`,
+          borderRadius: 12, padding: opprettede.length ? '0.5rem' : '1.1rem 0.8rem', marginBottom: '1rem',
+          transition: 'background 0.12s, border 0.12s',
+        }}>
+        {opprettede.length ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.55rem' }}>
+            {opprettede.map(r => {
+              const folk = state.employees.filter(e => e.grenId === r.id)
+              const aktiv = over === `f_${r.id}`
+              return (
+                <div key={r.id}
+                  {...sone(`f_${r.id}`, d => d.kind === 'emp' && draggetEmp(d)?.role === r.id, d => dispatch({ type: 'ASSIGN_EMPLOYEE_BRANCH', id: d.id, grenId: r.id }))}
+                  style={{
+                    background: aktiv ? `${r.farge}1e` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${aktiv ? r.farge : 'rgba(255,255,255,0.09)'}`,
+                    borderRadius: 12, padding: '0.55rem 0.5rem', minHeight: 92,
+                    transition: 'background 0.12s, border 0.12s',
+                  }}>
+                  {/* Funksjons-header = drahåndtak for å FJERNE (kun når tom). */}
+                  <div
+                    draggable={folk.length === 0}
+                    onDragStart={folk.length === 0 ? startDrag({ kind: 'funksjon', id: r.id }) : undefined}
+                    title={folk.length === 0 ? 'Dra ned i paletten for å fjerne funksjonen' : 'Kan ikke fjernes mens noen står i den'}
+                    style={{ cursor: folk.length === 0 ? 'grab' : 'default', marginBottom: '0.4rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 13 }}>{r.emoji}</span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: r.farge }}>{r.funksjon}</span>
+                    </div>
+                    <div style={{ fontSize: 9, color: '#64748b' }}>
+                      {r.vaktrolle ? 'Gulvvakt · kapasitet' : r.maanedseffekt ? 'Månedseffekt' : 'Organisasjon'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                    {folk.map(e => (
+                      <DragCard key={e.id} emp={e} farge={r.farge}
+                        onDragStart={startDrag({ kind: 'emp', id: e.id })}
+                        onFire={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })} />
+                    ))}
+                    {folk.length === 0 && <div style={{ fontSize: 9.5, color: '#475569', fontStyle: 'italic' }}>Ansett hit</div>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center' }}>
+            Kartet har bare deg. Dra et <span style={{ color: '#00d4aa' }}>rollekort</span> fra
+            paletten under hit for å opprette din første funksjon.
+          </div>
+        )}
+      </div>
+
+      {/* ROLLEPALETT — dra kort opp i kartet (opprett) / dra funksjon hit (fjern). */}
+      <SectionTittel emoji="🎛️" tekst="Rollepalett" />
+      <div {...sone('palett', d => d.kind === 'funksjon', d => dispatch({ type: 'REMOVE_ORG_ROLE', roleId: d.id }))}
+        style={{
+          background: over === 'palett' ? 'rgba(248,113,113,0.1)' : 'rgba(255,255,255,0.02)',
+          border: `1px dashed ${over === 'palett' ? '#f87171' : 'rgba(255,255,255,0.12)'}`,
+          borderRadius: 12, padding: '0.7rem 0.8rem', marginBottom: '1.4rem',
+        }}>
+        {paletten.length ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+            {paletten.map(r => (
+              <div key={r.id} draggable onDragStart={startDrag({ kind: 'nyRolle', id: r.id })}
+                title="Dra opp i kartet for å opprette funksjonen"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, cursor: 'grab',
+                  background: `${r.farge}12`, border: `1px solid ${r.farge}40`, borderRadius: 8, padding: '0.35rem 0.6rem',
+                }}>
+                <span style={{ fontSize: 15 }}>{r.emoji}</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>{r.funksjon}</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>{r.kjerne ? 'Kjernerolle' : 'Bransjerolle'}</div>
+                </div>
               </div>
-            </div>
-          )
-        })}
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: '#475569' }}>Alle roller er opprettet i kartet.</div>
+        )}
+        <div style={{ fontSize: 10, color: '#475569', marginTop: '0.55rem' }}>
+          Dra et kort opp i kartet for å opprette funksjonen · dra en tom funksjon hit for å fjerne den.
+        </div>
       </div>
 
       {/* PERSONALBENK */}
-      <div {...dropProps('benk')} style={{
-        background: overGren === 'benk' ? 'rgba(148,163,184,0.14)' : 'rgba(255,255,255,0.02)',
-        border: `1px dashed ${overGren === 'benk' ? '#94a3b8' : 'rgba(255,255,255,0.14)'}`,
-        borderRadius: 12, padding: '0.7rem 0.8rem', marginBottom: '1.4rem',
-      }}>
+      <div {...sone('benk', d => d.kind === 'emp', d => dispatch({ type: 'ASSIGN_EMPLOYEE_BRANCH', id: d.id, grenId: null }))}
+        style={{
+          background: over === 'benk' ? 'rgba(148,163,184,0.14)' : 'rgba(255,255,255,0.02)',
+          border: `1px dashed ${over === 'benk' ? '#94a3b8' : 'rgba(255,255,255,0.14)'}`,
+          borderRadius: 12, padding: '0.7rem 0.8rem', marginBottom: '1.4rem',
+        }}>
         <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
           🪑 PERSONALBENK · udisponert ({benk.length})
         </div>
@@ -1944,13 +2020,13 @@ function PersonaleTab() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
             {benk.map(e => (
               <DragCard key={e.id} emp={e} farge="#94a3b8" compact
-                onDragStart={() => setDragId(e.id)}
+                onDragStart={startDrag({ kind: 'emp', id: e.id })}
                 onFire={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })} />
             ))}
           </div>
         ) : (
           <div style={{ fontSize: 12, color: '#475569' }}>
-            {state.employees.length === 0 ? 'Ingen ansatte ennå — ansett nedenfor.' : 'Alle er disponert i org-kartet.'}
+            {state.employees.length === 0 ? 'Ingen ansatte ennå — ansett nedenfor.' : 'Alle er disponert i kartet.'}
           </div>
         )}
       </div>
@@ -1961,7 +2037,6 @@ function PersonaleTab() {
         background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: 12, padding: '0.75rem', marginBottom: '1.4rem',
       }}>
-        {/* Timeakse */}
         <div style={{ display: 'flex', paddingLeft: 128, marginBottom: 4 }}>
           {VAKT_LUKER.map(t => (
             <div key={t} style={{ flex: 1, fontSize: 9, color: '#64748b', textAlign: 'left' }}>{String(t).padStart(2, '0')}</div>
@@ -1970,21 +2045,54 @@ function PersonaleTab() {
         </div>
         <VaktRad navn="👑 Deg" sub="Daglig leder · gratis" farge="#ffd700" vakt={state.playerShift}
           onSet={v => dispatch({ type: 'SET_PLAYER_SHIFT', vakt: v })} />
-        {selgereIVakt.map(e => (
-          <VaktRad key={e.id} navn={e.navn} sub={`${rolleNavn('selger')} · ${LEVEL_INFO[e.level].label}`}
+        {salgsIVakt.map(e => (
+          <VaktRad key={e.id} navn={e.navn} sub={`${rolleTittel(e.role)} · ${LEVEL_INFO[e.level].label}`}
             farge="#00d4aa" vakt={e.vakt ?? null}
             onSet={v => dispatch({ type: 'SET_EMPLOYEE_SHIFT', id: e.id, vakt: v })} />
         ))}
-        {selgereIVakt.length === 0 && (
+        {salgsIVakt.length === 0 && (
           <div style={{ fontSize: 12, color: '#64748b', padding: '0.4rem 0 0.1rem' }}>
-            Dra selgere inn i <span style={{ color: '#00d4aa' }}>Salg</span>-grenen for å kunne sette dem på vakt.
+            Opprett en <span style={{ color: '#00d4aa' }}>Salg</span>-funksjon og disponer selgere der for å sette dem på vakt.
           </div>
         )}
         <div style={{ fontSize: 10.5, color: '#475569', marginTop: '0.6rem', lineHeight: 1.5 }}>
-          Dra over timene for å sette en vakt · klikk vakten for å fjerne. For få på
-          vakt = kø og tapte salg; for mange = lønna spiser dagsresultatet.
+          Klikk en time for å legge til eller fjerne den · dra over flere timer for
+          å sette en hel vakt · ✕ tømmer vakta. For få på vakt = kø og tapte salg;
+          for mange = lønna spiser dagsresultatet.
         </div>
       </div>
+
+      {/* SE OVER ORGANISASJONEN — refleksjonsspørsmål (aldri fasit). */}
+      <button onClick={() => setViserRefleksjon(v => !v)} style={{
+        width: '100%', textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer',
+        background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.28)',
+        borderRadius: 12, padding: '0.7rem 0.9rem', marginBottom: viserRefleksjon ? '0.5rem' : '1.4rem',
+        color: '#7dd3fc', fontSize: 13, fontWeight: 700,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <span>🔍 Se over organisasjonen</span>
+        <span style={{ fontSize: 11 }}>{viserRefleksjon ? '▲' : '▼'}</span>
+      </button>
+      {viserRefleksjon && (
+        <div style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 12, padding: '0.85rem 1rem', marginBottom: '1.4rem',
+          display: 'flex', flexDirection: 'column', gap: '0.55rem',
+        }}>
+          {refleksjoner.length ? (
+            refleksjoner.map(r => (
+              <div key={r.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#cbd5e1', lineHeight: 1.45 }}>
+                <span style={{ flexShrink: 0 }}>🤔</span>
+                <span>{r.spørsmål}</span>
+              </div>
+            ))
+          ) : (
+            <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.45 }}>
+              🤔 Ingen åpenbare hull akkurat nå — men fortsett å vurdere organiseringen etter hvert som bedriften vokser.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Total lønn */}
       <div style={{
@@ -1996,72 +2104,78 @@ function PersonaleTab() {
         <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(state.monthlyPayroll)}</span>
       </div>
 
-      {/* ANSETT */}
+      {/* ANSETT — kun roller eleven har opprettet i kartet. */}
       <div style={{
         background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: '1rem', padding: '1.25rem',
       }}>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: '1rem' }}>Ansett ny medarbeider</div>
 
-        <div style={{ marginBottom: '0.75rem' }}>
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Stilling</div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {(Object.keys(ROLE_META) as EmployeeRole[]).map(r => (
-              <button key={r} onClick={() => setRole(r)} style={{
-                flex: 1, background: role === r ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${role === r ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: '0.6rem', padding: '0.6rem 0.4rem',
-                cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
-              }}>
-                <div style={{ fontSize: 18, marginBottom: 2 }}>{ROLE_META[r].emoji}</div>
-                <div style={{ fontSize: 11.5, fontWeight: 700 }}>{rolleNavn(r)}</div>
-              </button>
-            ))}
+        {opprettede.length === 0 ? (
+          <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+            Opprett en funksjon i org-kartet først (dra et rollekort fra paletten
+            inn i kartet) — så kan du ansette inn i den.
           </div>
-          <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
-            {role === 'selger'
-              ? 'Går på gulvvakt og betjener bakgrunnskunder (kapasitet stiger med nivå).'
-              : 'Bidrar til månedseffekten sin — går ikke på gulvvakt.'}
-          </div>
-        </div>
+        ) : (
+          <>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Stilling</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {opprettede.map(r => (
+                  <button key={r.id} onClick={() => setRole(r.id)} style={{
+                    flex: '1 1 30%', minWidth: 100,
+                    background: valgtRolle === r.id ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${valgtRolle === r.id ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '0.6rem', padding: '0.55rem 0.4rem',
+                    cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
+                  }}>
+                    <div style={{ fontSize: 17, marginBottom: 2 }}>{r.emoji}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700 }}>{r.tittel}</div>
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+                {valgtRolle && rolleDef(valgtRolle)?.vaktrolle
+                  ? 'Går på gulvvakt og betjener bakgrunnskunder (kapasitet stiger med nivå).'
+                  : valgtRolle && rolleDef(valgtRolle)?.maanedseffekt
+                    ? 'Bidrar til månedseffekten sin — går ikke på gulvvakt.'
+                    : 'Organisasjonsrolle — ingen direkte motoreffekt, men en del av kartet.'}
+              </div>
+            </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Nivå</div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {(Object.keys(LEVEL_INFO) as EmployeeLevel[]).map(lv => (
-              <button key={lv} onClick={() => setLevel(lv)} style={{
-                flex: 1, background: level === lv ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${level === lv ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: '0.6rem', padding: '0.6rem',
-                cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{LEVEL_INFO[lv].label}</div>
-                <div style={{ fontSize: 11, color: '#64748b' }}>{formatKr(LEVEL_INFO[lv].salary)}/mnd</div>
-                {role === 'selger' && (
-                  <div style={{ fontSize: 10, color: '#00d4aa', marginTop: 1 }}>{BALANCE.kapasitetPerTime[lv]}/t</div>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Nivå</div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {(Object.keys(LEVEL_INFO) as EmployeeLevel[]).map(lv => (
+                  <button key={lv} onClick={() => setLevel(lv)} style={{
+                    flex: 1, background: level === lv ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${level === lv ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '0.6rem', padding: '0.6rem',
+                    cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{LEVEL_INFO[lv].label}</div>
+                    <div style={{ fontSize: 11, color: '#64748b' }}>{formatKr(LEVEL_INFO[lv].salary)}/mnd</div>
+                    {valgtRolle && rolleDef(valgtRolle)?.vaktrolle && (
+                      <div style={{ fontSize: 10, color: '#00d4aa', marginTop: 1 }}>{BALANCE.kapasitetPerTime[lv]}/t</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <button
-          onClick={hire}
-          disabled={!canAfford}
-          style={{
-            width: '100%',
-            background: canAfford ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(255,255,255,0.06)',
-            border: 'none', borderRadius: 8, padding: '0.75rem',
-            color: canAfford ? '#fff' : '#475569',
-            fontWeight: 700, fontSize: 15,
-            cursor: canAfford ? 'pointer' : 'not-allowed',
-            fontFamily: 'inherit',
-          }}
-        >
-          {canAfford
-            ? `✅ Ansett ${LEVEL_INFO[level].label} ${rolleNavn(role)} — ${formatKr(salary)}/mnd`
-            : '💸 Ikke råd til denne ansettelsen'}
-        </button>
+            <button onClick={hire} disabled={!canAfford} style={{
+              width: '100%',
+              background: canAfford ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(255,255,255,0.06)',
+              border: 'none', borderRadius: 8, padding: '0.75rem',
+              color: canAfford ? '#fff' : '#475569',
+              fontWeight: 700, fontSize: 15, cursor: canAfford ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+            }}>
+              {canAfford && valgtRolle
+                ? `✅ Ansett ${LEVEL_INFO[level].label} ${rolleTittel(valgtRolle)} — ${formatKr(salary)}/mnd`
+                : '💸 Ikke råd til denne ansettelsen'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -2076,12 +2190,12 @@ function SectionTittel({ emoji, tekst }: { emoji: string; tekst: string }) {
 }
 
 function DragCard({ emp, farge, compact, onDragStart, onFire }: {
-  emp: Employee; farge: string; compact?: boolean; onDragStart: () => void; onFire: () => void
+  emp: Employee; farge: string; compact?: boolean; onDragStart: (e: React.DragEvent) => void; onFire: () => void
 }) {
   return (
     <div
       draggable
-      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
+      onDragStart={onDragStart}
       title="Dra for å flytte"
       style={{
         display: 'flex', alignItems: 'center', gap: 6,
@@ -2090,7 +2204,7 @@ function DragCard({ emp, farge, compact, onDragStart, onFire }: {
         maxWidth: compact ? 190 : '100%',
       }}
     >
-      <span style={{ fontSize: 15 }}>{ROLE_META[emp.role].emoji}</span>
+      <span style={{ fontSize: 15 }}>{rolleEmoji(emp.role)}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 11.5, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.navn}</div>
         <div style={{ fontSize: 9.5, color: '#94a3b8' }}>{LEVEL_INFO[emp.level].label} · {formatKr(emp.monthlySalary)}</div>
@@ -2103,25 +2217,48 @@ function DragCard({ emp, farge, compact, onDragStart, onFire }: {
   )
 }
 
+// KLIKK på én time (luke k): legg til / fjern den timen i vakta. Vakta holdes
+// SAMMENHENGENDE — å klikke en time utenfor utvider spennet til å dekke den; å
+// klikke en dekket time trimmer (ende → av, eneste time → hele vakta bort).
+function endreTime(vakt: Shift | null, k: number): Shift | null {
+  const sf = (VAKT_START_TIME + k) * 60
+  const st = (VAKT_START_TIME + k + 1) * 60
+  if (!vakt) return { fra: sf, til: st }
+  const dekket = sf >= vakt.fra && st <= vakt.til
+  if (!dekket) return { fra: Math.min(vakt.fra, sf), til: Math.max(vakt.til, st) } // utvid
+  if (sf === vakt.fra && st === vakt.til) return null            // eneste time → fjern
+  if (sf === vakt.fra) return { fra: st, til: vakt.til }         // trim venstre ende
+  if (st === vakt.til) return { fra: vakt.fra, til: sf }         // trim høyre ende
+  return { fra: vakt.fra, til: sf }                              // innvendig → kort ned hit
+}
+
 function VaktRad({ navn, sub, farge, vakt, onSet }: {
   navn: string; sub: string; farge: string; vakt: Shift | null; onSet: (v: Shift | null) => void
 }) {
   const [drag, setDrag] = useState<{ a: number; b: number } | null>(null)
   const dragRef = useRef<{ a: number; b: number } | null>(null)
+  const movedRef = useRef(false)   // beveget pekeren over flere luker? ⇒ dra, ikke klikk
 
   function ned(k: number) {
-    const d = { a: k, b: k }; dragRef.current = d; setDrag(d)
+    const d = { a: k, b: k }; dragRef.current = d; movedRef.current = false; setDrag(d)
     const opp = () => {
       window.removeEventListener('pointerup', opp)
       const dd = dragRef.current; dragRef.current = null; setDrag(null)
       if (!dd) return
-      const lo = Math.min(dd.a, dd.b), hi = Math.max(dd.a, dd.b)
-      onSet({ fra: (VAKT_START_TIME + lo) * 60, til: (VAKT_START_TIME + hi + 1) * 60 })
+      if (movedRef.current) {
+        // DRA: sett en sammenhengende vakt over lukene pekeren dro over.
+        const lo = Math.min(dd.a, dd.b), hi = Math.max(dd.a, dd.b)
+        onSet({ fra: (VAKT_START_TIME + lo) * 60, til: (VAKT_START_TIME + hi + 1) * 60 })
+      } else {
+        // KLIKK: legg til / fjern den ene timen.
+        onSet(endreTime(vakt, dd.a))
+      }
     }
     window.addEventListener('pointerup', opp)
   }
   function inn(k: number) {
     if (!dragRef.current) return
+    if (k !== dragRef.current.a) movedRef.current = true
     const d = { ...dragRef.current, b: k }; dragRef.current = d; setDrag(d)
   }
 

@@ -16,7 +16,7 @@
 // bærer en annen bransje, IKKE et ferdig bransje-2-innhold, og er bevisst
 // IKKE registrert i INDUSTRY_DEFINITIONS (ikke aktiv).
 
-import type { Industry, EmployeeRole } from '../types'
+import type { Industry, RolleDef } from '../types'
 import { INDUSTRY_CATALOG, INDUSTRY_META, type IndustryCatalogItem } from './industries'
 import {
   MONTER_TRAU, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, STOREFRONT_HOTSPOTS,
@@ -127,11 +127,12 @@ export interface IndustryDefinition {
   scenariePool: string[]
   personaBudsjett: PersonaBudsjett
   svinnRegel: SvinnRegel
-  /** BEMANNING (docs/BEMANNING.md): bransje-spesifikke JOBBTITLER per rolle.
-   *  Org-kartets grener er faste (Salg/Markedsføring/Økonomi), men tittelen på
-   *  kortet varierer med bransjen — kafeens «Selger» er en «Barista/
-   *  butikkmedarbeider». UI leser disse i stedet for hardkodede rollenavn. */
-  roller: Record<EmployeeRole, string>
+  /** ORGANISASJONSDESIGN (docs/BEMANNING.md): bransjens ROLLEPALETT. Eleven
+   *  drar rollekort inn i org-kartet for å opprette funksjonene selv.
+   *  Kjerneroller (Salg/Markedsføring/Økonomi) + bransjeroller (kafé:
+   *  Innkjøpsansvarlig, HMS-ansvarlig). Kjerne-salgsrollens id er 'selger' i
+   *  alle bransjer (bakgrunnssalgs-kapasiteten nøkler på den). */
+  roller: RolleDef[]
 }
 
 export const CAFE: IndustryDefinition = {
@@ -187,11 +188,13 @@ export const CAFE: IndustryDefinition = {
   scenariePool: CAFE_SCENARIO_IDS,
   personaBudsjett: { kind: 'besok', table: CAFE_SPEND },
   svinnRegel: 'ferskvare-daglig',
-  roller: {
-    selger: 'Barista/butikkmedarbeider',
-    markedsforer: 'Markedsfører',
-    okonom: 'Økonom',
-  },
+  roller: [
+    { id: 'selger',       funksjon: 'Salg',          tittel: 'Barista/butikkmedarbeider', emoji: '🛍️', farge: '#00d4aa', vaktrolle: true,  maanedseffekt: null,            kjerne: true },
+    { id: 'markedsforer', funksjon: 'Markedsføring', tittel: 'Markedsfører',              emoji: '📢', farge: '#38bdf8', vaktrolle: false, maanedseffekt: 'markedsforing', kjerne: true },
+    { id: 'okonom',       funksjon: 'Økonomi',       tittel: 'Økonom',                    emoji: '📊', farge: '#f59e0b', vaktrolle: false, maanedseffekt: 'okonomi',       kjerne: true },
+    { id: 'innkjop',      funksjon: 'Innkjøp',       tittel: 'Innkjøpsansvarlig',         emoji: '📦', farge: '#a78bfa', vaktrolle: false, maanedseffekt: null,            kjerne: false },
+    { id: 'hms',          funksjon: 'HMS',           tittel: 'HMS-ansvarlig',             emoji: '🦺', farge: '#fb7185', vaktrolle: false, maanedseffekt: null,            kjerne: false },
+  ],
 }
 
 /** Bransje 2 (DEL 3) — TOM/MINIMAL STUB. Beviser at IndustryDefinition kan
@@ -240,11 +243,13 @@ export const KLESBUTIKK: IndustryDefinition = {
   scenariePool: [],
   personaBudsjett: { kind: 'kategori', table: FASHION_BUDGETS, step: 100 },
   svinnRegel: 'sesong/kolleksjon',
-  roller: {
-    selger: 'Butikkmedarbeider',
-    markedsforer: 'Markedsfører',
-    okonom: 'Økonom',
-  },
+  roller: [
+    { id: 'selger',       funksjon: 'Salg',          tittel: 'Butikkmedarbeider',   emoji: '🛍️', farge: '#00d4aa', vaktrolle: true,  maanedseffekt: null,            kjerne: true },
+    { id: 'markedsforer', funksjon: 'Markedsføring', tittel: 'Markedsfører',        emoji: '📢', farge: '#38bdf8', vaktrolle: false, maanedseffekt: 'markedsforing', kjerne: true },
+    { id: 'okonom',       funksjon: 'Økonomi',       tittel: 'Økonom',              emoji: '📊', farge: '#f59e0b', vaktrolle: false, maanedseffekt: 'okonomi',       kjerne: true },
+    { id: 'innkjop',      funksjon: 'Innkjøp',       tittel: 'Innkjøpsansvarlig',   emoji: '📦', farge: '#a78bfa', vaktrolle: false, maanedseffekt: null,            kjerne: false },
+    { id: 'visuell',      funksjon: 'Visuell',       tittel: 'Visuell merchandiser', emoji: '🪟', farge: '#f472b6', vaktrolle: false, maanedseffekt: null,           kjerne: false },
+  ],
 }
 
 /** Registeret over bransjer som FAKTISK har en definisjon. Bevisst kun

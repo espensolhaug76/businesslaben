@@ -3,7 +3,7 @@ import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
   GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement, DayBackground,
-  OrgGren, Shift,
+  EmployeeRole, Shift,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
@@ -15,6 +15,7 @@ import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
 import { manedligeFasteKostnader } from './data/economy'
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
+import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
 import { scenariosForIndustry, scenariosForMix } from './sales/scenarios'
 
@@ -164,6 +165,7 @@ const initialState: GameState = {
   employees: [],
   monthlyPayroll: 0,
   playerShift: null,
+  orgRoller: [],
 
   targetAudience: {
     geography: null,
@@ -238,9 +240,11 @@ type Action =
   | { type: 'SET_TARGET_AUDIENCE'; audience: GameState['targetAudience'] }
   | { type: 'HIRE_EMPLOYEE'; employee: Employee }
   | { type: 'FIRE_EMPLOYEE'; id: string }
-  | { type: 'ASSIGN_EMPLOYEE_BRANCH'; id: string; grenId: OrgGren | null }
+  | { type: 'ASSIGN_EMPLOYEE_BRANCH'; id: string; grenId: EmployeeRole | null }
   | { type: 'SET_EMPLOYEE_SHIFT'; id: string; vakt: Shift | null }
   | { type: 'SET_PLAYER_SHIFT'; vakt: Shift | null }
+  | { type: 'CREATE_ORG_ROLE'; roleId: EmployeeRole }
+  | { type: 'REMOVE_ORG_ROLE'; roleId: EmployeeRole }
   | { type: 'APPLY_MONTH_RESULT'; result: MonthResult }
   | { type: 'ADD_MESSAGE'; message: InboxMessage }
   | { type: 'READ_MESSAGE'; id: string }
@@ -671,6 +675,18 @@ function reducer(state: GameState, action: Action): GameState {
     case 'SET_PLAYER_SHIFT':
       return { ...state, playerShift: action.vakt }
 
+    // ORGANISASJONSDESIGN — opprett en funksjon i org-kartet (dra rollekort inn).
+    case 'CREATE_ORG_ROLE':
+      return state.orgRoller.includes(action.roleId)
+        ? state
+        : { ...state, orgRoller: [...state.orgRoller, action.roleId] }
+
+    // ORGANISASJONSDESIGN — fjern en funksjon (dra ut). Kun hvis INGEN ansatt
+    // er disponert i den (benk-ansatte av samme rolle blokkerer ikke).
+    case 'REMOVE_ORG_ROLE':
+      if (state.employees.some(e => e.grenId === action.roleId)) return state
+      return { ...state, orgRoller: state.orgRoller.filter(r => r !== action.roleId) }
+
     case 'APPLY_MONTH_RESULT': {
       const r = action.result
       const newXp = state.xp + r.xpEarned
@@ -1017,6 +1033,20 @@ function reducer(state: GameState, action: Action): GameState {
         .filter(p => p.svinnStk > 0).sort((a, b) => b.svinnStk - a.svinnStk)
         .slice(0, 3).map(p => ({ navn: p.navn, stk: p.svinnStk }))
 
+      // ORGANISASJONSDESIGN — ÉN diskret refleksjonslinje hvis en org-regel slår
+      // ut (spørsmål, aldri fasit). Omsetning denne måneden = dagshistorikk +
+      // dagens salg.
+      const omsetningMnd = state.dayHistory
+        .filter(d => d.month === state.currentMonth && d.year === state.currentYear)
+        .reduce((s, d) => s + d.soldKr + d.bakgrunnKr, 0) + soldKr + bakgrunnKr
+      const funksjoner = aktiveFunksjoner(state.orgRoller, state.employees)
+      const refleksjon = toppRefleksjon({
+        harFunksjon: id => funksjoner.includes(id),
+        ansatte: state.employees.length,
+        disponerte: state.employees.filter(e => e.grenId).length,
+        omsetningMnd,
+      })
+
       const result: DayResult = {
         dayNumber: state.dayNumber,
         month: state.currentMonth,
@@ -1041,6 +1071,7 @@ function reducer(state: GameState, action: Action): GameState {
         bortfallStk,
         tomtProdukter,
         svinnProdukter,
+        refleksjon,
       }
 
       return {

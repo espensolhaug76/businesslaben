@@ -184,12 +184,31 @@ export interface TrauItem {
 
 // ── Staff ────────────────────────────────────────────────────────────────────
 
-export type EmployeeRole = 'selger' | 'markedsforer' | 'okonom'
+/** Rolle-id (BEMANNING/ORGANISASJONSDESIGN). Rollene er nå DATADREVNE per
+ *  bransje (IndustryDefinition.roller), så typen er en åpen streng — kjerne-
+ *  rollene beholder id-ene 'selger'/'markedsforer'/'okonom', bransjeroller
+ *  legges til (kafé: 'innkjop'/'hms'). Funksjonen i org-kartet ER rollen (1:1),
+ *  så en «gren» identifiseres av samme rolle-id. */
+export type EmployeeRole = string
 export type EmployeeLevel = 'junior' | 'senior' | 'ekspert'
 
-/** Org-kart-gren (BEMANNING, docs/BEMANNING.md). 1:1 med rolle:
- *  selger→salg, markedsforer→markedsforing, okonom→okonomi. */
-export type OrgGren = 'salg' | 'markedsforing' | 'okonomi'
+/** Én rolle i bransjens rollepalett (ORGANISASJONSDESIGN). Eleven drar
+ *  rollekort inn i org-kartet for å OPPRETTE funksjonen; først da kan rollen
+ *  ansettes. `vaktrolle` = går på gulvvakt og gir kapasitet i bakgrunnssalget
+ *  (kun salgsrollen). `maanedseffekt` = beholder sin månedlige motoreffekt
+ *  (markedsføring/økonomi). Roller uten begge deler er ren org-forståelse. */
+export interface RolleDef {
+  id: EmployeeRole
+  /** Funksjonens navn i org-kartet (gren): «Salg», «Innkjøp» … */
+  funksjon: string
+  /** Jobbtittel på kortet (bransje-spesifikk): «Barista/butikkmedarbeider» … */
+  tittel: string
+  emoji: string
+  farge: string
+  vaktrolle: boolean
+  maanedseffekt: 'markedsforing' | 'okonomi' | null
+  kjerne: boolean
+}
 
 /** Vaktvindu på dagsmalen — absolutte klokke-minutter (540 = 09:00, 1020 =
  *  17:00). Én dagsmal gjelder alle dager (ingen ukedager i spillet). */
@@ -202,11 +221,12 @@ export interface Employee {
   role: EmployeeRole
   level: EmployeeLevel
   monthlySalary: number
-  /** Org-kart-plassering (BEMANNING): satt = disponert i en gren, undefined =
-   *  står på PERSONALBENKEN (udisponert, men koster fortsatt full lønn). */
-  grenId?: OrgGren
-  /** Gulvvakt på dagsmalen (kun selgere kan settes på vakt). Undefined = ikke
-   *  satt på vakt ⇒ koster lønn, bidrar 0 kapasitet. */
+  /** Org-kart-plassering (BEMANNING): satt (= rolle-id) = disponert i sin
+   *  funksjon, undefined = står på PERSONALBENKEN (udisponert, men koster
+   *  fortsatt full lønn). */
+  grenId?: EmployeeRole
+  /** Gulvvakt på dagsmalen (kun salgsrollen kan settes på vakt). Undefined =
+   *  ikke satt på vakt ⇒ koster lønn, bidrar 0 kapasitet. */
   vakt?: Shift
 }
 
@@ -350,6 +370,9 @@ export interface DayResult {
   tomtProdukter: { navn: string; tapte: number }[]
   /** DEL 4 — produkter med mest svinn (flest stk først). */
   svinnProdukter: { navn: string; stk: number }[]
+  /** ORGANISASJONSDESIGN: ÉN diskret refleksjonslinje (spørsmål, aldri fasit)
+   *  når en org-regel slår ut ved stenging. Null = ingen regel slo ut. */
+  refleksjon: string | null
 }
 
 /** Dagens bakgrunnssalg-plan (BAKGRUNNSSALG) — beregnet ved OPEN_DAY, tappet
@@ -536,6 +559,10 @@ export interface GameState {
   /** BEMANNING: spillerens (daglig leder) egen gulvvakt på dagsmalen. Gratis
    *  arbeidskraft (lønn 0) med Junior-kapasitet. Null = ikke satt på vakt. */
   playerShift: Shift | null
+  /** ORGANISASJONSDESIGN: funksjonene (rolle-id-er) eleven har OPPRETTET i
+   *  org-kartet ved å dra rollekort inn. Tomt = kartet har kun Daglig leder.
+   *  Ansettelse er kun mulig for roller som finnes her. */
+  orgRoller: EmployeeRole[]
 
   // Target audience
   targetAudience: {
