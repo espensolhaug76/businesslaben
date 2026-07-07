@@ -20,6 +20,7 @@ import type { Industry } from '../types'
 import { INDUSTRY_CATALOG, INDUSTRY_META, type IndustryCatalogItem } from './industries'
 import {
   MONTER_TRAU, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, STOREFRONT_HOTSPOTS,
+  KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG,
   type MonterTrau, type InteriorMirrorTrau,
 } from '../../data/districts'
 import { CAFE_SCENARIO_IDS } from '../sales/scenarios'
@@ -45,6 +46,11 @@ export interface LagerFlate {
  *  klipper mot er en bransje-referanse. */
 export interface StylingFlate {
   zone: [number, number, number, number]
+  /** Content-lean (CSS-skjær, grader, valgfri default 0) for det som eksponeres
+   *  I vindussonen — dev-kalibreres i KlesbutikkStillas (?dev=1). Speiler
+   *  MonterTrau.skewX/skewY for lager-sonen. */
+  skewX?: number
+  skewY?: number
 }
 
 /** Ekstra eksponeringsflate utover styling/lager — for kafé: tavla
@@ -64,10 +70,10 @@ export interface EkstraFlate {
  *  stenging. 'ferskvare-daglig' er kafeens regel og den ENESTE som faktisk er
  *  implementert i dag (Product.ferskvare nullstilles hver kveld). Nye regler
  *  legges til i denne unionen ETTER HVERT som de faktisk implementeres i
- *  CLOSE_DAY (se GameContext.tsx) — 'sesong/kolleksjon' er ren dokumentasjon
- *  av retningen (et fremtidig gradvis verditap over en sesong for en
- *  klesbutikk), IKKE en virkemåte som finnes ennå. */
-export type SvinnRegel = 'ferskvare-daglig' | 'sesong/kolleksjon'
+ *  CLOSE_DAY (se GameContext.tsx) — 'sesong' er ren dokumentasjon av retningen
+ *  (et fremtidig gradvis verditap over en sesong/kolleksjon for en klesbutikk,
+ *  se docs/BRANSJE2_SESONG.md), IKKE en virkemåte som finnes ennå. */
+export type SvinnRegel = 'ferskvare-daglig' | 'sesong'
 
 /** Én linje i åpningssortimentet (docs/INNKJOP_LEVERING.md, DEL 1) —
  *  refererer en katalogvare (`catalogId`) og et antall som ligger FERDIG
@@ -196,32 +202,40 @@ export const KLESBUTIKK: IndustryDefinition = {
   emoji: INDUSTRY_META.fashion.emoji,
   beskrivelse: INDUSTRY_META.fashion.description,
   startingMoney: INDUSTRY_META.fashion.startingMoney,
-  katalog: INDUSTRY_CATALOG.fashion,
-  // Klesbutikk-ordlyd (stub, DEL 2): plagg BESTILLES mot sesong, ikke bakes.
-  // Nøytral/generisk tekst inntil bransje 2 bygges ut.
+  // Katalogen er TOM med vilje: klesbutikkens sortiment kommer fra en
+  // leverandør-/merkekatalog (docs/BRANSJE2_LEVERANDORER.md) som ikke er
+  // bygget ennå — IKKE gjenbruk av den gamle fashion-tier-katalogen.
+  katalog: [],
+  // Klesbutikk-ordlyd (stub, DEL 2): plagg BESTILLES mot sesong (docs/
+  // BRANSJE2_SESONG.md), ikke bakes. Nøytral tekst inntil bransje 2 bygges ut.
   forsyning: {
     åpningsordreTittel: '👗 Åpningsbestilling',
-    åpningsordreLøfte: 'Plaggene henger klare i butikken til åpningsdagen.',
+    åpningsordreLøfte: 'Plaggene bestilles mot sesongen og henger klare i butikken til åpningsdagen.',
     åpningsordreKnapp: 'Bestill til åpningsdagen',
-    underveisTittel: '📦 BESTILT',
+    underveisTittel: '📦 BESTILT MOT SESONG',
     ankomstEtikett: dag => `Klart dag ${dag}`,
-    klarMelding: linjer => `📦 Nye varer i hyllene: ${linjer}`,
-    utsolgtHint: 'Du gikk tom — tapte salg. Bestill mer av det som selger.',
+    klarMelding: linjer => `📦 Nye plagg i butikken: ${linjer}`,
+    utsolgtHint: 'Du gikk tom — tapte salg. Bestill mer av sesongens plagg som selger.',
   },
-  // Ingen åpningssortiment definert for stubben ennå (en ekte klesbutikk ville
-  // fått sitt eget startlager her).
+  // Ingen åpningssortiment definert for stubben ennå (kommer med
+  // leverandørkatalogen — en ekte klesbutikk ville fått sitt startlager her).
   oppstartssortiment: [],
   flater: {
-    // Samme fysiske vindu som kafeen (én storefront-fasade i dag) — en ekte
-    // bransje 2 ville sannsynligvis fått egne fasadebilder/soner her.
-    styling: { zone: STOREFRONT_HOTSPOTS.vindu },
+    // Vindusutstillingen (mot gata) — Espen-trace-t sone på klesbutikk-fasaden
+    // (KLESBUTIKK_VINDU i districts.ts). skewX/skewY = content-lean, default 0,
+    // dev-kalibreres i KlesbutikkStillas når fixture-sprites rendres.
+    styling: { zone: KLESBUTIKK_VINDU, skewX: 0, skewY: 0 },
     lager: {
-      // Ingen klesbutikk-fotografert monter finnes ennå — tom geometri,
-      // ikke en gjettet plassholder-sone.
-      sceneImage: '',
-      trau: [],
+      // Interiør-scenen (klesbutikk-interior.jpg). «Trauet» er foreløpig ÉN
+      // Espen-trace-t butikkvegg-sone (KLESBUTIKK_BUTIKKVEGG) — hovedekspone-
+      // ringen kunden møter. Ekte inventar-plasser (stativ/hylle/bord/dukke, se
+      // docs/BRANSJE2_KLESBUTIKK.md) kommer som egne soner senere. skewX/skewY =
+      // content-lean, default 0 (dev-kalibreres i KlesbutikkStillas). Speilingen
+      // gjenbruker samme interiørbilde (ingen egen bakfra-vy tegnet ennå).
+      sceneImage: '/assets/raw/klesbutikk-interior.jpg',
+      trau: [{ id: 'butikkvegg', rect: KLESBUTIKK_BUTIKKVEGG, skewX: 0, skewY: 0 }],
       trauCols: () => 1,
-      speil: { sceneImage: '', trau: [] },
+      speil: { sceneImage: '/assets/raw/klesbutikk-interior.jpg', trau: [] },
     },
   },
   ekstraFlater: [],
@@ -229,7 +243,7 @@ export const KLESBUTIKK: IndustryDefinition = {
   // pool, IKKE kafeens.
   scenariePool: [],
   personaBudsjett: { kind: 'kategori', table: FASHION_BUDGETS, step: 100 },
-  svinnRegel: 'sesong/kolleksjon',
+  svinnRegel: 'sesong',
 }
 
 /** Registeret over bransjer som FAKTISK har en definisjon. Bevisst kun

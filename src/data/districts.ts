@@ -280,6 +280,21 @@ export const STOREFRONT_HOTSPOTS: Record<'skilt' | 'vindu' | 'dor', [number, num
  *  Trace-t av Espen. */
 export const STOREFRONT_KAMPANJE: [number, number, number, number] = [73, 66, 12.1, 19.1]
 
+// ── KLESBUTIKK (BRANSJE 2, jobb/klesbutikk) — Espen-trace-de soner ────────────
+// [x, y, b, h] i prosent av SITT bilde. Trace-t av Espen med ?dev=1-sone-
+// traceren på dev-ruta /dev/klesbutikk (KlesbutikkStillas) 2026-07-07 og LÅST —
+// samme kilde-disiplin som STOREFRONT_HOTSPOTS/INTERIOR_*. Rør ikke; bransjen
+// er ikke aktiv ennå, men sonene er ferdig kalibrert.
+
+/** Vindusutstillingens sone på klesbutikk-fasade.png (1376×768) — venstre store
+ *  utstillingsvindu under markisen. Trace-t av Espen (?dev=1) 2026-07-07. */
+export const KLESBUTIKK_VINDU: [number, number, number, number] = [13, 53.9, 26.1, 30.1]
+
+/** Butikkvegg-/eksponeringssonen inne på klesbutikk-interior.jpg (1024×572) —
+ *  hovedflaten kunden møter (der stativ/hylle/bord/dukke skal stå). Trace-t av
+ *  Espen (?dev=1) 2026-07-07. */
+export const KLESBUTIKK_BUTIKKVEGG: [number, number, number, number] = [39.6, 29, 25, 36.5]
+
 /** Produkt-sprites (VINDUSHUD) — klippet fra bakery_assets.png
  *  (scripts/cut-pedestrians.py, 3×3 --smart). Matches mot produktNAVN
  *  (lowercase contains) så både demo- og katalogprodukter treffer;
@@ -401,7 +416,10 @@ export const INTERIOR_MIRROR_TRAU: InteriorMirrorTrau[] = [
  *  `displayRotation` på katalogvaren (industries.ts) og spillerens
  *  justeringspanel per trau-plassering (`TrauItem.sizeAdjust`/`skewAdjust`
  *  i counterLayout, MonterScene). */
-export interface MonterTrau { id: string; rect: [number, number, number, number]; scale?: number }
+// skewX/skewY (grader, valgfri, default 0) = content-lean (CSS-skjær) for det
+// som står PÅ sonen — bygget for klesbutikkens butikkvegg-sone (dev-kalibreres
+// i KlesbutikkStillas, ?dev=1). Kafeens trau setter dem ikke (⇒ 0, ingen skjær).
+export interface MonterTrau { id: string; rect: [number, number, number, number]; scale?: number; skewX?: number; skewY?: number }
 export const MONTER_TRAU: MonterTrau[] = [
   { id: 'trau-1', rect: [2.8, 67.4, 12, 5.9] },
   { id: 'trau-2', rect: [12.2, 70.5, 7.7, 3.6] },

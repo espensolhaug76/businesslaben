@@ -798,7 +798,7 @@ function reducer(state: GameState, action: Action): GameState {
       // 'ferskvare-daglig' (kafeens regel, den ENESTE implementert i dag):
       // alle FERSKVARER med usolgt lager kastes ved stenging, ikke-ferskvarer
       // (drikke) beholder lageret over natten uendret — samme utregning som
-      // før denne omleggingen. En fremtidig 'sesong/kolleksjon'-regel er
+      // før denne omleggingen. En fremtidig 'sesong'-regel er
       // reservert (se industryDefinition.ts) men ikke implementert ennå —
       // faller trygt til «ingen svinn» i stedet for å krasje.
       const svinnRegel = getActiveIndustryDefinition().svinnRegel
