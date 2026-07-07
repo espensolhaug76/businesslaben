@@ -3,8 +3,12 @@
 // jevn, passiv kundestrøm uten samtale. Alt her er DETERMINISTISK (seedet per
 // dag) og uten bivirkninger — reduceren (GameContext) kaller funksjonene og
 // skriver resultatet til state. Balansetallene bor i balance.ts.
+//
+// SPILLKLOKKE: bakgrunnssalget dryppes LØPENDE per klokke-tick (ikke i bolker),
+// og kundemøtene planlegges på klokkeslett ved OPEN_DAY.
 
 import { BALANCE } from './balance'
+import type { ScheduledMeeting, TickerLinje } from '../types'
 
 function clamp(v: number, lo: number, hi: number): number { return Math.max(lo, Math.min(hi, v)) }
 
@@ -73,7 +77,45 @@ export function beregnBakgrunnskunder(input: {
   return Math.max(0, Math.round(base * faktor))
 }
 
-// ── Salgs-simulering per bolk ─────────────────────────────────────────────────
+// ── Kundemøter (SPILLKLOKKE) ──────────────────────────────────────────────────
+
+/** Antall kundemøter for dagen — avtagende (opplæring → færre). */
+export function moterForDag(dayNumber: number): number {
+  return dayNumber <= BALANCE.opplaeringsDager ? BALANCE.moterOpplaering : BALANCE.moterSenere
+}
+
+/** Planlegg dagens kundemøter på klokkeslett (minutter siden 09:00), spredt
+ *  jevnt mellom moteForste og moteSiste med lett seed-jitter. Scenariene
+ *  trekkes UTEN gjentakelse til poolen er tømt. Deterministisk per dag. */
+export function planleggMoter(antall: number, scenarioIds: string[], seed: number): ScheduledMeeting[] {
+  const apne = BALANCE.klokke.apneMinutt
+  const forste = BALANCE.moteForste - apne // minutter siden åpning
+  const siste = BALANCE.moteSiste - apne
+  const spenn = Math.max(1, siste - forste)
+  const steg = antall > 0 ? spenn / antall : spenn
+
+  // Scenario-pool stokket (uten gjentakelse); fylles på nytt hvis den tømmes.
+  let s = seed >>> 0
+  const pool: string[] = []
+  const refill = () => {
+    const rest = [...scenarioIds]
+    while (rest.length) { s = nextSeed(s); pool.push(rest.splice(Math.floor(rand01(s) * rest.length), 1)[0]!) }
+  }
+  if (scenarioIds.length) refill()
+
+  const moter: ScheduledMeeting[] = []
+  for (let i = 0; i < antall; i++) {
+    s = nextSeed(s)
+    const jitter = Math.round((rand01(s) - 0.5) * 2 * BALANCE.moteJitterMinutt)
+    const minutt = clamp(Math.round(forste + steg * (i + 0.5) + jitter), forste, siste)
+    if (!pool.length && scenarioIds.length) refill()
+    const scenarioId = pool.shift() ?? scenarioIds[0] ?? 'morgenkunden'
+    moter.push({ minutt, scenarioId, spawned: false, done: false })
+  }
+  return moter.sort((a, b) => a.minutt - b.minutt)
+}
+
+// ── Salgs-simulering per bolk/tick ────────────────────────────────────────────
 
 export interface BolkResultat<P> {
   products: P[]
@@ -83,35 +125,48 @@ export interface BolkResultat<P> {
   varekostKr: number
   tapteSalgStk: number
   tapteSalgKr: number
-  /** Ny seed etter forbrukte trekk (persisteres til neste bolk). */
+  /** Per-produkt deltaer (DEL 4) — reduceren akkumulerer i dayProductStats. */
+  perProdukt: Record<string, { navn: string; soldStk: number; tapteSalgStk: number }>
+  /** Aggregerte salg (ticker) — solgt per produkt i denne bolken. */
+  ticker: TickerLinje[]
+  /** Ny seed etter forbrukte trekk (persisteres til neste tick). */
   seed: number
 }
 
-/** Prosesser ÉN bolk bakgrunnskunder mot NÅVÆRENDE lager. Hver kunde kjøper
- *  1–2 varer fra det som har lager OG pris, til retailPrice, og trekker stock.
- *  Ingen priset vare på lager ⇒ tapt salg (stk + estimert kr = snitt retail).
- *  Generisk så Product-typen bevares ut. */
-export function simulerBakgrunnsbolk<P extends { id: string; stock: number; retailPrice: number; costPrice: number }>(
+/** Prosesser ÉN bolk (tick) bakgrunnskunder mot NÅVÆRENDE lager. Hver kunde
+ *  kjøper 1–2 varer: den FORETREKKER en tilfeldig priset vare (uniformt); har
+ *  den lager ⇒ salg (trekker stock), er den tom ⇒ TAPT SALG for AKKURAT den
+ *  varen (så «gikk tomt»-rapporten er per produkt). Generisk så Product-typen
+ *  bevares ut. */
+export function simulerBakgrunnsbolk<P extends { id: string; name: string; stock: number; retailPrice: number; costPrice: number }>(
   products: P[], antallKunder: number, seed: number,
 ): BolkResultat<P> {
   let s = seed >>> 0
   const stock = new Map(products.map(p => [p.id, p.stock]))
   const priced = products.filter(p => p.retailPrice > 0)
-  const avgRetail = priced.length ? Math.round(priced.reduce((a, p) => a + p.retailPrice, 0) / priced.length) : 0
 
   let bakgrunnKunder = 0, bakgrunnStk = 0, bakgrunnKr = 0, varekostKr = 0, tapteSalgStk = 0, tapteSalgKr = 0
+  const perProdukt: Record<string, { navn: string; soldStk: number; tapteSalgStk: number }> = {}
+  const solgtNaa = new Map<string, number>() // for ticker
+  const ensure = (p: P) => (perProdukt[p.id] ??= { navn: p.name, soldStk: 0, tapteSalgStk: 0 })
 
   for (let c = 0; c < antallKunder; c++) {
     bakgrunnKunder++
+    if (priced.length === 0) { s = nextSeed(s); tapteSalgStk++; continue }
     s = nextSeed(s)
     const antallVarer = rand01(s) < BALANCE.sannsynlighetToVarer ? 2 : 1
     for (let i = 0; i < antallVarer; i++) {
-      const inStock = products.filter(p => (stock.get(p.id) ?? 0) > 0 && p.retailPrice > 0)
-      if (inStock.length === 0) { tapteSalgStk++; tapteSalgKr += avgRetail; continue }
       s = nextSeed(s)
-      const pick = inStock[Math.floor(rand01(s) * inStock.length)]!
-      stock.set(pick.id, (stock.get(pick.id) ?? 0) - 1)
-      bakgrunnStk++; bakgrunnKr += pick.retailPrice; varekostKr += pick.costPrice
+      const pref = priced[Math.floor(rand01(s) * priced.length)]!
+      if ((stock.get(pref.id) ?? 0) > 0) {
+        stock.set(pref.id, (stock.get(pref.id) ?? 0) - 1)
+        bakgrunnStk++; bakgrunnKr += pref.retailPrice; varekostKr += pref.costPrice
+        ensure(pref).soldStk++
+        solgtNaa.set(pref.id, (solgtNaa.get(pref.id) ?? 0) + 1)
+      } else {
+        tapteSalgStk++; tapteSalgKr += pref.retailPrice
+        ensure(pref).tapteSalgStk++
+      }
     }
   }
 
@@ -119,5 +174,9 @@ export function simulerBakgrunnsbolk<P extends { id: string; stock: number; reta
     const st = stock.get(p.id)
     return st !== undefined && st !== p.stock ? { ...p, stock: st } : p
   })
-  return { products: newProducts, bakgrunnKunder, bakgrunnStk, bakgrunnKr, varekostKr, tapteSalgStk, tapteSalgKr, seed: s }
+  const ticker: TickerLinje[] = [...solgtNaa.entries()].map(([id, qty]) => {
+    const p = products.find(x => x.id === id)!
+    return { navn: p.name, qty, kr: qty * p.retailPrice }
+  })
+  return { products: newProducts, bakgrunnKunder, bakgrunnStk, bakgrunnKr, varekostKr, tapteSalgStk, tapteSalgKr, perProdukt, ticker, seed: s }
 }

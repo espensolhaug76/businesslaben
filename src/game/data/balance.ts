@@ -44,4 +44,27 @@ export const BALANCE = {
 
   /** Hver bakgrunnskunde kjøper 1–2 varer: P(2 varer), ellers 1. */
   sannsynlighetToVarer: 0.5,
+
+  /** SPILLKLOKKE — klokka eier den åpne dagen (09:00–17:00). Tempo: tickMs
+   *  sanntid per tikk, minutterPerTick spillminutter per tikk. Default:
+   *  480 spillminutter / (1 min pr 0,75 s) = 360 s ≈ 6 min åpen dag
+   *  (~45 sek per spilltime). */
+  klokke: {
+    apneMinutt: 9 * 60,   // 09:00
+    stengMinutt: 17 * 60, // 17:00 ⇒ automatisk stenging
+    tickMs: 750,
+    minutterPerTick: 1,
+  },
+
+  /** Kundemøter planlegges på klokkeslett ved OPEN_DAY, spredt mellom
+   *  moteForste og moteSiste (klokkeslett), med lett jitter fra dagseed. */
+  moteForste: 10 * 60, // 10:00
+  moteSiste: 16 * 60,  // 16:00
+  moteJitterMinutt: 25,
+
+  /** Antall kundemøter per dag — avtagende: opplæring de første dagene, så
+   *  færre (dagen domineres av bakgrunnssalget). */
+  moterOpplaering: 4,   // dag 1..opplaeringsDager
+  moterSenere: 2,       // fra dag (opplaeringsDager + 1)
+  opplaeringsDager: 2,
 }

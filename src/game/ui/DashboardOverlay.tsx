@@ -1332,6 +1332,14 @@ function ProdukterTab() {
   const { state, dispatch } = useGame()
   const catalog = INDUSTRY_CATALOG[state.industry] ?? []
 
+  // DEL 4: «Bestill til i morgen» — når dashbordet åpnes fra dagsoppgjøret,
+  // forhåndsmarker varene som gikk tomme i går (state.lastDayResult), så eleven
+  // ser med én gang hva som bør etterfylles. Matcher på navn (tomtProdukter
+  // bærer navn, ikke id).
+  const tomtNavn = new Set(
+    (state.dayPhase === 'oppgjør' ? state.lastDayResult?.tomtProdukter ?? [] : []).map(t => t.navn),
+  )
+
   // Per-item local state: kun antall — tier-valg er PARKET (se
   // IndustryCatalogItem.tiers i industries.ts). Én katalogvare = ett
   // costPrice/recommendedPrice, ikke tre å velge mellom.
@@ -1448,10 +1456,12 @@ function ProdukterTab() {
           const totalCost = item.costPrice * qty
           const canAfford = totalCost <= state.money
           const existingStock = state.products.find(p => p.id === item.id)?.stock ?? 0
+          const gikkTom = tomtNavn.has(item.name)
 
           return (
             <div key={item.id} style={{
-              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+              background: gikkTom ? 'rgba(248,113,113,0.07)' : 'rgba(255,255,255,0.03)',
+              border: gikkTom ? '1px solid rgba(248,113,113,0.45)' : '1px solid rgba(255,255,255,0.08)',
               borderRadius: '1rem', padding: '1rem',
             }}>
               {/* Item header + innkjøpspris. IKKE anbefalt utsalgspris — ingen
@@ -1460,7 +1470,17 @@ function ProdukterTab() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: 24 }}>{item.icon}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{item.name}</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {item.name}
+                    {gikkTom && (
+                      <span style={{
+                        background: 'rgba(248,113,113,0.18)', border: '1px solid rgba(248,113,113,0.5)',
+                        borderRadius: 99, padding: '1px 8px', fontSize: 10, fontWeight: 800, color: '#fca5a5',
+                      }}>
+                        Gikk tomt i går
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: 11, color: '#475569' }}>Maks etterspørsel: {item.maxDemandPerMonth} stk/mnd</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>

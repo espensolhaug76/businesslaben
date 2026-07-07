@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { GameProvider, useGame } from './GameContext'
 import HUD from './ui/HUD'
@@ -8,7 +8,12 @@ import SalesScenarioOverlay from './ui/SalesScenarioOverlay'
 import YearEndOverlay from './ui/YearEndOverlay'
 import DayResultOverlay from './ui/DayResultOverlay'
 import MonthResultOverlay from './ui/MonthResultOverlay'
+import DagspulsOverlay from './ui/DagspulsOverlay'
 import OpeningOrderOverlay from './ui/OpeningOrderOverlay'
+import { BALANCE } from './data/balance'
+
+// SPILLKLOKKE: åpningstidens lengde i spillminutter (09:00–17:00).
+const DAG_VARIGHET = BALANCE.klokke.stengMinutt - BALANCE.klokke.apneMinutt
 import RentPanel from './ui/panels/RentPanel'
 import StartupScreen from './screens/StartupScreen'
 import CityMapView from './city/CityMapView'
@@ -109,6 +114,23 @@ function GameContent() {
     return () => window.removeEventListener('dev:openSalesScenario', handler)
   }, [])
 
+  // SPILLKLOKKE (DEL 1): én timer driver den åpne dagen. Leser LIVE-verdier via
+  // en ref (intervallet lages én gang). Pauser under salgsscenario, åpent
+  // dashbord og aktivt kundemøte. Ved 17:00 (dayMinute >= DAG_VARIGHET) stenges
+  // dagen automatisk (CLOSE_DAY, svinn + dagsoppgjør som før).
+  const tickCtx = useRef({ dayPhase: state.dayPhase, dayMinute: state.dayMinute, activeMeeting: state.activeMeetingScenarioId, salesOpen, dashboardOpen })
+  tickCtx.current = { dayPhase: state.dayPhase, dayMinute: state.dayMinute, activeMeeting: state.activeMeetingScenarioId, salesOpen, dashboardOpen }
+  useEffect(() => {
+    const iv = window.setInterval(() => {
+      const c = tickCtx.current
+      if (c.dayPhase !== 'åpen') return
+      if (c.salesOpen || c.dashboardOpen || c.activeMeeting) return // klokka pauser
+      if (c.dayMinute >= DAG_VARIGHET) { dispatch({ type: 'CLOSE_DAY' }); return }
+      dispatch({ type: 'TICK' })
+    }, BALANCE.klokke.tickMs)
+    return () => window.clearInterval(iv)
+  }, [dispatch])
+
   if (state.phase === 'startup') {
     if (IS_DEV_SKIP) return null
     return <StartupScreen />
@@ -123,6 +145,9 @@ function GameContent() {
     setSalesOpen(false)
     setOverlay(dashboardOpen)
     window.dispatchEvent(new CustomEvent('sales:closed'))
+    // SPILLKLOKKE: lukkes et kundemøte uten å fullføre, hopp over det så klokka
+    // går videre (no-op om ingen møte er aktivt — RESOLVE har alt ryddet det).
+    dispatch({ type: 'SKIP_MEETING' })
   }
 
   function onVacantClick({ district, lokale, rent }: LokaleClick) {
@@ -234,6 +259,11 @@ function GameContent() {
         dashboardOpen={dashboardOpen}
         onOpenProducts={() => { setDashboardTab('produkter'); setDashboardOpen(true); setOverlay(true) }}
       />
+      {/* Dagspuls (SPILLKLOKKE DEL 3) — fullskjerms livepanel over butikkscenen
+          mens dagen ruller. Gates internt (dayPhase 'åpen' && ingen aktiv
+          samtale/dashbord). Kundemøter avbryter panelet (glir bort → scenen). */}
+      <DagspulsOverlay dashboardOpen={dashboardOpen} onSteng={() => dispatch({ type: 'CLOSE_DAY' })} />
+
       {/* Månedsoppgjør — vises ved månedsrull (gates internt på
           lastMonthSettlement). Egen flyt fra den gamle «Simuler måneden»/PEST. */}
       <MonthResultOverlay />

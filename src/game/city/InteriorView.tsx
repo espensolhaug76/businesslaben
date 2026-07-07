@@ -1,37 +1,28 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, type InteriorMirrorTrau } from '../../data/districts'
-import { randomScenario, scenariosForIndustry, scenariosForMix } from '../sales/scenarios'
+import { getScenario } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
 import { tileCount, trauCols } from './MonterScene'
 import { useGame } from '../GameContext'
-import { DAY_CONFIG } from '../data/dayConfig'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
 
-// BRANSJE-DEFINISJON: speil-trau, tavle-sonen og kunde-poolen leses nå fra
-// den AKTIVE bransjens IndustryDefinition (industryDefinition.ts) i stedet
-// for faste import fra districts.ts/scenarios.ts. ACTIVE_DEF er et
-// modul-nivå oppslag (getActiveIndustryDefinition() er en ren funksjon som i
-// dag alltid returnerer CAFE — se industryDefinition.ts), så dette er
-// funksjonelt identisk med de tidligere faste konstant-importene.
+// BRANSJE-DEFINISJON: speil-trau + tavle-sonen leses fra den AKTIVE bransjens
+// IndustryDefinition. SPILLKLOKKE: kunden spawner IKKE lenger fra en lokal
+// pool/navigasjon — den er drevet av state.activeMeetingScenarioId (satt av
+// klokka når et planlagt kundemøte forfaller, se GameContext TICK).
 const ACTIVE_DEF = getActiveIndustryDefinition()
 const MENU_BOARD_FLATE = ACTIVE_DEF.ekstraFlater.find(f => f.id === 'tavla')
 
-// Dagens kunde-pool (DEL 1/2, Dagssyklus) — filtrert på den AKTIVE bransjens
-// scenariePool (industryDefinition.ts) og DAY_CONFIG.scenarioMix. Beregnet
-// ÉN gang per modul-last (scenarioMix er en hardkodet config i runde 1, ikke
-// live-redigerbar ennå).
-const DAY_SCENARIO_POOL = scenariosForMix(scenariosForIndustry(ACTIVE_DEF.scenariePool), DAY_CONFIG.scenarioMix)
-
 // ── InteriorView (BAK-DISKEN-SCENE) ──────────────────────────────────────────
-// Bilde-basert visning (cover, 16:9). KUN kunde + salgssamtale: ved hvert besøk
-// velges et TILFELDIG scenario fra poolen (morgenkunden/reklamasjonen); riktig
-// kunde-sprite (kari.png / tom.png) vises STOR bak disken på den okkluderte
+// Bilde-basert visning (cover, 16:9). KUN kunde + salgssamtale: SPILLKLOKKA
+// spawner planlagte kundemøter (state.activeMeetingScenarioId); da vises riktig
+// kunde-sprite (kari.png / tom.png) STOR bak disken på den okkluderte
 // diskposisjonen. Underkroppen okkluderes av et forgrunns-disk-lag (samme
-// interiørbilde klippet til det nederste diskbåndet). Kunden toner inn ved
-// oppstart, og klikk åpner DET tilhørende scenariet. INGEN kø/respawn.
+// interiørbilde klippet til det nederste diskbåndet). Kunden toner inn når møtet
+// forfaller, og klikk åpner DET tilhørende scenariet. Ingen lokal kø/respawn.
 //
 // Vareeksponering (disk-monter) er FLYTTET til den frontale monter-scenen
 // (MonterScene) — den rendres ikke lenger her.
@@ -120,17 +111,15 @@ export default function InteriorView({ districtId, lokaleId }: {
 }) {
   const navigate = useNavigate()
   const { state, dispatch } = useGame()
-  // Tilfeldig kunde fra DAGENS pool (scenarioMix-filtrert) — valgt ved mount,
-  // og på nytt for hvert nye kundemøte innenfor dagens kvote (se
-  // spawn-effekten under). randomScenario ligger i en ren modul, så
-  // Math.random ikke flagges i render.
-  const [scenario, setScenario] = useState(() => randomScenario(DAY_SCENARIO_POOL))
+  // SPILLKLOKKE: kunden i scenen er nå STYRT AV KLOKKA. Når et planlagt
+  // kundemøte forfaller setter reduceren (TICK) state.activeMeetingScenarioId;
+  // vi slår opp scenariet og viser kunden. Når møtet er løst/hoppet over
+  // nulles feltet og kunden forsvinner. Ingen lokal pool/spawn/navigasjon mer.
+  const activeScenario = state.activeMeetingScenarioId ? getScenario(state.activeMeetingScenarioId) ?? null : null
   const [imgFailed, setImgFailed] = useState(false)
   const [shown, setShown] = useState(false)        // fade-in/ut (opacity)
-  const [gone, setGone] = useState(false)          // fjernet etter runden
   const [hover, setHover] = useState(false)
   const [, setRev] = useState(0)                    // re-render når traceren skriver
-  const initiatedRef = useRef(false)                // åpnet VI overlayet (klikk på kunden)?
   // ?dev=1: flere speil-soner enn de faste (trace-bare, samme mønster som
   // trau-tracer'en i MonterScene).
   const [devMirrorTrau, setDevMirrorTrau] = useState<InteriorMirrorTrau[]>([])
@@ -190,41 +179,14 @@ export default function InteriorView({ districtId, lokaleId }: {
   const [speilOpen, setSpeilOpen] = useState(true)
   const [tavleOpen, setTavleOpen] = useState(true)
 
-  // Fade kunden inn rett etter mount (ingen bevegelse). Kunden rendres uansett
-  // kun når butikken er ÅPEN (se render-gaten under), så dette er harmløst
-  // ved mount i stengt butikk.
+  // Fade kunden inn når klokka spawner et møte (activeMeetingScenarioId settes),
+  // og la den bare forsvinne (gate under) når møtet nulles. Ingen bevegelse.
   useEffect(() => {
-    const t = setTimeout(() => setShown(true), 50)
-    return () => clearTimeout(t)
-  }, [])
-
-  // ÅPEN ⇒ så lenge forrige kunde er `gone`, spawnes automatisk en NY kunde
-  // fra dagens pool — helt til meetingsToday når DAY_CONFIG.meetingsPerDay, da
-  // stopper spawningen (tydelig hint vises i stedet, se render under) og
-  // eleven må selv stenge for å gå til dagsoppgjøret.
-  //
-  // FIKS (DEL 3, dag-2-starter-feil): nøkler på `dayPhase === 'åpen'` (den
-  // AUTORITATIVE dag-tilstanden), ikke det avledede `shopOpen` — sammen med
-  // render-gaten under gjør det at en kunde umulig kan stå i scenen før eleven
-  // åpner. `justOpened` (dayPhase gikk fra ikke-åpen → åpen) tvinger dessuten
-  // en FRISK kunde ved hver dagåpning: en kunde som ble stående da butikken
-  // stengte TIDLIG (gone=false) blir ellers hengende igjen som «gårsdagens»
-  // kunde og dukker opp igjen når neste dag åpnes (spawn-guarden `!gone`
-  // hoppet ellers over henne). Midt på dagen (ikke justOpened) står en aktiv
-  // kunde (gone=false) i fred til sales:closed sier fra.
-  const prevPhaseRef = useRef(state.dayPhase)
-  useEffect(() => {
-    const justOpened = prevPhaseRef.current !== 'åpen' && state.dayPhase === 'åpen'
-    prevPhaseRef.current = state.dayPhase
-    if (state.dayPhase !== 'åpen') return
-    if (state.meetingsToday >= DAY_CONFIG.meetingsPerDay) return
-    if (!gone && !justOpened) return   // aktiv kunde midt på dagen — la henne stå
-    setScenario(randomScenario(DAY_SCENARIO_POOL))
-    setGone(false)
+    if (!activeScenario) { setShown(false); return }
     setShown(false)
     const t = setTimeout(() => setShown(true), 50)
     return () => clearTimeout(t)
-  }, [state.dayPhase, gone, state.meetingsToday])
+  }, [activeScenario?.id])
 
   // Logg start-verdiene ved ?dev=1.
   useEffect(() => {
@@ -236,24 +198,12 @@ export default function InteriorView({ districtId, lokaleId }: {
     )
   }, [])
 
-  // Når salgsoverlayet lukkes (fullført/lukket) og DET var vi som åpnet det:
-  // kunden toner ut og forsvinner. GamePage sender 'sales:closed'.
-  useEffect(() => {
-    const onClosed = () => {
-      if (!initiatedRef.current) return
-      initiatedRef.current = false
-      setShown(false)                                 // fade ut
-      window.setTimeout(() => setGone(true), 450)      // fjern etter fade
-    }
-    window.addEventListener('sales:closed', onClosed)
-    return () => window.removeEventListener('sales:closed', onClosed)
-  }, [])
-
   function talkToCustomer() {
-    initiatedRef.current = true
+    if (!activeScenario) return
     // Åpner DET scenariet kunden i scenen tilhører (samme inngang som
-    // dev-knappene; GamePage lytter og håndterer __OVERLAY_OPEN__).
-    window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: scenario.id } }))
+    // dev-knappene; GamePage lytter og håndterer __OVERLAY_OPEN__). Klokka er
+    // pauset så lenge overlayet står åpent (activeMeetingScenarioId er satt).
+    window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: activeScenario.id } }))
   }
 
   // Oppdater én konstant + logg alle (snapshot med den nye verdien).
@@ -336,15 +286,6 @@ export default function InteriorView({ districtId, lokaleId }: {
             eier fremdriften videre («Start ny dag») til dagen er stengt igjen. */}
         {state.dayPhase !== 'oppgjør' && (
           <>
-            {state.dayPhase === 'åpen' && state.meetingsToday >= DAY_CONFIG.meetingsPerDay && (
-              <div style={{
-                background: 'rgba(250,204,21,0.14)', border: '1px solid rgba(250,204,21,0.5)',
-                borderRadius: 12, padding: '0.5rem 0.9rem', color: '#facc15',
-                fontSize: 12, fontWeight: 700, fontFamily: "'Outfit', sans-serif", maxWidth: 220,
-              }}>
-                📋 Dagen er over — steng butikken for dagsoppgjør.
-              </div>
-            )}
             <button
               onClick={() => dispatch({ type: state.dayPhase === 'åpen' ? 'CLOSE_DAY' : 'OPEN_DAY' })}
               title={state.dayPhase === 'åpen' ? 'Steng butikken — dagen er over, dagsoppgjør vises' : 'Åpne butikken — kunder kan komme innom'}
@@ -559,12 +500,11 @@ export default function InteriorView({ districtId, lokaleId }: {
 
         {/* KUNDEN (z=10) — stor, forankret på livlinja, mellom bakgrunn og disk.
             Underkroppen strekker seg under occludeY-linja og skjules av
-            forgrunns-laget. Rendres KUN når butikken er ÅPEN OG dagens
-            møtekvote ikke er nådd ennå — `gone` er lokal komponent-state og
-            nullstilles ved remount (f.eks. en tur innom /disk og tilbake),
-            så meetingsToday-sjekken her er nødvendig for å ikke spawne en
-            ekstra kunde etter at dagen egentlig er ferdig. */}
-        {!gone && state.dayPhase === 'åpen' && state.meetingsToday < DAY_CONFIG.meetingsPerDay && (
+            forgrunns-laget. SPILLKLOKKE: rendres KUN når klokka har spawnet et
+            planlagt kundemøte (activeMeetingScenarioId ⇒ activeScenario). Da
+            ligger Dagspuls-panelet gjemt (gate på samme felt), så kunden står
+            alene i scenen til eleven snakker med henne. */}
+        {activeScenario && (
           <div
             onClick={talkToCustomer}
             onMouseEnter={() => setHover(true)}
@@ -582,8 +522,8 @@ export default function InteriorView({ districtId, lokaleId }: {
             }}
           >
             <img
-              src={scenario.sprite}
-              alt={scenario.customerName}
+              src={activeScenario.sprite}
+              alt={activeScenario.customerName}
               draggable={false}
               style={{
                 height: '100%', width: 'auto', display: 'block', userSelect: 'none',

@@ -16,6 +16,12 @@ const MONTH_NAMES = ['Januar', 'Februar', 'Mars', 'April', 'Mai', 'Juni', 'Juli'
 
 function formatKr(n: number) { return `${Math.round(n).toLocaleString('nb-NO')} kr` }
 
+/** Topp N produkter på én linje, resten oppsummert som «+N til». */
+function sammendrag(items: string[], maks = 3): string {
+  if (items.length <= maks) return items.join(', ')
+  return `${items.slice(0, maks).join(', ')} +${items.length - maks} til`
+}
+
 /** Terskel for «mye svinn»-hintet — svinn-verdien har spist minst denne
  *  andelen av dagens salgsinntekt. Rent pedagogisk merke, ingen konsekvens. */
 const HIGH_SVINN_SHARE = 0.3
@@ -70,7 +76,26 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           {r.tapteSalgStk > 0 && (
             <SalgLinje ikon="🚫" tittel={`Tapte salg: ${r.tapteSalgStk} (tomt lager)`} hoyre={`~${formatKr(r.tapteSalgKr)}`} color="#ef4444" />
           )}
+          {/* SPILLKLOKKE: stengte eleven før 17:00, bortfalt de resterende
+              bakgrunnskundene — egen linje, adskilt fra tomt-lager-tap. */}
+          {r.stengtTidlig && r.bortfallStk > 0 && (
+            <SalgLinje ikon="⏰" tittel={`Stengt tidlig: ${r.bortfallStk} kunder rakk ikke innom`} hoyre="—" color="#f59e0b" />
+          )}
         </div>
+
+        {/* DEL 4 — per-produkt-oppsummering: hvilke varer gikk tomt (og hvor
+            mange salg det kostet) og hvor mye ferskvare som ble kastet. Topp 3
+            per linje, resten som «+N til». */}
+        {(r.tomtProdukter.length > 0 || r.svinnProdukter.length > 0) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1rem' }}>
+            {r.tomtProdukter.length > 0 && (
+              <DetaljLinje ikon="📦" etikett="Gikk tomt" tekst={sammendrag(r.tomtProdukter.map(t => `${t.navn} (${t.tapte} tapte)`))} color="#f87171" />
+            )}
+            {r.svinnProdukter.length > 0 && (
+              <DetaljLinje ikon="🗑️" etikett="Svinn" tekst={sammendrag(r.svinnProdukter.map(s => `${s.navn} ${s.stk} stk`))} color="#fca5a5" />
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem', marginBottom: '1.1rem' }}>
           <StatCard label="Svinn" value={`${r.svinnStk} stk`} sub={formatKr(r.svinnKr)} color="#ef4444" />
@@ -163,6 +188,16 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
       <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 17, fontWeight: 800, color }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function DetaljLinje({ ikon, etikett, tekst, color }: { ikon: string; etikett: string; tekst: string; color: string }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', fontSize: 12, padding: '0 0.15rem' }}>
+      <span style={{ flexShrink: 0 }}>{ikon}</span>
+      <span style={{ color, fontWeight: 700, flexShrink: 0 }}>{etikett}:</span>
+      <span style={{ color: '#94a3b8', lineHeight: 1.4 }}>{tekst}</span>
     </div>
   )
 }

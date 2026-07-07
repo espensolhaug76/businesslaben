@@ -321,19 +321,41 @@ export interface DayResult {
   xpEarned: number
   /** Minst én utsolgt-hendelse i dag (møte-delsalg ELLER tapt bakgrunnssalg). */
   stockoutHappened: boolean
+  /** Stengt tidlig (før 17:00) ⇒ resterende bakgrunnskunder bortfalt. */
+  stengtTidlig: boolean
+  /** Antall bakgrunnskunder som bortfalt fordi eleven stengte tidlig. */
+  bortfallStk: number
+  /** DEL 4 — produkter som gikk tomt (flest tapte salg først). */
+  tomtProdukter: { navn: string; tapte: number }[]
+  /** DEL 4 — produkter med mest svinn (flest stk først). */
+  svinnProdukter: { navn: string; stk: number }[]
 }
 
-/** Dagens bakgrunnssalg-plan (BAKGRUNNSSALG) — beregnet ved OPEN_DAY, tappet i
- *  bolker (én per kundemøte, resten ved CLOSE_DAY). Seed persisteres mellom
- *  bolker så strømmen er deterministisk per dag. */
+/** Dagens bakgrunnssalg-plan (BAKGRUNNSSALG) — beregnet ved OPEN_DAY, tappet
+ *  LØPENDE per klokke-tick (SPILLKLOKKE). Seed persisteres mellom tick så
+ *  strømmen er deterministisk per dag. */
 export interface DayBackground {
-  /** Gjenstående bakgrunnskunder å prosessere i dag. */
-  kunderIgjen: number
-  /** Gjenstående bolker (starter på DAY_CONFIG.meetingsPerDay + 1). */
-  bolkerIgjen: number
+  /** Totalt antall bakgrunnskunder for dagen (beregnet ved OPEN_DAY). */
+  total: number
+  /** Antall prosessert så langt (drypp gjennom åpningstimene). */
+  prosessert: number
   /** PRNG-seed (avanseres per forbrukt trekk). */
   seed: number
 }
+
+/** Et planlagt kundemøte på et klokkeslett (SPILLKLOKKE). Kunden spawner når
+ *  klokka passerer `minutt`; scenariet er trukket uten gjentakelse ved
+ *  OPEN_DAY. */
+export interface ScheduledMeeting {
+  /** Minutter siden åpning (09:00 = 0). */
+  minutt: number
+  scenarioId: string
+  spawned: boolean
+  done: boolean
+}
+
+/** Én linje i dagspulsens live-ticker (siste bakgrunnssalg). */
+export interface TickerLinje { navn: string; qty: number; kr: number }
 
 /** Månedsoppgjør (ØKONOMI-SAMLING DEL 2) — bygges ved månedsrull
  *  (START_NEW_DAY) fra månedens dagsresultater, og trekker faste kostnader fra
@@ -414,8 +436,19 @@ export interface GameState {
     stockoutHappened: boolean
   }
   /** Dagens bakgrunnssalg-plan (BAKGRUNNSSALG) — beregnet ved OPEN_DAY, tappet
-   *  i bolker gjennom dagen. Null utenom en handledag. */
+   *  løpende per klokke-tick. Null utenom en handledag. */
   dayBackground: DayBackground | null
+  /** SPILLKLOKKE: minutter siden åpning (0 = 09:00). Tikker kun i 'åpen'. */
+  dayMinute: number
+  /** Dagens planlagte kundemøter (klokkeslett + scenario), satt ved OPEN_DAY. */
+  dayMeetings: ScheduledMeeting[]
+  /** Kundemøtet som er spawnet NÅ (venter på/i samtale) — klokka pauser mens
+   *  denne er satt. Null ellers. */
+  activeMeetingScenarioId: string | null
+  /** Dagspulsens live-ticker: siste bakgrunnssalg (nyeste først, kappet). */
+  dayTicker: TickerLinje[]
+  /** Per-produkt dagstall (DEL 4): solgt (møter + bakgrunn), svinn, tapte salg. */
+  dayProductStats: Record<string, { navn: string; soldStk: number; svinnStk: number; tapteSalgStk: number }>
   /** Siste fullførte dags oppgjørstall — DayResultOverlay vises når denne er
    *  satt (dayPhase === 'oppgjør'). Nullstilles av START_NEW_DAY. */
   lastDayResult: DayResult | null

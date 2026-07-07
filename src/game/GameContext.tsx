@@ -13,7 +13,9 @@ import { DAY_CONFIG } from './data/dayConfig'
 import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
 import { manedligeFasteKostnader } from './data/economy'
-import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed } from './data/backgroundSales'
+import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter } from './data/backgroundSales'
+import { BALANCE } from './data/balance'
+import { scenariosForIndustry, scenariosForMix } from './sales/scenarios'
 
 // Tom dagsstatistikk (BAKGRUNNSSALG-feltene inkludert) — brukt av initialState,
 // OPEN_DAY (nullstilling).
@@ -22,6 +24,23 @@ const EMPTY_DAY_STATS = {
   bakgrunnKunder: 0, bakgrunnStk: 0, bakgrunnKr: 0, tapteSalgStk: 0, tapteSalgKr: 0,
   reputationDelta: 0, xpEarned: 0, stockoutHappened: false,
 }
+
+type ProductStats = Record<string, { navn: string; soldStk: number; svinnStk: number; tapteSalgStk: number }>
+
+/** Slå per-produkt salgs-/tapt-deltaer inn i dagens per-produkt-statistikk. */
+function mergeProductStats(base: ProductStats, delta: Record<string, { navn: string; soldStk: number; tapteSalgStk: number }>): ProductStats {
+  const out: ProductStats = { ...base }
+  for (const [id, d] of Object.entries(delta)) {
+    const cur = out[id] ?? { navn: d.navn, soldStk: 0, svinnStk: 0, tapteSalgStk: 0 }
+    out[id] = { navn: d.navn, soldStk: cur.soldStk + d.soldStk, svinnStk: cur.svinnStk, tapteSalgStk: cur.tapteSalgStk + d.tapteSalgStk }
+  }
+  return out
+}
+
+/** Hvor mange spillminutter den åpne dagen varer (09:00–17:00). */
+const DAG_VARIGHET = BALANCE.klokke.stengMinutt - BALANCE.klokke.apneMinutt
+/** Maks antall linjer i dagspulsens ticker. */
+const TICKER_MAX = 8
 
 // ─── XP thresholds ──────────────────────────────────────────────────────────
 
@@ -118,6 +137,11 @@ const initialState: GameState = {
   dayPhase: 'stengt',
   dayStats: { ...EMPTY_DAY_STATS },
   dayBackground: null,
+  dayMinute: 0,
+  dayMeetings: [],
+  activeMeetingScenarioId: null,
+  dayTicker: [],
+  dayProductStats: {},
   lastDayResult: null,
   dayHistory: [],
   lastMonthSettlement: null,
@@ -226,6 +250,10 @@ type Action =
   | { type: 'OPEN_DAY' }
   | { type: 'CLOSE_DAY' }
   | { type: 'START_NEW_DAY' }
+  // SPILLKLOKKE: ett klokke-tikk (drypp bakgrunnssalg + spawn kundemøte).
+  | { type: 'TICK' }
+  // Kundemøte lukket uten å fullføre (kunden gikk) — klokka går videre.
+  | { type: 'SKIP_MEETING' }
   // Innkjøp/levering (docs/INNKJOP_LEVERING.md): lukk «Varer ankommet»-pilla.
   | { type: 'CLEAR_DELIVERY' }
   // Økonomi-samling (DEL 2): lukk månedsoppgjør-overlayet.
@@ -363,6 +391,7 @@ function reducer(state: GameState, action: Action): GameState {
       let revenue = 0
       let varekost = 0
       let soldStk = 0
+      const soldByProduct = new Map<string, { navn: string; sold: number }>()
       const products = state.products.map(p => {
         const req = reqByProduct.get(p.id) ?? 0
         if (req <= 0) return p
@@ -370,6 +399,7 @@ function reducer(state: GameState, action: Action): GameState {
         revenue += sold * p.retailPrice
         varekost += sold * p.costPrice
         soldStk += sold
+        if (sold > 0) soldByProduct.set(p.id, { navn: p.name, sold })
         return sold > 0 ? { ...p, stock: p.stock - sold } : p
       })
 
@@ -383,50 +413,39 @@ function reducer(state: GameState, action: Action): GameState {
         xpToNext = xpForLevel(newLevel)
       }
 
-      // DEL 4-fix: utsolgt/tapt-salg-signal. Overlayet flagger nå eksplisitt
-      // når et salgsforsøk ikke kunne dekkes fullt av lageret — inkludert
-      // DELSALG (f.eks. 6 av 8 ønsket) og mersalg/storbestilling — ikke bare
-      // helt tomme (qty===0) linjer. Beholder qty===0-sjekken som en robust
-      // reserve (klemt salg i reduceren).
+      const stockoutNow = (action.stockout ?? false) || action.sales.some(l => l.qty === 0)
       const inDay = state.dayPhase === 'åpen'
 
-      // BAKGRUNNSSALG: én bolk passive kunder etter DETTE kundemøtet (drypp
-      // gjennom dagen). Kjøres på lageret ETTER møte-salget, kun i åpningstid og
-      // så lenge det er bolker igjen. INGEN XP/rykte fra bakgrunnssalg (passivt).
-      let bgProducts = products
-      const bg = { bakgrunnKunder: 0, bakgrunnStk: 0, bakgrunnKr: 0, varekostKr: 0, tapteSalgStk: 0, tapteSalgKr: 0 }
-      let nyDayBackground = state.dayBackground
-      if (inDay && state.dayBackground && state.dayBackground.bolkerIgjen > 0) {
-        const db = state.dayBackground
-        const n = Math.round(db.kunderIgjen / db.bolkerIgjen)
-        const r = simulerBakgrunnsbolk(products, n, db.seed)
-        bgProducts = r.products
-        bg.bakgrunnKunder = r.bakgrunnKunder; bg.bakgrunnStk = r.bakgrunnStk; bg.bakgrunnKr = r.bakgrunnKr
-        bg.varekostKr = r.varekostKr; bg.tapteSalgStk = r.tapteSalgStk; bg.tapteSalgKr = r.tapteSalgKr
-        nyDayBackground = { kunderIgjen: Math.max(0, db.kunderIgjen - n), bolkerIgjen: db.bolkerIgjen - 1, seed: r.seed }
-      }
-
-      const stockoutNow = (action.stockout ?? false) || action.sales.some(l => l.qty === 0) || bg.tapteSalgStk > 0
+      // SPILLKLOKKE: dette møtet er ferdig — klokka kan gå videre. Marker det
+      // spawnede møtet som done og fjern aktiv-flagget (bakgrunnssalget dryppes
+      // per tick, IKKE her). Per-produkt møte-salg logges i dayProductStats.
+      const meetingIdx = inDay ? state.dayMeetings.findIndex(m => m.spawned && !m.done) : -1
+      const dayMeetings = meetingIdx >= 0
+        ? state.dayMeetings.map((m, i) => i === meetingIdx ? { ...m, done: true } : m)
+        : state.dayMeetings
+      const dayProductStats = inDay
+        ? mergeProductStats(state.dayProductStats, Object.fromEntries(
+            [...soldByProduct.entries()].map(([id, v]) => [id, { navn: v.navn, soldStk: v.sold, tapteSalgStk: 0 }]),
+          ))
+        : state.dayProductStats
 
       return {
         ...state,
-        products: bgProducts,
-        money: state.money + revenue + bg.bakgrunnKr - Math.max(0, action.cost ?? 0),
+        products,
+        money: state.money + revenue - Math.max(0, action.cost ?? 0),
         reputation,
         xp: newXp,
         level: newLevel,
         xpToNextLevel: xpToNext,
-        dayBackground: nyDayBackground,
+        activeMeetingScenarioId: inDay ? null : state.activeMeetingScenarioId,
+        dayMeetings,
+        dayProductStats,
         meetingsToday: inDay ? state.meetingsToday + 1 : state.meetingsToday,
         dayStats: inDay ? {
+          ...state.dayStats,
           soldStk: state.dayStats.soldStk + soldStk,
           soldKr: state.dayStats.soldKr + revenue,
-          varekostKr: state.dayStats.varekostKr + varekost + bg.varekostKr,
-          bakgrunnKunder: state.dayStats.bakgrunnKunder + bg.bakgrunnKunder,
-          bakgrunnStk: state.dayStats.bakgrunnStk + bg.bakgrunnStk,
-          bakgrunnKr: state.dayStats.bakgrunnKr + bg.bakgrunnKr,
-          tapteSalgStk: state.dayStats.tapteSalgStk + bg.tapteSalgStk,
-          tapteSalgKr: state.dayStats.tapteSalgKr + bg.tapteSalgKr,
+          varekostKr: state.dayStats.varekostKr + varekost,
           reputationDelta: state.dayStats.reputationDelta + action.reputationDelta,
           xpEarned: state.dayStats.xpEarned + action.xpEarned,
           stockoutHappened: state.dayStats.stockoutHappened || stockoutNow,
@@ -815,9 +834,9 @@ function reducer(state: GameState, action: Action): GameState {
         }
       }
 
-      // BAKGRUNNSSALG: dagens passive kundestrøm beregnes NÅ (deterministisk,
-      // snapshot av lokasjon/rykte/priser/eksponering/markedsføring), og tappes
-      // i bolker gjennom dagen (én per kundemøte, resten ved CLOSE_DAY).
+      // BAKGRUNNSSALG (snapshot ved OPEN_DAY): dagens passive kundestrøm
+      // beregnes NÅ og DRYPPES løpende per klokke-tick (se TICK).
+      const seed = dagSeed(state.dayNumber, state.currentMonth, state.currentYear)
       const kunder = beregnBakgrunnskunder({
         lokaleId: state.rentedLocationId,
         rykte: state.reputation,
@@ -826,11 +845,15 @@ function reducer(state: GameState, action: Action): GameState {
         windowDisplayLayout: state.windowDisplayLayout,
         markedsforingBudsjett: Object.values(state.marketingBudget).reduce((s, v) => s + v, 0),
       })
-      const dayBackground: DayBackground = {
-        kunderIgjen: kunder,
-        bolkerIgjen: DAY_CONFIG.meetingsPerDay + 1,
-        seed: dagSeed(state.dayNumber, state.currentMonth, state.currentYear),
-      }
+      const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed }
+
+      // SPILLKLOKKE: planlegg dagens kundemøter på klokkeslett (avtagende antall
+      // fra dag 3). Scenariene trekkes uten gjentakelse til poolen er tømt.
+      const poolIds = scenariosForMix(
+        scenariosForIndustry(getActiveIndustryDefinition().scenariePool),
+        DAY_CONFIG.scenarioMix,
+      ).map(s => s.id)
+      const dayMeetings = planleggMoter(moterForDag(state.dayNumber), poolIds, (Math.imul(seed, 2654435761)) >>> 0)
 
       return {
         ...state,
@@ -842,52 +865,109 @@ function reducer(state: GameState, action: Action): GameState {
         meetingsToday: 0,
         dayStats: { ...EMPTY_DAY_STATS },
         dayBackground,
+        dayMinute: 0,
+        dayMeetings,
+        activeMeetingScenarioId: null,
+        dayTicker: [],
+        dayProductStats: {},
       }
+    }
+
+    case 'TICK': {
+      // SPILLKLOKKE: ett klokke-tikk. Kun i åpningstid og når INGEN kundemøte
+      // er aktivt (klokka pauser under samtale). Avanserer klokka, drypper
+      // bakgrunnssalg proporsjonalt med forløpt åpningstid, og spawner et
+      // kundemøte når klokka passerer et planlagt tidspunkt.
+      if (state.dayPhase !== 'åpen' || state.activeMeetingScenarioId) return state
+      const nyMinutt = Math.min(DAG_VARIGHET, state.dayMinute + BALANCE.klokke.minutterPerTick)
+
+      let products = state.products
+      let money = state.money
+      let dayStats = state.dayStats
+      let dayProductStats = state.dayProductStats
+      let dayTicker = state.dayTicker
+      let dayBackground = state.dayBackground
+
+      if (state.dayBackground) {
+        // Så mange kunder BØR være prosessert ved dette klokkeslettet.
+        const mål = Math.round(state.dayBackground.total * (nyMinutt / Math.max(1, DAG_VARIGHET)))
+        const n = Math.max(0, mål - state.dayBackground.prosessert)
+        if (n > 0) {
+          const r = simulerBakgrunnsbolk(state.products, n, state.dayBackground.seed)
+          products = r.products
+          money = state.money + r.bakgrunnKr
+          dayStats = {
+            ...state.dayStats,
+            varekostKr: state.dayStats.varekostKr + r.varekostKr,
+            bakgrunnKunder: state.dayStats.bakgrunnKunder + r.bakgrunnKunder,
+            bakgrunnStk: state.dayStats.bakgrunnStk + r.bakgrunnStk,
+            bakgrunnKr: state.dayStats.bakgrunnKr + r.bakgrunnKr,
+            tapteSalgStk: state.dayStats.tapteSalgStk + r.tapteSalgStk,
+            tapteSalgKr: state.dayStats.tapteSalgKr + r.tapteSalgKr,
+            stockoutHappened: state.dayStats.stockoutHappened || r.tapteSalgStk > 0,
+          }
+          dayProductStats = mergeProductStats(state.dayProductStats, r.perProdukt)
+          dayTicker = [...r.ticker, ...state.dayTicker].slice(0, TICKER_MAX)
+          dayBackground = { ...state.dayBackground, prosessert: state.dayBackground.prosessert + r.bakgrunnKunder, seed: r.seed }
+        }
+      }
+
+      // Spawn ETT forfalt kundemøte (klokka pauser til det er ferdig).
+      let dayMeetings = state.dayMeetings
+      let activeMeetingScenarioId = state.activeMeetingScenarioId
+      const dueIdx = state.dayMeetings.findIndex(m => !m.spawned && !m.done && m.minutt <= nyMinutt)
+      if (dueIdx >= 0) {
+        dayMeetings = state.dayMeetings.map((m, i) => i === dueIdx ? { ...m, spawned: true } : m)
+        activeMeetingScenarioId = state.dayMeetings[dueIdx]!.scenarioId
+      }
+
+      return { ...state, dayMinute: nyMinutt, products, money, dayStats, dayProductStats, dayTicker, dayBackground, dayMeetings, activeMeetingScenarioId }
     }
 
     case 'CLOSE_DAY': {
       // Kun gyldig fra åpen.
       if (state.dayPhase !== 'åpen') return state
 
-      // BRANSJE-DEFINISJON — svinn HÅNDTERES ulikt per bransje (svinnRegel).
-      // 'ferskvare-daglig' (kafeens regel, den ENESTE implementert i dag):
-      // alle FERSKVARER med usolgt lager kastes ved stenging, ikke-ferskvarer
-      // (drikke) beholder lageret over natten uendret — samme utregning som
-      // før denne omleggingen. En fremtidig 'sesong/kolleksjon'-regel er
-      // reservert (se industryDefinition.ts) men ikke implementert ennå —
-      // faller trygt til «ingen svinn» i stedet for å krasje.
-      // BAKGRUNNSSALG: RESTEN av dagens passive kunder handler ved stenging
-      // (disken tømmes helt) — FØR svinn, så leftover ferskvare kastes etter at
-      // dagens kunder har fått handlet.
-      let solgtProducts = state.products
-      const bg = { bakgrunnKunder: 0, bakgrunnStk: 0, bakgrunnKr: 0, varekostKr: 0, tapteSalgStk: 0, tapteSalgKr: 0 }
-      if (state.dayBackground && state.dayBackground.kunderIgjen > 0) {
-        const r = simulerBakgrunnsbolk(state.products, state.dayBackground.kunderIgjen, state.dayBackground.seed)
-        solgtProducts = r.products
-        bg.bakgrunnKunder = r.bakgrunnKunder; bg.bakgrunnStk = r.bakgrunnStk; bg.bakgrunnKr = r.bakgrunnKr
-        bg.varekostKr = r.varekostKr; bg.tapteSalgStk = r.tapteSalgStk; bg.tapteSalgKr = r.tapteSalgKr
-      }
+      // SPILLKLOKKE: bakgrunnssalget er allerede dryppet per tick. Stenges det
+      // TIDLIG (før 17:00) bortfaller de resterende bakgrunnskundene — de
+      // telles som TAPTE SALG (egen «stengt tidlig»-linje), ikke som salg.
+      const stengtTidlig = state.dayMinute < DAG_VARIGHET
+      const bortfallStk = stengtTidlig && state.dayBackground
+        ? Math.max(0, state.dayBackground.total - state.dayBackground.prosessert)
+        : 0
+      const priced = state.products.filter(p => p.retailPrice > 0)
+      const avgRetail = priced.length ? Math.round(priced.reduce((a, p) => a + p.retailPrice, 0) / priced.length) : 0
 
+      // BRANSJE-DEFINISJON — svinn per svinnRegel. 'ferskvare-daglig': usolgt
+      // ferskvare kastes ved stenging (per-produkt logget for dagsoppgjøret).
       const svinnRegel = getActiveIndustryDefinition().svinnRegel
       let svinnStk = 0
       let svinnKr = 0
+      const dps: ProductStats = { ...state.dayProductStats }
       const products = svinnRegel === 'ferskvare-daglig'
-        ? solgtProducts.map(p => {
+        ? state.products.map(p => {
             if (!p.ferskvare || p.stock <= 0) return p
             svinnStk += p.stock
             svinnKr += p.stock * p.costPrice
+            const cur = dps[p.id] ?? { navn: p.name, soldStk: 0, svinnStk: 0, tapteSalgStk: 0 }
+            dps[p.id] = { ...cur, navn: p.name, svinnStk: cur.svinnStk + p.stock }
             return { ...p, stock: 0 }
           })
-        : solgtProducts
+        : state.products
 
-      // Dagstall inkl. bakgrunnssalgets siste bolk.
       const soldKr = state.dayStats.soldKr
-      const varekostKr = state.dayStats.varekostKr + bg.varekostKr
-      const bakgrunnKunder = state.dayStats.bakgrunnKunder + bg.bakgrunnKunder
-      const bakgrunnStk = state.dayStats.bakgrunnStk + bg.bakgrunnStk
-      const bakgrunnKr = state.dayStats.bakgrunnKr + bg.bakgrunnKr
-      const tapteSalgStk = state.dayStats.tapteSalgStk + bg.tapteSalgStk
-      const tapteSalgKr = state.dayStats.tapteSalgKr + bg.tapteSalgKr
+      const varekostKr = state.dayStats.varekostKr
+      const bakgrunnKr = state.dayStats.bakgrunnKr
+      const tapteSalgStk = state.dayStats.tapteSalgStk + bortfallStk
+      const tapteSalgKr = state.dayStats.tapteSalgKr + bortfallStk * avgRetail
+
+      // DEL 4 — topp-3 produkter som gikk tomt / hadde mest svinn.
+      const tomtProdukter = Object.values(dps)
+        .filter(p => p.tapteSalgStk > 0).sort((a, b) => b.tapteSalgStk - a.tapteSalgStk)
+        .slice(0, 3).map(p => ({ navn: p.navn, tapte: p.tapteSalgStk }))
+      const svinnProdukter = Object.values(dps)
+        .filter(p => p.svinnStk > 0).sort((a, b) => b.svinnStk - a.svinnStk)
+        .slice(0, 3).map(p => ({ navn: p.navn, stk: p.svinnStk }))
 
       const result: DayResult = {
         dayNumber: state.dayNumber,
@@ -896,30 +976,34 @@ function reducer(state: GameState, action: Action): GameState {
         meetings: state.meetingsToday,
         soldStk: state.dayStats.soldStk,
         soldKr,
-        bakgrunnKunder,
-        bakgrunnStk,
+        bakgrunnKunder: state.dayStats.bakgrunnKunder,
+        bakgrunnStk: state.dayStats.bakgrunnStk,
         bakgrunnKr,
         varekostKr,
         svinnStk,
         svinnKr,
         tapteSalgStk,
         tapteSalgKr,
-        // salg (møter + bakgrunn) − varekost − svinn.
         resultat: soldKr + bakgrunnKr - varekostKr - svinnKr,
         reputationDelta: state.dayStats.reputationDelta,
         xpEarned: state.dayStats.xpEarned,
         stockoutHappened: state.dayStats.stockoutHappened || tapteSalgStk > 0,
+        stengtTidlig,
+        bortfallStk,
+        tomtProdukter,
+        svinnProdukter,
       }
 
       return {
         ...state,
         products,
-        money: state.money + bg.bakgrunnKr,
+        dayProductStats: dps,
         shopOpen: false,
         dayPhase: 'oppgjør',
         lastDayResult: result,
         dayHistory: [...state.dayHistory, result],
         dayBackground: null,
+        activeMeetingScenarioId: null,
       }
     }
 
@@ -968,6 +1052,26 @@ function reducer(state: GameState, action: Action): GameState {
         // Rydd bort en evt. gammel «Varer ankommet»-pille før neste morgen.
         lastDelivery: null,
         lastMonthSettlement: settlement,
+        // Nullstill klokke/møter/ticker/produkt-stats for neste dag.
+        dayMinute: 0,
+        dayMeetings: [],
+        activeMeetingScenarioId: null,
+        dayTicker: [],
+        dayProductStats: {},
+      }
+    }
+
+    case 'SKIP_MEETING': {
+      // Kundemøtet lukket uten å fullføre (kunden gikk). Marker det som done og
+      // fjern aktiv-flagget så klokka kan gå videre. No-op om ingen er aktiv
+      // (kalles ubetinget når salgsoverlayet lukkes, også for dev-scenarier).
+      if (!state.activeMeetingScenarioId) return state
+      const idx = state.dayMeetings.findIndex(m => m.spawned && !m.done)
+      return {
+        ...state,
+        activeMeetingScenarioId: null,
+        dayMeetings: idx >= 0 ? state.dayMeetings.map((m, i) => i === idx ? { ...m, done: true } : m) : state.dayMeetings,
+        meetingsToday: state.meetingsToday + 1,
       }
     }
 
