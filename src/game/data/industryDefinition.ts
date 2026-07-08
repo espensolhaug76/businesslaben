@@ -298,15 +298,23 @@ export const KLESBUTIKK: IndustryDefinition = {
     },
     scaleFront: 0.42, scaleBack: 0.24,
   },
-  // Vareplasser — GROVE defaults (% av klesbutikk-interior-mobler.png), plassert
-  // der møblene STÅR i det bakte bildet (avlest fra rutenett). IKKE Espen-
-  // kalibrert: velg type + klikk/dra/±-skalér med ?dev=1-vareplass-traceren,
-  // «Logg array» og lim inn HIT. Dukke-plassene kommer i DEL 4.
+  // Vareplasser (% av klesbutikk-interior-mobler.png). HENG-plassene er
+  // Espen-KALIBRERT og låst (11 opphengspunkter på gullstengene). Brett- og
+  // dukke-plassene er fortsatt GROVE defaults — kalibreres senere med ?dev=1-
+  // vareplass-traceren («Logg array» / «Kopier array» → lim inn HIT).
   vareplasser: [
-    // Heng — gullstenger på bakveggen (topp-ankret der stanga sitter)
-    { id: 'heng-1', type: 'heng', x: 51, y: 43, scale: 0.05 },
-    { id: 'heng-2', type: 'heng', x: 65, y: 42, scale: 0.05 },
-    { id: 'heng-3', type: 'heng', x: 72, y: 41, scale: 0.045 },
+    // Heng — Espen-kalibrert (11 punkter, sortert på x). Topp-ankret på stanga.
+    { id: 'heng-1', type: 'heng', x: 44.9, y: 41.5, scale: 0.05 },
+    { id: 'heng-2', type: 'heng', x: 46.6, y: 41.5, scale: 0.05 },
+    { id: 'heng-3', type: 'heng', x: 48.1, y: 41.4, scale: 0.05 },
+    { id: 'heng-4', type: 'heng', x: 50.3, y: 41.5, scale: 0.05 },
+    { id: 'heng-5', type: 'heng', x: 55.5, y: 43.9, scale: 0.05 },
+    { id: 'heng-6', type: 'heng', x: 58, y: 43.9, scale: 0.05 },
+    { id: 'heng-7', type: 'heng', x: 59.9, y: 44.1, scale: 0.05 },
+    { id: 'heng-8', type: 'heng', x: 61.6, y: 44.1, scale: 0.05 },
+    { id: 'heng-9', type: 'heng', x: 67.2, y: 42.2, scale: 0.06 },
+    { id: 'heng-10', type: 'heng', x: 67.9, y: 42.5, scale: 0.06 },
+    { id: 'heng-11', type: 'heng', x: 68.7, y: 42.8, scale: 0.06 },
     // Brett — hyller (venstre + høyre vegg), rund pidestall, lavt bord
     { id: 'brett-1', type: 'brett', x: 44, y: 47, scale: 0.06 },
     { id: 'brett-2', type: 'brett', x: 44, y: 55, scale: 0.06 },
