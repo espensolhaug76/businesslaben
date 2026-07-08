@@ -78,6 +78,28 @@ export default function MonthResultOverlay() {
           </div>
         </div>
 
+        {/* LÅNEAVDRAG — vises kun når det finnes lån. Rente/avdrag skilt. */}
+        {(s.laanRenter + s.laanAvdrag) > 0 && (
+          <div style={{
+            background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.25)',
+            borderRadius: '1rem', padding: '0.9rem 1.1rem', marginBottom: '1.1rem',
+          }}>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '0.5rem' }}>LÅNEAVDRAG (trukket fra kassa)</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.25rem' }}>
+              <span style={{ color: '#94a3b8' }}>Renter</span>
+              <span style={{ color: '#f97316' }}>−{formatKr(s.laanRenter)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.25rem' }}>
+              <span style={{ color: '#94a3b8' }}>Avdrag (nedbetaling)</span>
+              <span style={{ color: '#f97316' }}>−{formatKr(s.laanAvdrag)}</span>
+            </div>
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '0.4rem', paddingTop: '0.4rem', display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700 }}>
+              <span>Sum lån</span>
+              <span style={{ color: '#f97316' }}>−{formatKr(s.laanRenter + s.laanAvdrag)}</span>
+            </div>
+          </div>
+        )}
+
         {/* Månedsresultat */}
         <div style={{
           background: `${resultColor}12`, border: `1px solid ${resultColor}44`,
@@ -86,7 +108,9 @@ export default function MonthResultOverlay() {
         }}>
           <div>
             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>MÅNEDSRESULTAT</div>
-            <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>{formatKr(s.inntekt)} − {formatKr(s.fasteKostnader)}</div>
+            <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+              {formatKr(s.inntekt)} − {formatKr(s.fasteKostnader)}{(s.laanRenter + s.laanAvdrag) > 0 ? ` − ${formatKr(s.laanRenter + s.laanAvdrag)} lån` : ''}
+            </div>
           </div>
           <div style={{ fontSize: 22, fontWeight: 900, color: resultColor }}>
             {s.resultat >= 0 ? '+' : ''}{formatKr(s.resultat)}

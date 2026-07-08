@@ -416,9 +416,13 @@ export interface MonthSettlement {
   inntekt: number
   /** Nedbrytning av de faste månedskostnadene som trekkes ved rull. */
   kostnadslinjer: { navn: string; belop: number }[]
-  /** Sum av kostnadslinjer. */
+  /** Sum av kostnadslinjer (faste kostnader FRA economy.ts — IKKE lån). */
   fasteKostnader: number
-  /** Månedsresultat = inntekt − fasteKostnader. */
+  /** LÅNEAVDRAG denne måneden — renter (0 uten lån). Skilt fra faste kostnader. */
+  laanRenter: number
+  /** LÅNEAVDRAG denne måneden — avdrag/hovedstol (0 uten lån). */
+  laanAvdrag: number
+  /** Månedsresultat = inntekt − fasteKostnader − renter − avdrag. */
   resultat: number
   /** Antall stengte handledager måneden faktisk fikk. */
   antallDager: number

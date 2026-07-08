@@ -7,7 +7,7 @@ import WindowDisplayEditor from '../city/WindowDisplay'
 import { SCENARIOS } from '../sales/scenarios'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import { DAY_CONFIG } from '../data/dayConfig'
-import { manedligeFasteKostnader } from '../data/economy'
+import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
 import { BALANCE } from '../data/balance'
 import { aktiveFunksjoner, evaluerRefleksjon } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
@@ -964,7 +964,7 @@ function OkonomiTab() {
   const [loanAmount, setLoanAmount] = useState(250_000)
   const [loanMonths, setLoanMonths] = useState(24)
 
-  const { money, loans, totalDebt, monthlyLoanPayment, businessPlan } = state
+  const { money, loans, totalDebt, businessPlan } = state
 
   const interestRates = [0.15, 0.12, 0.09, 0.07, 0.05, 0.05]
   const RATE_LABELS = ['15 %', '12 %', '9 %', '7 %', '5 %', '5 %']
@@ -987,11 +987,13 @@ function OkonomiTab() {
     { months: 36, label: '36 måneder (lave avdrag, mye renter)' },
   ]
 
-  // Burn/kostnader viser det som FAKTISK trekkes ved månedsrull (husleie + lønn
-  // + forsikring + markedsføring) — samme kilde som reduceren
-  // (manedligeFasteKostnader). Låneavdrag er en dokumentert TODO (amortisering
-  // i den gamle flyten) og vises separat i kontantstrømmen, ikke i burn/netto.
+  // Burn/kostnader viser det som FAKTISK trekkes ved månedsrull. Faste (husleie
+  // + lønn + forsikring + markedsføring) fra manedligeFasteKostnader — samme
+  // kilde som reduceren. LÅNEAVDRAG (rente + avdrag) beregnes med samme delte
+  // amortiseringskilde som månedsrullen (amortiserLaan), og er nå MED i
+  // burn/netto (det er en reell månedlig utbetaling). Nedbetalt lån gir 0.
   const { linjer: fasteLinjer, sum: fasteMnd } = manedligeFasteKostnader(state)
+  const laanNesteMnd = amortiserLaan(loans)
   // DEL 1 (Økonomi leser dagssyklusen): «opptjent denne måneden» = sum av
   // dagsresultat (salg − varekost − svinn) for inneværende måned. Erstatter den
   // gamle estRevenue-prognosen (produkt-anslag). Enkel projeksjon = snitt/dag ×
@@ -1002,8 +1004,8 @@ function OkonomiTab() {
   const snittPerDag = dagerFullført > 0 ? opptjentDenneMnd / dagerFullført : 0
   const gjenståendeDager = Math.max(0, DAY_CONFIG.daysPerMonth - dagerFullført)
   const projisertMnd = dagerFullført > 0 ? Math.round(opptjentDenneMnd + snittPerDag * gjenståendeDager) : 0
-  const netFlow = projisertMnd - fasteMnd
-  const burnRate = fasteMnd
+  const burnRate = fasteMnd + laanNesteMnd.betaling
+  const netFlow = projisertMnd - burnRate
   const runway = netFlow < 0 && money > 0 ? Math.max(0, Math.floor(money / Math.abs(netFlow))) : null
 
   function takeLoan() {
@@ -1121,10 +1123,9 @@ function OkonomiTab() {
         )}
       </div>
 
-      {/* Cash flow detail — de FAKTISKE faste kostnadene som trekkes ved
-          månedsrull (fasteLinjer). Låneavdrag vises separat som dokumentert
-          TODO når det finnes lån — ikke med i sum/netto ennå (amortisering
-          ligger i den gamle månedssimuleringen). */}
+      {/* Cash flow detail — de FAKTISKE månedlige trekkene ved månedsrull: faste
+          kostnader (fasteLinjer) + LÅNEAVDRAG (rente/avdrag skilt), begge med i
+          sum/netto. Nedbetalt lån trekker 0 (amortiserLaan gir tom split). */}
       <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>KONTANTSTRØM (trekkes ved månedsrull)</div>
         {fasteLinjer.map(({ navn, belop }) => (
@@ -1133,11 +1134,17 @@ function OkonomiTab() {
             <span style={{ color: '#f97316' }}>-{formatKr(belop)}</span>
           </div>
         ))}
-        {monthlyLoanPayment > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: '0.3rem', fontStyle: 'italic' }}>
-            <span style={{ color: '#475569' }}>Låneavdrag (håndteres i månedssimulering — TODO)</span>
-            <span style={{ color: '#475569' }}>(-{formatKr(monthlyLoanPayment)})</span>
-          </div>
+        {laanNesteMnd.betaling > 0 && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
+              <span style={{ color: '#64748b' }}>Lån — renter</span>
+              <span style={{ color: '#f97316' }}>-{formatKr(laanNesteMnd.renteSum)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
+              <span style={{ color: '#64748b' }}>Lån — avdrag</span>
+              <span style={{ color: '#f97316' }}>-{formatKr(laanNesteMnd.avdragSum)}</span>
+            </div>
+          </>
         )}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
           <span>Netto (projisert drift − kostnader)</span>

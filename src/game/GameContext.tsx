@@ -13,7 +13,7 @@ import { updateFlags } from '../strategies/innovation/flagSystem'
 import { DAY_CONFIG } from './data/dayConfig'
 import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
-import { manedligeFasteKostnader } from './data/economy'
+import { manedligeFasteKostnader, amortiserLaan } from './data/economy'
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
@@ -714,19 +714,12 @@ function reducer(state: GameState, action: Action): GameState {
           }]
         : []
 
-      // Process loans
-      const updatedLoans = state.loans.map(loan => {
-        if (loan.monthsRemaining <= 0) return loan
-        const interestThisMonth = loan.remainingBalance * loan.interestRate / 12
-        const principalThisMonth = loan.monthlyPayment - interestThisMonth
-        return {
-          ...loan,
-          remainingBalance: Math.max(0, loan.remainingBalance - principalThisMonth),
-          monthsRemaining: loan.monthsRemaining - 1,
-          totalInterestPaid: loan.totalInterestPaid + interestThisMonth,
-        }
-      }).filter(l => l.monthsRemaining > 0 || l.remainingBalance > 0)
-
+      // Process loans (LÅNEAVDRAG) — samme delte amortiseringskilde som
+      // dagssyklusens månedsrull (economy.amortiserLaan), så beregningen ikke
+      // dupliseres. Her trekkes selve betalingen fortsatt via r.profit
+      // (engine.ts har monthlyLoanPayment i kostnadene) — amortiseringen
+      // oppdaterer KUN restgjelda, den rører ikke `money` (ingen dobbelttrekk).
+      const { loans: updatedLoans } = amortiserLaan(state.loans)
       const totalDebt = updatedLoans.reduce((s, l) => s + l.remainingBalance, 0)
       const updatedMonthlyLoanPayment = updatedLoans.reduce((s, l) => s + l.monthlyPayment, 0)
       const consNeg = r.profit < 0 ? state.consecutiveNegativeMonths + 1 : 0
@@ -1099,30 +1092,43 @@ function reducer(state: GameState, action: Action): GameState {
       const nextMonth = state.currentMonth + 1
       const isYearEnd = nextMonth > 12
 
-      // ØKONOMI-SAMLING (DEL 2): ved MÅNEDSRULL bygges et månedsoppgjør fra
-      // månedens dagsresultater, og faste kostnader trekkes fra kassa. Faste =
-      // husleie + lønn + forsikring + markedsføring (manedligeFasteKostnader —
-      // samme kilde som Økonomi-fanens burn/netto). LÅNEAVDRAG er en dokumentert
-      // TODO der (krever amortisering — ligger i den urørte APPLY_MONTH_RESULT-
-      // flyten). Dagsresultatet dekker allerede varekost/svinn, så
-      // månedsresultat = sum(dagsresultat) − faste.
+      // ØKONOMI-SAMLING (DEL 2) + LÅNEAVDRAG: ved MÅNEDSRULL bygges et
+      // månedsoppgjør fra månedens dagsresultater, og de faste kostnadene +
+      // låneavdraget trekkes fra kassa. Faste = husleie + lønn + forsikring +
+      // markedsføring (manedligeFasteKostnader — ENESTE kilde til FASTE
+      // kostnader). LÅNEAVDRAG håndteres separat via economy.amortiserLaan (samme
+      // delte kilde som APPLY_MONTH_RESULT) — den amortiserer restgjelda og gir
+      // rente/avdrag-splitten. Nedbetalt lån (restgjeld 0) fjernes og slutter å
+      // trekke. Dagsresultatet dekker allerede varekost/svinn, så månedsresultat
+      // = sum(dagsresultat) − faste − (rente + avdrag).
       let money = state.money
       let settlement: MonthSettlement | null = state.lastMonthSettlement
+      let loans = state.loans
+      let monthlyLoanPayment = state.monthlyLoanPayment
+      let totalDebt = state.totalDebt
       if (rollsMonth) {
         const mdays = state.dayHistory.filter(d => d.month === state.currentMonth && d.year === state.currentYear)
         const inntekt = mdays.reduce((s, d) => s + d.resultat, 0)
         const { linjer: kostnadslinjer, sum: fasteKostnader } = manedligeFasteKostnader(state)
-        money = state.money - fasteKostnader
+        const amort = amortiserLaan(state.loans)
+        loans = amort.loans
+        monthlyLoanPayment = amort.loans.reduce((s, l) => s + l.monthlyPayment, 0)
+        totalDebt = amort.loans.reduce((s, l) => s + l.remainingBalance, 0)
+        money = state.money - fasteKostnader - amort.betaling
         settlement = {
           month: state.currentMonth, year: state.currentYear,
           inntekt, kostnadslinjer, fasteKostnader,
-          resultat: inntekt - fasteKostnader, antallDager: mdays.length,
+          laanRenter: amort.renteSum, laanAvdrag: amort.avdragSum,
+          resultat: inntekt - fasteKostnader - amort.betaling, antallDager: mdays.length,
         }
       }
 
       return {
         ...state,
         money,
+        loans,
+        monthlyLoanPayment,
+        totalDebt,
         dayNumber: rollsMonth ? 1 : nextDayNumber,
         currentMonth: rollsMonth ? (isYearEnd ? 1 : nextMonth) : state.currentMonth,
         currentYear: rollsMonth && isYearEnd ? state.currentYear + 1 : state.currentYear,
