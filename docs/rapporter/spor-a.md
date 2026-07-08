@@ -405,10 +405,8 @@ typesjekker og kan slås opp (`getScenario` søker nå `[...SCENARIOS,
 ...FASHION_SCENARIOS]`), men aktiveres ikke (KLESBUTIKK er ikke registrert).
 
 ### Globale antakelser / flagg
-- **Sprites (kafé):** de 8 nye peker foreløpig til EKSISTERENDE kunde-sprites som
-  midlertidige plassholdere, så ingenting vises brukket i spilltest. Kunde-img i
-  `InteriorView` har INGEN `onError`-fallback (motoren er urørt), derfor
-  plassholder framfor ny sti. Endelig asset-navn per scenario står under.
+- **Sprites (kafé): LØST — se pkt. 16.** (Historisk: pekte først til
+  plassholder-sprites; nå egne, splittet fra customers-ark-03/04.)
 - **Sprites (klesbutikk):** peker til `/assets/raw/customers/fashion/<navn>.png`
   (finnes ikke ennå). Rendres ALDRI i dag siden bransjen er inaktiv, så ingen
   brukket img. Må lages når bransje 2 aktiveres.
@@ -568,6 +566,36 @@ endelige filnavn (pkt. 14) — feil/manglende sti gir da silhuett, ikke brukket 
   vises (ingen brukket `<img>`), 0 konsollfeil.
 
 **Gjenstår:** Espens Chrome-sjekk av månedsoppgjøret (da pushes koden).
+
+## 16. 8 nye kundesprites (dagjobb 08.07)
+
+> **Status: laget + verifisert headless. Kode/assets committet lokalt, IKKE
+> pushet — venter på Espens Chrome-blikk på et par av kundene.** `tsc -b` grønn.
+
+**DEL 1 — split:** `customers-ark-03/04-raw.png` (1375×768, 4 blobs hver) splittet
+med `scripts/split-product-sheet.py` (nye navnekart lagt inn: ark 03 = amira,
+bjorn, camilla, david · ark 04 = emil, live, petter, oda). Alle 8 → ren alfa,
+halo=0.
+- **Live + førerhund:** selen holder kvinne + hund SAMMEN som ÉN connected
+  component (auto-deteksjonen «feilet» ikke slik oppgaven fryktet — de ble én
+  blob, x442-696), så ingen manuell sammenslåing trengtes.
+- **✦-vannmerket:** fjernet automatisk av rembg (semi-transparent på nær-hvit
+  bakgrunn = bakgrunn) — ingen vannmerke-blob overlevde på noen av arkene.
+- **Petters logo-brystlapp:** klone-patchet bort (x141-165, y163-186) ved å fylle
+  med lokal median lerret-farge + svak luminans-støy, fjæret kant. Ingen
+  brystlogo igjen; ingen andre merker (hammerløkke på benet er funksjonell, ikke
+  tekst/merke). Ren tekstfri sprite (CLAUDE.md-krav).
+
+**DEL 2 — koble:** de 8 plassholder-stiene i `scenarios.ts` byttet til
+`customers/<navn>.png`. onError-fallbacken (pkt. 15) står som sikkerhetsnett.
+
+**Verifisert headless (Playwright):** alle 8 nye sprites lastes i browseren
+(naturalWidth × naturalHeight = splittens dimensjoner, alle OK); ett ekte
+kundemøte i scenen viser `<img>` (lastet, ingen `<svg>`-silhuett-fallback). 0
+konsollfeil. Rå-arkene (customers-ark-03/04-raw.png) committet for reproduserbar
+re-splitt.
+
+**Gjenstår:** Espens Chrome-blikk på et par av kundene (så pushes kode/assets).
 
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
