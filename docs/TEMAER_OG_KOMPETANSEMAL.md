@@ -1,6 +1,7 @@
 # TEMAER OG KOMPETANSEMÅL — gap-analyse og tema-arkitektur
 
-> Businesslaben/AdVenture · skrevet 08.07.2026 · grunnlag: SSR01-01 (VG1) og
+> Businesslaben/AdVenture · v2 revidert 08.07.2026 mot docs/KODEKART.md ·
+> grunnlag: SSR01-01 (VG1) og
 > SSR02-01 (VG2, gyldig 1.8.2026, programfagene Økonomi og administrasjon,
 > Kommunikasjon og markedsføring, HMS)
 
@@ -17,7 +18,10 @@ lærerdashbordet. Begrunnelse:
 
 ### Arkitektur-fundament (bygges FØR første tema)
 
-Dette er den parkerte «lærer-knotter via Firebase»-jobben (dagssyklus runde 2):
+Dette er den parkerte «lærer-knotter via Firebase»-jobben (dagssyklus runde 2).
+MERK (KODEKART §2–3): mekanikken finnes allerede som FeatureGuard +
+`unlockedFeatures`/`gamePreset` i gameStore, men den gater LEGACY-spillet (v1).
+Jobben er å avpublisere v1-rutene og generalisere mekanikken til byspillet:
 
 - Firebase RTDB-node per klasse: `klasser/{klassekode}/temaAktivering/{temaId}`
   med `{ aktiv: boolean, nivaa: 'vg1' | 'vg2' }`.
@@ -40,7 +44,9 @@ Dette er den parkerte «lærer-knotter via Firebase»-jobben (dagssyklus runde 2
 | Indre/ytre salgsmiljø, mersalg/gjensalg | VG2 | Butikkstyling, vareeksponering, fasade, mersalgsscenarier |
 | Svinn — typer og forebygging | VG1+VG2 | Svinn ved stenging, sesongsvinn (design bransje 2) |
 | Lønn og lønnskostnader | VG2 | Bemanning, vaktliste, lønn i månedsoppgjør |
-| Føre enkelt regnskap | VG1 | Månedsoppgjør, kontantstrøm, lån |
+| Føre enkelt regnskap | VG1 | Månedsoppgjør, kontantstrøm, lån (avdrag validert 08.07) |
+| Forretningsplan (grunnmekanikk) | VG1+VG2 | Forretningsplan-fanen (BMC): plankvalitet 0–5 ★ → lånerente; markedsundersøkelse +1 ★. Hub-modul-kobling gjenstår |
+| Vurdere finansieringsformer | VG1+VG2 | Bankdialog: beløp/løpetid, avdrag vs. renter synlig, plan → vilkår |
 
 ## 3. TEMAER (spillbare gap, prioritert)
 
@@ -56,6 +62,9 @@ Dette er den parkerte «lærer-knotter via Firebase»-jobben (dagssyklus runde 2
   Refleksjonsspørsmål — aldri fasit (org-refleksjon-mønsteret).
 - **Nivå:** VG1 = følge plan + enkel vurdering · VG2 = utarbeide/vurdere plan,
   brannøvelse planlegges/evalueres.
+- **Hub-moduler FINNES:** VG1 Beredskap (Contingency) + Risikovurdering;
+  VG2 Beredskap + Brannvern + Risikoanalyse (+ presentasjoner). Kun spillsiden
+  bygges; hendelsene festes i eksisterende EVENT_POOL (engine.ts).
 - **Hvorfor pilot:** tetter største hull på begge trinn, trenger ingen nye
   assets, og tester hele kjeden dashbord → Firebase → spillhendelse.
 
@@ -67,6 +76,9 @@ Dette er den parkerte «lærer-knotter via Firebase»-jobben (dagssyklus runde 2
   avvik (kort fritekst → vurderingsspor).
 - **Nivå:** VG1 = enkel budsjett/faktisk · VG2 = avviksanalyse med kommentar.
 - **Innsats:** liten — sitter rett på eksisterende månedsoppgjør/economy.ts.
+- **Keep it simple (Espen 08.07):** eleven skal lage ENKELT budsjett og føre
+  ENKELT regnskap. VG1-visning viser lån som ÉN linje; renter/avdrag-splitt
+  kun på VG2-nivå. Amortisering er motor-korrekthet, aldri elevoppgave.
 
 ### Tema 3: NØKKELTALL
 - **Mål VG2:** regne ut og bruke sentrale nøkkeltall, vurdere lønnsomhet.
@@ -116,28 +128,43 @@ Dette er den parkerte «lærer-knotter via Firebase»-jobben (dagssyklus runde 2
 - Etiske dilemmaer i servicenæringen — 1–2 hendelser/scenarier med refleksjon.
 - Nød-/konfliktsituasjon-scenario kobles til Tema 1.
 
-## 4. HUB-MODULER (teori — ikke spill)
+## 4. HUB-KOBLING (teorien FINNES — koblingen mangler)
 
-| Innhold | Trinn | Form |
-|---|---|---|
-| Forretningsplan (utvikle, presentere, vurdere) | VG2 (idé: VG1 forretningsidé + bærekraft) | Hub-modul ved spillstart; eleven skriver planen for butikken sin |
-| Relasjonsbygging og nettverk | VG1 | Minileksjon |
-| Partene i arbeidslivet | VG1 | Minileksjon |
-| Administrative funksjoner og rutiner | VG1 | Minileksjon, evt. senere kobling til driftsoppgaver |
-| Rekrutteringsprosess | VG2 | Hub-modul først; senere spillutvidelse av ansettelsen (søknadsbunke → intervju → valg) |
-| Reiselivsmål (destinasjoner, reiselivsprodukt, samisk kultur) | VG2 | Hub-moduler; utenfor butikksimulatorens scope inntil evt. reiselivs-bransje |
+KORREKSJON fra v1: læringshuben har allerede moduler for så godt som alle
+målene (55+ moduler, fullstendig inventar i docs/KODEKART.md §4) — inkludert
+beredskap, risikovurdering, brannvern, HMS, budsjettering, forretningsplan,
+nøkkeltall, rekruttering, kampanjer, markedsplan, vertskapsrollen,
+konflikt/nød, etikk og kulturforståelse. Ingen av hub-modulene i v1-listen
+skal bygges — de skal KOBLES:
+
+- Hvert tema refererer sine hub-moduler (via teacherModuleRegistry) i
+  tema-definisjonsfilen, per nivå (VG1-modul / VG2-modul).
+- Aktivering av et tema kan foreslå/åpne tilhørende hub-modul for klassen.
+- Gjenstår som rene hub-avhengigheter (ikke spill): relasjonsbygging/nettverk,
+  partene i arbeidslivet, reiselivsmålene — alle finnes som moduler.
 
 ## 5. PRIORITERT REKKEFØLGE
 
-1. **Fundament:** temaAktivering via Firebase (lærer-knotter) — MÅ først.
+0. **Avpubliser legacy-spillets ruter** (v1, KODEKART §2) — koden beholdes død.
+1. **Fundament:** temaAktivering via Firebase (lærer-knotter) — generaliser
+   eksisterende FeatureGuard/unlockedFeatures-mekanikk til byspillet.
 2. **Tema 1 Beredskap og risiko** — pilot, tester hele kjeden.
 3. **Tema 2+3 Budsjett/avvik + nøkkeltall** — minst innsats, størst
    økonomidekning. NB: koordineres med samlet balansejobb (etter spilltest).
 4. **Tema 4 Arrangement** — mest tverrfaglig dekning.
 5. **Tema 5 Kampanje**, **Tema 6 HMS-drift**, **Tema 7 Teknologi** — etter behov.
 
-## 6. Vedlikehold
+## 6. Kroker oppdaget i koden (gratis å bygge videre på)
+
+- Plankvalitet → lånerente (bankdialogen) — forretningsplan-tema kan utvide
+  kvalitetskriteriene i stedet for å bygge nytt.
+- EVENT_POOL + innboks (RESOLVE_GAME_EVENT) — tema-hendelser gates på aktivt
+  tema, ellers uendret mekanikk.
+- Org-designerens RolleDef — HMS-/verneombudsrolle er datainnlegg, ikke kode.
+
+## 7. Vedlikehold
 
 - Nye temaer registreres i tema-definisjonsfilen og i dette dokumentet.
+- Holdes i sync med docs/KODEKART.md (kodeinventaret).
 - Ved læreplanendringer: sjekk udir.no/lk20/ssr01-01 og /ssr02-01.
 - Kompetansemål er parafrasert her — bruk Udir-teksten ved vurderingsarbeid.
