@@ -602,6 +602,33 @@ type, dra hver plass dit møbelet/dukka står, skalér, «Logg array» → lim i
 snapper og dekker riktig. Sett dukke-skala sjenerøst så den bakte dukka er helt
 skjult.
 
+### Kalibrering + tracer-robusthet (etter DEL 1–4)
+
+**DEL 1 — Heng-plasser låst:** Espens 11 kalibrerte heng-punkter erstatter de 3
+grove heng-defaultene i `KLESBUTIKK.vareplasser` (heng-1..heng-11, sortert på x,
+på gullstengene). Brett- og dukke-defaultene urørt (kalibreres senere).
+
+**DEL 2 — Vareplass-tracer robusthet** (Espen mistet 12 punkter forrige runde):
+1. **localStorage-utkast:** arbeidslista (`KLESBUTIKK.vareplasser`) speiles til
+   `klesbutikk-vareplass-utkast` ved hver endring og **gjenopprettes ved modul-
+   last** (før scene/tracer rendrer) → kalibrering overlever reload. **«Tøm
+   utkast»**-knapp tømmer localStorage og går tilbake til de låste kildeverdiene.
+2. **«📋 Kopier array»** ved siden av «Logg» — skriver samme array-tekst til
+   utklippstavla (én kodevei, `vareplasserArrayText()`); faller tilbake til logg
+   hvis klippebordet er blokkert.
+3. **Previews** dempet til **40 %** + **«vis previews»-toggle**; **etikett kun på
+   VALGT punkt** (mindre rot ved mange plasser).
+4. Logg/panel bruker Vareplass-formatet (m/`type` + `dukketype`) overalt; gamle
+   «Veggpunkt/vegghengpunkter»-kommentarer oppdatert til Vareplass.
+5. Det parkerte blå **gulv-trapes-overlayet fjernet** fra `FloorLayer` (var
+   allerede bak `FRI_MOBLERING`; nå slettet — 0 svg-polygoner i 🛍 Scene).
+
+Verifisert (headless): 18 plasser lastet (11 heng + 5 brett + 2 dukke); add →
+19 → reload → 19 (utkast bevart); «Tøm utkast» → 18 + localStorage tømt;
+«Kopier» → `vareplasser: [ … type:'heng' … dukketype:'dame' … ]` på utklippstavla;
+previews på 0.4 + toggle skjuler dem; kun 1 etikett synlig (valgt); 0 trapes i
+Scene. `tsc -b` + `vite build` grønt.
+
 ---
 
 ## Verifisering

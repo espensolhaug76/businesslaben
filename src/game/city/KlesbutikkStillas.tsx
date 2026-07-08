@@ -13,16 +13,12 @@ import ZoneTracer, { type Target, type DrawZone, type Rect } from './ZoneTracer'
 
 // ── KlesbutikkStillas (BRANSJE 2) — STILLAS-scene for klesbutikk ──────────────
 // Frittstående dev-scene (/dev/klesbutikk, IKKE koblet til onboarding/spillet).
-// Interiør: møbler plasseres FRITT på et GULVPLAN (perspektiv-trapes). Fotpunktet
-// klemmes til trapeset og skalaen interpoleres av dybden (foran stort → bak
-// lite). Tegnerekkefølge sorteres på fotpunkt-y (foran dekker bak). Hylla er
-// veggmontert (butikkvegg-sonen, fast skala). Høyreklikk = fjern. INGEN manuell
-// skalering. State lagrer { id, fixtureId, fotpunkt } (% av scenebildet).
-// To alltid-moduser: 📋 Plan (plantegning ovenfra, primær møbelplassering) og
-// 🛍 Scene (perspektiv-resultat + plagg/dukke-styling). ?dev=1 gir i tillegg:
-// 📐 Gulvplan (trapes-tracer) · 📌 Veggpunkt (vegghengpunkt-tracer) · 🧭 Soner.
-// Gulvplanet og vegghengpunktene bor i KLESBUTIKK (industryDefinition.ts);
-// tracerne muterer + logger.
+// BAKT INTERIØR (kafé-modellen): scenebildet er en ferdig møblert, tom butikk;
+// elevene styler FASTE, kalibrerte VAREPLASSER (heng/brett/dukke) — fri møblering
+// er parkert (se FRI_MOBLERING). Interiør = 🛍 Scene. ?dev=1 gir tracere:
+// 📐 Gulvplan · 📌 Vareplass (heng/brett/dukke) · 🧭 Soner. Gulvplanet og
+// vareplassene bor i KLESBUTIKK (industryDefinition.ts); tracerne muterer +
+// logger, og vareplass-utkastet speiles til localStorage (overlever reload).
 
 // BAKT INTERIØR (kafé-modellen): scenebildet er en FERDIG MØBLERT, tom butikk.
 // Elevene styler FASTE, kalibrerte vareplasser (som monter-trauene) — fri
@@ -178,7 +174,7 @@ function KlesbutikkStillasInner() {
   const bump = () => setRev(r => r + 1)
   const scene = SCENES.find(s => s.id === sceneId)!
   // Bakt interiør: Interiør ER scenen. Uten dev alltid 'scene'; dev-tracere
-  // (gulvplan/veggpunkt/sone) bak ?dev=1. ('plan' er parkert med fri møblering.)
+  // (gulvplan/vareplass/sone) bak ?dev=1. ('plan' er parkert med fri møblering.)
   const mode: DevMode = IS_DEV_COORDS ? devMode : 'scene'
   const showSlots = IS_DEV_COORDS && mode === 'scene'
 
@@ -776,18 +772,11 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   const calLog = () => selInfo && console.log(`[AntrekkFit] '${selInfo.plagg.id}': ${JSON.stringify(selInfo.plagg.antrekkFit)},  ← lim inn i ANTREKK_FIT (klesbutikkPlagg.ts)`)
 
   const sorted = [...items].sort((a, b) => a.fotpunkt.y - b.fotpunkt.y)
-  const { fremV: A, fremH: B, bakV: C, bakH: D } = g.hjørner
 
   return (
     <div ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      {/* PARKERT (fri møblering): gulv-trapes-overlay var en møbel-plasserings-
-          hjelp. I bakt interiør styles faste vareplasser, så det tegnes ikke. */}
-      {FRI_MOBLERING && interactive && (
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-          <polygon points={`${A.x},${A.y} ${B.x},${B.y} ${D.x},${D.y} ${C.x},${C.y}`}
-            fill="rgba(125,211,252,0.05)" stroke="rgba(125,211,252,0.32)" strokeWidth={0.3} />
-        </svg>
-      )}
+      {/* (Fjernet: gulv-trapes-overlayet — en møbel-plasseringshjelp fra fri
+          møblering. Bakt interiør styler faste vareplasser, så det er borte.) */}
 
       {/* PARKERT (fri møblering): plasserte møbler i scenen. Møblene er nå BAKT
           inn i scenebildet — elevene styler faste vareplasser i stedet. */}
@@ -1106,18 +1095,47 @@ function GulvplanTracer({ bump }: { bump: () => void }) {
 // KLESBUTIKK.vareplasser direkte, som gulvplan-/sone-tracerne. Et preview-element
 // per plass (rett type + anker) viser størrelsen mot det bakte innholdet.
 const DEFAULT_SCALE: Record<PlassType, number> = { heng: 0.05, brett: 0.06, dukke: 0.12 }
+
+// ── Utkast-persistens (robusthet) ────────────────────────────────────────────
+// Tracerens arbeidsliste ER KLESBUTIKK.vareplasser (muteres direkte). For at
+// Espen ALDRI skal miste kalibrering ved reload speiles lista til localStorage
+// ved hver endring og gjenopprettes ved modul-last (før scene/tracer rendrer).
+const VAREPLASS_LS_KEY = 'klesbutikk-vareplass-utkast'
+// Kompilerte kildeverdier (kopi tatt FØR gjenoppretting) — «Tøm utkast» går hit.
+const VAREPLASS_DEFAULTS: Vareplass[] = (KLESBUTIKK.vareplasser ?? []).map(v => ({ ...v }))
+function saveVareplassDraft() {
+  try { localStorage.setItem(VAREPLASS_LS_KEY, JSON.stringify(KLESBUTIKK.vareplasser ?? [])) } catch { /* privat modus e.l. */ }
+}
+;(function restoreVareplassDraft() {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(VAREPLASS_LS_KEY) : null
+    if (!raw) return
+    const d = JSON.parse(raw)
+    if (Array.isArray(d) && d.length && KLESBUTIKK.vareplasser) KLESBUTIKK.vareplasser.splice(0, KLESBUTIKK.vareplasser.length, ...d)
+  } catch { /* korrupt utkast — behold kildeverdiene */ }
+})()
+
+// Én kodevei for array-teksten (både Logg og Kopier bruker denne).
+function vareplasserArrayText(pts: Vareplass[]): string {
+  return `vareplasser: [\n${pts.map(v => `    { id: '${v.id}', type: '${v.type}', x: ${v.x}, y: ${v.y}, scale: ${v.scale}${v.dukketype ? `, dukketype: '${v.dukketype}'` : ''} },`).join('\n')}\n  ],`
+}
+
 function VareplassTracer({ bump }: { bump: () => void }) {
   const pts = (KLESBUTIKK.vareplasser ??= [])
   const overlayRef = useRef<HTMLDivElement>(null)
   const [sel, setSel] = useState<string | null>(pts[0]?.id ?? null)
   const [newType, setNewType] = useState<PlassType>('heng')
   const [newDukke, setNewDukke] = useState<PlassDukketype>('dame')
+  const [visPreviews, setVisPreviews] = useState(true)
+  const [copied, setCopied] = useState(false)
   // Representative preview-sprites per type (bredde = scale, samme anker som render).
   const PREVIEW: Record<PlassType, string | undefined> = {
     heng: plaggById('trenchcoat')?.spriteHengFront ?? KLESBUTIKK_PLAGG.find(p => p.spriteHengFront)?.spriteHengFront,
     brett: KLESBUTIKK_PLAGG.find(p => p.spriteBrett)?.spriteBrett,
     dukke: KLESBUTIKK_DUKKER.find(d => d.dukketype === 'dame')?.sprite,
   }
+  // Enhver endring: re-render + speil til localStorage.
+  const changed = () => { bump(); saveVareplassDraft() }
 
   const pctAt = (ev: PointerEvent | React.PointerEvent) => {
     const r = overlayRef.current?.getBoundingClientRect(); if (!r) return null
@@ -1126,17 +1144,27 @@ function VareplassTracer({ bump }: { bump: () => void }) {
   function addPoint(e: React.PointerEvent) {
     const p = pctAt(e); if (!p) return
     const vp: Vareplass = { id: `${newType}-${uid().slice(0, 4)}`, type: newType, x: p.x, y: p.y, scale: DEFAULT_SCALE[newType], ...(newType === 'dukke' ? { dukketype: newDukke } : {}) }
-    pts.push(vp); setSel(vp.id); bump()
+    pts.push(vp); setSel(vp.id); changed()
   }
   function startMove(id: string, e: React.PointerEvent) {
     e.preventDefault(); e.stopPropagation(); setSel(id)
     const onMove = (ev: PointerEvent) => { const p = pctAt(ev); const vp = pts.find(v => v.id === id); if (p && vp) { vp.x = p.x; vp.y = p.y; bump() } }
-    const onUp = () => { window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true) }
+    const onUp = () => { window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true); saveVareplassDraft() }
     window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
   }
-  const scaleSel = (d: number) => { const vp = pts.find(v => v.id === sel); if (vp) { vp.scale = +clamp(vp.scale + d, 0.01, 0.5).toFixed(3); bump() } }
-  const removePoint = (id: string) => { const i = pts.findIndex(v => v.id === id); if (i >= 0) { pts.splice(i, 1); if (sel === id) setSel(pts[0]?.id ?? null); bump() } }
-  const log = () => console.log(`[VareplassTracer] lim inn i KLESBUTIKK (industryDefinition.ts):\n  vareplasser: [\n${pts.map(v => `    { id: '${v.id}', type: '${v.type}', x: ${v.x}, y: ${v.y}, scale: ${v.scale}${v.dukketype ? `, dukketype: '${v.dukketype}'` : ''} },`).join('\n')}\n  ],`)
+  const scaleSel = (d: number) => { const vp = pts.find(v => v.id === sel); if (vp) { vp.scale = +clamp(vp.scale + d, 0.01, 0.5).toFixed(3); changed() } }
+  const removePoint = (id: string) => { const i = pts.findIndex(v => v.id === id); if (i >= 0) { pts.splice(i, 1); if (sel === id) setSel(pts[0]?.id ?? null); changed() } }
+  const clearDraft = () => {
+    try { localStorage.removeItem(VAREPLASS_LS_KEY) } catch { /* ignore */ }
+    pts.splice(0, pts.length, ...VAREPLASS_DEFAULTS.map(v => ({ ...v })))
+    setSel(pts[0]?.id ?? null); bump()
+  }
+  const log = () => console.log(`[VareplassTracer] lim inn i KLESBUTIKK (industryDefinition.ts):\n  ${vareplasserArrayText(pts)}`)
+  const copy = async () => {
+    const text = vareplasserArrayText(pts)
+    try { await navigator.clipboard.writeText(text); setCopied(true); window.setTimeout(() => setCopied(false), 1400) }
+    catch { log() /* fallback: klippebord blokkert → konsoll */ }
+  }
 
   const selVp = pts.find(v => v.id === sel)
   return (
@@ -1146,21 +1174,25 @@ function VareplassTracer({ bump }: { bump: () => void }) {
           const prev = PREVIEW[vp.type]
           const bunn = vp.type !== 'heng'
           const col = PLASS_COLOR[vp.type]
+          const valgt = sel === vp.id
           return (
             <div key={vp.id}>
-              {prev && (
+              {visPreviews && prev && (
                 <img src={prev} alt="" draggable={false} style={{
                   position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, width: `${vp.scale * 100}%`, height: 'auto',
-                  transform: bunn ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)', opacity: 0.6, pointerEvents: 'none',
+                  transform: bunn ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)', opacity: 0.4, pointerEvents: 'none',
                 }} />
               )}
               <div onPointerDown={e => startMove(vp.id, e)} onContextMenu={e => { e.preventDefault(); removePoint(vp.id) }}
                 title={`${vp.id} — dra = flytt, høyreklikk = fjern`} style={{
                   position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, transform: 'translate(-50%, -50%)',
                   width: 15, height: 15, borderRadius: '50%', cursor: 'grab',
-                  border: `2px solid ${sel === vp.id ? '#ffffff' : col}`, background: `${col}88`,
+                  border: `2px solid ${valgt ? '#ffffff' : col}`, background: `${col}88`,
                 }}>
-                <span style={{ position: 'absolute', left: 17, top: -2, fontSize: 9, fontFamily: 'monospace', color: col, background: 'rgba(0,0,0,0.65)', padding: '0 3px', whiteSpace: 'nowrap' }}>{vp.id}{sel === vp.id ? ` · ${vp.scale.toFixed(3)}` : ''}</span>
+                {/* Etikett KUN på valgt punkt (mindre rot ved mange plasser) */}
+                {valgt && (
+                  <span style={{ position: 'absolute', left: 17, top: -2, fontSize: 9, fontFamily: 'monospace', color: col, background: 'rgba(0,0,0,0.65)', padding: '0 3px', whiteSpace: 'nowrap' }}>{vp.id} · {vp.scale.toFixed(3)}</span>
+                )}
               </div>
             </div>
           )
@@ -1206,10 +1238,19 @@ function VareplassTracer({ bump }: { bump: () => void }) {
             <span style={{ color: '#f1f5f9', fontSize: 11, fontFamily: 'monospace', minWidth: 40, textAlign: 'center' }}>{(selVp?.scale ?? 0).toFixed(3)}</span>
             <button style={miniBtn} onClick={() => scaleSel(0.005)} disabled={!sel}>+</button>
           </div>
-          <div style={{ color: '#64748b', fontSize: 10, marginBottom: 8 }}>{pts.length} plass(er)</div>
-          <button style={{ ...miniBtn, width: '100%', height: 26, fontSize: 11, fontWeight: 800 }} onClick={log}>Logg array → konsoll</button>
+          {/* Vis-previews-toggle + antall */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: 10, marginBottom: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={visPreviews} onChange={e => setVisPreviews(e.target.checked)} />
+            vis previews (40 %) · {pts.length} plass(er)
+          </label>
+          {/* Logg + Kopier (samme array-tekst) */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button style={{ ...miniBtn, flex: 1, height: 26, fontSize: 11, fontWeight: 800 }} onClick={log}>Logg</button>
+            <button style={{ ...miniBtn, flex: 1, height: 26, fontSize: 11, fontWeight: 800, background: copied ? 'rgba(34,230,164,0.25)' : undefined, color: copied ? '#22e6a4' : undefined }} onClick={copy}>{copied ? '✓ Kopiert' : '📋 Kopier'}</button>
+          </div>
+          <button style={{ ...miniBtn, width: '100%', height: 24, fontSize: 10, fontWeight: 700, marginTop: 6, color: '#fca5a5', border: '1px solid #ef444455', background: 'rgba(239,68,68,0.1)' }} onClick={clearDraft}>Tøm utkast (tilbake til låst)</button>
           <div style={{ fontSize: 10, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
-            Lim den loggede arrayen inn i KLESBUTIKK.vareplasser (industryDefinition.ts).
+            Utkastet lagres automatisk (localStorage) og overlever reload. «Logg»/«Kopier» → lim inn i KLESBUTIKK.vareplasser.
           </div>
         </div>, document.body)}
     </>
