@@ -549,6 +549,30 @@ vareplasser — som monter-trauene i kafeen.
   møbel-palett/plan/fotavtrykk; dev viser de 4 tracer-knappene. Ingen konsollfeil.
   `tsc -b` + `vite build` grønt.
 
+### DEL 3 — Faste vareplasser (heng/brett)
+- **Generalisert modell** (`industryDefinition.ts`): `Vegghengpunkt` → `Vareplass
+  { id, type: 'heng'|'brett'|'dukke', x, y, scale, dukketype? }` (+ `PlassType`,
+  `PlassDukketype`). Feltet `vegghengpunkter` → `vareplasser` (migrert). De gamle
+  vegghengpunktene går opp i dette som `type:'heng'`.
+- **Grove defaults** avlest fra rutenett på det bakte bildet (der møblene STÅR):
+  3 heng (gullstenger på bakveggen), 5 brett (venstre/høyre hyller, rund
+  pidestall, lavt bord). **IKKE kalibrert — Espen tracer og låser.**
+- **Snap gjenbrukt** (`FloorLayer`): hver vareplass legger et `data-plass`-anker
+  med riktig `data-type` i scene-overlayet → eksisterende `nearestSlot` treffer
+  dem. **heng-plagg → heng-plasser** (topp-ankret, front-variant), **brett →
+  brett-plasser** (bunn-ankret). Én vare per plass, høyreklikk = fjern. ('dukke'
+  → `data-type='antrekk'` + dukketype-filter, gjenbruker dukke-bytte-maskineriet;
+  rendering av dukke-plasser er DEL 4.)
+- **📌 Vareplass-tracer** (utvidet fra veggpunkt-traceren): **velg type**
+  (heng/brett/dukke, farge per type) + dukketype (for dukke) FØR klikk · klikk =
+  ny plass · dra = flytt · ± = skalér (valgt) · høyreklikk = fjern · «Logg array»
+  → konsoll (m/type + dukketype). Preview-element per type (rett anker/størrelse).
+- Verifisert (headless): 8 ankere; Trenchcoat (heng) snappet til `heng-1`
+  (51/43, width 5 %, topp-ankret), T-skjorte-stabel (brett) til `brett-4`
+  (52/73, width 10 %, bunn-ankret); riktig-type-snapping; høyreklikk fjerner;
+  tracer type/dukketype-velger + logg m/type. Ingen konsollfeil. `tsc -b` +
+  `vite build` grønt.
+
 ---
 
 ## Verifisering

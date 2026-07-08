@@ -125,16 +125,25 @@ export interface Gulvplan {
   scaleBack: number
 }
 
-/** VEGGHENGPUNKT — et fast punkt på butikkveggen der ett HENG-plagg (front-
- *  variant) kan snappes rett på (uten møbel). `x`/`y` er % av scenebildet
- *  (plaggets øvre anker), `scale` er multiplikator på plaggets grunnbredde.
- *  Usynlig i spillet (plagget dekker opphenget). Kalibreres med ?dev=1-
- *  veggpunkt-traceren i KlesbutikkStillas og låses her. */
-export interface Vegghengpunkt {
+/** VAREPLASS — en fast, kalibrert plass i det BAKTE interiøret (kafé-modellen)
+ *  der elevene styler ETT element, som monter-trauene. Generaliserer det gamle
+ *  vegghengpunktet til tre typer. `x`/`y` = % av scenebildet (elementets anker),
+ *  `scale` = bredde som brøk av scenebildet. `type`:
+ *   'heng'  — hengeplagg (front), topp-ankret ved punktet (gullstenger på vegg).
+ *   'brett' — brettet stabel, bunn-ankret på flaten (hyller/bord).
+ *   'dukke' — påkledd dukke, bunn-ankret over den BAKTE dukka (se `dukketype`).
+ *  Usynlig i spillet (elementet dekker plassen). Kalibreres med ?dev=1-
+ *  vareplass-traceren i KlesbutikkStillas og låses her. */
+export type PlassType = 'heng' | 'brett' | 'dukke'
+export type PlassDukketype = 'dame' | 'herre' | 'barn'
+export interface Vareplass {
   id: string
+  type: PlassType
   x: number
   y: number
   scale: number
+  /** kun type='dukke': dukketypen den bakte dukka har (matchende snap-filter). */
+  dukketype?: PlassDukketype
 }
 
 export interface IndustryDefinition {
@@ -164,9 +173,9 @@ export interface IndustryDefinition {
   /** Gulvplanet (perspektivmodell) møbler plasseres fritt på — kun klesbutikk
    *  i dag (kafeen bruker trau-monteren). */
   gulvplan?: Gulvplan
-  /** Faste vegghengpunkter på butikkveggen der heng-plagg snappes rett på
-   *  (uten møbel) — kun klesbutikk. Kalibreres med ?dev=1-veggpunkt-traceren. */
-  vegghengpunkter?: Vegghengpunkt[]
+  /** Faste, kalibrerte vareplasser i det bakte interiøret (heng/brett/dukke) der
+   *  elevene styler — kun klesbutikk. Kalibreres med ?dev=1-vareplass-traceren. */
+  vareplasser?: Vareplass[]
 }
 
 export const CAFE: IndustryDefinition = {
@@ -289,14 +298,21 @@ export const KLESBUTIKK: IndustryDefinition = {
     },
     scaleFront: 0.42, scaleBack: 0.24,
   },
-  // Vegghengpunkter — GROVE default-rekke (% av klesbutikk-interior.jpg): en rad
-  // opphengspunkter langs bakveggen. IKKE Espen-kalibrert: klikk/dra/±-skalér med
-  // ?dev=1-veggpunkt-traceren i KlesbutikkStillas, «Logg array» og lim inn HIT.
-  vegghengpunkter: [
-    { id: 'vh1', x: 30, y: 30, scale: 0.05 },
-    { id: 'vh2', x: 42, y: 30, scale: 0.05 },
-    { id: 'vh3', x: 54, y: 30, scale: 0.05 },
-    { id: 'vh4', x: 66, y: 30, scale: 0.05 },
+  // Vareplasser — GROVE defaults (% av klesbutikk-interior-mobler.png), plassert
+  // der møblene STÅR i det bakte bildet (avlest fra rutenett). IKKE Espen-
+  // kalibrert: velg type + klikk/dra/±-skalér med ?dev=1-vareplass-traceren,
+  // «Logg array» og lim inn HIT. Dukke-plassene kommer i DEL 4.
+  vareplasser: [
+    // Heng — gullstenger på bakveggen (topp-ankret der stanga sitter)
+    { id: 'heng-1', type: 'heng', x: 51, y: 43, scale: 0.05 },
+    { id: 'heng-2', type: 'heng', x: 65, y: 42, scale: 0.05 },
+    { id: 'heng-3', type: 'heng', x: 72, y: 41, scale: 0.045 },
+    // Brett — hyller (venstre + høyre vegg), rund pidestall, lavt bord
+    { id: 'brett-1', type: 'brett', x: 44, y: 47, scale: 0.06 },
+    { id: 'brett-2', type: 'brett', x: 44, y: 55, scale: 0.06 },
+    { id: 'brett-3', type: 'brett', x: 53, y: 57, scale: 0.06 },
+    { id: 'brett-4', type: 'brett', x: 52, y: 73, scale: 0.10 },
+    { id: 'brett-5', type: 'brett', x: 90, y: 52, scale: 0.06 },
   ],
 }
 

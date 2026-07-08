@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG } from '../../data/districts'
 import { GameProvider, useGame } from '../GameContext'
-import { KLESBUTIKK, type Gulvplan, type Vegghengpunkt } from '../data/industryDefinition'
+import { KLESBUTIKK, type Gulvplan, type Vareplass, type PlassType, type PlassDukketype } from '../data/industryDefinition'
 import { KLESBUTIKK_FIXTURES, fixtureDef, vareplasser, kapasitet, type VareplassType } from '../data/klesbutikkFixtures'
 import { KLESBUTIKK_PLAGG, plaggById, spriteFor, baseFit, NULL_FIT, type Plagg, type DukkeType } from '../data/klesbutikkPlagg'
 import { KLESBUTIKK_DUKKER, dukkeById, FIXTURE_FOR_DUKKETYPE, type Dukketype } from '../data/klesbutikkDukker'
@@ -39,6 +39,8 @@ const FRI_MOBLERING = false
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const writeRect = (t: Rect, r: Rect) => { t[0] = r[0]; t[1] = r[1]; t[2] = r[2]; t[3] = r[3] }
 const SLOT_COLOR: Record<VareplassType, string> = { heng: '#50dcff', brett: '#ffb03c', antrekk: '#f472b6' }
+// Farge per VAREPLASS-type (bakt interiør) — brukt av tracer + dev-markører.
+const PLASS_COLOR: Record<PlassType, string> = { heng: '#50dcff', brett: '#ffb03c', dukke: '#f472b6' }
 
 // Antrekk-passform: skulder-ankret over dukka.
 const ANTREKK_SHOULDER_Y = 0.13   // grunnlinje topp (skulderlinje) i dukke-boksen
@@ -134,9 +136,9 @@ const PLAN_ICON: Record<KlesbutikkFixtureId, { round: boolean; color: string }> 
   'dukke-barn': { round: true, color: '#d16aa8' },
 }
 
-// plan/scene er tilgjengelig UTEN ?dev=1 (to hovedvisninger av samme layout);
-// gulvplan/veggpunkt/sone er dev-tracere.
-type DevMode = 'plan' | 'scene' | 'gulvplan' | 'sone' | 'veggpunkt'
+// Interiør = scene (bakt bilde). gulvplan/vareplass/sone er dev-tracere.
+// ('plan' er parkert med fri møblering, men beholdt i unionen for død kode.)
+type DevMode = 'plan' | 'scene' | 'gulvplan' | 'sone' | 'vareplass'
 
 interface Scene {
   id: 'fasade' | 'interior'
@@ -202,7 +204,7 @@ function KlesbutikkStillasInner() {
               <>
                 <button onClick={() => setDevMode('scene')} style={tabStyle(mode === 'scene')}>🛍 Scene</button>
                 <button onClick={() => setDevMode('gulvplan')} style={tabStyle(mode === 'gulvplan')}>📐 Gulvplan</button>
-                <button onClick={() => setDevMode('veggpunkt')} style={tabStyle(mode === 'veggpunkt')}>📌 Vareplass</button>
+                <button onClick={() => setDevMode('vareplass')} style={tabStyle(mode === 'vareplass')}>📌 Vareplass</button>
               </>
             )}
             <button onClick={() => setDevMode('sone')} style={tabStyle(mode === 'sone')}>🧭 Soner</button>
@@ -244,7 +246,7 @@ function KlesbutikkStillasInner() {
                 <FloorLayer interactive={mode === 'scene'} showSlots={showSlots} />
               )}
               {mode === 'gulvplan' && <GulvplanTracer bump={bump} />}
-              {mode === 'veggpunkt' && <VeggpunktTracer bump={bump} />}
+              {mode === 'vareplass' && <VareplassTracer bump={bump} />}
             </>
           ) : (
             mode !== 'sone' && (
@@ -268,7 +270,7 @@ function KlesbutikkStillasInner() {
         padding: '0.4rem 1rem', color: '#cbd5e1', fontSize: 12, whiteSpace: 'nowrap',
       }}>{scene.id === 'interior' && mode === 'gulvplan'
         ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
-        : scene.id === 'interior' && mode === 'veggpunkt'
+        : scene.id === 'interior' && mode === 'vareplass'
           ? 'Vareplass-tracer: velg type, klikk = ny plass, dra = flytt, ± = scale, «Logg array».'
           : scene.hint}</div>
     </div>
@@ -611,15 +613,15 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   const [targetPlassId, setTargetPlassId] = useState<string | null>(null)
   const commitPlagg = (next: typeof plaggItems) => { plaggRef.current = next; setPlaggItems(next); dispatch({ type: 'SET_KLESBUTIKK_PLAGG', items: next }) }
 
-  // Vegghengpunkter (DEL 3): faste opphengspunkter på veggen. plassId = punkt-id
-  // (uten ':', så de skilles fra møbel-slots «itemId:slot»).
-  const veggpunkter = KLESBUTIKK.vegghengpunkter ?? []
-  const veggIds = new Set(veggpunkter.map(v => v.id))
-  const plaggByVegg: Record<string, KlesbutikkPlaggItem> = {}
-  // itemId → { slotIndex → plaggItem }  (veggpunkt-plagg holdes utenfor)
+  // FASTE VAREPLASSER (bakt interiør): plassId = vareplass-id (uten ':', så de
+  // skilles fra de PARKERTE møbel-slotene «itemId:slot»).
+  const vareplasser = KLESBUTIKK.vareplasser ?? []
+  const plassIds = new Set(vareplasser.map(v => v.id))
+  const plaggByPlass: Record<string, KlesbutikkPlaggItem> = {}
+  // itemId → { slotIndex → plaggItem }  (PARKERT møbel-styling; vareplass-plagg utenfor)
   const itemByFurniture: Record<string, Record<number, KlesbutikkPlaggItem>> = {}
   for (const pi of plaggItems) {
-    if (veggIds.has(pi.plassId)) { plaggByVegg[pi.plassId] = pi; continue }
+    if (plassIds.has(pi.plassId)) { plaggByPlass[pi.plassId] = pi; continue }
     const [fid, si] = pi.plassId.split(':')
     ;(itemByFurniture[fid] ??= {})[Number(si)] = pi
   }
@@ -717,7 +719,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
     if (selAntrekk === pid) setSelAntrekk(null)
     commitPlagg(plaggRef.current.filter(pi => pi.plassId !== pid))
   }
-  const removeWallPlagg = (vid: string) => commitPlagg(plaggRef.current.filter(pi => pi.plassId !== vid))
+  const removePlassPlagg = (vid: string) => commitPlagg(plaggRef.current.filter(pi => pi.plassId !== vid))
 
   // ── Elevens påkledning: dra antrekket på dukka (klemte grenser), scale ±20 %,
   // tilbakestill. OPPÅ den kalibrerte grunnlinja (antrekkFit). Kun antrekk. ──
@@ -816,35 +818,46 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
         )
       })}
 
-      {/* VEGGHENGPUNKTER (DEL 3): faste opphengspunkter på veggen. Slot-anker
-          (data-plass) alltid i DOM for snap-deteksjon; heng-plagg (front-variant)
-          snappes rett på et ledig punkt. Usynlig i spillet når tomt — plagget
-          dekker opphenget. Høyreklikk på plagg = fjern. */}
-      {veggpunkter.map(vp => {
-        const item = plaggByVegg[vp.id]
-        const plagg = item ? plaggById(item.plaggId) : undefined
-        const free = !plagg
-        const sprite = plagg ? spriteFor(plagg, 'heng', 'front') : undefined
-        const compat = dragPlagg?.type === 'heng' && !dragPlagg.fixtureFilter && free
+      {/* FASTE VAREPLASSER (bakt interiør): for hver plass et data-plass-anker
+          (alltid i DOM for snap-deteksjon) + det snappede elementet. Snap-typen
+          gjenbruker eksisterende maskineri: heng/brett direkte, 'dukke' → 'antrekk'
+          med dukketype-filter. Heng = topp-ankret, brett/dukke = bunn-ankret.
+          Usynlig når tom (elementet dekker plassen). Høyreklikk = ta av/fjern. */}
+      {vareplasser.map(vp => {
+        const item = plaggByPlass[vp.id]
+        const free = !item
+        const snapType: VareplassType = vp.type === 'dukke' ? 'antrekk' : vp.type
+        const dataFixture = vp.type === 'dukke' ? FIXTURE_FOR_DUKKETYPE[vp.dukketype ?? 'dame'] : 'plass'
+        // Hva rendres når plassen er opptatt, og hvordan ankres det?
+        let sprite: string | undefined, navn = ''
+        const bunnAnkret = vp.type !== 'heng'   // heng henger fra stanga (topp), ellers står/ligger
+        if (item) {
+          if (vp.type === 'dukke') { const dk = dukkeById(item.plaggId); sprite = dk?.sprite; navn = dk?.navn ?? '' }
+          else { const p = plaggById(item.plaggId); if (p) { sprite = spriteFor(p, snapType, vp.type === 'heng' ? 'front' : undefined); navn = p.navn } }
+        }
+        const compat = !!dragPlagg && dragPlagg.type === snapType && free
+          && (vp.type !== 'dukke' || dragPlagg.fixtureFilter === dataFixture)
         const isTarget = targetPlassId === vp.id
+        const col = PLASS_COLOR[vp.type]
         return (
           <div key={vp.id}>
             {/* Snap-anker */}
-            <div data-plass={vp.id} data-type="heng" data-fixture="vegg" data-free={free ? '1' : '0'}
+            <div data-plass={vp.id} data-type={snapType} data-fixture={dataFixture} data-free={free ? '1' : '0'}
               style={{ position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, width: 1, height: 1, pointerEvents: 'none' }} />
-            {/* Snappet plagg (front-variant), hengende fra punktet */}
+            {/* Snappet element */}
             {sprite && (
-              <img src={sprite} alt={plagg!.navn} draggable={false}
-                onContextMenu={interactive ? (e => { e.preventDefault(); e.stopPropagation(); removeWallPlagg(vp.id) }) : undefined}
-                title={interactive ? `${plagg!.navn} — høyreklikk for å fjerne` : plagg!.navn}
+              <img src={sprite} alt={navn} draggable={false}
+                onContextMenu={interactive ? (e => { e.preventDefault(); e.stopPropagation(); removePlassPlagg(vp.id) }) : undefined}
+                title={interactive ? `${navn} — høyreklikk for å ${vp.type === 'dukke' ? 'ta av' : 'fjerne'}` : navn}
                 style={{
                   position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, width: `${vp.scale * 100}%`, height: 'auto',
-                  transform: 'translate(-50%, -6%)', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
+                  transform: bunnAnkret ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)',
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
                   pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'context-menu' : 'default', touchAction: 'none',
                   zIndex: Math.round(vp.y * 10),
                 }} />
             )}
-            {/* Highlight ledig kompatibelt punkt under heng-drag */}
+            {/* Highlight ledig kompatibel plass under drag */}
             {compat && (
               <div style={{
                 position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`,
@@ -854,12 +867,12 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
                 boxShadow: isTarget ? '0 0 10px rgba(34,230,164,0.7)' : 'none', pointerEvents: 'none',
               }} />
             )}
-            {/* Dev-markør */}
+            {/* Dev-markør (farge per type) */}
             {showSlots && free && (
-              <div title={`veggpunkt ${vp.id}`} style={{
+              <div title={`${vp.type} ${vp.id}`} style={{
                 position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`,
                 width: 9, height: 9, transform: 'translate(-50%, -50%)', borderRadius: '50%',
-                border: '1.5px solid #f472b6', background: 'rgba(244,114,182,0.3)', pointerEvents: 'none',
+                border: `1.5px solid ${col}`, background: `${col}55`, pointerEvents: 'none',
               }} />
             )}
           </div>
@@ -1087,16 +1100,24 @@ function GulvplanTracer({ bump }: { bump: () => void }) {
   )
 }
 
-// ── Veggpunkt-tracer (?dev=1) — kalibrer vegghengpunktene, mutér-og-logg ──────
-// Klikk på tom vegg = nytt punkt · dra et punkt = flytt · velg + ± = skalér ·
-// høyreklikk = fjern · «Logg array» → konsoll. Muterer KLESBUTIKK.vegghengpunkter
-// (samme array) direkte, som gulvplan-/sone-tracerne. En preview-plagg vises på
-// hvert punkt så størrelsen kan vurderes mot faktisk innhold.
-function VeggpunktTracer({ bump }: { bump: () => void }) {
-  const pts = (KLESBUTIKK.vegghengpunkter ??= [])
+// ── Vareplass-tracer (?dev=1) — kalibrer de faste vareplassene, mutér-og-logg ─
+// Velg TYPE (heng/brett/dukke) → klikk på scenen = ny plass · dra = flytt · velg
+// + ± = skalér · høyreklikk = fjern · «Logg array» → konsoll. Muterer
+// KLESBUTIKK.vareplasser direkte, som gulvplan-/sone-tracerne. Et preview-element
+// per plass (rett type + anker) viser størrelsen mot det bakte innholdet.
+const DEFAULT_SCALE: Record<PlassType, number> = { heng: 0.05, brett: 0.06, dukke: 0.12 }
+function VareplassTracer({ bump }: { bump: () => void }) {
+  const pts = (KLESBUTIKK.vareplasser ??= [])
   const overlayRef = useRef<HTMLDivElement>(null)
   const [sel, setSel] = useState<string | null>(pts[0]?.id ?? null)
-  const previewSprite = plaggById('trenchcoat')?.spriteHengFront ?? KLESBUTIKK_PLAGG.find(p => p.spriteHengFront)?.spriteHengFront
+  const [newType, setNewType] = useState<PlassType>('heng')
+  const [newDukke, setNewDukke] = useState<PlassDukketype>('dame')
+  // Representative preview-sprites per type (bredde = scale, samme anker som render).
+  const PREVIEW: Record<PlassType, string | undefined> = {
+    heng: plaggById('trenchcoat')?.spriteHengFront ?? KLESBUTIKK_PLAGG.find(p => p.spriteHengFront)?.spriteHengFront,
+    brett: KLESBUTIKK_PLAGG.find(p => p.spriteBrett)?.spriteBrett,
+    dukke: KLESBUTIKK_DUKKER.find(d => d.dukketype === 'dame')?.sprite,
+  }
 
   const pctAt = (ev: PointerEvent | React.PointerEvent) => {
     const r = overlayRef.current?.getBoundingClientRect(); if (!r) return null
@@ -1104,7 +1125,7 @@ function VeggpunktTracer({ bump }: { bump: () => void }) {
   }
   function addPoint(e: React.PointerEvent) {
     const p = pctAt(e); if (!p) return
-    const vp: Vegghengpunkt = { id: `vh-${uid().slice(0, 4)}`, x: p.x, y: p.y, scale: 0.05 }
+    const vp: Vareplass = { id: `${newType}-${uid().slice(0, 4)}`, type: newType, x: p.x, y: p.y, scale: DEFAULT_SCALE[newType], ...(newType === 'dukke' ? { dukketype: newDukke } : {}) }
     pts.push(vp); setSel(vp.id); bump()
   }
   function startMove(id: string, e: React.PointerEvent) {
@@ -1113,54 +1134,82 @@ function VeggpunktTracer({ bump }: { bump: () => void }) {
     const onUp = () => { window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true) }
     window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
   }
-  const scaleSel = (d: number) => { const vp = pts.find(v => v.id === sel); if (vp) { vp.scale = +clamp(vp.scale + d, 0.01, 0.4).toFixed(3); bump() } }
+  const scaleSel = (d: number) => { const vp = pts.find(v => v.id === sel); if (vp) { vp.scale = +clamp(vp.scale + d, 0.01, 0.5).toFixed(3); bump() } }
   const removePoint = (id: string) => { const i = pts.findIndex(v => v.id === id); if (i >= 0) { pts.splice(i, 1); if (sel === id) setSel(pts[0]?.id ?? null); bump() } }
-  const log = () => console.log(`[VeggpunktTracer] lim inn i KLESBUTIKK (industryDefinition.ts):\n  vegghengpunkter: [\n${pts.map(v => `    { id: '${v.id}', x: ${v.x}, y: ${v.y}, scale: ${v.scale} },`).join('\n')}\n  ],`)
+  const log = () => console.log(`[VareplassTracer] lim inn i KLESBUTIKK (industryDefinition.ts):\n  vareplasser: [\n${pts.map(v => `    { id: '${v.id}', type: '${v.type}', x: ${v.x}, y: ${v.y}, scale: ${v.scale}${v.dukketype ? `, dukketype: '${v.dukketype}'` : ''} },`).join('\n')}\n  ],`)
 
+  const selVp = pts.find(v => v.id === sel)
   return (
     <>
       <div ref={overlayRef} onPointerDown={addPoint} style={{ position: 'absolute', inset: 0, zIndex: 45, touchAction: 'none', cursor: 'crosshair' }}>
-        {pts.map(vp => (
-          <div key={vp.id}>
-            {previewSprite && (
-              <img src={previewSprite} alt="" draggable={false} style={{
-                position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, width: `${vp.scale * 100}%`, height: 'auto',
-                transform: 'translate(-50%, -6%)', opacity: 0.55, pointerEvents: 'none',
-              }} />
-            )}
-            <div onPointerDown={e => startMove(vp.id, e)} onContextMenu={e => { e.preventDefault(); removePoint(vp.id) }}
-              title={`${vp.id} — dra = flytt, høyreklikk = fjern`} style={{
-                position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, transform: 'translate(-50%, -50%)',
-                width: 15, height: 15, borderRadius: '50%', cursor: 'grab',
-                border: `2px solid ${sel === vp.id ? '#22e6a4' : '#f472b6'}`,
-                background: sel === vp.id ? 'rgba(34,230,164,0.4)' : 'rgba(244,114,182,0.35)',
-              }}>
-              {/* id + (for valgt punkt) scale-tallet, rett ved punktet */}
-              <span style={{ position: 'absolute', left: 17, top: -2, fontSize: 9, fontFamily: 'monospace', color: sel === vp.id ? '#6ee7b7' : '#f9a8d4', background: 'rgba(0,0,0,0.6)', padding: '0 3px', whiteSpace: 'nowrap' }}>{vp.id}{sel === vp.id ? ` · ${vp.scale.toFixed(3)}` : ''}</span>
+        {pts.map(vp => {
+          const prev = PREVIEW[vp.type]
+          const bunn = vp.type !== 'heng'
+          const col = PLASS_COLOR[vp.type]
+          return (
+            <div key={vp.id}>
+              {prev && (
+                <img src={prev} alt="" draggable={false} style={{
+                  position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, width: `${vp.scale * 100}%`, height: 'auto',
+                  transform: bunn ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)', opacity: 0.6, pointerEvents: 'none',
+                }} />
+              )}
+              <div onPointerDown={e => startMove(vp.id, e)} onContextMenu={e => { e.preventDefault(); removePoint(vp.id) }}
+                title={`${vp.id} — dra = flytt, høyreklikk = fjern`} style={{
+                  position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, transform: 'translate(-50%, -50%)',
+                  width: 15, height: 15, borderRadius: '50%', cursor: 'grab',
+                  border: `2px solid ${sel === vp.id ? '#ffffff' : col}`, background: `${col}88`,
+                }}>
+                <span style={{ position: 'absolute', left: 17, top: -2, fontSize: 9, fontFamily: 'monospace', color: col, background: 'rgba(0,0,0,0.65)', padding: '0 3px', whiteSpace: 'nowrap' }}>{vp.id}{sel === vp.id ? ` · ${vp.scale.toFixed(3)}` : ''}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {createPortal(
         <div onPointerDown={e => e.stopPropagation()} style={{
-          position: 'fixed', top: 56, right: 16, zIndex: 95, width: 210,
-          background: 'rgba(10,14,26,0.95)', border: '1px solid #f472b655', borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
+          position: 'fixed', top: 56, right: 16, zIndex: 95, width: 214,
+          background: 'rgba(10,14,26,0.95)', border: '1px solid #7dd3fc55', borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
         }}>
-          <div style={{ color: '#f472b6', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>📌 Veggpunkt-tracer</div>
+          <div style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>📌 Vareplass-tracer</div>
           <div style={{ color: '#94a3b8', fontSize: 10, lineHeight: 1.4, marginBottom: 8 }}>
-            Klikk på veggen = nytt punkt · dra = flytt · høyreklikk = fjern. Preview-plagget viser størrelsen.
+            Velg type → klikk på scenen = ny plass · dra = flytt · høyreklikk = fjern.
           </div>
+          {/* Type-velger (farge per type) */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+            {(['heng', 'brett', 'dukke'] as PlassType[]).map(t => (
+              <button key={t} onClick={() => setNewType(t)} style={{
+                flex: 1, height: 26, fontSize: 11, fontWeight: 800, cursor: 'pointer', borderRadius: 6,
+                fontFamily: "'Outfit', sans-serif", textTransform: 'capitalize',
+                color: newType === t ? '#0a0e1a' : PLASS_COLOR[t],
+                background: newType === t ? PLASS_COLOR[t] : `${PLASS_COLOR[t]}22`,
+                border: `1px solid ${PLASS_COLOR[t]}`,
+              }}>{t}</button>
+            ))}
+          </div>
+          {/* Dukketype-velger (kun for dukke) */}
+          {newType === 'dukke' && (
+            <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+              {(['dame', 'herre', 'barn'] as PlassDukketype[]).map(dt => (
+                <button key={dt} onClick={() => setNewDukke(dt)} style={{
+                  flex: 1, height: 22, fontSize: 10, fontWeight: 700, cursor: 'pointer', borderRadius: 6, fontFamily: "'Outfit', sans-serif",
+                  color: newDukke === dt ? '#0a0e1a' : '#f9a8d4', background: newDukke === dt ? '#f472b6' : 'rgba(244,114,182,0.15)', border: '1px solid #f472b688',
+                }}>{dt}</button>
+              ))}
+            </div>
+          )}
+          {/* Skala for valgt plass */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: 11, flex: 1 }}>skala {sel ?? '—'}</span>
+            <span style={{ color: '#94a3b8', fontSize: 11, flex: 1 }}>skala {sel ?? '—'}{selVp ? ` (${selVp.type})` : ''}</span>
             <button style={miniBtn} onClick={() => scaleSel(-0.005)} disabled={!sel}>−</button>
-            <span style={{ color: '#f1f5f9', fontSize: 11, fontFamily: 'monospace', minWidth: 40, textAlign: 'center' }}>{(pts.find(v => v.id === sel)?.scale ?? 0).toFixed(3)}</span>
+            <span style={{ color: '#f1f5f9', fontSize: 11, fontFamily: 'monospace', minWidth: 40, textAlign: 'center' }}>{(selVp?.scale ?? 0).toFixed(3)}</span>
             <button style={miniBtn} onClick={() => scaleSel(0.005)} disabled={!sel}>+</button>
           </div>
-          <div style={{ color: '#64748b', fontSize: 10, marginBottom: 8 }}>{pts.length} punkt(er)</div>
+          <div style={{ color: '#64748b', fontSize: 10, marginBottom: 8 }}>{pts.length} plass(er)</div>
           <button style={{ ...miniBtn, width: '100%', height: 26, fontSize: 11, fontWeight: 800 }} onClick={log}>Logg array → konsoll</button>
           <div style={{ fontSize: 10, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
-            Lim den loggede arrayen inn i KLESBUTIKK.vegghengpunkter (industryDefinition.ts).
+            Lim den loggede arrayen inn i KLESBUTIKK.vareplasser (industryDefinition.ts).
           </div>
         </div>, document.body)}
     </>
