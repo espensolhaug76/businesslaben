@@ -117,6 +117,7 @@ export default function InteriorView({ districtId, lokaleId }: {
   // nulles feltet og kunden forsvinner. Ingen lokal pool/spawn/navigasjon mer.
   const activeScenario = state.activeMeetingScenarioId ? getScenario(state.activeMeetingScenarioId) ?? null : null
   const [imgFailed, setImgFailed] = useState(false)
+  const [custImgFailed, setCustImgFailed] = useState(false)  // kunde-sprite mangler/feiler
   const [shown, setShown] = useState(false)        // fade-in/ut (opacity)
   const [hover, setHover] = useState(false)
   const [, setRev] = useState(0)                    // re-render når traceren skriver
@@ -184,6 +185,7 @@ export default function InteriorView({ districtId, lokaleId }: {
   useEffect(() => {
     if (!activeScenario) { setShown(false); return }
     setShown(false)
+    setCustImgFailed(false)   // ny kunde ⇒ prøv spriten på nytt (fallback nullstilles)
     const t = setTimeout(() => setShown(true), 50)
     return () => clearTimeout(t)
   }, [activeScenario?.id])
@@ -521,18 +523,40 @@ export default function InteriorView({ districtId, lokaleId }: {
               cursor: 'pointer', zIndex: 10,
             }}
           >
-            <img
-              src={activeScenario.sprite}
-              alt={activeScenario.customerName}
-              draggable={false}
-              style={{
-                height: '100%', width: 'auto', display: 'block', userSelect: 'none',
-                filter: hover
-                  ? 'drop-shadow(0 0 10px rgba(125,211,252,0.9)) drop-shadow(0 6px 10px rgba(0,0,0,0.45))'
-                  : 'drop-shadow(0 6px 10px rgba(0,0,0,0.45))',
-                transition: 'filter 0.15s',
-              }}
-            />
+            {/* Kunde-sprite med diskret fallback: feiler/mangler PNG-en (f.eks.
+                en ny scenario-sprite som ennå ikke er tegnet), vises en nøytral
+                silhuett i stedet for et brukket bilde. Samme forankring/skygge. */}
+            {!custImgFailed ? (
+              <img
+                src={activeScenario.sprite}
+                alt={activeScenario.customerName}
+                draggable={false}
+                onError={() => setCustImgFailed(true)}
+                style={{
+                  height: '100%', width: 'auto', display: 'block', userSelect: 'none',
+                  filter: hover
+                    ? 'drop-shadow(0 0 10px rgba(125,211,252,0.9)) drop-shadow(0 6px 10px rgba(0,0,0,0.45))'
+                    : 'drop-shadow(0 6px 10px rgba(0,0,0,0.45))',
+                  transition: 'filter 0.15s',
+                }}
+              />
+            ) : (
+              <div
+                aria-label={activeScenario.customerName}
+                style={{
+                  height: '100%', aspectRatio: '0.62', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                  filter: hover
+                    ? 'drop-shadow(0 0 10px rgba(125,211,252,0.9)) drop-shadow(0 6px 10px rgba(0,0,0,0.45))'
+                    : 'drop-shadow(0 6px 10px rgba(0,0,0,0.45))',
+                }}
+              >
+                <svg viewBox="0 0 100 160" style={{ height: '100%', width: 'auto', display: 'block' }} aria-hidden>
+                  {/* Nøytral kunde-silhuett (hode + overkropp). */}
+                  <circle cx="50" cy="34" r="24" fill="#334155" />
+                  <path d="M8 160 C8 108 24 84 50 84 C76 84 92 108 92 160 Z" fill="#334155" />
+                </svg>
+              </div>
+            )}
             {/* Hover-hint */}
             {hover && (
               <div style={{
