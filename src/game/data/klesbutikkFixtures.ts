@@ -46,12 +46,23 @@ interface SlotRow {
   variant?: 'front' | 'profil'
 }
 
+/** FOTAVTRYKK — møbelets grunnflate på gulvet, ÉN KILDE for både plantegning og
+ *  perspektivscene, så de aldri kommer i utakt (før: plan hadde faste piksler,
+ *  scenen skalerte uavhengig ⇒ luftig i plan, trangt i scene).
+ *   - `b` = bredde i % av GULVPLANETS bredde
+ *   - `d` = dybde  i % av GULVPLANETS dybde
+ *  PLAN: ikonet tegnes `b` % bredt / `d` % dypt av planrektangelet.
+ *  SCENE: sprite-bredden UTLEDES som `b` × bredden av gulv-trapeset ved møbelets
+ *  dybde (quad-interpolasjon) — ingen egen scene-størrelse.
+ *  Tunbar; finkalibreres av Espen via ?dev=1-fotavtrykk-kalibratoren. */
+export interface Fotavtrykk { b: number; d: number }
+
 export interface KlesbutikkFixtureDef {
   id: KlesbutikkFixtureId
   navn: string
   sprite: string
-  /** Standardbredde som brøk av butikkvegg-sonens bredde (før `scale`). */
-  baseWFrac: number
+  /** Grunnflate på gulvet (% av gulvplanets bredde/dybde) — se `Fotavtrykk`. */
+  fotavtrykk: Fotavtrykk
   /** Vareplass-rader (tunbar geometri + kapasitet). */
   slotRows: SlotRow[]
 }
@@ -60,17 +71,17 @@ const S = (n: string) => `/assets/raw/fixtures/${n}.png`
 
 export const KLESBUTIKK_FIXTURES: KlesbutikkFixtureDef[] = [
   {
-    id: 'stativ', navn: 'Klesstativ', sprite: S('stativ'), baseWFrac: 0.52,
+    id: 'stativ', navn: 'Klesstativ', sprite: S('stativ'), fotavtrykk: { b: 20, d: 7 },
     // Hengeplasser jevnt langs stanga nær toppen — plaggene henger i PROFIL.
     slotRows: [{ type: 'heng', variant: 'profil', y: 0.16, xFrom: 0.12, xTo: 0.88, count: 6 }],
   },
   {
-    id: 'stativ-liten', navn: 'Lite stativ', sprite: S('stativ-liten'), baseWFrac: 0.34,
+    id: 'stativ-liten', navn: 'Lite stativ', sprite: S('stativ-liten'), fotavtrykk: { b: 13, d: 6 },
     slotRows: [{ type: 'heng', variant: 'profil', y: 0.18, xFrom: 0.14, xTo: 0.86, count: 4 }],
   },
   {
-    id: 'hylle', navn: 'Hylle', sprite: S('hylle'), baseWFrac: 0.5,
-    // Tre hylleplan, brettede plagg på hvert.
+    id: 'hylle', navn: 'Hylle', sprite: S('hylle'), fotavtrykk: { b: 24, d: 6 },
+    // Tre hylleplan, brettede plagg på hvert. Bredest fotavtrykk, grunn dybde (mot vegg).
     slotRows: [
       { type: 'brett', y: 0.33, xFrom: 0.14, xTo: 0.86, count: 4 },
       { type: 'brett', y: 0.60, xFrom: 0.14, xTo: 0.86, count: 4 },
@@ -78,12 +89,12 @@ export const KLESBUTIKK_FIXTURES: KlesbutikkFixtureDef[] = [
     ],
   },
   {
-    id: 'bord', navn: 'Bord', sprite: S('bord'), baseWFrac: 0.46,
-    // Få eksponeringsplasser på bordplata.
+    id: 'bord', navn: 'Bord', sprite: S('bord'), fotavtrykk: { b: 18, d: 12 },
+    // Få eksponeringsplasser på bordplata. Bredt + dypt (frittstående).
     slotRows: [{ type: 'brett', y: 0.30, xFrom: 0.18, xTo: 0.82, count: 3 }],
   },
   {
-    id: 'bord-podium', navn: 'Podiumbord', sprite: S('bord-podium'), baseWFrac: 0.46,
+    id: 'bord-podium', navn: 'Podiumbord', sprite: S('bord-podium'), fotavtrykk: { b: 18, d: 12 },
     // Podium på toppen (1 blikkfang) + få plasser på bordplata.
     slotRows: [
       { type: 'brett', y: 0.12, xFrom: 0.5, xTo: 0.5, count: 1 },
@@ -91,15 +102,15 @@ export const KLESBUTIKK_FIXTURES: KlesbutikkFixtureDef[] = [
     ],
   },
   {
-    id: 'dukke', navn: 'Dukke (dame)', sprite: S('dukke'), baseWFrac: 0.16,
+    id: 'dukke', navn: 'Dukke (dame)', sprite: S('dukke'), fotavtrykk: { b: 5, d: 5 },
     slotRows: [{ type: 'antrekk', y: 0.42, xFrom: 0.5, xTo: 0.5, count: 1 }],
   },
   {
-    id: 'dukke-mann', navn: 'Dukke (herre)', sprite: S('dukke-mann'), baseWFrac: 0.18,
+    id: 'dukke-mann', navn: 'Dukke (herre)', sprite: S('dukke-mann'), fotavtrykk: { b: 6, d: 5 },
     slotRows: [{ type: 'antrekk', y: 0.40, xFrom: 0.5, xTo: 0.5, count: 1 }],
   },
   {
-    id: 'dukke-barn', navn: 'Dukke (barn)', sprite: S('dukke-barn'), baseWFrac: 0.12,
+    id: 'dukke-barn', navn: 'Dukke (barn)', sprite: S('dukke-barn'), fotavtrykk: { b: 4, d: 4 },
     slotRows: [{ type: 'antrekk', y: 0.46, xFrom: 0.5, xTo: 0.5, count: 1 }],
   },
 ]

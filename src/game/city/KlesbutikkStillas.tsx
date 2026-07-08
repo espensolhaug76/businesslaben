@@ -28,7 +28,6 @@ const INTERIOR_IMG = '/assets/raw/klesbutikk-interior.jpg'
 const FASADE_IMG = '/assets/raw/klesbutikk-fasade.png'
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const writeRect = (t: Rect, r: Rect) => { t[0] = r[0]; t[1] = r[1]; t[2] = r[2]; t[3] = r[3] }
 const SLOT_COLOR: Record<VareplassType, string> = { heng: '#50dcff', brett: '#ffb03c', antrekk: '#f472b6' }
 
@@ -86,9 +85,19 @@ function clampFoot(g: Gulvplan, p: Pt): Fotpunkt {
   return quadPoint(g, clamp(u, 0, 1), clamp(v, 0, 1))
 }
 
-/** Dybde-interpolert skala for et møbel (foran stort → bak lite). */
-function scaleFor(g: Gulvplan, foot: Fotpunkt): number {
-  return lerp(g.scaleFront, g.scaleBack, clamp(invBilinear(foot, g).v, 0, 1))
+/** Gulv-trapesets horisontale bredde ved dybde v, som brøk av scenebildet. */
+function trapWidthFrac(g: Gulvplan, v: number): number {
+  return (quadPoint(g, 1, v).x - quadPoint(g, 0, v).x) / 100
+}
+
+/** SCENE-sprite-bredde (brøk av scenebildet) UTLEDT av møbelets fotavtrykk.b:
+ *  `b` % av gulv-trapesets bredde ved møbelets dybde. ÉN KILDE med plan-ikonet
+ *  (som bruker samme `b`/`d` mot planrektangelet), så de aldri kommer i utakt. */
+function sceneWidthFrac(g: Gulvplan, fixtureId: KlesbutikkFixtureId, foot: Fotpunkt): number {
+  const fa = fixtureDef(fixtureId)?.fotavtrykk
+  if (!fa) return 0
+  const v = clamp(invBilinear(foot, g).v, 0, 1)
+  return (fa.b / 100) * trapWidthFrac(g, v)
 }
 
 // ── Plantegning (ovenfra) ↔ fotpunkt ─────────────────────────────────────────
@@ -103,16 +112,17 @@ function planToFoot(g: Gulvplan, u: number, v: number): Fotpunkt {
   return quadPoint(g, clamp(u, 0, 1), clamp(v, 0, 1))
 }
 
-/** Skjematisk toppikon per møbel (% av planet): bredde/dybde + form/farge. */
-const PLAN_ICON: Record<KlesbutikkFixtureId, { w: number; h: number; round: boolean; color: string }> = {
-  'stativ': { w: 20, h: 5, round: true, color: '#c98a3c' },
-  'stativ-liten': { w: 13, h: 5, round: true, color: '#c98a3c' },
-  'hylle': { w: 17, h: 7, round: false, color: '#8a6a3a' },
-  'bord': { w: 14, h: 9, round: false, color: '#8a6a3a' },
-  'bord-podium': { w: 14, h: 9, round: false, color: '#a07a44' },
-  'dukke': { w: 6, h: 6, round: true, color: '#d16aa8' },
-  'dukke-mann': { w: 6.5, h: 6.5, round: true, color: '#d16aa8' },
-  'dukke-barn': { w: 5, h: 5, round: true, color: '#d16aa8' },
+/** Skjematisk toppikon per møbel — KUN form/farge. Størrelsen (bredde/dybde)
+ *  kommer fra møbelets `fotavtrykk` (samme kilde som scene-bredden). */
+const PLAN_ICON: Record<KlesbutikkFixtureId, { round: boolean; color: string }> = {
+  'stativ': { round: true, color: '#c98a3c' },
+  'stativ-liten': { round: true, color: '#c98a3c' },
+  'hylle': { round: false, color: '#8a6a3a' },
+  'bord': { round: false, color: '#8a6a3a' },
+  'bord-podium': { round: false, color: '#a07a44' },
+  'dukke': { round: true, color: '#d16aa8' },
+  'dukke-mann': { round: true, color: '#d16aa8' },
+  'dukke-barn': { round: true, color: '#d16aa8' },
 }
 
 // plan/scene er tilgjengelig UTEN ?dev=1 (to hovedvisninger av samme layout);
@@ -419,6 +429,17 @@ function PlanView() {
   const itemsRef = useRef(items)
   const [drag, setDrag] = useState<{ kind: 'new'; fixtureId: KlesbutikkFixtureId } | { kind: 'move'; id: string } | null>(null)
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
+  // Dev: fotavtrykk-kalibrator (velg møbeltype, ± på b/d, «Logg»). Muterer
+  // fixtureDef(...).fotavtrykk direkte — endrer BÅDE plan-ikon og scene-bredde.
+  const [calFix, setCalFix] = useState<KlesbutikkFixtureId>('stativ')
+  const [, setCalRev] = useState(0)
+  const calFa = () => fixtureDef(calFix)!.fotavtrykk
+  const calNudge = (db: number, dd: number) => {
+    const fa = calFa()
+    fa.b = +clamp(fa.b + db, 1, 60).toFixed(1); fa.d = +clamp(fa.d + dd, 1, 60).toFixed(1)
+    setCalRev(r => r + 1)
+  }
+  const calLog = () => console.log(`[Fotavtrykk] '${calFix}': { b: ${calFa().b}, d: ${calFa().d} },  ← lim inn i KLESBUTIKK_FIXTURES (klesbutikkFixtures.ts)`)
 
   const commit = (next: typeof items) => { itemsRef.current = next; setItems(next); dispatch({ type: 'SET_KLESBUTIKK_FIXTURES', items: next }) }
   const planUV = (cx: number, cy: number) => {
@@ -477,7 +498,8 @@ function PlanView() {
         {/* Front (bunn) */}
         <div style={{ position: 'absolute', bottom: 3, left: 0, right: 0, textAlign: 'center', color: '#94a3b8', fontSize: 10, pointerEvents: 'none' }}>front (mot kunde / kamera)</div>
 
-        {/* Møbel-toppikoner */}
+        {/* Møbel-toppikoner — størrelsen = møbelets fotavtrykk (samme kilde som
+            scene-bredden), så plan og scene er proporsjonale. */}
         {items.map(it => {
           const ic = PLAN_ICON[it.fixtureId]; const def = fixtureDef(it.fixtureId); if (!ic || !def) return null
           const { px, py } = footToPlan(g, it.fotpunkt)
@@ -488,7 +510,7 @@ function PlanView() {
               onContextMenu={e => { e.preventDefault(); remove(it.id) }}
               title={`${def.navn} — dra = flytt · klikk = speil (↔) · høyreklikk = fjern`}
               style={{
-                position: 'absolute', left: `${px}%`, top: `${py}%`, width: `${ic.w}%`, height: `${ic.h}%`,
+                position: 'absolute', left: `${px}%`, top: `${py}%`, width: `${def.fotavtrykk.b}%`, height: `${def.fotavtrykk.d}%`,
                 transform: `translate(-50%, -50%)${it.vendt ? ' scaleX(-1)' : ''}`, background: ic.color,
                 border: it.vendt ? '1px solid #38bdf8' : '1px solid rgba(0,0,0,0.55)',
                 borderRadius: ic.round ? '50% / 45%' : 3, cursor: moving ? 'grabbing' : 'grab', touchAction: 'none',
@@ -521,6 +543,36 @@ function PlanView() {
           </div>
           <div style={{ fontSize: 10, color: '#64748b', marginTop: 8, lineHeight: 1.4 }}>
             Dra inn på planen · klikk et møbel = speil (↔). Bytt til 🛍 Scene for å style med plagg/dukker.
+          </div>
+        </div>, document.body)}
+
+      {/* Fotavtrykk-kalibrator (?dev=1) — venstre side, kolliderer ikke med paletten */}
+      {IS_DEV_COORDS && createPortal(
+        <div style={{
+          position: 'fixed', top: 56, left: 16, zIndex: 95, width: 190,
+          background: 'rgba(10,14,26,0.95)', border: '1px solid #d16aa855', borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
+        }}>
+          <div style={{ color: '#d16aa8', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>📐 Fotavtrykk</div>
+          <div style={{ color: '#94a3b8', fontSize: 10, lineHeight: 1.4, marginBottom: 8 }}>
+            Velg møbel, juster bredde (b) / dybde (d). Endrer plan-ikon OG scene-bredde samtidig.
+          </div>
+          <select value={calFix} onChange={e => setCalFix(e.target.value as KlesbutikkFixtureId)} style={{
+            width: '100%', marginBottom: 8, background: 'rgba(255,255,255,0.06)', color: '#f1f5f9',
+            border: '1px solid rgba(255,255,255,0.15)', borderRadius: 7, padding: '4px 6px', fontSize: 11, fontFamily: "'Outfit', sans-serif",
+          }}>
+            {KLESBUTIKK_FIXTURES.map(f => <option key={f.id} value={f.id}>{f.navn}</option>)}
+          </select>
+          {([['b', 'bredde'], ['d', 'dybde']] as const).map(([k, lbl]) => (
+            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <span style={{ color: '#94a3b8', fontSize: 11, flex: 1 }}>{lbl} ({k})</span>
+              <button style={miniBtn} onClick={() => calNudge(k === 'b' ? -0.5 : 0, k === 'd' ? -0.5 : 0)}>−</button>
+              <span style={{ color: '#f1f5f9', fontSize: 11, fontFamily: 'monospace', minWidth: 34, textAlign: 'center' }}>{calFa()[k].toFixed(1)}</span>
+              <button style={miniBtn} onClick={() => calNudge(k === 'b' ? 0.5 : 0, k === 'd' ? 0.5 : 0)}>+</button>
+            </div>
+          ))}
+          <button style={{ ...miniBtn, width: '100%', height: 26, fontSize: 11, fontWeight: 800, marginTop: 4 }} onClick={calLog}>Logg → konsoll</button>
+          <div style={{ fontSize: 10, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
+            Plasser samme møbel og se plan/scene proporsjonalt. Lim tallet inn i klesbutikkFixtures.ts.
           </div>
         </div>, document.body)}
 
@@ -733,7 +785,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
       {/* Plasserte møbler (z-sortert på fotpunkt-y) */}
       {sorted.map(it => {
         const def = fixtureDef(it.fixtureId); if (!def) return null
-        const w = def.baseWFrac * scaleFor(g, it.fotpunkt)
+        const w = sceneWidthFrac(g, it.fixtureId, it.fotpunkt)
         // DUKKE-BYTTE: er dukka kledd på (antrekk-slot 0 opptatt av en påkledd
         // dukke)? → erstatt naken dukke-sprite med den påkledde.
         const isDukke = DUKKE_TYPER.includes(it.fixtureId)
@@ -812,7 +864,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
       {newType && ghostFoot && (() => {
         const def = fixtureDef(newType); if (!def) return null
         return <FurnitureSprite fixtureId={newType} foot={ghostFoot}
-          widthFrac={def.baseWFrac * scaleFor(g, ghostFoot)} showSlots={false} opacity={0.6} />
+          widthFrac={sceneWidthFrac(g, newType, ghostFoot)} showSlots={false} opacity={0.6} />
       })()}
 
       {/* Palett (portal) */}
@@ -974,7 +1026,6 @@ function GulvplanTracer({ bump }: { bump: () => void }) {
   }
 
   const { fremV: A, fremH: B, bakV: C, bakH: D } = g.hjørner
-  const previewDef = fixtureDef('dukke')!
   const front = quadPoint(g, 0.5, 0), back = quadPoint(g, 0.5, 1)
 
   return (
@@ -985,9 +1036,9 @@ function GulvplanTracer({ bump }: { bump: () => void }) {
             fill="rgba(255,210,74,0.08)" stroke="#ffd24a" strokeWidth={0.4} />
         </svg>
 
-        {/* Front/bak-skala-preview (dukke) */}
-        <FurnitureSprite fixtureId="dukke" foot={front} widthFrac={previewDef.baseWFrac * g.scaleFront} showSlots={false} opacity={0.85} />
-        <FurnitureSprite fixtureId="dukke" foot={back} widthFrac={previewDef.baseWFrac * g.scaleBack} showSlots={false} opacity={0.85} />
+        {/* Front/bak-skala-preview (dukke) — bredde via fotavtrykk × trapesbredde */}
+        <FurnitureSprite fixtureId="dukke" foot={front} widthFrac={sceneWidthFrac(g, 'dukke', front)} showSlots={false} opacity={0.85} />
+        <FurnitureSprite fixtureId="dukke" foot={back} widthFrac={sceneWidthFrac(g, 'dukke', back)} showSlots={false} opacity={0.85} />
 
         {/* Hjørne-håndtak */}
         {CORNERS.map(({ key, label }) => {
@@ -1047,7 +1098,7 @@ function VeggpunktTracer({ bump }: { bump: () => void }) {
   }
   function addPoint(e: React.PointerEvent) {
     const p = pctAt(e); if (!p) return
-    const vp: Vegghengpunkt = { id: `vh-${uid().slice(0, 4)}`, x: p.x, y: p.y, scale: 0.12 }
+    const vp: Vegghengpunkt = { id: `vh-${uid().slice(0, 4)}`, x: p.x, y: p.y, scale: 0.05 }
     pts.push(vp); setSel(vp.id); bump()
   }
   function startMove(id: string, e: React.PointerEvent) {
@@ -1056,7 +1107,7 @@ function VeggpunktTracer({ bump }: { bump: () => void }) {
     const onUp = () => { window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true) }
     window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
   }
-  const scaleSel = (d: number) => { const vp = pts.find(v => v.id === sel); if (vp) { vp.scale = +clamp(vp.scale + d, 0.03, 0.5).toFixed(3); bump() } }
+  const scaleSel = (d: number) => { const vp = pts.find(v => v.id === sel); if (vp) { vp.scale = +clamp(vp.scale + d, 0.01, 0.4).toFixed(3); bump() } }
   const removePoint = (id: string) => { const i = pts.findIndex(v => v.id === id); if (i >= 0) { pts.splice(i, 1); if (sel === id) setSel(pts[0]?.id ?? null); bump() } }
   const log = () => console.log(`[VeggpunktTracer] lim inn i KLESBUTIKK (industryDefinition.ts):\n  vegghengpunkter: [\n${pts.map(v => `    { id: '${v.id}', x: ${v.x}, y: ${v.y}, scale: ${v.scale} },`).join('\n')}\n  ],`)
 
@@ -1078,7 +1129,8 @@ function VeggpunktTracer({ bump }: { bump: () => void }) {
                 border: `2px solid ${sel === vp.id ? '#22e6a4' : '#f472b6'}`,
                 background: sel === vp.id ? 'rgba(34,230,164,0.4)' : 'rgba(244,114,182,0.35)',
               }}>
-              <span style={{ position: 'absolute', left: 17, top: -2, fontSize: 9, fontFamily: 'monospace', color: '#f9a8d4', background: 'rgba(0,0,0,0.6)', padding: '0 3px', whiteSpace: 'nowrap' }}>{vp.id}</span>
+              {/* id + (for valgt punkt) scale-tallet, rett ved punktet */}
+              <span style={{ position: 'absolute', left: 17, top: -2, fontSize: 9, fontFamily: 'monospace', color: sel === vp.id ? '#6ee7b7' : '#f9a8d4', background: 'rgba(0,0,0,0.6)', padding: '0 3px', whiteSpace: 'nowrap' }}>{vp.id}{sel === vp.id ? ` · ${vp.scale.toFixed(3)}` : ''}</span>
             </div>
           </div>
         ))}
@@ -1095,9 +1147,9 @@ function VeggpunktTracer({ bump }: { bump: () => void }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <span style={{ color: '#94a3b8', fontSize: 11, flex: 1 }}>skala {sel ?? '—'}</span>
-            <button style={miniBtn} onClick={() => scaleSel(-0.01)} disabled={!sel}>−</button>
+            <button style={miniBtn} onClick={() => scaleSel(-0.005)} disabled={!sel}>−</button>
             <span style={{ color: '#f1f5f9', fontSize: 11, fontFamily: 'monospace', minWidth: 40, textAlign: 'center' }}>{(pts.find(v => v.id === sel)?.scale ?? 0).toFixed(3)}</span>
-            <button style={miniBtn} onClick={() => scaleSel(0.01)} disabled={!sel}>+</button>
+            <button style={miniBtn} onClick={() => scaleSel(0.005)} disabled={!sel}>+</button>
           </div>
           <div style={{ color: '#64748b', fontSize: 10, marginBottom: 8 }}>{pts.length} punkt(er)</div>
           <button style={{ ...miniBtn, width: '100%', height: 26, fontSize: 11, fontWeight: 800 }} onClick={log}>Logg array → konsoll</button>

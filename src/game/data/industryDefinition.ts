@@ -109,10 +109,10 @@ export interface GulvPunkt { x: number; y: number }
 
 /** GULVPLANET (perspektivmodell) møbler plasseres på. Et trapes definert av 4
  *  hjørner (i % av scenebildet): fremkant venstre/høyre (nærmest kamera) og
- *  bakkant venstre/høyre (lengst bak). Et møbels fotpunkt klemmes inn i trapeset,
- *  og skalaen interpoleres lineært av dybden: `scaleFront` helt foran (v=0) →
- *  `scaleBack` helt bak (v=1). Skala = multiplikator på møbelets `baseWFrac`
- *  (rendret bredde-brøk = baseWFrac × skala). Kalibreres med ?dev=1-gulvplan-
+ *  bakkant venstre/høyre (lengst bak). Et møbels fotpunkt klemmes inn i trapeset.
+ *  `scaleFront`/`scaleBack` beskriver hvor bredt trapeset er foran (v=0) vs. bak
+ *  (v=1); møbel-sprite-bredden utledes av møbelets `fotavtrykk.b` × trapesbredden
+ *  ved møbelets dybde (se klesbutikkFixtures.ts). Kalibreres med ?dev=1-gulvplan-
  *  traceren i KlesbutikkStillas og låses her. */
 export interface Gulvplan {
   hjørner: {
@@ -293,10 +293,10 @@ export const KLESBUTIKK: IndustryDefinition = {
   // opphengspunkter langs bakveggen. IKKE Espen-kalibrert: klikk/dra/±-skalér med
   // ?dev=1-veggpunkt-traceren i KlesbutikkStillas, «Logg array» og lim inn HIT.
   vegghengpunkter: [
-    { id: 'vh1', x: 30, y: 30, scale: 0.12 },
-    { id: 'vh2', x: 42, y: 30, scale: 0.12 },
-    { id: 'vh3', x: 54, y: 30, scale: 0.12 },
-    { id: 'vh4', x: 66, y: 30, scale: 0.12 },
+    { id: 'vh1', x: 30, y: 30, scale: 0.05 },
+    { id: 'vh2', x: 42, y: 30, scale: 0.05 },
+    { id: 'vh3', x: 54, y: 30, scale: 0.05 },
+    { id: 'vh4', x: 66, y: 30, scale: 0.05 },
   ],
 }
 

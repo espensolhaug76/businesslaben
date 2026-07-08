@@ -459,6 +459,68 @@ riktig. **Punktene er grove defaults — de MÅ kalibreres av deg.**
 
 ---
 
+## FIKSJOBB — Espens Chrome-funn (proporsjonalitet + veggpunkt-tracer)
+
+### FEIL 1 — Plan og scene var IKKE proporsjonale → ÉN KILDE (`fotavtrykk`)
+
+**Problem:** plan-ikonene hadde faste piksel/%-størrelser (`PLAN_ICON.w/h`), mens
+scene-spriten skalerte uavhengig (`baseWFrac × scaleFor`). Layout som så luftig
+ut i planen ble trang i scenen (dukker havnet bak hyller).
+
+**Fix — én sannhet:** nytt felt `fotavtrykk { b, d }` per møbel i
+`klesbutikkFixtures.ts` (`b` = bredde i % av gulvplanets bredde, `d` = dybde i %
+av gulvplanets dybde). `baseWFrac` er **fjernet** (den uavhengige
+størrelseskilden).
+- **PLAN:** ikonet tegnes `b` % bredt / `d` % dypt av planrektangelet (samme
+  form som før — oval/rektangel/sirkel fra `PLAN_ICON`, nå kun form+farge).
+- **SCENE:** sprite-bredden UTLEDES av samme `b`: `sceneWidthFrac = b/100 ×
+  trapWidthFrac(v)`, der `trapWidthFrac(v)` = gulv-trapesets bredde ved møbelets
+  dybde (quad-interpolasjon). Alle scene-render-steder bruker denne (møbler,
+  palett-preview, gulvplan-tracerens dukke-preview).
+- **First-pass fotavtrykk** satt fra sprite-proporsjonene (hylle bredest b=24,
+  bord bredt+dypt 18/12, stativ 20/7, dukker smale 4–6 % bredde). Tunbart.
+- **`?dev=1` fotavtrykk-kalibrator** (📐-panel, venstre side i 📋 Plan): velg
+  møbeltype, ± på `b` og `d`, «Logg → konsoll». Muterer `fixtureDef().fotavtrykk`
+  direkte (mutér-og-logg som de andre tracerne) — endrer BÅDE plan-ikon og
+  scene-bredde samtidig.
+- Overlapp i planen er nå ekte (ikonene er sanne); ingen kollisjonslogikk.
+
+**Verifisert (headless):** plasserte stativ (b=20) og dukke (b=5) på SAMME
+plan-dybde. Plan-ikonbredde leste `20%`/`5%` (== `fotavtrykk.b`). Scene-sprite-
+bredde `13.2%`/`3.3%` — **samme forhold 4.00 i plan og scene** (samme kilde;
+scenen er b × trapesbredden ved dybden). Kalibrator: `+` på bredde flyttet
+stativ-ikonet 20 → 20.5 (og scenen følger, samme verdi). `tsc -b` + `vite build`
+grønt.
+
+### FEIL 2 — Veggpunkt-tracer
+
+**(a) «Kun punkter helt øverst»:** undersøkt empirisk (headless, flere
+viewport-former) — det finnes **ingen y-clamp** i traceren: klikk på 20 / 50 /
+85 / 88 % høyde gir punkter på nøyaktig de y-verdiene, og `elementFromPoint` midt
+på lav vegg treffer klikkflaten (hele scenebildet er klikkbart; scene-boksen er
+alltid ≤ 86vh, aldri klippet). Rotårsaken var **(b)**: default-scale `0.12` ga
+enorme preview-plagg som *visuelt* dekket veggen, så eneste synlig ledige flate
+var stripa øverst.
+
+**(b) Scale + presisjon:**
+- Default-scale `0.12 → 0.05` (både KLESBUTIKK-defaultene `vh1`–`vh4` og nye
+  punkter fra traceren).
+- Finere `±`-steg `0.01 → 0.005`; skala-clamp `0.01–0.4`.
+- Scale-tallet vises nå **ved det valgte punktet** (grønn `id · 0.050`-lapp) i
+  tillegg til panelet.
+- Preview-plagget bruker nøyaktig samme bredde-% og anker (`translate(-50%,-6%)`)
+  som den faktiske vegg-render i `FloorLayer` → speiler render-størrelsen eksakt.
+
+**Verifisert (headless):** klikk på 88 % høyde la et punkt på `y: 88` (lavt på
+veggen); logget array har `scale: 0.05`; scale-lappen viser `0.050` ved valgt
+punkt. Ingen konsollfeil.
+
+**➡️ Til Espen:** kalibrer `fotavtrykk` per møbel via 📐-panelet i 📋 Plan (plasser
+samme møbel, se plan/scene proporsjonalt, «Logg» → lim inn i `klesbutikkFixtures.ts`),
+og finjuster vegghengpunktenes `scale`/posisjon i 📌 Veggpunkt.
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.
