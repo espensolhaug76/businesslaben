@@ -521,6 +521,36 @@ og finjuster vegghengpunktenes `scale`/posisjon i 📌 Veggpunkt.
 
 ---
 
+## RETNINGSSKIFTE — BAKT INTERIØR (kafé-modellen)
+
+Espen har validert: **fri møblering (kompositt) forkastes.** Nytt NB-bilde med
+FERDIG MØBLERT, TOM butikk er scenebildet; elevene styler FASTE, kalibrerte
+vareplasser — som monter-trauene i kafeen.
+
+### DEL 1 — Bildeprep (✦ vekk)
+- Espens råbilde: `public/assets/raw/klesbutikk-interior-mobler-raw.png` (1375×768,
+  **urørt**). ✦-vannmerket nederst-høyre på gulvet fjernet med **rad-interpolasjon**
+  mellom ren gulvflate på hver side (bevarer vertikal lysgradient + horisontal åre,
+  ingen importert skjøt) + dempet åre-støy, fjæret inn. Lagret som nytt scenebilde
+  `klesbutikk-interior-mobler.png`. (Windows `:Zone.Identifier`-cruft fjernet.)
+
+### DEL 2 — Parker fri møblering
+- **Scenebildet** byttet til det bakte bildet (`INTERIOR_IMG`), aspect `1375/768`.
+- **Parkert (fjernet fra UI, koden beholdt DØD)** bak modulflagget
+  `const FRI_MOBLERING = false` — alt gates på det, ingenting slettet:
+  📋 Plan-fanen + `PlanView`, 🪑 møbel-paletten, fotavtrykk-kalibratoren, speiling
+  (`vendt`), møbel-plassering/-flytting i scenen, og gulv-trapes-overlayet (var en
+  plasseringshjelp). Funksjonene kompilerer fortsatt (referert bak `FRI_MOBLERING`
+  → ingen `noUnusedLocals`-feil), så modellen kan gjenopplives om ønskelig.
+- **Faner som består:** 🏬 Fasade · 🛍 Interiør (= scenen). Bak `?dev=1`:
+  🛍 Scene (tilbake fra tracer) · 📐 Gulvplan · 📌 Vareplass · 🧭 Soner.
+- **Klespaletten består** (👕 Plagg & dukker) — elevene styler vareplassene.
+- Verifisert (headless): non-dev viser kun Fasade/Interiør + bakt bilde, ingen
+  møbel-palett/plan/fotavtrykk; dev viser de 4 tracer-knappene. Ingen konsollfeil.
+  `tsc -b` + `vite build` grønt.
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.

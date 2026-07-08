@@ -24,8 +24,17 @@ import ZoneTracer, { type Target, type DrawZone, type Rect } from './ZoneTracer'
 // Gulvplanet og vegghengpunktene bor i KLESBUTIKK (industryDefinition.ts);
 // tracerne muterer + logger.
 
-const INTERIOR_IMG = '/assets/raw/klesbutikk-interior.jpg'
+// BAKT INTERIØR (kafé-modellen): scenebildet er en FERDIG MØBLERT, tom butikk.
+// Elevene styler FASTE, kalibrerte vareplasser (som monter-trauene) — fri
+// møblering er PARKERT (se FRI_MOBLERING). ✦-vannmerket er patchet vekk fra
+// råbildet (…-mobler-raw.png → …-mobler.png).
+const INTERIOR_IMG = '/assets/raw/klesbutikk-interior-mobler.png'
 const FASADE_IMG = '/assets/raw/klesbutikk-fasade.png'
+
+// PARKERT: fri møblering (møbel-palett, plantegning, fotavtrykk-kalibrator,
+// speiling, møbel-plassering/-flytting i scenen). Koden beholdes DØD (ikke
+// slettet) og gates på dette flagget, jf. retningsskiftet til bakt interiør.
+const FRI_MOBLERING = false
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const writeRect = (t: Rect, r: Rect) => { t[0] = r[0]; t[1] = r[1]; t[2] = r[2]; t[3] = r[3] }
@@ -147,8 +156,8 @@ const SCENES: Scene[] = [
     drawZone: { rect: KLESBUTIKK_VINDU, color: '#50dcff', label: 'vindu' },
   },
   {
-    id: 'interior', label: '🛍 Interiør', img: INTERIOR_IMG, aspect: 1024 / 572,
-    hint: 'Dra møbler fra paletten ut på gulvet — de skalerer med dybden. Dra for å flytte, høyreklikk = fjern.',
+    id: 'interior', label: '🛍 Interiør', img: INTERIOR_IMG, aspect: 1375 / 768,
+    hint: 'Dra plagg fra paletten til de faste vareplassene. Høyreklikk = ta av.',
     target: { id: 'butikkvegg', label: 'butikkvegg', get: () => KLESBUTIKK_BUTIKKVEGG, set: r => writeRect(KLESBUTIKK_BUTIKKVEGG, r) },
     drawZone: { rect: KLESBUTIKK_BUTIKKVEGG, color: '#ffa03c', label: 'butikkvegg', surface: true },
   },
@@ -162,12 +171,13 @@ function KlesbutikkStillasInner() {
   const navigate = useNavigate()
   const [sceneId, setSceneId] = useState<Scene['id']>('interior')
   const [imgFailed, setImgFailed] = useState(false)
-  const [devMode, setDevMode] = useState<DevMode>('plan')
+  const [devMode, setDevMode] = useState<DevMode>('scene')
   const [, setRev] = useState(0)
   const bump = () => setRev(r => r + 1)
   const scene = SCENES.find(s => s.id === sceneId)!
-  // Uten dev: kun plan/scene. Dev-tracere faller tilbake til scene uten ?dev=1.
-  const mode: DevMode = IS_DEV_COORDS ? devMode : (devMode === 'plan' ? 'plan' : 'scene')
+  // Bakt interiør: Interiør ER scenen. Uten dev alltid 'scene'; dev-tracere
+  // (gulvplan/veggpunkt/sone) bak ?dev=1. ('plan' er parkert med fri møblering.)
+  const mode: DevMode = IS_DEV_COORDS ? devMode : 'scene'
   const showSlots = IS_DEV_COORDS && mode === 'scene'
 
   return (
@@ -184,25 +194,20 @@ function KlesbutikkStillasInner() {
         {SCENES.map(s => (
           <button key={s.id} onClick={() => { setSceneId(s.id); setImgFailed(false) }} style={tabStyle(s.id === sceneId)}>{s.label}</button>
         ))}
-        <span style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
-          {scene.id === 'interior' && (
-            <>
-              <button onClick={() => setDevMode('plan')} style={tabStyle(mode === 'plan')}>📋 Plan</button>
-              <button onClick={() => setDevMode('scene')} style={tabStyle(mode === 'scene')}>🛍 Scene</button>
-            </>
-          )}
-          {IS_DEV_COORDS && (
-            <>
-              {scene.id === 'interior' && (
-                <>
-                  <button onClick={() => setDevMode('gulvplan')} style={tabStyle(mode === 'gulvplan')}>📐 Gulvplan</button>
-                  <button onClick={() => setDevMode('veggpunkt')} style={tabStyle(mode === 'veggpunkt')}>📌 Veggpunkt</button>
-                </>
-              )}
-              <button onClick={() => setDevMode('sone')} style={tabStyle(mode === 'sone')}>🧭 Soner</button>
-            </>
-          )}
-        </span>
+        {/* Bakt interiør: ingen Plan/Scene-veksling (Interiør = scenen). Dev-
+            tracere bak ?dev=1; 🛍 Scene lar deg gå tilbake fra en tracer. */}
+        {IS_DEV_COORDS && (
+          <span style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
+            {scene.id === 'interior' && (
+              <>
+                <button onClick={() => setDevMode('scene')} style={tabStyle(mode === 'scene')}>🛍 Scene</button>
+                <button onClick={() => setDevMode('gulvplan')} style={tabStyle(mode === 'gulvplan')}>📐 Gulvplan</button>
+                <button onClick={() => setDevMode('veggpunkt')} style={tabStyle(mode === 'veggpunkt')}>📌 Vareplass</button>
+              </>
+            )}
+            <button onClick={() => setDevMode('sone')} style={tabStyle(mode === 'sone')}>🧭 Soner</button>
+          </span>
+        )}
         <span style={{ color: '#64748b', fontSize: 11, marginLeft: 4 }}>
           KLESBUTIKK-stillas{IS_DEV_COORDS ? '' : ' · ?dev=1 for markører/tracer'}
         </span>
@@ -214,9 +219,10 @@ function KlesbutikkStillasInner() {
         borderRadius: 10, padding: '5px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
       }}>← Forsiden</button>
 
-      {scene.id === 'interior' && mode === 'plan' ? (
-        <PlanView />
-      ) : (
+      {/* PARKERT: plantegning (fri møblering). PlanView holdes i live men rendres
+          aldri (FRI_MOBLERING=false). */}
+      {FRI_MOBLERING && mode === 'plan' && <PlanView />}
+      {(
         <div style={{
           position: 'relative', aspectRatio: `${scene.aspect}`,
           width: `min(96vw, calc(86vh * ${scene.aspect}))`, height: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
@@ -260,13 +266,11 @@ function KlesbutikkStillasInner() {
         position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 80,
         background: 'rgba(10,14,26,0.85)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
         padding: '0.4rem 1rem', color: '#cbd5e1', fontSize: 12, whiteSpace: 'nowrap',
-      }}>{scene.id === 'interior' && mode === 'plan'
-        ? '📋 Plantegning (ovenfra): dra inn fra paletten · dra = flytt · klikk = speil (↔) · høyreklikk = fjern. Scene-fanen viser resultatet.'
-        : scene.id === 'interior' && mode === 'gulvplan'
-          ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
-          : scene.id === 'interior' && mode === 'veggpunkt'
-            ? 'Veggpunkt-tracer: klikk = nytt punkt, dra = flytt, ± = scale, «Logg array».'
-            : scene.hint}</div>
+      }}>{scene.id === 'interior' && mode === 'gulvplan'
+        ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
+        : scene.id === 'interior' && mode === 'veggpunkt'
+          ? 'Vareplass-tracer: velg type, klikk = ny plass, dra = flytt, ± = scale, «Logg array».'
+          : scene.hint}</div>
     </div>
   )
 }
@@ -774,16 +778,18 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
 
   return (
     <div ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      {/* Gulv-trapes (kun i redigeringsmodus) */}
-      {interactive && (
+      {/* PARKERT (fri møblering): gulv-trapes-overlay var en møbel-plasserings-
+          hjelp. I bakt interiør styles faste vareplasser, så det tegnes ikke. */}
+      {FRI_MOBLERING && interactive && (
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
           <polygon points={`${A.x},${A.y} ${B.x},${B.y} ${D.x},${D.y} ${C.x},${C.y}`}
             fill="rgba(125,211,252,0.05)" stroke="rgba(125,211,252,0.32)" strokeWidth={0.3} />
         </svg>
       )}
 
-      {/* Plasserte møbler (z-sortert på fotpunkt-y) */}
-      {sorted.map(it => {
+      {/* PARKERT (fri møblering): plasserte møbler i scenen. Møblene er nå BAKT
+          inn i scenebildet — elevene styler faste vareplasser i stedet. */}
+      {FRI_MOBLERING && sorted.map(it => {
         const def = fixtureDef(it.fixtureId); if (!def) return null
         const w = sceneWidthFrac(g, it.fixtureId, it.fotpunkt)
         // DUKKE-BYTTE: er dukka kledd på (antrekk-slot 0 opptatt av en påkledd
@@ -860,15 +866,15 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
         )
       })}
 
-      {/* Preview under palett-drag: på gulvet, dybde-skalert */}
-      {newType && ghostFoot && (() => {
+      {/* PARKERT (fri møblering): preview under møbel-palett-drag */}
+      {FRI_MOBLERING && newType && ghostFoot && (() => {
         const def = fixtureDef(newType); if (!def) return null
         return <FurnitureSprite fixtureId={newType} foot={ghostFoot}
           widthFrac={sceneWidthFrac(g, newType, ghostFoot)} showSlots={false} opacity={0.6} />
       })()}
 
-      {/* Palett (portal) */}
-      {interactive && createPortal(
+      {/* PARKERT (fri møblering): møbel-paletten. Møbler er bakt inn i scenen. */}
+      {FRI_MOBLERING && interactive && createPortal(
         <div style={{
           position: 'fixed', top: 56, right: 16, zIndex: 95, width: 158, maxHeight: '76vh', overflowY: 'auto',
           background: 'rgba(10,14,26,0.94)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12, padding: '10px', fontFamily: "'Outfit', sans-serif",
