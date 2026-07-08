@@ -597,6 +597,37 @@ re-splitt.
 
 **Gjenstår:** Espens Chrome-blikk på et par av kundene (så pushes kode/assets).
 
+## 17. Dev-scenariovelger (?dev=1)
+
+> **Status: bygget + verifisert headless. Kode committet lokalt, IKKE pushet —
+> kode etter validering.** `tsc -b` grønn.
+
+Diskret 🎭-panel i kassevyen (`InteriorView`, kun bak `?dev=1`, z 160 så et åpent
+scenario dekker det). Lister ALLE scenarier gruppert **Kafé (14)** og
+**Klesbutikk (6)** med tittel (pen id) + kundenavn (+ «· service»-merke).
+- **Start = ekte flyt:** klikk dispatcher samme `dev:openSalesScenario`-event som
+  dashbord-dev-knappene → åpner den EKTE `SalesScenarioOverlay`. Scoring,
+  lager-lesing (recommend/sell/stock-commit) og resultatkort er dermed identiske
+  med et planlagt møte (RESOLVE_SALES_SCENARIO). Verifisert: rykte/XP/nivå endres
+  som i ekte spill.
+- **Klokka:** pauser mens overlayet er åpent (`salesOpen`-gaten i GamePage) og
+  fortsetter etterpå (verifisert 09:02 → 09:13 over 3 scenarier).
+- **Poolen røres ikke:** RESOLVE markerer bare et `dayMeetings`-møte som «done»
+  når ett er SPAWNET (⇔ `activeMeetingScenarioId` satt). Dev-start skjer uten
+  spawnet møte ⇒ `meetingIdx = -1` ⇒ planlagte møter er urørt og spawner fortsatt
+  til sine klokkeslett. Ekstra sikring: dev-start er DEAKTIVERT (dimmet + hint)
+  mens en ekte kunde står i scenen. (`meetingsToday`-telleren øker som ved et
+  ekte møte — bevisst «identisk flyt», ikke en pool-endring.)
+- **✓-merking:** spilte scenarier merkes ✓ i lista (kun lokal panel-state).
+- **Klesbutikk (inaktiv):** åpnes for dialog-gjennomlesing; dynamiske steg finner
+  ingen plagg i kafé-sortimentet og bruker «det fører vi ikke»-veien; kunde-
+  spriten faller til silhuett (onError, pkt. 15). Ingen crash.
+
+**Verifisert headless (Playwright, ?dev=1):** 3 scenarier startet fra panelet —
+1 kafé full flyt (Morgenkunden), 1 kafé m/forgrening (Kryssalget → `gjenoppr`),
+1 klesbutikk (Størrelsesrådet) — alle viste resultatkort, dagen fortsatte, ✓ satt,
+0 konsollfeil.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
