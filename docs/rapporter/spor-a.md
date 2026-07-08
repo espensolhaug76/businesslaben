@@ -519,13 +519,61 @@ hele sortimentet + «det fører vi ikke»-valget (ærlig = god når ingen vare
 matcher). **Gjenstår:** Espens spilltest av dialogkvalitet/scoring + endelige
 sprite-assets.
 
+## 15. Låneavdrag i dagssyklusen + sprite-fallback
+
+> **Status: bygget + verifisert headless (unit + full in-game månedsrull med
+> aktivt lån). MOTORENDRING — koden er committet lokalt (f15cd5f, 5348acf), IKKE
+> pushet. Kodepush venter på Espens Chrome-sjekk av månedsoppgjøret.** `tsc -b`
+> grønn etter hver del.
+
+**DEL 1 — låneavdrag (den flaggede TODO-en, nå løst):** Amortiseringslogikken er
+FLYTTET ut av `APPLY_MONTH_RESULT` til én delt, ren kilde
+`economy.amortiserLaan(loans)` → `{ loans, renteSum, avdragSum, betaling }`
+(rente = restgjeld × årsrente/12; avdrag = månedsbetaling − rente, klemt mot
+restgjelda; nedbetalt lån (restgjeld 0) fjernes). BÅDE dagssyklusens månedsrull
+(`START_NEW_DAY`) OG den gamle `APPLY_MONTH_RESULT` kaller nå denne — ingen
+duplisert beregning, ingen dobbel-amortisering. Ingen ny rentemodell (samme
+formel som før).
+- **START_NEW_DAY:** ved månedsrull trekkes `fasteKostnader + amort.betaling` fra
+  kassa; `loans`/`monthlyLoanPayment`/`totalDebt` oppdateres fra `amort.loans`.
+  `economy.manedligeFasteKostnader` er fortsatt ENESTE kilde til FASTE kostnader
+  (lån er en egen kategori).
+- **APPLY_MONTH_RESULT (`?dev=1`):** bruker nå samme helper KUN for å oppdatere
+  restgjelda — selve betalingen trekkes fortsatt via `r.profit` (engine.ts har
+  `monthlyLoanPayment` i kostnadene), så `money` røres ikke der (ingen
+  dobbelttrekk). Begge veier gir samme amortisering én gang per måned.
+- **MonthSettlement:** nye felt `laanRenter` / `laanAvdrag`; `resultat = inntekt
+  − fasteKostnader − renter − avdrag`. Månedsoppgjøret (MonthResultOverlay) viser
+  en egen «LÅNEAVDRAG»-seksjon (renter + avdrag skilt) når det finnes lån.
+- **Kontantstrøm (Økonomi-fanen):** den dempede «TODO»-linja er ERSTATTET av to
+  ekte linjer «Lån — renter» / «Lån — avdrag», nå MED i burn/netto (reell
+  månedlig utbetaling). Nedbetalt lån gir tom split ⇒ 0 (slutter å trekke).
+
+**DEL 2 — sprite-fallback:** kunde-`<img>` i `InteriorView` fikk `onError` +
+en diskret SVG-silhuett (hode/overkropp, `#334155`) som vises i stedet for et
+brukket bilde når en sprite mangler/feiler. `custImgFailed` nullstilles ved hvert
+nye møte (activeMeetingScenarioId-endring), så en gyldig sprite alltid forsøkes
+først. Relevant når de 8 nye kafé-scenariene bytter fra plassholder-sprites til
+endelige filnavn (pkt. 14) — feil/manglende sti gir da silhuett, ikke brukket ikon.
+
+**Verifisert headless:**
+- *Unit (`amortiserLaan`, 100 000 @ 9 %/12 mnd):* rente+avdrag = betaling hver
+  måned, restgjeld amortiseres korrekt, når 0 etter 13 mnd (siste betaling en
+  liten rest), lån fjernes, og påfølgende `betaling = 0` (trekket STOPPER).
+- *Full in-game månedsrull (lån 100 000 @ 12 %/12 mnd, drevet 12 dager):*
+  Månedsoppgjør viser Renter −1 000 + Avdrag −7 885 (= 8 885 betaling); kassa
+  250 000 → 239 115 = −10 885 (faste 2 000 forsikring + betaling 8 885); avdrag >
+  renter tidlig i lånet. 0 konsollfeil.
+- *Sprite-fallback:* med kunde-PNG blokkert spawner møtet og silhuett-`<svg>`
+  vises (ingen brukket `<img>`), 0 konsollfeil.
+
+**Gjenstår:** Espens Chrome-sjekk av månedsoppgjøret (da pushes koden).
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
-- **Låneavdrag i dagssyklusen (TODO):** bevisst UTELATT fra månedstrekket. Et
-  avdrag må også amortisere `loans[].remainingBalance` — den logikken ligger i
-  den urørte `APPLY_MONTH_RESULT`-flyten. Vises som dempet «TODO»-linje i
-  kontantstrømmen når det finnes lån. Kobles inn her SAMMEN med nedskriving av
-  restgjeld.
+- **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
+  ved månedsrull via delt `economy.amortiserLaan`. (Tidligere dempet TODO-linje
+  fjernet.)
 - **To parallelle måneds-mekanikker:** dagssyklusens månedsrull (START_NEW_DAY)
   og den gamle «Simuler måneden» (nå bak `?dev=1`) kan begge avansere måneden.
   Den gamle er skjult, men koden lever — vurder å konvertere PEST til hendelser
