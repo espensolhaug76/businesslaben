@@ -313,6 +313,10 @@ export const KLESBUTIKK: IndustryDefinition = {
     { id: 'brett-3', type: 'brett', x: 53, y: 57, scale: 0.06 },
     { id: 'brett-4', type: 'brett', x: 52, y: 73, scale: 0.10 },
     { id: 'brett-5', type: 'brett', x: 90, y: 52, scale: 0.06 },
+    // Dukke (DEL 4) — 2 bakte DAMEDUKKER: én foran t.v., én t.h. Bunn-ankret ved
+    // føttene, skalert til å dekke den bakte dukka. GROVE — Espen kalibrerer.
+    { id: 'dukke-1', type: 'dukke', x: 40, y: 69, scale: 0.05, dukketype: 'dame' },
+    { id: 'dukke-2', type: 'dukke', x: 81, y: 89, scale: 0.105, dukketype: 'dame' },
   ],
 }
 

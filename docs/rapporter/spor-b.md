@@ -573,6 +573,35 @@ vareplasser — som monter-trauene i kafeen.
   tracer type/dukketype-velger + logg m/type. Ingen konsollfeil. `tsc -b` +
   `vite build` grønt.
 
+### DEL 4 — Dukke-plasser (test) — STATUS: ✅ VIRKER (m/kalibrering)
+- **2 dukke-vareplasser** lagt inn (begge `dukketype: 'dame'` — bildet har to
+  DAMEDUKKER, én foran t.v. og én t.h., verifisert visuelt): `dukke-1` (x40,y69,
+  scale0.05), `dukke-2` (x81,y89,scale0.105).
+- **Snap/rendering:** dra påkledd dame-dukke → snapper til dukke-plass med
+  matchende dukketype (`data-fixture`-filter) → påkledd sprite rendres bunn-ankret
+  ved føttene, `scale` = bredde-brøk. Høyreklikk = **ta av**. Feil dukketype
+  (barn på dame-plass) avvises.
+- **Dekning (ærlig vurdering):** de påkledde dukke-spritene og de BAKTE dukkene
+  deler samme grå mannequin-kropp, så en RIKTIG kalibrert påkledd sprite dekker
+  den bakte helt (og bar grå hud på slanke plagg legger seg grå-på-grå oppå den
+  bakte → skjult). **Det VIRKER — men krever tett kalibrering:** de grove
+  defaultene bommet først (dukke-2 sto for langt til venstre og for lite → den
+  bakte dukka stakk ut ved siden); justert til x81/scale0.105 dekket den rent.
+  Bulkete plagg (frakk) har god margin; slanke/ermeløse (sommerkjole) har mindre,
+  så posisjon/skala må treffe. **Dukke-styling er IKKE parkert** — men Espen MÅ
+  finkalibrere begge dukke-plassene i 📌-traceren (velg dukke-type, dra på plass,
+  skalér til den bakte dukka er helt dekket).
+- Verifisert (headless): begge dukker snappet + rendret som hele påkledde figurer
+  (bakt dukke dekket), dukketype-filter avviser barn på dame-plass, høyreklikk =
+  ta av. Ingen konsollfeil. `tsc -b` + `vite build` grønt.
+
+**➡️ Til Espen (valider + KALIBRER i Chrome, `/dev/klesbutikk?dev=1` → 📌 Vareplass):**
+Alle vareplassene (heng/brett/dukke) er GROVE defaults avlest fra bildet. Velg
+type, dra hver plass dit møbelet/dukka står, skalér, «Logg array» → lim inn i
+`KLESBUTIKK.vareplasser` (industryDefinition.ts). Sjekk i 🛍 Scene at plagg/dukker
+snapper og dekker riktig. Sett dukke-skala sjenerøst så den bakte dukka er helt
+skjult.
+
 ---
 
 ## Verifisering
