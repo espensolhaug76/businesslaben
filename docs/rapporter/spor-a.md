@@ -628,6 +628,66 @@ scenario dekker det). Lister ALLE scenarier gruppert **Kafé (14)** og
 1 klesbutikk (Størrelsesrådet) — alle viste resultatkort, dagen fortsatte, ✓ satt,
 0 konsollfeil.
 
+## 18. Læringslaget — mentor + fagord (kveldsjobb)
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn. Kode/
+> assets committet lokalt, IKKE pushet — kode etter Espens Chrome-validering.**
+> Gjenoppbygging av Unity-designet (GlossaryHelper/ClickableText/EspenDialog) i
+> byspillet, koblet på eksisterende `src/data/glossary.json` (141 begreper).
+
+**DEL 0 — mentor-assets:** `mentor-espen-01/02-raw.png` → rembg (ren alfa, gul
+bakgrunn + ✦-vannmerke fjernet automatisk som bakgrunn), croppet til figuren →
+`mentor/espen-smil.png` (01, smilende) + `mentor/espen-noytral.png` (02, nøytral).
+
+**DEL 1 — `data/glossary.ts` (adapter, ingen duplisering):** typet, indeksert
+oppslag over JSON-en. JSON-en er BLANDET kodet (ekte å/ø/æ + ASCII-translitterasjon
+å=aa/ø=oe/æ=ae). Normalisering skjer PER ORD med en kuratert **unntaksliste** for
+ekte digrafer (noe/noen/naboen/videoer/poeng/fakturaen) og kjente kildefeil
+(rettet), pluss et kategori-visningskart (f.eks. «Okonomi»→«Økonomi», ingen digraf
+å slå på). `byId`, `byTerm` (case-ufølsom), `search`, `filter(category/level)`,
+`categoryLabel`, `CATEGORIES`. Verifisert: alle 141 normalisert uten korrupsjon.
+
+**DEL 2 — `<Fagord id>tekst</Fagord>`:** diskret stiplet understrek; klikk åpner
+et forklaringskort (portal-popover, klemt til viewporten) med term, definisjon,
+formel, **dynamisk eksempel fra elevens egne tall** der mulig (DB/DG på hoved-
+produktet, faste kostnader = elevens faktiske sum, rente = elevens lån — ellers
+fallback til det statiske eksempelet), «⚠️ Vanlig feil» (common_mistake) og
+klikkbare relaterte begreper (bytter term i samme kort). Første bølge markert:
+Økonomi-fanen (Runway→Likviditet, KONTANTSTRØM, Lån-renter, AKTIVE LÅN→Gjeld),
+bankdialogen (Lånebeløp→Gjeld, rentekostnad→Rente), MonthResultOverlay (Faste
+kostnader, Renter, Månedsresultat→Resultat), DayResultOverlay (Svinn),
+Priser-fanen (Innkjøp→Variable kostnader, Margin→Dekningsgrad). Scenariotekstene
+er IKKE rørt (under spilltest).
+- *Flagg:* enkelte spill-termer mangler eksakt begrep i glossary-en (avdrag,
+  nedbetalingstid, tapt salg, utsalgspris) — brukte nærmeste korrekte (lån→Gjeld,
+  runway→Likviditet, margin→Dekningsgrad) eller lot være å markere. Kandidater for
+  nye glossary-oppføringer senere.
+
+**DEL 3 — mentoren (Espen):** hjørnefigur nede th (nøytral i hvile, smil når han
+snakker), kort snakkeboble + lukk. Triggere i tunbar `data/mentorTriggers.ts`
+({ id, betingelse-beskrivelse, melding }) — 7 stk: forste_prising, forste_apning,
+forste_tomt_trau, forste_manedsoppgjor, forste_laan, forste_ko, forste_svinn.
+Selve sjekkene ligger i `Mentor.tsx` (nøklet på id): 6 tilstands-avledede +
+forste_prising via `mentor:signal`-event fra Priser-fanen. Hver trigger fyres
+MAKS ÉN GANG — settet persisteres i **localStorage** (`mentor_fired_v1`), siden
+byspill-state ikke lagres ellers, så én-gangs-logikken overlever reload. ALDRI
+modal; avbryter ALDRI et åpent scenario/overlay — meldinger KØES til ingen
+blokkerende flate er åpen. Klikk på figuren uten melding = åpne ordboken.
+
+**DEL 4 — Ordbok-fane:** ny «📖 Ordbok» i dashbordet — søk (term+definisjon),
+nivåfilter (VG1/VG2), kategorifilter, alfabetisk liste. Hvert begrep er et
+`<Fagord>` → SAMME forklaringskort som ute i flatene.
+
+**Verifisert headless (Playwright):**
+- Fagord: 3 kort åpnet — Kontantstrøm (statisk), **Rente (dynamisk «🧮 DITT
+  EKSEMPEL» med elevens lån-tall)**, og et ordbok-treff. Alle viste term/def/formel.
+- Ordbok: søk «dekningsbidrag» → 141 → 3 treff; klikk på treff åpnet kort.
+- Mentor: 2 meldinger fyrte (forste_apning + forste_prising); forste_prising KØET
+  bak dagsoppgjøret og vist FØRST etter at oppgjøret ble lukket (avbrøt ikke).
+- **Én-gangs over reload:** `localStorage` bevarte `["forste_apning",
+  "forste_prising"]`; etter reload + ny dagåpning RE-fyrte forste_apning IKKE.
+- 0 konsollfeil i alle løp.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
