@@ -447,7 +447,11 @@ function reducer(state: GameState, action: Action): GameState {
         xp: newXp,
         level: newLevel,
         xpToNextLevel: xpToNext,
-        activeMeetingScenarioId: inDay ? null : state.activeMeetingScenarioId,
+        // Møtet/samtalen er over ⇒ ALLTID nulle aktiv-flagget (også for dev-
+        // scenarier utenfor handledag), så ingen kunde-sprite blir stående i
+        // scenen etterpå. Kunden vises uansett kun i åpen butikk (InteriorView
+        // gater på dayPhase).
+        activeMeetingScenarioId: null,
         dayMeetings,
         dayProductStats,
         meetingsToday: inDay ? state.meetingsToday + 1 : state.meetingsToday,
@@ -492,11 +496,19 @@ function reducer(state: GameState, action: Action): GameState {
         costKr: totalCost,
       }
 
+      // Slå sammen duplikatlinjer: samme vare med samme leveringsdag blir ÉN
+      // linje med summert antall/kostnad (visning + data), i stedet for flere
+      // like rader underveis.
+      const mergeIdx = state.incomingOrders.findIndex(o => o.productId === order.productId && o.ankomstDag === order.ankomstDag)
+      const incomingOrders = mergeIdx >= 0
+        ? state.incomingOrders.map((o, i) => i === mergeIdx ? { ...o, qty: o.qty + order.qty, costKr: o.costKr + order.costKr } : o)
+        : [...state.incomingOrders, order]
+
       return {
         ...state,
         money: state.money - totalCost,
         products,
-        incomingOrders: [...state.incomingOrders, order],
+        incomingOrders,
         p1_complete: true,
       }
     }
@@ -849,26 +861,11 @@ function reducer(state: GameState, action: Action): GameState {
       // ikke tilby dette utenom 'stengt', se InteriorView).
       if (state.dayPhase !== 'stengt') return state
 
-      // Innkjøp/levering (docs/INNKJOP_LEVERING.md): ankomne bestillinger
-      // (ankomstDag <= dagens nummer) legges på lager FØR dagen åpner; resten
-      // blir stående underveis. deliveryLines driver morgenmeldingen.
-      const arrived = state.incomingOrders.filter(o => o.ankomstDag <= state.dayNumber)
-      const stillPending = state.incomingOrders.filter(o => o.ankomstDag > state.dayNumber)
-
-      let products = state.products
-      const deliveryLines: DeliveryNote['lines'] = []
-      if (arrived.length > 0) {
-        const addByProduct = new Map<string, number>()
-        for (const o of arrived) addByProduct.set(o.productId, (addByProduct.get(o.productId) ?? 0) + o.qty)
-        products = state.products.map(p => {
-          const add = addByProduct.get(p.id) ?? 0
-          return add > 0 ? { ...p, stock: p.stock + add } : p
-        })
-        for (const [productId, qty] of addByProduct) {
-          const name = state.products.find(p => p.id === productId)?.name ?? productId
-          deliveryLines.push({ name, qty })
-        }
-      }
+      // Innkjøp/levering (docs/INNKJOP_LEVERING.md): varene ankommer nå ved
+      // DAGSTART (START_NEW_DAY) — lageret er allerede fylt FØR åpning, så
+      // eleven kan stelle disk/vindu med de nye varene og SÅ åpne. Her åpner vi
+      // bare butikken; lager/incomingOrders/lastDelivery røres ikke.
+      const products = state.products
 
       // BAKGRUNNSSALG (snapshot ved OPEN_DAY): dagens passive kundestrøm
       // beregnes NÅ og DRYPPES løpende per klokke-tick (se TICK).
@@ -894,8 +891,6 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         products,
-        incomingOrders: stillPending,
-        lastDelivery: deliveryLines.length > 0 ? { dayNumber: state.dayNumber, lines: deliveryLines } : null,
         shopOpen: true,
         dayPhase: 'åpen',
         meetingsToday: 0,
@@ -1086,6 +1081,28 @@ function reducer(state: GameState, action: Action): GameState {
 
       const nextDayNumber = state.dayNumber + 1
       const rollsMonth = nextDayNumber > DAY_CONFIG.daysPerMonth
+      const newDayNumber = rollsMonth ? 1 : nextDayNumber
+
+      // LEVERING VED DAGSTART (docs/INNKJOP_LEVERING.md): bestillinger med
+      // ankomstDag <= den nye dagen legges på lager NÅ — FØR åpning — så eleven
+      // kan stelle disken med de nye varene og så åpne. deliveryLines driver
+      // «Ferske varer klare»-banneret (lastDelivery) i interiørscenen.
+      const arrived = state.incomingOrders.filter(o => o.ankomstDag <= newDayNumber)
+      const stillPending = state.incomingOrders.filter(o => o.ankomstDag > newDayNumber)
+      let deliveredProducts = state.products
+      const deliveryLines: DeliveryNote['lines'] = []
+      if (arrived.length > 0) {
+        const addByProduct = new Map<string, number>()
+        for (const o of arrived) addByProduct.set(o.productId, (addByProduct.get(o.productId) ?? 0) + o.qty)
+        deliveredProducts = state.products.map(p => {
+          const add = addByProduct.get(p.id) ?? 0
+          return add > 0 ? { ...p, stock: p.stock + add } : p
+        })
+        for (const [productId, qty] of addByProduct) {
+          const name = state.products.find(p => p.id === productId)?.name ?? productId
+          deliveryLines.push({ name, qty })
+        }
+      }
       // Samme envelope-formel som APPLY_MONTH_RESULT (nextMonth/isYearEnd) —
       // gjenbrukt ARITMETIKK, ikke selve handlingen. PEST-hendelsene/måneds-
       // rapport-fasen (APPLY_MONTH_RESULT) er en egen, urørt flyt.
@@ -1129,14 +1146,17 @@ function reducer(state: GameState, action: Action): GameState {
         loans,
         monthlyLoanPayment,
         totalDebt,
-        dayNumber: rollsMonth ? 1 : nextDayNumber,
+        // LEVERING VED DAGSTART: lager fylt + «Ferske varer klare»-pille (eller
+        // null hvis ingenting ankom denne morgenen).
+        products: deliveredProducts,
+        incomingOrders: stillPending,
+        lastDelivery: deliveryLines.length > 0 ? { dayNumber: newDayNumber, lines: deliveryLines } : null,
+        dayNumber: newDayNumber,
         currentMonth: rollsMonth ? (isYearEnd ? 1 : nextMonth) : state.currentMonth,
         currentYear: rollsMonth && isYearEnd ? state.currentYear + 1 : state.currentYear,
         dayPhase: 'stengt',
         meetingsToday: 0,
         lastDayResult: null,
-        // Rydd bort en evt. gammel «Varer ankommet»-pille før neste morgen.
-        lastDelivery: null,
         lastMonthSettlement: settlement,
         // Nullstill klokke/møter/ticker/produkt-stats for neste dag.
         dayMinute: 0,
