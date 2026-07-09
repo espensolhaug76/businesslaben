@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG } from '../../data/districts'
 import { GameProvider, useGame } from '../GameContext'
-import { KLESBUTIKK, type Gulvplan, type Vareplass, type PlassType, type PlassDukketype } from '../data/industryDefinition'
+import { KLESBUTIKK, type Gulvplan, type Vareplass, type PlassType, type PlassDukketype, type HengVariant } from '../data/industryDefinition'
 import { KLESBUTIKK_FIXTURES, fixtureDef, vareplasser, kapasitet, type VareplassType } from '../data/klesbutikkFixtures'
-import { KLESBUTIKK_PLAGG, plaggById, spriteFor, baseFit, NULL_FIT, type Plagg, type DukkeType } from '../data/klesbutikkPlagg'
+import { KLESBUTIKK_PLAGG, plaggById, spriteFor, baseFit, NULL_FIT, plaggStøtterHengVariant, type Plagg, type DukkeType } from '../data/klesbutikkPlagg'
 import { KLESBUTIKK_DUKKER, dukkeById, FIXTURE_FOR_DUKKETYPE, type Dukketype } from '../data/klesbutikkDukker'
 import type { KlesbutikkFixtureId, Fotpunkt, KlesbutikkPlaggItem, ElevFit } from '../types'
 import { IS_DEV_COORDS } from './DevCoordHelper'
@@ -37,6 +37,18 @@ const writeRect = (t: Rect, r: Rect) => { t[0] = r[0]; t[1] = r[1]; t[2] = r[2];
 const SLOT_COLOR: Record<VareplassType, string> = { heng: '#50dcff', brett: '#ffb03c', antrekk: '#f472b6' }
 // Farge per VAREPLASS-type (bakt interiør) — brukt av tracer + dev-markører.
 const PLASS_COLOR: Record<PlassType, string> = { heng: '#50dcff', brett: '#ffb03c', dukke: '#f472b6' }
+const PROFIL_COLOR = '#c084fc'   // lilla: profil-heng-plasser (egen merking i traceren)
+
+/** Anker + valgfri rot/skew for et snappet element på en vareplass. Bunn-ankret
+ *  (brett/dukke) pivoterer i bunn; heng pivoterer i senter. ÉN kodevei brukt av
+ *  både scene-render og tracer-preview. */
+function plassTransform(vp: { type: PlassType; rot?: number; skewX?: number; skewY?: number }): { transform: string; transformOrigin: string } {
+  const bunn = vp.type !== 'heng'
+  const anchor = bunn ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)'
+  const rot = vp.rot ?? 0, sx = vp.skewX ?? 0, sy = vp.skewY ?? 0
+  const t = `${anchor}${rot ? ` rotate(${rot}deg)` : ''}${sx ? ` skewX(${sx}deg)` : ''}${sy ? ` skewY(${sy}deg)` : ''}`
+  return { transform: t, transformOrigin: bunn ? '50% 100%' : '50% 50%' }
+}
 
 // Antrekk-passform: skulder-ankret over dukka.
 const ANTREKK_SHOULDER_Y = 0.13   // grunnlinje topp (skulderlinje) i dukke-boksen
@@ -604,7 +616,8 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   const plaggRef = useRef(plaggItems)
   // `id` = plaggId (heng/brett) ELLER påkledd-dukke-id (antrekk-bytte).
   // `fixtureFilter` (kun dukke-bytte) begrenser antrekk-plasser til matchende dukketype.
-  const [dragPlagg, setDragPlagg] = useState<{ id: string; type: VareplassType; sprite: string; fixtureFilter?: KlesbutikkFixtureId } | null>(null)
+  // `hengVarianter` (kun heng) = variantene plagget støtter → front/profil-plass-filter.
+  const [dragPlagg, setDragPlagg] = useState<{ id: string; type: VareplassType; sprite: string; fixtureFilter?: KlesbutikkFixtureId; hengVarianter?: HengVariant[] } | null>(null)
   const [plaggGhost, setPlaggGhost] = useState<{ x: number; y: number } | null>(null)
   const [targetPlassId, setTargetPlassId] = useState<string | null>(null)
   const commitPlagg = (next: typeof plaggItems) => { plaggRef.current = next; setPlaggItems(next); dispatch({ type: 'SET_KLESBUTIKK_PLAGG', items: next }) }
@@ -671,12 +684,17 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
 
   // Nærmeste LEDIGE, kompatible vareplass til (cx,cy) — leser slot-ankrene
   // (data-plass) fra DOM-en, så vi slipper sprite-bildeforhold-matematikk.
-  function nearestSlot(type: VareplassType, cx: number, cy: number, fixtureFilter?: KlesbutikkFixtureId): string | null {
+  function nearestSlot(type: VareplassType, cx: number, cy: number, fixtureFilter?: KlesbutikkFixtureId, hengVarianter?: HengVariant[]): string | null {
     const r = overlayRef.current?.getBoundingClientRect(); if (!r) return null
     let best: string | null = null, bestD = Infinity
     document.querySelectorAll<HTMLElement>('[data-plass]').forEach(el => {
       if (el.dataset.type !== type || el.dataset.free !== '1') return
       if (fixtureFilter && el.dataset.fixture !== fixtureFilter) return
+      // Heng: front/profil-plass tar kun plagg som støtter plassens variant.
+      if (type === 'heng') {
+        const v = (el.dataset.variant ?? 'front') as HengVariant
+        if (!hengVarianter || !hengVarianter.includes(v)) return
+      }
       const b = el.getBoundingClientRect(); const sx = b.left + b.width / 2, sy = b.top + b.height / 2
       const d = Math.hypot(cx - sx, cy - sy)
       if (d < bestD) { bestD = d; best = el.dataset.plass ?? null }
@@ -685,16 +703,16 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   }
 
   // Felles drag → snap (plagg ELLER påkledd dukke). `id` lagres i plaggId-feltet.
-  function beginSnapDrag(id: string, type: VareplassType, sprite: string, e: React.PointerEvent, fixtureFilter?: KlesbutikkFixtureId) {
+  function beginSnapDrag(id: string, type: VareplassType, sprite: string, e: React.PointerEvent, fixtureFilter?: KlesbutikkFixtureId, hengVarianter?: HengVariant[]) {
     e.preventDefault()
-    setDragPlagg({ id, type, sprite, fixtureFilter }); setPlaggGhost({ x: e.clientX, y: e.clientY }); setTargetPlassId(null)
+    setDragPlagg({ id, type, sprite, fixtureFilter, hengVarianter }); setPlaggGhost({ x: e.clientX, y: e.clientY }); setTargetPlassId(null)
     const onMove = (ev: PointerEvent) => {
       setPlaggGhost({ x: ev.clientX, y: ev.clientY })
-      setTargetPlassId(nearestSlot(type, ev.clientX, ev.clientY, fixtureFilter))
+      setTargetPlassId(nearestSlot(type, ev.clientX, ev.clientY, fixtureFilter, hengVarianter))
     }
     const onUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true)
-      const target = nearestSlot(type, ev.clientX, ev.clientY, fixtureFilter)
+      const target = nearestSlot(type, ev.clientX, ev.clientY, fixtureFilter, hengVarianter)
       setDragPlagg(null); setPlaggGhost(null); setTargetPlassId(null)
       if (target) commitPlagg([...plaggRef.current.filter(pi => pi.plassId !== target), { plassId: target, plaggId: id }])
     }
@@ -703,7 +721,11 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   function startPlaggDrag(plaggId: string, e: React.PointerEvent) {
     const p = plaggById(plaggId); if (!p) return
     const sprite = p.spriteHengFront ?? p.spriteBrett ?? p.spriteAntrekk ?? ''
-    beginSnapDrag(plaggId, plaggType(p), sprite, e)
+    // Heng: hvilke varianter (front/profil) plagget støtter → plass-filter.
+    const hengVarianter = plaggType(p) === 'heng'
+      ? (['front', 'profil'] as HengVariant[]).filter(v => plaggStøtterHengVariant(p, v))
+      : undefined
+    beginSnapDrag(plaggId, plaggType(p), sprite, e, undefined, hengVarianter)
   }
   function startDukkeDrag(dukkeId: string, e: React.PointerEvent) {
     const dk = dukkeById(dukkeId); if (!dk) return
@@ -817,30 +839,34 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
         const free = !item
         const snapType: VareplassType = vp.type === 'dukke' ? 'antrekk' : vp.type
         const dataFixture = vp.type === 'dukke' ? FIXTURE_FOR_DUKKETYPE[vp.dukketype ?? 'dame'] : 'plass'
+        const plassVar: HengVariant = vp.variant ?? 'front'   // kun relevant for heng
         // Hva rendres når plassen er opptatt, og hvordan ankres det?
         let sprite: string | undefined, navn = ''
-        const bunnAnkret = vp.type !== 'heng'   // heng henger fra stanga (topp), ellers står/ligger
         if (item) {
           if (vp.type === 'dukke') { const dk = dukkeById(item.plaggId); sprite = dk?.sprite; navn = dk?.navn ?? '' }
-          else { const p = plaggById(item.plaggId); if (p) { sprite = spriteFor(p, snapType, vp.type === 'heng' ? 'front' : undefined); navn = p.navn } }
+          else { const p = plaggById(item.plaggId); if (p) { sprite = spriteFor(p, snapType, vp.type === 'heng' ? plassVar : undefined); navn = p.navn } }
         }
         const compat = !!dragPlagg && dragPlagg.type === snapType && free
           && (vp.type !== 'dukke' || dragPlagg.fixtureFilter === dataFixture)
+          && (vp.type !== 'heng' || !!dragPlagg.hengVarianter?.includes(plassVar))
         const isTarget = targetPlassId === vp.id
-        const col = PLASS_COLOR[vp.type]
+        const erProfil = vp.type === 'heng' && plassVar === 'profil'
+        const markCol = erProfil ? PROFIL_COLOR : PLASS_COLOR[vp.type]
+        const xf = plassTransform(vp)
         return (
           <div key={vp.id}>
-            {/* Snap-anker */}
+            {/* Snap-anker (data-variant kun heng: front/profil-plass-filter) */}
             <div data-plass={vp.id} data-type={snapType} data-fixture={dataFixture} data-free={free ? '1' : '0'}
+              data-variant={vp.type === 'heng' ? plassVar : undefined}
               style={{ position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, width: 1, height: 1, pointerEvents: 'none' }} />
-            {/* Snappet element */}
+            {/* Snappet element (m/valgfri rot/skew) */}
             {sprite && (
               <img src={sprite} alt={navn} draggable={false}
                 onContextMenu={interactive ? (e => { e.preventDefault(); e.stopPropagation(); removePlassPlagg(vp.id) }) : undefined}
                 title={interactive ? `${navn} — høyreklikk for å ${vp.type === 'dukke' ? 'ta av' : 'fjerne'}` : navn}
                 style={{
                   position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, width: `${vp.scale * 100}%`, height: 'auto',
-                  transform: bunnAnkret ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)',
+                  transform: xf.transform, transformOrigin: xf.transformOrigin,
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
                   pointerEvents: interactive ? 'auto' : 'none', cursor: interactive ? 'context-menu' : 'default', touchAction: 'none',
                   zIndex: Math.round(vp.y * 10),
@@ -856,12 +882,12 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
                 boxShadow: isTarget ? '0 0 10px rgba(34,230,164,0.7)' : 'none', pointerEvents: 'none',
               }} />
             )}
-            {/* Dev-markør (farge per type) */}
+            {/* Dev-markør (farge per type; profil-heng = lilla firkant) */}
             {showSlots && free && (
-              <div title={`${vp.type} ${vp.id}`} style={{
+              <div title={`${vp.type}${erProfil ? '·profil' : ''} ${vp.id}`} style={{
                 position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`,
-                width: 9, height: 9, transform: 'translate(-50%, -50%)', borderRadius: '50%',
-                border: `1.5px solid ${col}`, background: `${col}55`, pointerEvents: 'none',
+                width: 9, height: 9, transform: 'translate(-50%, -50%)', borderRadius: erProfil ? 2 : '50%',
+                border: `1.5px solid ${markCol}`, background: `${markCol}55`, pointerEvents: 'none',
               }} />
             )}
           </div>
@@ -1115,9 +1141,20 @@ function saveVareplassDraft() {
   } catch { /* korrupt utkast — behold kildeverdiene */ }
 })()
 
-// Én kodevei for array-teksten (både Logg og Kopier bruker denne).
+// Én kodevei for array-teksten (både Logg og Kopier bruker denne). Valgfrie
+// felt (dukketype/variant/rot/skew) tas kun med når de er satt / ≠ 0.
 function vareplasserArrayText(pts: Vareplass[]): string {
-  return `vareplasser: [\n${pts.map(v => `    { id: '${v.id}', type: '${v.type}', x: ${v.x}, y: ${v.y}, scale: ${v.scale}${v.dukketype ? `, dukketype: '${v.dukketype}'` : ''} },`).join('\n')}\n  ],`
+  const rows = pts.map(v => {
+    const extra = [
+      v.dukketype ? `dukketype: '${v.dukketype}'` : '',
+      v.variant === 'profil' ? `variant: 'profil'` : '',
+      v.rot ? `rot: ${v.rot}` : '',
+      v.skewX ? `skewX: ${v.skewX}` : '',
+      v.skewY ? `skewY: ${v.skewY}` : '',
+    ].filter(Boolean).join(', ')
+    return `    { id: '${v.id}', type: '${v.type}', x: ${v.x}, y: ${v.y}, scale: ${v.scale}${extra ? ', ' + extra : ''} },`
+  })
+  return `vareplasser: [\n${rows.join('\n')}\n  ],`
 }
 
 function VareplassTracer({ bump }: { bump: () => void }) {
@@ -1126,6 +1163,7 @@ function VareplassTracer({ bump }: { bump: () => void }) {
   const [sel, setSel] = useState<string | null>(pts[0]?.id ?? null)
   const [newType, setNewType] = useState<PlassType>('heng')
   const [newDukke, setNewDukke] = useState<PlassDukketype>('dame')
+  const [newHengVar, setNewHengVar] = useState<HengVariant>('front')
   const [visPreviews, setVisPreviews] = useState(true)
   const [copied, setCopied] = useState(false)
   // Representative preview-sprites per type (bredde = scale, samme anker som render).
@@ -1143,7 +1181,12 @@ function VareplassTracer({ bump }: { bump: () => void }) {
   }
   function addPoint(e: React.PointerEvent) {
     const p = pctAt(e); if (!p) return
-    const vp: Vareplass = { id: `${newType}-${uid().slice(0, 4)}`, type: newType, x: p.x, y: p.y, scale: DEFAULT_SCALE[newType], ...(newType === 'dukke' ? { dukketype: newDukke } : {}) }
+    const vp: Vareplass = {
+      id: `${newType}${newType === 'heng' && newHengVar === 'profil' ? '-p' : ''}-${uid().slice(0, 4)}`,
+      type: newType, x: p.x, y: p.y, scale: DEFAULT_SCALE[newType],
+      ...(newType === 'dukke' ? { dukketype: newDukke } : {}),
+      ...(newType === 'heng' && newHengVar === 'profil' ? { variant: 'profil' as HengVariant } : {}),
+    }
     pts.push(vp); setSel(vp.id); changed()
   }
   function startMove(id: string, e: React.PointerEvent) {
@@ -1153,6 +1196,11 @@ function VareplassTracer({ bump }: { bump: () => void }) {
     window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
   }
   const scaleSel = (d: number) => { const vp = pts.find(v => v.id === sel); if (vp) { vp.scale = +clamp(vp.scale + d, 0.01, 0.5).toFixed(3); changed() } }
+  // Rotasjon/skew (grader) på valgt plass — 0 lagres «tomt» (utelates i logg).
+  const nudgeXform = (field: 'rot' | 'skewX' | 'skewY', d: number) => {
+    const vp = pts.find(v => v.id === sel); if (!vp) return
+    vp[field] = +clamp((vp[field] ?? 0) + d, -45, 45).toFixed(1); changed()
+  }
   const removePoint = (id: string) => { const i = pts.findIndex(v => v.id === id); if (i >= 0) { pts.splice(i, 1); if (sel === id) setSel(pts[0]?.id ?? null); changed() } }
   const clearDraft = () => {
     try { localStorage.removeItem(VAREPLASS_LS_KEY) } catch { /* ignore */ }
@@ -1172,26 +1220,27 @@ function VareplassTracer({ bump }: { bump: () => void }) {
       <div ref={overlayRef} onPointerDown={addPoint} style={{ position: 'absolute', inset: 0, zIndex: 45, touchAction: 'none', cursor: 'crosshair' }}>
         {pts.map(vp => {
           const prev = PREVIEW[vp.type]
-          const bunn = vp.type !== 'heng'
-          const col = PLASS_COLOR[vp.type]
+          const erProfil = vp.type === 'heng' && (vp.variant ?? 'front') === 'profil'
+          const col = erProfil ? PROFIL_COLOR : PLASS_COLOR[vp.type]
           const valgt = sel === vp.id
+          const xf = plassTransform(vp)   // anker + rot/skew, som scene-renderet
           return (
             <div key={vp.id}>
               {visPreviews && prev && (
                 <img src={prev} alt="" draggable={false} style={{
                   position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, width: `${vp.scale * 100}%`, height: 'auto',
-                  transform: bunn ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)', opacity: 0.4, pointerEvents: 'none',
+                  transform: xf.transform, transformOrigin: xf.transformOrigin, opacity: 0.4, pointerEvents: 'none',
                 }} />
               )}
               <div onPointerDown={e => startMove(vp.id, e)} onContextMenu={e => { e.preventDefault(); removePoint(vp.id) }}
                 title={`${vp.id} — dra = flytt, høyreklikk = fjern`} style={{
                   position: 'absolute', left: `${vp.x}%`, top: `${vp.y}%`, transform: 'translate(-50%, -50%)',
-                  width: 15, height: 15, borderRadius: '50%', cursor: 'grab',
+                  width: 15, height: 15, borderRadius: erProfil ? 3 : '50%', cursor: 'grab',
                   border: `2px solid ${valgt ? '#ffffff' : col}`, background: `${col}88`,
                 }}>
                 {/* Etikett KUN på valgt punkt (mindre rot ved mange plasser) */}
                 {valgt && (
-                  <span style={{ position: 'absolute', left: 17, top: -2, fontSize: 9, fontFamily: 'monospace', color: col, background: 'rgba(0,0,0,0.65)', padding: '0 3px', whiteSpace: 'nowrap' }}>{vp.id} · {vp.scale.toFixed(3)}</span>
+                  <span style={{ position: 'absolute', left: 17, top: -2, fontSize: 9, fontFamily: 'monospace', color: col, background: 'rgba(0,0,0,0.65)', padding: '0 3px', whiteSpace: 'nowrap' }}>{vp.id}{erProfil ? ' ·profil' : ''} · {vp.scale.toFixed(3)}</span>
                 )}
               </div>
             </div>
@@ -1231,6 +1280,20 @@ function VareplassTracer({ bump }: { bump: () => void }) {
               ))}
             </div>
           )}
+          {/* Front/profil-velger (kun for heng) — profil = lilla merking */}
+          {newType === 'heng' && (
+            <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+              {(['front', 'profil'] as HengVariant[]).map(v => {
+                const c = v === 'profil' ? PROFIL_COLOR : PLASS_COLOR.heng
+                return (
+                  <button key={v} onClick={() => setNewHengVar(v)} style={{
+                    flex: 1, height: 22, fontSize: 10, fontWeight: 700, cursor: 'pointer', borderRadius: 6, fontFamily: "'Outfit', sans-serif", textTransform: 'capitalize',
+                    color: newHengVar === v ? '#0a0e1a' : c, background: newHengVar === v ? c : `${c}22`, border: `1px solid ${c}88`,
+                  }}>{v}</button>
+                )
+              })}
+            </div>
+          )}
           {/* Skala for valgt plass */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <span style={{ color: '#94a3b8', fontSize: 11, flex: 1 }}>skala {sel ?? '—'}{selVp ? ` (${selVp.type})` : ''}</span>
@@ -1238,6 +1301,15 @@ function VareplassTracer({ bump }: { bump: () => void }) {
             <span style={{ color: '#f1f5f9', fontSize: 11, fontFamily: 'monospace', minWidth: 40, textAlign: 'center' }}>{(selVp?.scale ?? 0).toFixed(3)}</span>
             <button style={miniBtn} onClick={() => scaleSel(0.005)} disabled={!sel}>+</button>
           </div>
+          {/* Rotasjon + skew for valgt plass (0.5°-steg) */}
+          {([['rot', 'rot°'], ['skewX', 'skewX°'], ['skewY', 'skewY°']] as const).map(([f, lbl]) => (
+            <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <span style={{ color: '#94a3b8', fontSize: 11, flex: 1 }}>{lbl}</span>
+              <button style={miniBtn} onClick={() => nudgeXform(f, -0.5)} disabled={!sel}>−</button>
+              <span style={{ color: '#f1f5f9', fontSize: 11, fontFamily: 'monospace', minWidth: 40, textAlign: 'center' }}>{(selVp?.[f] ?? 0).toFixed(1)}</span>
+              <button style={miniBtn} onClick={() => nudgeXform(f, 0.5)} disabled={!sel}>+</button>
+            </div>
+          ))}
           {/* Vis-previews-toggle + antall */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: 10, marginBottom: 8, cursor: 'pointer' }}>
             <input type="checkbox" checked={visPreviews} onChange={e => setVisPreviews(e.target.checked)} />

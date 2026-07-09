@@ -101,3 +101,25 @@ export function passerType(p: Plagg, type: VareplassType): boolean {
   if (type === 'brett') return !!p.spriteBrett
   return !!p.spriteAntrekk
 }
+
+// ── HENG-VARIANT: front vs profil ────────────────────────────────────────────
+// NB-PILOT: profil-heng-SPRITENE (`spriteHengProfil`) finnes IKKE ennå — feltet
+// er klargjort, men tomt for alle plagg. `spriteFor(..,'profil')` faller tilbake
+// til front-spriten som MIDLERTIDIG DEV-PLACEHOLDER (så profil-plasser rendrer/
+// forhåndsvises uten manglende bilde). Snap-KAPASITETEN under bruker derimot den
+// EKTE profil-spriten (ikke placeholder), så profil-plasser avviser front-plagg
+// til ekte profil-sprites lander.
+//
+// DEV-PLACEHOLDER-BRYTER: sett til true for å la profil-plasser midlertidig ta
+// imot vanlige heng-plagg (rendret med front-spriten) — nyttig for å pilotere
+// profil-flyten visuelt FØR ekte sprites finnes. Default false = ekte oppførsel
+// (profil-plass tom til profil-sprite finnes; front-plagg avvises).
+export const PROFIL_PLACEHOLDER = false
+
+/** Støtter plagget en gitt heng-variant? 'front' = har front-sprite; 'profil' =
+ *  har ekte profil-sprite (eller placeholder-bryteren er på). Brukes av snap-
+ *  filteret så profil-plasser kun tar profil-plagg og front-plasser kun front. */
+export function plaggStøtterHengVariant(p: Plagg, variant: 'front' | 'profil'): boolean {
+  if (variant === 'front') return !!p.spriteHengFront
+  return !!p.spriteHengProfil || (PROFIL_PLACEHOLDER && !!p.spriteHengFront)
+}

@@ -629,6 +629,37 @@ Verifisert (headless): 18 plasser lastet (11 heng + 5 brett + 2 dukke); add →
 previews på 0.4 + toggle skjuler dem; kun 1 etikett synlig (valgt); 0 trapes i
 Scene. `tsc -b` + `vite build` grønt.
 
+### Vareplass-rotasjon/skew + profil-heng-plasser (dagjobb)
+
+**DEL 1 — transform per plass:** `Vareplass` fikk valgfrie `rot?`, `skewX?`,
+`skewY?` (grader, default 0). Rendres på det snappede plagget via `plassTransform()`
+(én kodevei for scene-render + tracer-preview): `transform: translate(anker)
+rotate(rot) skewX skewY`, med `transform-origin` = **bunn** for brett/dukke,
+**senter** for heng. Tracer: for VALGT punkt ±-kontroller for rot/skewX/skewY
+(0.5°-steg, viser verdiene). Logg/Kopier tar med feltene **kun når ≠ 0**;
+localStorage-utkastet dekker dem. Typisk bruk: vri/skjære brett-stabler i
+perspektiv på et bord.
+
+**DEL 2 — profil-variant på heng-plasser:** `Vareplass` type `heng` fikk
+`variant?: 'front'|'profil'` (default front). Snap-filter (`nearestSlot` +
+`data-variant` på ankeret): **profil-plass tar KUN profil-plagg, front-plass kun
+front**, avgjort av plaggets sprite-kapasitet (`plaggStøtterHengVariant`). Tracer:
+front/profil-velger når Heng er valgt; **profil-plasser har egen merking** (lilla
+firkant vs. cyan sirkel). **NB-pilot:** profil-SPRITENE finnes ikke ennå —
+`spriteHengProfil` er klargjort men tom for alle plagg; `spriteFor(..,'profil')`
+faller tilbake til **front-spriten som midlertidig dev-placeholder** (rendrer/
+forhåndsviser uten manglende bilde). Snap-KAPASITETEN bruker den EKTE profil-
+spriten, så profil-plasser avviser front-plagg og forblir tomme uten krasj til
+ekte sprites lander. `PROFIL_PLACEHOLDER`-bryter (default false) i
+`klesbutikkPlagg.ts` lar Espen midlertidig la profil-plasser ta front-plagg for
+visuell pilotering.
+
+Verifisert (headless): satte rot 2° / skewX 1.5° / skewY 1° på en brett-plass →
+localStorage-utkastet + det RENDREDE plagget viste nøyaktig
+`translate(-50%,-100%) rotate(2deg) skewX(1.5deg) skewY(1deg)` (origin 50% 100%);
+front-plagg sluppet på en profil-plass ble AVVIST (plassen forble ledig) mens det
+snappet fint på en front-plass. Ingen konsollfeil. `tsc -b` + `vite build` grønt.
+
 ---
 
 ## Verifisering

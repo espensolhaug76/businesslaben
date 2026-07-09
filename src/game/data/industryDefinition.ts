@@ -136,6 +136,7 @@ export interface Gulvplan {
  *  vareplass-traceren i KlesbutikkStillas og låses her. */
 export type PlassType = 'heng' | 'brett' | 'dukke'
 export type PlassDukketype = 'dame' | 'herre' | 'barn'
+export type HengVariant = 'front' | 'profil'
 export interface Vareplass {
   id: string
   type: PlassType
@@ -144,6 +145,15 @@ export interface Vareplass {
   scale: number
   /** kun type='dukke': dukketypen den bakte dukka har (matchende snap-filter). */
   dukketype?: PlassDukketype
+  /** kun type='heng': hvilken plagg-variant plassen tar. 'front' (default) tar
+   *  front-plagg, 'profil' tar profil-plagg (plagg med profil-sprite). */
+  variant?: HengVariant
+  /** Valgfri transform på det snappede plagget (grader, default 0). Ankeret
+   *  (transform-origin) er bunn for brett/dukke, senter for heng. Typisk bruk:
+   *  vri/skjære brett-stabler så de følger perspektivet på et bord. */
+  rot?: number
+  skewX?: number
+  skewY?: number
 }
 
 export interface IndustryDefinition {
