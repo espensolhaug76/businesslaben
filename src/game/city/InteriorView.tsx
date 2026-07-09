@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, type InteriorMirrorTrau } from '../../data/districts'
-import { getScenario } from '../sales/scenarios'
+import { getScenario, SCENARIOS, FASHION_SCENARIOS } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
@@ -602,6 +602,11 @@ export default function InteriorView({ districtId, lokaleId }: {
         )}
       </div>
 
+      {/* ?dev=1: scenariovelger — start hvilket som helst salgsscenario
+          umiddelbart i den EKTE overlay-flyten (samme dispatch som et planlagt
+          møte). Klokka pauser (salesOpen), poolen røres ikke. */}
+      {IS_DEV_COORDS && <DevScenarioPicker />}
+
       {/* ?dev=1: legg til flere speil-soner enn de faste (navngis speil-N
           fortløpende) — plasseres med sone-traceren over, lim resultatet inn
           i INTERIOR_MIRROR_TRAU. */}
@@ -774,6 +779,108 @@ function CalSlider({ label, value, min, max, step, onChange, fmt }: {
         onChange={e => onChange(parseFloat(e.target.value))}
         style={{ width: '100%', accentColor: '#7dd3fc', cursor: 'pointer' }}
       />
+    </div>
+  )
+}
+
+// ── DEV-SCENARIOVELGER (?dev=1) ───────────────────────────────────────────────
+// Diskret 🎭-panel i kassevyen: lister ALLE scenarier (kafé + klesbutikk) og
+// starter et valgt scenario UMIDDELBART i den ekte SalesScenarioOverlay-flyten
+// via samme 'dev:openSalesScenario'-event som dev-knappene i dashbordet — så
+// scoring, lager-lesing og resultatkort er identiske med et ekte møte. Klokka
+// pauser mens overlayet er åpent (salesOpen-gaten i GamePage) og fortsetter
+// etterpå. Poolen (dayMeetings) røres IKKE: RESOLVE markerer bare et møte som
+// «done» når ett er SPAWNET (⇔ activeMeetingScenarioId satt), så dev-start er
+// AV mens en ekte kunde står i scenen. Spilte scenarier merkes ✓ (kun lokal
+// panel-state — ingen spill-effekt).
+
+function prettyTittel(id: string): string {
+  const s = id.replace(/-/g, ' ')
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function DevScenarioPicker() {
+  const { state } = useGame()
+  const [open, setOpen] = useState(false)
+  const [played, setPlayed] = useState<Set<string>>(() => new Set())
+  const meetingActive = !!state.activeMeetingScenarioId
+
+  function start(id: string) {
+    if (meetingActive) return
+    setPlayed(p => new Set(p).add(id))
+    window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: id } }))
+  }
+
+  const grupper = [
+    { navn: 'Kafé', farge: '#f59e0b', list: SCENARIOS },
+    { navn: 'Klesbutikk (inaktiv bransje)', farge: '#f472b6', list: FASHION_SCENARIOS },
+  ]
+
+  return (
+    <div style={{ position: 'fixed', top: 64, left: 16, zIndex: 160, width: 252, fontFamily: "'Outfit', sans-serif" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+          background: 'rgba(10,14,26,0.94)', border: '1px solid rgba(192,132,252,0.5)',
+          borderRadius: 10, padding: '7px 11px', color: '#c084fc', fontSize: 12, fontWeight: 800,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}
+      >
+        <span>🎭 Scenariovelger (dev)</span>
+        <span style={{ fontSize: 11 }}>{open ? '▾' : '▸'}</span>
+      </button>
+
+      {open && (
+        <div style={{
+          marginTop: 6, background: 'rgba(10,14,26,0.96)', border: '1px solid rgba(192,132,252,0.3)',
+          borderRadius: 12, padding: '8px 9px', maxHeight: 'calc(100vh - 130px)', overflowY: 'auto',
+        }}>
+          {meetingActive && (
+            <div style={{ fontSize: 10.5, color: '#fca5a5', lineHeight: 1.4, marginBottom: 8 }}>
+              Et kundemøte står i scenen — håndter det først. (Dev-start er av så møte-poolen ikke røres.)
+            </div>
+          )}
+          {grupper.map(g => (
+            <div key={g.navn} style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: g.farge, letterSpacing: '0.04em', margin: '2px 0 5px' }}>
+                {g.navn} · {g.list.length}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {g.list.map(s => {
+                  const spilt = played.has(s.id)
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => start(s.id)}
+                      disabled={meetingActive}
+                      title={s.description}
+                      style={{
+                        display: 'flex', alignItems: 'baseline', gap: 6, textAlign: 'left', width: '100%',
+                        cursor: meetingActive ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                        background: spilt ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${spilt ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                        borderRadius: 7, padding: '5px 8px', opacity: meetingActive ? 0.45 : 1,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: spilt ? '#22c55e' : '#64748b', flexShrink: 0 }}>{spilt ? '✓' : '▸'}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#f1f5f9' }}>{prettyTittel(s.id)}</span>
+                        <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 5 }}>
+                          {s.customerName}{s.outcomeKind === 'service' ? ' · service' : ''}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+          <div style={{ fontSize: 9.5, color: '#475569', lineHeight: 1.4, marginTop: 2 }}>
+            Starter i ekte overlay-flyt (scoring/lager/resultat identisk). ✓ = spilt i denne økta.
+          </div>
+        </div>
+      )}
     </div>
   )
 }

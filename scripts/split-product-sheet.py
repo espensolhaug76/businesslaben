@@ -46,8 +46,19 @@ PRODUCTS_NAME_MAPS = {
 # (Den usikre), øverst h. = korslagte armer/skeptisk (Prutekunden), nederst v.
 # = nervøs/bekymret (Allergikeren), nederst h. = i fart med telefon+veske
 # (Storbestillingen).
+# customers-ark-03/04-raw.png = DAGJOBB 2026-07-08 (8 nye kundesprites til de 8
+# nye kafé-scenariene, spor-a.md pkt. 14). Lese-rekkefølge (rad for rad,
+# venstre->høyre) matchet visuelt mot arkene: ark 03 = amira (skulderveske),
+# bjorn (skjegg + pakke), camilla (kåpe, ser på klokka), david (strikkegenser,
+# telefon); ark 04 = emil (denimjakke + sekk), live (kåpe + FØRERHUND —
+# kvinne+hund+sele henger sammen som ÉN blob via selen, splittes IKKE), petter
+# (arbeidsjakke, korslagte armer), oda (skjerf + skjørt). ✦-vannmerket fjernes
+# av rembg (semi-transparent på nær-hvit bakgrunn = bakgrunn); petters
+# logo-brystlapp klone-patches i et eget steg etter splitten.
 CUSTOMERS_NAME_MAPS = {
     "02": ["usikre", "prutekunden", "allergikeren", "storbestiller"],
+    "03": ["amira", "bjorn", "camilla", "david"],
+    "04": ["emil", "live", "petter", "oda"],
 }
 
 ALPHA_THRESHOLD = 40      # alfa over dette = «vare-piksel»
