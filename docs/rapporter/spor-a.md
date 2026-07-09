@@ -725,6 +725,58 @@ disk-flaten med 3 klikkbare fagord i bobla (klikk «kategorier» → Produktkate
 kort); alle 7 nye/flaggede begreper søkbare i Ordboken. `tsc -b` + `vite build`
 grønn, 0 konsollfeil.
 
+## 20. Ordboken hjem til mentoren + mentor i dashbordet (dagjobb)
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn. Kode
+> committet lokalt, IKKE pushet — kode etter Espens Chrome-validering.**
+
+**DEL 0 — assets:** `espen-leser.png` (leser i bok) og `espen-peker.png`
+(pekefinger) via rembg + største-blob-crop (droppet «F»-pille og ✦-vannmerke på
+peker). Ligger i `public/assets/raw/mentor/` sammen med nøytral/smil.
+
+**DEL 1 — ordboken bor nå hos mentoren.** Ordbok-innholdet er ekstrahert til
+`src/game/ui/OrdbokPanel.tsx` (søk + nivå-/kategorifilter + alfabetisk liste,
+hvert begrep et `<Fagord>`). En diskret **📖-knapp** ligger alltid ved figuren;
+klikk boka ELLER figuren (uten aktiv melding) → ordboken «slår seg opp» i et
+bok-rammet panel ved figuren (framer-motion scaleX/rotate-animasjon, ingen nye
+biblioteker), og Espen bytter til **leser-posen**. **📖 Ordbok-fanen er FJERNET
+fra dashbordet** (`OrdbokTab` + ubrukte glossary-imports slettet) — ordboken har
+ett hjem. Åpnes også mens dashbordet står åpent (mentor over alt, z-500).
+
+**DEL 2 — mentor synlig i dashbordet.** `blocked` ekskluderer nå `dashboardOpen`;
+figuren tegnes i hjørnet nede th (z-500) også over dashbord/oppgjør. Dashbord
+BLOKKERER IKKE lenger — fane-triggerne vises INNE i det åpne dashbordet (bekreftet
+i skjermbilde: `priser_fane`-boble med klikkbare fagord over åpen Priser-fane).
+Scenario/dagsoppgjør/leiepanel køer fortsatt.
+
+**DEL 3 — fane-triggere + prissettingsbegreper.** 8 nye triggere (`mentorTriggers.ts`),
+én per fane, første besøk, dispatchet fra `DashboardOverlay` via `FANE_TRIGGER`-
+mapping på `activeTab`: `produkter_fane`, `priser_fane`, `malgruppe_fane`,
+`marked_fane`, `personale_fane`, `okonomi_fane`, `forretningsplan_fane`,
+`lokasjon_fane` — alle med `[[GLOSSARY_ID|ord]]`-fagord og refleksjonsspørsmål.
+3 nye prissettingsbegreper (`glossary.json`, ekte æ/ø/å): **Kostnadsbasert**
+(MKT_048), **Konkurransebasert** (MKT_049), **Verdibasert prissetting** (MKT_050).
+Skumming (MKT_011 «Skumme-fløten-strategi») og penetrasjonspris (MKT_012
+«Inntrengningsstrategi») FANTES alt — ikke duplisert. Ny **strategi-strip** i
+Priser-fanen med 6 klikkbare fagord (de tre basene + psykologisk prising +
+skumme fløten + inntrengningspris). 149 begreper totalt.
+
+**DEL 4 — vente-signal.** Pose-prioritet **leser > smil > peker > nøytral**. Når
+en melding ligger i kø bak en blokkerende flate bytter figuren til **peker-posen**
+(stille «jeg har noe til deg»); klikk peker-figuren → `forceShow` viser meldingen
+umiddelbart, ellers vises den av seg selv når flaten lukkes.
+
+**Verifisert headless (Playwright):** boka åpner/lukker med leser-pose; ordbok-
+fanen er borte fra dashbordet (0 treff); `priser_fane` + `produkter_fane` fyrer
+INNE i åpent dashbord med klikkbare fagord (klikk «verdibasert»/«skumme fløten» →
+kort); strategi-strip viser alle 6 fagord når et produkt er bestilt; de 3 nye
+begrepene søkbare (149 totalt). `tsc -b` + `vite build` grønn, 0 konsollfeil.
+
+**Flagg:** `MKT_011`-eksempelet nevner **ekte merkenavn** («Sony … PlayStation»)
+— bryter innholdsregelen (kun fiktive navn). Eksisterende oppføring (ikke rørt
+denne runden), men den er nå synlig i Priser-fanen via strategi-strip'en —
+anbefaler Espen omskriver eksempelet til et fiktivt produkt.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
