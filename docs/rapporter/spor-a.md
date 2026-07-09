@@ -777,6 +777,38 @@ begrepene søkbare (149 totalt). `tsc -b` + `vite build` grønn, 0 konsollfeil.
 denne runden), men den er nå synlig i Priser-fanen via strategi-strip'en —
 anbefaler Espen omskriver eksempelet til et fiktivt produkt.
 
+## 21. Regelendring (merkenavn) + UI-fikser fra Espens Chrome-funn
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn. Kode
+> committet lokalt, IKKE pushet — kode etter Espens Chrome-validering.**
+
+**Regelendring — ekte merkenavn tillatt i undervisningsinnhold.** `CLAUDE.md`
+oppdatert: ekte merkenavn/selskaper ER nå tillatt i glossary-eksempler og annet
+undervisningsinnhold når de brukes faktabasert/pedagogisk (som i fagbøker) —
+f.eks. «iPhone bruker skumming ved lansering». Fortsatt ALDRI i NB-bilder/assets,
+aldri nedsettende, og aldri som fiktive aktører i spillmekanikken (leverandører/
+kunder/konkurrenter i spillet forblir fiktive). Flagget fra pkt. 20 er dermed
+LUKKET: `MKT_011` beholdes (Sony/PlayStation OK), og iPhone lagt til i eksempelet
+i tillegg («En ny iPhone (eller Sony en PlayStation) …»).
+
+**UI-fiks 1 — «Live økt»-badgen kolliderte med mentoren.** `LiveBar` (global
+statusindikator for elever i live økt) lå `fixed bottom:20 right:20 z-9999` —
+rett oppå spill-mentoren nede th, og dekket figur + boble. Flyttet til
+`top:70 right:20` (opp ved menyen/HUD, ved 💻 Dashbord). Global komponent — vises
+kun i aktiv live økt, så full visuell sjekk hører til Espens Chrome-validering.
+
+**UI-fiks 2 — pose-logikk verifisert.** Invariansen holder allerede i koden:
+`smil ⇔ melding != null ⇔ boble rendres`. En melding som ikke KAN vises (blokkert,
+ikke force-vist) gir `melding=null` ⇒ pose blir **peker** (kø) eller nøytral —
+**aldri smil uten boble**. «Delvis skjult / boble manglet» skyldtes utelukkende
+LiveBar-overlappen (z-9999 > mentor-z 500); mentor-containeren (z 500) ligger over
+alle spill-overlays (dashbord 180, salg 190, oppgjør 260), så bobla er aldri bak
+dem. La til en INVARIANT-kommentar i `Mentor.tsx`.
+
+**Verifisert headless (Playwright):** pose-kjede i ro→kø(blokkert)→klikk:
+`noytral → peker (0 boble-noder) → smil (boble synlig)`; boble rendret OVER åpent
+salgsscenario (z-orden ok). `tsc -b` + `vite build` grønn, 0 konsollfeil.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
