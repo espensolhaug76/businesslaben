@@ -9,14 +9,12 @@ function formatKr(n: number) {
   return n.toLocaleString('nb-NO') + ' kr'
 }
 
-export default function HUD() {
+export default function HUD({ onMaster, onOpenDashboard }: { onMaster: boolean; onOpenDashboard: () => void }) {
   const { state } = useGame()
   const { money, reputation, currentMonth, currentYear, companyName, industry,
-          p1_complete, p2_complete, p3_complete, p4_complete, unreadCount,
-          level, xp, xpToNextLevel, rentedLocationId, shopOpen, dayNumber, meetingsToday } = state
+          unreadCount, level, xp, xpToNextLevel, rentedLocationId, shopOpen, dayNumber, meetingsToday } = state
 
   const meta = INDUSTRY_META[industry]
-  const psDone = [p1_complete, p2_complete, p3_complete, p4_complete].filter(Boolean).length
   const xpPct = Math.round((xp / xpToNextLevel) * 100)
 
   return (
@@ -65,11 +63,13 @@ export default function HUD() {
         />
       )}
 
-      {/* Xray toggle */}
-      <XrayToggle />
+      {/* «Vis veier»-røntgen — KUN på bykart-nivået (styrer by-røntgen; meningsløs
+          i bydels-/butikk-visninger). */}
+      {onMaster && <XrayToggle />}
 
-      {/* Notification bell */}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      {/* Høyre: varsler + Dashbord-knapp (4P-fremdriften ligger nå i mentoren og
+          Oversikt-fanen, ikke i HUD-en). */}
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
         {unreadCount > 0 && (
           <div style={{ position: 'relative', cursor: 'pointer' }} title={`${unreadCount} uleste meldinger`}>
             <span style={{ fontSize: 20 }}>🔔</span>
@@ -81,33 +81,18 @@ export default function HUD() {
           </div>
         )}
 
-        {/* 4P status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>4P:</span>
-          {(['Produkt', 'Pris', 'Plass', 'Promosjon'] as const).map((p, i) => {
-            const done = [p1_complete, p2_complete, p3_complete, p4_complete][i]
-            return (
-              <div key={p} title={p} style={{
-                width: 26, height: 26, borderRadius: 7,
-                background: done ? 'rgba(0,212,170,0.18)' : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${done ? '#00d4aa' : 'rgba(255,255,255,0.12)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 700,
-                color: done ? '#00d4aa' : '#475569',
-              }}>
-                {done ? '✓' : p[0]}
-              </div>
-            )
-          })}
-          {psDone === 4 && (
-            <span style={{
-              background: 'rgba(0,212,170,0.15)', border: '1px solid #00d4aa',
-              borderRadius: 99, padding: '2px 10px', fontSize: 11, color: '#00d4aa', fontWeight: 700,
-            }}>
-              Klar!
-            </span>
-          )}
-        </div>
+        <button
+          onClick={onOpenDashboard}
+          title="Åpne Bedriftsdashboardet"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            background: 'linear-gradient(135deg, #334155, #1e293b)', border: '1px solid rgba(148,163,184,0.35)',
+            borderRadius: 99, padding: '5px 14px', cursor: 'pointer', color: '#f1f5f9',
+            fontSize: 13, fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap',
+          }}
+        >
+          💻 Dashbord
+        </button>
       </div>
     </div>
   )

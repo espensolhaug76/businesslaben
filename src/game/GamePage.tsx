@@ -10,6 +10,7 @@ import DayResultOverlay from './ui/DayResultOverlay'
 import MonthResultOverlay from './ui/MonthResultOverlay'
 import DagspulsOverlay from './ui/DagspulsOverlay'
 import OpeningOrderOverlay from './ui/OpeningOrderOverlay'
+import Mentor from './ui/Mentor'
 import { BALANCE } from './data/balance'
 
 // SPILLKLOKKE: åpningstidens lengde i spillminutter (09:00–17:00).
@@ -192,7 +193,10 @@ function GameContent() {
           ? <DistrictView districtId={districtId} onVacantClick={onVacantClick} />
           : <CityMapView />}
 
-      <HUD />
+      <HUD
+        onMaster={onMaster}
+        onOpenDashboard={() => { setDashboardTab('oversikt'); setDashboardOpen(true); setOverlay(true) }}
+      />
 
       {/* Førstegangshint på masterkartet */}
       {onMaster && state.tutorialStep === 1 && !state.rentedLocationId && !tutorialDismissed && (
@@ -278,6 +282,15 @@ function GameContent() {
           onEnterShop={() => gotoOwnStorefront(vacantInfo.id)}
         />
       )}
+
+      {/* LÆRINGSLAGET — mentoren (Espen). Køer meldinger til ingen blokkerende
+          flate er åpen (scenario/dashbord/oppgjør/leiepanel). Klikk uten melding
+          åpner ordboken. */}
+      <Mentor
+        blocked={simOpen || dashboardOpen || salesOpen || !!vacantInfo
+          || state.dayPhase === 'oppgjør' || !!state.lastMonthSettlement || state.phase === 'year_end'}
+        onOpenOrdbok={() => { setDashboardTab('ordbok'); setDashboardOpen(true); setOverlay(true) }}
+      />
     </>
   )
 }
