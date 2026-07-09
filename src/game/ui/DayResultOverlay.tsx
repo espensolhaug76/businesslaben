@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion'
+import type { ReactNode } from 'react'
+import Fagord from './Fagord'
 import { useGame } from '../GameContext'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
 
@@ -78,10 +80,10 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
               egen linje under, så trekk det fra her). «Kø» = for lite kapasitet
               på vakt (r.koKunder). */}
           {(r.tapteSalgStk - r.bortfallStk) > 0 && (
-            <SalgLinje ikon="🚫" tittel={`Tapte salg: ${r.tapteSalgStk - r.bortfallStk} (tomt lager)`} hoyre="—" color="#ef4444" />
+            <SalgLinje ikon="🚫" tittel={<><Fagord id="SAL_002">Tapte salg</Fagord>: {r.tapteSalgStk - r.bortfallStk} (tomt lager)</>} hoyre="—" color="#ef4444" />
           )}
           {r.koKunder > 0 && (
-            <SalgLinje ikon="⏳" tittel={`Tapte salg: ${r.koKunder} (kø — for få på vakt)`} hoyre="—" color="#f59e0b" />
+            <SalgLinje ikon="⏳" tittel={<><Fagord id="SAL_002">Tapte salg</Fagord>: {r.koKunder} (kø — for få på vakt)</>} hoyre="—" color="#f59e0b" />
           )}
           {/* SPILLKLOKKE: stengte eleven før 17:00, bortfalt de resterende
               bakgrunnskundene — egen linje, adskilt fra tomt-lager-tap. */}
@@ -105,7 +107,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem', marginBottom: '1.1rem' }}>
-          <StatCard label="Svinn" value={`${r.svinnStk} stk`} sub={formatKr(r.svinnKr)} color="#ef4444" />
+          <StatCard label={<Fagord id="ECO_018">Svinn</Fagord>} value={`${r.svinnStk} stk`} sub={formatKr(r.svinnKr)} color="#ef4444" />
           <StatCard label="Rykte i dag" value={`${r.reputationDelta >= 0 ? '+' : ''}${r.reputationDelta}`} color={r.reputationDelta >= 0 ? '#38bdf8' : '#ef4444'} />
           <StatCard label="XP i dag" value={`+${r.xpEarned}`} color="#a855f7" />
         </div>
@@ -202,7 +204,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
   )
 }
 
-function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+function StatCard({ label, value, sub, color }: { label: ReactNode; value: string; sub?: string; color: string }) {
   return (
     <div style={{ background: `${color}0e`, border: `1px solid ${color}33`, borderRadius: '0.75rem', padding: '0.8rem 0.9rem' }}>
       <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 2 }}>{label}</div>
@@ -222,7 +224,7 @@ function DetaljLinje({ ikon, etikett, tekst, color }: { ikon: string; etikett: s
   )
 }
 
-function SalgLinje({ ikon, tittel, hoyre, color }: { ikon: string; tittel: string; hoyre: string; color: string }) {
+function SalgLinje({ ikon, tittel, hoyre, color }: { ikon: string; tittel: ReactNode; hoyre: string; color: string }) {
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',

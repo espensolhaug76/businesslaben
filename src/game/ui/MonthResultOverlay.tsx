@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useGame } from '../GameContext'
+import Fagord from './Fagord'
 
 // ─── MÅNEDSOPPGJØR (ØKONOMI-SAMLING DEL 2) ────────────────────────────────────
 // Vises når state.lastMonthSettlement er satt (bygget ved månedsrull i
@@ -65,7 +66,7 @@ export default function MonthResultOverlay() {
           background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.25)',
           borderRadius: '1rem', padding: '0.9rem 1.1rem', marginBottom: '1.1rem',
         }}>
-          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '0.5rem' }}>FASTE KOSTNADER (trukket fra kassa)</div>
+          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '0.5rem' }}><Fagord id="ECO_007">FASTE KOSTNADER</Fagord> (trukket fra kassa)</div>
           {s.kostnadslinjer.map(k => (
             <div key={k.navn} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.25rem' }}>
               <span style={{ color: '#94a3b8' }}>{k.navn}</span>
@@ -86,11 +87,11 @@ export default function MonthResultOverlay() {
           }}>
             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '0.5rem' }}>LÅNEAVDRAG (trukket fra kassa)</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.25rem' }}>
-              <span style={{ color: '#94a3b8' }}>Renter</span>
+              <span style={{ color: '#94a3b8' }}><Fagord id="ECO_021">Renter</Fagord></span>
               <span style={{ color: '#f97316' }}>−{formatKr(s.laanRenter)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.25rem' }}>
-              <span style={{ color: '#94a3b8' }}>Avdrag (nedbetaling)</span>
+              <span style={{ color: '#94a3b8' }}><Fagord id="ECO_029">Avdrag</Fagord> (nedbetaling)</span>
               <span style={{ color: '#f97316' }}>−{formatKr(s.laanAvdrag)}</span>
             </div>
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '0.4rem', paddingTop: '0.4rem', display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700 }}>
@@ -107,7 +108,7 @@ export default function MonthResultOverlay() {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <div>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>MÅNEDSRESULTAT</div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}><Fagord id="ECO_010">MÅNEDSRESULTAT</Fagord></div>
             <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
               {formatKr(s.inntekt)} − {formatKr(s.fasteKostnader)}{(s.laanRenter + s.laanAvdrag) > 0 ? ` − ${formatKr(s.laanRenter + s.laanAvdrag)} lån` : ''}
             </div>

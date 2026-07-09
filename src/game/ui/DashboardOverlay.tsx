@@ -8,6 +8,8 @@ import { SCENARIOS } from '../sales/scenarios'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
+import Fagord from './Fagord'
+import { search as glossarySearch, CATEGORIES, GLOSSARY, type GlossaryLevel } from '../data/glossary'
 import { BALANCE } from '../data/balance'
 import { aktiveFunksjoner, evaluerRefleksjon } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
@@ -16,7 +18,7 @@ import type { Loan } from '../types'
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
-type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter' | 'innboks'
+type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter' | 'innboks' | 'ordbok'
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'oversikt',        label: 'Oversikt',         emoji: '📊' },
@@ -31,6 +33,7 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'personale',       label: 'Personale',         emoji: '👥' },
   { id: 'rapporter',       label: 'Rapporter',         emoji: '📋' },
   { id: 'innboks',         label: 'Innboks',           emoji: '📬' },
+  { id: 'ordbok',          label: 'Ordbok',            emoji: '📖' },
 ]
 
 // ── Tab bar (extracted so it can read unreadCount) ────────────────────────────
@@ -147,6 +150,7 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                   {activeTab === 'personale'       && <PersonaleTab />}
                   {activeTab === 'rapporter'       && <RapporterTab />}
                   {activeTab === 'innboks'         && <InnboksTab />}
+                  {activeTab === 'ordbok'          && <OrdbokTab />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -213,6 +217,39 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
         <KpiCard label="Gjeld"           value={formatKr(totalDebt)}   color={totalDebt > 0 ? '#f97316' : '#22c55e'} icon="🏦" />
         <KpiCard label="Kostnader/mnd"   value={formatKr(monthlyCosts)} color="#f97316" icon="📤" />
         <KpiCard label="Rykte"           value={`${reputation}/100`}   color={reputation >= 60 ? '#22c55e' : '#facc15'} icon="⭐" />
+      </div>
+
+      {/* 4P-fremdrift — flyttet hit fra HUD-en. Klikk en P for å hoppe til fanen. */}
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.9rem', letterSpacing: '0.06em' }}>
+          🎯 <Fagord id="MKT_001">MARKEDSMIKSEN (4P)</Fagord>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '0.7rem' }}>
+          {([
+            { p: 'Produkt', tab: 'produkter' as Tab, done: state.p1_complete },
+            { p: 'Pris', tab: 'priser' as Tab, done: state.p2_complete },
+            { p: 'Plass', tab: 'lokasjon' as Tab, done: state.p3_complete },
+            { p: 'Promosjon', tab: 'markedsforing' as Tab, done: state.p4_complete },
+          ]).map(({ p, tab, done }) => (
+            <button key={p} onClick={() => onNavigate(tab)} title={`Gå til ${p}`} style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'inherit',
+              background: done ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${done ? '#00d4aa' : 'rgba(255,255,255,0.12)'}`, borderRadius: 12, padding: '0.7rem 0.4rem',
+            }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: 800, background: done ? 'rgba(0,212,170,0.2)' : 'rgba(255,255,255,0.06)',
+                color: done ? '#00d4aa' : '#64748b',
+              }}>{done ? '✓' : p[0]}</div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: done ? '#00d4aa' : '#94a3b8' }}>{p}</span>
+            </button>
+          ))}
+        </div>
+        {[state.p1_complete, state.p2_complete, state.p3_complete, state.p4_complete].every(Boolean) && (
+          <div style={{ marginTop: '0.8rem', fontSize: 12, color: '#00d4aa', fontWeight: 700, textAlign: 'center' }}>
+            ✅ Alle fire P-ene er på plass — markedsmiksen henger sammen!
+          </div>
+        )}
       </div>
 
       {/* Bedriftsstatus */}
@@ -1042,7 +1079,7 @@ function OkonomiTab() {
           display: 'flex', gap: '1.5rem', alignItems: 'center',
         }}>
           <div>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Runway</div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}><Fagord id="ECO_005">Runway</Fagord></div>
             <div style={{
               fontSize: 28, fontWeight: 900,
               color: runway < 3 ? '#ef4444' : runway < 6 ? '#f97316' : '#38bdf8',
@@ -1127,7 +1164,7 @@ function OkonomiTab() {
           kostnader (fasteLinjer) + LÅNEAVDRAG (rente/avdrag skilt), begge med i
           sum/netto. Nedbetalt lån trekker 0 (amortiserLaan gir tom split). */}
       <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>KONTANTSTRØM (trekkes ved månedsrull)</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}><Fagord id="ECO_013">KONTANTSTRØM</Fagord> (trekkes ved månedsrull)</div>
         {fasteLinjer.map(({ navn, belop }) => (
           <div key={navn} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
             <span style={{ color: '#64748b' }}>{navn}</span>
@@ -1137,7 +1174,7 @@ function OkonomiTab() {
         {laanNesteMnd.betaling > 0 && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
-              <span style={{ color: '#64748b' }}>Lån — renter</span>
+              <span style={{ color: '#64748b' }}>Lån — <Fagord id="ECO_021">renter</Fagord></span>
               <span style={{ color: '#f97316' }}>-{formatKr(laanNesteMnd.renteSum)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
@@ -1157,7 +1194,7 @@ function OkonomiTab() {
       {/* Active loans */}
       {loans.length > 0 && (
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>AKTIVE LÅN</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>AKTIVE LÅN <span style={{ fontWeight: 400 }}>(<Fagord id="ECO_020">gjeld</Fagord>)</span></div>
           {loans.map(loan => (
             <div key={loan.id} style={{ marginBottom: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
@@ -1212,7 +1249,7 @@ function OkonomiTab() {
             </p>
 
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.5rem' }}>LÅNEBELØP</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.5rem' }}>LÅNEBELØP (<Fagord id="ECO_020">gjeld</Fagord>)</div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {LOAN_AMOUNTS.map(a => (
                   <button key={a} onClick={() => setLoanAmount(a)} style={{
@@ -1228,7 +1265,7 @@ function OkonomiTab() {
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.5rem' }}>NEDBETALINGSTID</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.5rem' }}><Fagord id="ECO_030">NEDBETALINGSTID</Fagord></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 {LOAN_TERMS.map(t => (
                   <button key={t.months} onClick={() => setLoanMonths(t.months)} style={{
@@ -1246,11 +1283,11 @@ function OkonomiTab() {
             <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>BANKENS TILBUD</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.4rem', fontSize: 14 }}>
-                <span style={{ color: '#64748b' }}>Månedlig avdrag</span>
+                <span style={{ color: '#64748b' }}>Månedlig <Fagord id="ECO_029">avdrag</Fagord></span>
                 <span style={{ fontWeight: 700, color: '#38bdf8' }}>{formatKr(monthly)}</span>
                 <span style={{ color: '#64748b' }}>Total tilbakebetaling</span>
                 <span>{formatKr(totalRepay)}</span>
-                <span style={{ color: '#64748b' }}>Total rentekostnad</span>
+                <span style={{ color: '#64748b' }}>Total <Fagord id="ECO_021">rentekostnad</Fagord></span>
                 <span style={{ color: '#f97316' }}>{formatKr(totalInterest)}</span>
               </div>
             </div>
@@ -1565,6 +1602,12 @@ function PriserTab() {
   const { state, dispatch } = useGame()
   const [products, setProducts] = useState<Product[]>(() => state.products.map(p => ({ ...p })))
 
+  // LÆRINGSLAGET: signaliser mentor-triggeren «forste_prising» når Priser-fanen
+  // åpnes (mentoren køer meldingen til dashbordet lukkes).
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_prising' } }))
+  }, [])
+
   if (products.length === 0) {
     return <div style={{ textAlign: 'center', color: '#475569', padding: '3rem' }}>Ingen produkter bestilt. Gå til Produkter-fanen.</div>
   }
@@ -1585,7 +1628,7 @@ function PriserTab() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Prissetting</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Sett salgspris per produkt</p>
+          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Sett <Fagord id="ECO_031">utsalgspris</Fagord> per produkt</p>
         </div>
         <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
           Lagre priser ✓
@@ -1632,7 +1675,7 @@ function PriserTab() {
                 <span style={{ fontSize: 24 }}>{p.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>Innkjøp: {formatKr(p.costPrice)}</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}><Fagord id="ECO_006">Innkjøp</Fagord>: {formatKr(p.costPrice)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <input
@@ -1644,7 +1687,7 @@ function PriserTab() {
                       padding: '4px 8px', color: '#38bdf8', fontSize: 18, fontWeight: 800, fontFamily: 'inherit',
                     }}
                   /> <span style={{ fontSize: 13, color: '#64748b' }}>kr</span>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: mgColor }}>Margin: {p.retailPrice > 0 ? `${mg}%` : '—'}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: mgColor }}><Fagord id="ECO_002">Margin</Fagord>: {p.retailPrice > 0 ? `${mg}%` : '—'}</div>
                 </div>
               </div>
 
@@ -2303,6 +2346,80 @@ function VaktRad({ navn, sub, farge, vakt, onSet }: {
             }}>✕</button>
           : null}
       </div>
+    </div>
+  )
+}
+
+// ── Ordbok (LÆRINGSLAGET) ─────────────────────────────────────────────────────
+// Søk + kategori-/nivåfilter + alfabetisk liste. Hvert begrep er et <Fagord> —
+// klikk gir SAMME forklaringskort som fagordene ute i flatene.
+
+function OrdbokTab() {
+  const [q, setQ] = useState('')
+  const [cat, setCat] = useState('')
+  const [lvl, setLvl] = useState<'' | GlossaryLevel>('')
+
+  const list = glossarySearch(q)
+    .filter(t => (!cat || t.category === cat) && (!lvl || t.level === lvl))
+    .sort((a, b) => a.term.localeCompare(b.term, 'nb'))
+
+  const chip = (active: boolean, color: string): React.CSSProperties => ({
+    background: active ? `${color}22` : 'rgba(255,255,255,0.04)',
+    border: `1px solid ${active ? color : 'rgba(255,255,255,0.1)'}`,
+    borderRadius: 99, padding: '0.3rem 0.8rem', fontSize: 12, fontWeight: 700,
+    color: active ? color : '#94a3b8', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+  })
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1rem' }}>
+        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>📖 Ordbok</h3>
+        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
+          {list.length} av {GLOSSARY.length} begreper. Klikk et begrep for forklaring, formel, eksempel og vanlige feil.
+        </p>
+      </div>
+
+      <input
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        placeholder="Søk i term eller definisjon …"
+        style={{
+          width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)',
+          border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '0.6rem 0.9rem',
+          color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit', marginBottom: '0.7rem',
+        }}
+      />
+
+      {/* Nivåfilter */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+        <button onClick={() => setLvl('')} style={chip(lvl === '', '#7dd3fc')}>Alle nivå</button>
+        <button onClick={() => setLvl('VG1')} style={chip(lvl === 'VG1', '#22c55e')}>VG1</button>
+        <button onClick={() => setLvl('VG2')} style={chip(lvl === 'VG2', '#a855f7')}>VG2</button>
+      </div>
+      {/* Kategorifilter */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '1rem' }}>
+        <button onClick={() => setCat('')} style={chip(cat === '', '#00d4aa')}>Alle kategorier</button>
+        {CATEGORIES.map(c => (
+          <button key={c.value} onClick={() => setCat(c.value === cat ? '' : c.value)} style={chip(cat === c.value, '#00d4aa')}>{c.label}</button>
+        ))}
+      </div>
+
+      {list.length === 0 ? (
+        <div style={{ textAlign: 'center', color: '#475569', padding: '2rem' }}>Ingen treff.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          {list.map(t => (
+            <div key={t.id} style={{
+              display: 'flex', alignItems: 'baseline', gap: 8,
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 9, padding: '0.5rem 0.75rem',
+            }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}><Fagord id={t.id}>{t.term}</Fagord></span>
+              <span style={{ fontSize: 10, color: '#64748b', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{t.level}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

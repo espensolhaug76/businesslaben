@@ -1576,6 +1576,61 @@
       "related_terms": ["Franchise", "Etableringsbarrierer"],
       "common_mistake": "Mange bedrifter undervurderer kulturelle og regulatoriske barrierer. Et produkt som selger i Norge er ikke automatisk et hit i Japan.",
       "espenTips": "Internasjonalisering er ikke en beslutning — det er en prosess. Begynn med markedet du forstår best, og lær av hvert steg."
+    },
+    {
+      "id": "ECO_029",
+      "term": "Avdrag",
+      "category": "Okonomi",
+      "level": "VG1",
+      "definition": "Den delen av en månedlig lånebetaling som går til å betale ned selve gjelda (hovedstolen), i motsetning til rentene.",
+      "example": "Betaler du 8 885 kr i måneden på lånet og 1 000 kr er renter, går 7 885 kr til avdrag — og gjelda synker tilsvarende.",
+      "formula": null,
+      "related_terms": ["Rente", "Gjeld"],
+      "common_mistake": "Å tro at hele lånebetalingen betaler ned gjelda. Bare avdraget gjør det — rentene er ren kostnad."
+    },
+    {
+      "id": "ECO_030",
+      "term": "Nedbetalingstid",
+      "category": "Okonomi",
+      "level": "VG1",
+      "definition": "Hvor lang tid du bruker på å betale tilbake et lån. Lengre tid gir lavere månedlig betaling, men mer renter totalt.",
+      "example": "Et lån på 100 000 kr over 12 måneder gir høye avdrag, men lite renter. Over 36 måneder blir avdragene lave, men du betaler mye mer i renter til slutt.",
+      "formula": null,
+      "related_terms": ["Rente", "Avdrag", "Gjeld"],
+      "common_mistake": "Å velge lengst mulig nedbetalingstid bare for lav månedsbetaling — det koster mest i renter over tid."
+    },
+    {
+      "id": "SAL_002",
+      "term": "Tapt salg",
+      "category": "Salg",
+      "level": "VG1",
+      "definition": "Salg du gikk glipp av fordi kunden ikke fikk kjøpt — enten var varen utsolgt, eller kunden ga opp køen og gikk.",
+      "example": "Ti kunder ville ha kanelbolle, men du hadde bare åtte igjen. De to siste er tapt salg — inntekt du aldri får igjen.",
+      "formula": null,
+      "related_terms": ["Svinn", "Sortimentsdybde"],
+      "common_mistake": "Å bare telle det du solgte. Tapt salg vises ikke i kassa, men det er penger og kunder du mistet."
+    },
+    {
+      "id": "ECO_031",
+      "term": "Utsalgspris",
+      "category": "Okonomi",
+      "level": "VG1",
+      "definition": "Prisen kunden faktisk betaler for varen i butikken. Differansen mellom utsalgspris og innkjøpspris er avansen din.",
+      "example": "Kjøper du inn en kanelbolle for 7 kr og selger den for 29 kr, er 29 kr utsalgsprisen og 22 kr avansen per bolle.",
+      "formula": null,
+      "related_terms": ["Avanse (Paaslag)", "Dekningsbidrag (DB)", "Variable kostnader"],
+      "common_mistake": "Å sette utsalgsprisen etter hva du selv synes er greit, i stedet for å regne på hva den må dekke: innkjøp, faste kostnader og litt overskudd."
+    },
+    {
+      "id": "MKT_047",
+      "term": "Produktkategori",
+      "category": "Markedsfoering",
+      "level": "VG1",
+      "definition": "En gruppe varer som hører naturlig sammen fordi de dekker samme type behov, for eksempel «bakevarer», «kald drikke» eller «lunsj».",
+      "example": "I kafeen er kaffe, te og brus samme kategori (drikke), mens croissant og kanelbolle hører til bakevarer. Å samle like varer hjelper kunden å finne fram.",
+      "formula": null,
+      "related_terms": ["Sortimentsbredde", "Sortimentsdybde"],
+      "common_mistake": "Å blande alt om hverandre i disken. Uten tydelige kategorier bruker kunden lengre tid og kjøper mindre."
     }
   ]
 }
