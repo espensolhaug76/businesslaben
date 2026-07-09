@@ -688,6 +688,20 @@ med rett sti; profil-plagg (bomber) snappet til profil-plass og rendret
 `klar-profil/…` i profil; profil-plagg AVVIST av front-plass. `tsc -b` +
 `vite build` grønt.
 
+### Port-lås (worktree ↔ hovedtre)
+
+`vite.config.ts` i DENNE worktreen (`jobb/klesbutikk`) fikk
+`server: { port: 5174, strictPort: true }` — dev-serveren binder alltid **5174**
+og **feiler** hvis porten er opptatt (ingen stille auto-bump til en port som
+kolliderer med hovedtreet). Verifisert (headless): `node_modules/.bin/vite` (uten
+`--port`) bandt `localhost:5174` → HTTP 200; ingenting på 5173 fra dette treet.
+
+**➡️ Til CC A / Espen (hovedtreet `/home/espen/adventure-web`, `main`):** den
+tilsvarende låsen dit — `server: { port: 5173, strictPort: true }` i main sin
+`vite.config.ts` — hører til **main** og er IKKE gjort herfra (denne grenen rører
+ikke hovedtreet). Main sin config er per nå ULÅST (ingen `server`-blokk). Legg
+låsen inn der på main-siden.
+
 ---
 
 ## Verifisering
