@@ -688,6 +688,43 @@ nivåfilter (VG1/VG2), kategorifilter, alfabetisk liste. Hvert begrep er et
   "forste_prising"]`; etter reload + ny dagåpning RE-fyrte forste_apning IKKE.
 - 0 konsollfeil i alle løp.
 
+## 19. HUD-opprydding + kontekstuell mentor (dagjobb)
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn. Kode
+> committet lokalt, IKKE pushet — kode etter Espens Chrome-validering.**
+
+**DEL 1 — HUD:** (a) «Vis veier»-røntgen-togglen vises nå KUN på bykart-nivået
+(`onMaster` prop) — den styrer by-røntgen og er meningsløs i bydel/butikk. (b) De
+fire 4P-badgene er erstattet av én **💻 Dashbord**-knapp øverst th (åpner
+Bedriftsdashboardet på Oversikt). 4P-fremdriften er FLYTTET til Oversikt-fanen
+(klikkbare P-kort → hopper til riktig fane; markert med `<Fagord id="MKT_001">`
+markedsmiksen) — og til mentoren (DEL 2).
+
+**DEL 2 — kontekstuelle mentor-triggere** (samme mentorTriggers-mønster, maks én
+gang, køes bak overlays): `forste_disk_stell` (disk-/monterflaten åpnet — melding
+med KLIKKBARE fagord `[[MKT_003|Bredde]]` / `[[MKT_047|kategorier]]` /
+`[[MKT_004|dybde]]`), `forste_vindu` (vindusstyling), `forste_p_fullfort` +
+`alle_p_fullfort` (tilstands-avledet på p1..p4), `forste_bykart` (bykartet).
+Fagord i bobla via nytt token-format `[[GLOSSARY_ID|tekst]]` som `Mentor.tsx`
+parser til `<Fagord>`. Flate-signaler dispatches fra MonterScene/WindowDisplay/
+CityMapView (`mentor:signal`-event, som forste_prising). Refleksjonsmønster
+(spørsmål tilbake, aldri fasit).
+
+**DEL 3 — nye glossary-oppføringer** (`src/data/glossary.json`, ekte æ/ø/å, samme
+skjema): **Avdrag** (ECO_029), **Nedbetalingstid** (ECO_030), **Tapt salg**
+(SAL_002), **Utsalgspris** (ECO_031), **Produktkategori** (MKT_047). NB:
+Sortimentsbredde/-dybde FANTES alt (MKT_003/004, VG2) — ikke duplisert. Alle med
+definisjon/example/common_mistake på VGS-nivå og kryss-lenkede related_terms.
+Markert der de hører hjemme: bankdialog (nedbetalingstid, avdrag), månedsoppgjør
+(avdrag), dagsoppgjør (tapt salg ×2), Priser-fanen (utsalgspris), mentor-melding
+(produktkategori + bredde/dybde). *Flagg fra pkt. 18 lukket.*
+
+**Verifisert headless (Playwright):** bykart viser «Vis veier», kaféen gjør IKKE;
+💻 Dashbord åpner dashbordet (4P i Oversikt); `forste_disk_stell` fyrer på
+disk-flaten med 3 klikkbare fagord i bobla (klikk «kategorier» → Produktkategori-
+kort); alle 7 nye/flaggede begreper søkbare i Ordboken. `tsc -b` + `vite build`
+grønn, 0 konsollfeil.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
