@@ -78,6 +78,50 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     betingelse: 'Første gang bykartet åpnes',
     melding: 'Her er byen — og hvor du legger butikken betyr mye. Sentrale, folksomme steder koster mer i leie, men gir flere kunder forbi. Hvor tror du folk går mest?',
   },
+
+  // ── FANE-TRIGGERE (DEL 3) ────────────────────────────────────────────────────
+  // Én per dashbord-fane, første besøk. Fyres via 'mentor:signal' fra
+  // DashboardOverlay (FANE_TRIGGER-mappingen). Refleksjon, aldri fasit.
+  {
+    id: 'produkter_fane',
+    betingelse: 'Første gang Produkter-fanen åpnes',
+    melding: 'Nå bygger du sortimentet. [[MKT_003|Bredde]] er hvor mange ulike kategorier du fører, [[MKT_004|dybde]] er hvor mange varianter i hver. Bredt og grunt frister mange; smalt og dypt gjør deg til spesialist. Hva slags butikk vil DU være?',
+  },
+  {
+    id: 'priser_fane',
+    betingelse: 'Første gang Priser-fanen åpnes (prissettingsstrategier)',
+    melding: 'Det finnes flere måter å sette pris på: [[MKT_048|kostnadsbasert]] (kostnad pluss påslag), [[MKT_049|konkurransebasert]] (se på naboene) og [[MKT_050|verdibasert]] (hva kunden synes den er verdt). [[MKT_013|Psykologisk prising]] med 99-priser kan gi et ekstra dytt. Hvilken strategi passer DIN butikk?',
+  },
+  {
+    id: 'malgruppe_fane',
+    betingelse: 'Første gang Målgruppe-fanen åpnes',
+    melding: 'Å dele markedet i grupper — [[MKT_020|segmentering]] — hjelper deg å snakke til de rette folkene. Alder, hvor de bor og hva de er opptatt av former hva de kjøper. Hvem er DIN typiske kunde?',
+  },
+  {
+    id: 'marked_fane',
+    betingelse: 'Første gang Markedsføring-fanen åpnes',
+    melding: 'Markedsføring virker bare der målgruppa di faktisk er. Noen lever på sosiale medier og [[MKT_035|influensere]], andre nås best gjennom [[MKT_036|innhold]] eller oppslag i nærmiljøet. Hvilke kanaler når DIN kunde billigst?',
+  },
+  {
+    id: 'personale_fane',
+    betingelse: 'Første gang Personale-fanen åpnes',
+    melding: 'Folk på jobb er både god service OG en [[ECO_007|fast kostnad]] som løper uansett omsetning. Flere hender gir mer kapasitet i rushet, men lønna skal betales hver dag. Hvor mange trenger du egentlig?',
+  },
+  {
+    id: 'okonomi_fane',
+    betingelse: 'Første gang Økonomi-fanen åpnes',
+    melding: 'Pass på forskjellen: [[ECO_010|resultatet]] viser om du tjener penger over tid, mens [[ECO_013|kontantstrømmen]] viser om det er penger på konto akkurat nå. En god butikk kan gå tom for cash — [[ECO_005|likviditet]] er å ha penger når regningene forfaller. Har du nok buffer?',
+  },
+  {
+    id: 'forretningsplan_fane',
+    betingelse: 'Første gang Forretningsplan-fanen åpnes',
+    melding: '[[STRAT_002|Forretningsplanen]] er ikke bare en skoleoppgave — det er dokumentet banken leser før de sier ja til lån. Den viser at du har tenkt gjennom kunder, kostnader og inntekter. Hva ville overbevist DEG om å låne ut penger?',
+  },
+  {
+    id: 'lokasjon_fane',
+    betingelse: 'Første gang Lokasjon-fanen åpnes',
+    melding: 'Lokasjon er en avveining: en sentral, folksom adresse gir flere kunder forbi, men høyere [[ECO_007|husleie]] hver måned. En billig krok sparer penger — men får du nok folk innom? Hva veier tyngst for DIN butikk?',
+  },
 ]
 
 export function mentorMelding(id: string): string | undefined {
