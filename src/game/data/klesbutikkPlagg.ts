@@ -9,13 +9,12 @@
 //   spriteBrett      — brettet/liggende   (brett-plass på hylle/bord)
 //   spriteAntrekk    — kledd på dukke      (antrekk-plass, rendret over dukka)
 //
-// PROFIL-VARIANT (NB-pilot underveis): «heng profil»-sprites leveres arkvis. De
-// FØRSTE 4 finnes nå (klar-profil-ark-04, HERRE) og er egne oppføringer med KUN
-// `spriteHengProfil` (se PROFIL_HERRE_IDS) — de snapper til profil-heng-plasser
-// (Vareplass variant='profil'). De ØVRIGE HENG_IDS har fortsatt tom
-// spriteHengProfil; `spriteFor(..,'profil')` faller tilbake til front-spriten som
-// dev-placeholder til flere profil-ark kommer. Nye profil-ark: splitt med
-// scripts/split-profil-ark.py og legg id-ene til under.
+// PROFIL-VARIANT: «heng profil»-sprites (klar-profil-ark-01..04) er nå levert —
+// 16 plagg med KUN `spriteHengProfil` (se PROFIL_IDS), registrert som egne
+// oppføringer → snapper til profil-heng-plasser (Vareplass variant='profil').
+// De vanlige HENG_IDS har fortsatt tom spriteHengProfil; `spriteFor(..,'profil')`
+// faller tilbake til front-spriten som dev-placeholder for dem. Nye profil-ark:
+// splitt med scripts/split-profil-ark.py og legg id-ene til i PROFIL_IDS.
 
 /** Passform for et antrekk på en dukke — SKULDER-ANKRET (antrekket henger fra
  *  skuldrene, ikke sentrert). `offsetX/offsetY` er brøk av dukke-boksen fra
@@ -58,11 +57,21 @@ const HENG_IDS = [
   'linskjorte', 'sommerkjole-2', 'badeshorts', 'tskjorte', 'bomberjakke', 'singlet', 'linbukse', 'kimono',
 ]
 
-// HENG PROFIL (klar-profil-ark-04) — 4 HERRE-plagg hengende i profil på bøyle.
+// HENG PROFIL (klar-profil-ark-01..04) — 16 plagg hengende i PROFIL på bøyle.
 // Egne oppføringer med KUN `spriteHengProfil` → snapper bare til profil-heng-
-// plasser (variant='profil'). (Front-variant finnes ikke for disse.)
-const PROFIL_HERRE_IDS = [
+// plasser (variant='profil'). NB (Espen-avklaring): disse er registrert som
+// STANDALONE profil-plagg. Om noen skal være PROFIL-VARIANT av et eksisterende
+// front-plagg (front-motpart, dual-variant), gi id-paringen så flyttes
+// spriteHengProfil over på front-plagget i stedet (se spor-b.md).
+const PROFIL_IDS = [
+  // ark-04 (herre)
   'frakk-morkgraa', 'strikkegenser-marine', 'flanellskjorte-brun', 'bomberjakke-svart',
+  // ark-01
+  'trenchcoat-beige', 'kabelgenser-hvit', 'skjorte-lyseblaa', 'lang-kjole-gronn',
+  // ark-02
+  'denimjakke-blaa', 'hoodie-beige', 'blazer-graa', 'lang-kjole-rosa',
+  // ark-03
+  'parka-gronn', 'skjorte-hvit', 'dunjakke-roed', 'denim-selebukse',
 ]
 
 // Brettede stabler — brett-plasser (hylle / bord / podiumbord).
@@ -86,7 +95,7 @@ const BRETT_HERRE_IDS = [
 
 export const KLESBUTIKK_PLAGG: Plagg[] = [
   ...HENG_IDS.map(id => ({ id, navn: navnAv(id), spriteHengFront: P(id) })),
-  ...PROFIL_HERRE_IDS.map(id => ({ id, navn: navnAv(id), spriteHengProfil: PP(id) })),
+  ...PROFIL_IDS.map(id => ({ id, navn: navnAv(id), spriteHengProfil: PP(id) })),
   ...BRETT_IDS.map(id => ({ id, navn: navnAv(id), spriteBrett: P(id) })),
   ...BRETT_HERRE_IDS.map(id => ({ id, navn: navnAv(id), spriteBrett: P(id) })),
 ]

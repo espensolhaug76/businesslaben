@@ -702,6 +702,49 @@ tilsvarende låsen dit — `server: { port: 5173, strictPort: true }` i main sin
 ikke hovedtreet). Main sin config er per nå ULÅST (ingen `server`-blokk). Legg
 låsen inn der på main-siden.
 
+### FIKSJOBB synlighet (Espens kalibreringsfunn) + resten av profil-arkene
+
+**⚠️ DEL 1 (lås Espens kalibrering, 43 plasser) — IKKE utført:** arrayen var IKKE
+limt inn i oppdraget (bare plassholderen «[lim inn arrayen din her]»). Jeg kan
+ikke gjette 43 kalibrerte plasser. `KLESBUTIKK.vareplasser` er URØRT (18 plasser:
+11 Espen-kalibrerte heng + 5 grove brett + 2 grove dukke). **Lim inn arrayen, så
+låser jeg den + committer «vareplasser: Espen-kalibrert v2 (43 plasser)».**
+
+**DEL 2 — synlighetsfikser (alle utført + headless-verifisert):**
+1. **Palett-undergruppe «HENGENDE — PROFIL»** (lilla) med ALLE profil-plagg. Jeg
+   splittet også de resterende profil-arkene (`klar-profil-ark-01/02/03`, i tillegg
+   til 04) → **16 profil-sprites** i `klar-profil/`. Split-verktøyet
+   (`scripts/split-profil-ark.py`) fikk en **blob-modus** (maskér hver crop til
+   egen komponent → ingen nabo-sliver) for de tre nye arkene; ark-04 beholder
+   strip-modus. Paletten grupperer nå: **Hengende (40 front) · Hengende — profil
+   (16) · Brettet (16)**. `startPlaggDrag` fikk `forceVariant` så drag fra en
+   gruppe låser front/profil-varianten.
+   - **NB (Espen-avklaring trengs):** de 12 nye er registrert som **STANDALONE**
+     profil-plagg (som ark-04). Om noen skal være **profil-variant av et
+     eksisterende front-plagg** (front-motpart / dual-variant), gi id-paringen
+     (hvilket front-id ↔ hvilket profil-sprite), så flytter jeg `spriteHengProfil`
+     over på front-plagget. Navn (innholds-basert): trenchcoat-beige, kabelgenser-
+     hvit, skjorte-lyseblaa, lang-kjole-gronn, denimjakke-blaa, hoodie-beige,
+     blazer-graa, lang-kjole-rosa, parka-gronn, skjorte-hvit, dunjakke-roed,
+     denim-selebukse (+ ark-04: frakk-morkgraa, strikkegenser-marine,
+     flanellskjorte-brun, bomberjakke-svart).
+2. **Tracer:** VALGT punkt rendrer preview på **100 % opasitet** (uvalgte 40 % og
+   kun med «vis previews»-toggle) → rot/skew ses live på full opasitet.
+3. **Preview = representativ EKTE sprite per type+variant:** profil-plass →
+   profil-sprite, front-heng → front-sprite, brett → stabel, dukke → matchende
+   dukketype; rendret i plassens skala + anker/rot/skew.
+4. **Snap-feedback:** under drag får kompatible LEDIGE plasser **grønn ring**
+   (nærmeste = fylt + glød); inkompatible/opptatte **dimmes** (opacity 0.35).
+5. **Port-lås:** `server.port 5174 + strictPort` er allerede satt (forrige runde);
+   verifisert at `vite` binder 5174. **Main må låses til 5173 av CC A/Espen** —
+   ikke rørt herfra (se «Port-lås»-seksjonen over).
+
+Verifisert (headless): palett-overskrifter «Hengende (40) / Hengende — profil (16)
+/ Brettet (16)»; profil-plass-preview = `klar-profil/…`, brett = `…-stabel`, valgt
+= opacity 1 / uvalgt 0.4; heng-drag → 11 grønne ringer + opptatt plagg dimmet til
+0.35. ✦-sjekk: halo=0 på alle 16 profil-crops, ingen nabo-rest etter blob-masking.
+`tsc -b` + `vite build` grønt.
+
 ---
 
 ## Verifisering
