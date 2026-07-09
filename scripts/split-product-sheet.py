@@ -45,6 +45,10 @@ KLAR_DIR      = "/home/espen/adventure-web-klesbutikk/public/assets/raw/klar"
 # utklipp til raw/klar-dukke/. 4 påkledde dukker per ark (1 rad).
 KLAR_DUKKE_RAW_DIR = "/home/espen/adventure-web-klesbutikk/public/assets/raw"
 KLAR_DUKKE_DIR     = "/home/espen/adventure-web-klesbutikk/public/assets/raw/klar-dukke"
+# Klar-profil-arkene (HENG PROFIL): rå-ark i raw/ (klar-profil-ark-NN-raw.png),
+# utklipp til raw/klar-profil/. Profil-heng-plagg (koples som spriteHengProfil).
+KLAR_PROFIL_RAW_DIR = "/home/espen/adventure-web-klesbutikk/public/assets/raw"
+KLAR_PROFIL_DIR     = "/home/espen/adventure-web-klesbutikk/public/assets/raw/klar-profil"
 
 # Navnekart per ark-nummer, i LESE-rekkefølge (rad for rad, venstre->høyre).
 PRODUCTS_NAME_MAPS = {
@@ -118,6 +122,21 @@ KLAR_NAME_MAPS = {
     # fysisk 09 = antrekk (topprad dame, bunnrad barn)
     "09": ["casual-dame", "business-dame", "sommer-dame", "vinter-dame",
            "casual-barn", "sport-barn", "sommer-barn-antrekk", "vinter-barn-antrekk"],
+    # klesark-10 = 4 brettede stabler HERRE (2x2: topprad, bunnrad; v->h).
+    # Filnavnet er «klesark-10» (ikke «klar-ark-10»), men hører til klar-familien.
+    "10": ["jeans-mork", "tskjorter-marine-graa", "gensere-jordtoner", "flanell-rutet"],
+}
+
+# HENG PROFIL (klar-profil-ark-NN, jobb/klesbutikk). Plaggene henger i PROFIL
+# (3/4-vinkel) på bøyle — koples som `spriteHengProfil` på nye plagg-oppføringer.
+# Keyet på FYSISK arknr. ✦-vannmerket ligger i TOM bunn-h. (under nederste plagg)
+# og er for lite til å bli egen blob (< MIN_AREA_FRAC) → havner ikke i noe utklipp.
+# NB: profil-plaggene henger TETT/STAGET og blir ÉN blob her (bøyle + overlapp).
+# Bruk derfor scripts/split-profil-ark.py (vertikal-strip + kulør-sliver-fjerning)
+# for disse arkene; navnekartet under beholdes kun for referanse.
+KLAR_PROFIL_NAME_MAPS = {
+    # fysisk 04 = 4 HERRE-plagg (staggered, lese-rekkefølge v->h):
+    "04": ["frakk-morkgraa", "strikkegenser-marine", "flanellskjorte-brun", "bomberjakke-svart"],
 }
 
 # PÅKLEDDE DUKKER (klar-dukke-ark-NN, jobb/klesbutikk). 5 ark × 4 blobs = 20
@@ -206,9 +225,14 @@ def resolve_family(path):
         return CUSTOMERS_DIR, CUSTOMERS_NAME_MAPS, CUSTOMERS_DIR
     if base.startswith("fixtures-ark"):
         return FIXTURES_DIR, FIXTURES_NAME_MAPS, FIXTURES_DIR
+    if base.startswith("klar-profil-ark"):
+        return KLAR_PROFIL_RAW_DIR, KLAR_PROFIL_NAME_MAPS, KLAR_PROFIL_DIR
     if base.startswith("klar-dukke-ark"):
         return KLAR_DUKKE_RAW_DIR, KLAR_DUKKE_NAME_MAPS, KLAR_DUKKE_DIR
     if base.startswith("klar-ark"):
+        return KLAR_RAW_DIR, KLAR_NAME_MAPS, KLAR_DIR
+    # klesark-NN hører til klar-familien (utklipp til raw/klar/), tross navnet.
+    if base.startswith("klesark"):
         return KLAR_RAW_DIR, KLAR_NAME_MAPS, KLAR_DIR
     return PRODUCTS_DIR, PRODUCTS_NAME_MAPS, PRODUCTS_DIR
 
@@ -253,7 +277,8 @@ def main():
             map_name = {CUSTOMERS_DIR: 'CUSTOMERS_NAME_MAPS',
                         FIXTURES_DIR: 'FIXTURES_NAME_MAPS',
                         KLAR_DIR: 'KLAR_NAME_MAPS',
-                        KLAR_DUKKE_DIR: 'KLAR_DUKKE_NAME_MAPS'}.get(out_dir, 'PRODUCTS_NAME_MAPS')
+                        KLAR_DUKKE_DIR: 'KLAR_DUKKE_NAME_MAPS',
+                        KLAR_PROFIL_DIR: 'KLAR_PROFIL_NAME_MAPS'}.get(out_dir, 'PRODUCTS_NAME_MAPS')
             print(f"FEIL: ingen navn oppgitt og intet kart for ark '{nn}'. Legg til i {map_name}.")
             sys.exit(1)
 

@@ -9,11 +9,13 @@
 //   spriteBrett      — brettet/liggende   (brett-plass på hylle/bord)
 //   spriteAntrekk    — kledd på dukke      (antrekk-plass, rendret over dukka)
 //
-// NB — PROFIL-ARKET MANGLER: «heng profil»-arket (logisk 03) ble aldri levert
-// (fysisk ark 05 var en duplikat av 04). Derfor er `spriteHengProfil` TOM for
-// alle plagg foreløpig, og KlesbutikkStillas faller tilbake til `spriteHengFront`
-// på stativ-plassene. Når profil-arket kommer: splitt det (navn = <id>-p) og
-// sett spriteHengProfil: P(id + '-p') for heng-plaggene under.
+// PROFIL-VARIANT (NB-pilot underveis): «heng profil»-sprites leveres arkvis. De
+// FØRSTE 4 finnes nå (klar-profil-ark-04, HERRE) og er egne oppføringer med KUN
+// `spriteHengProfil` (se PROFIL_HERRE_IDS) — de snapper til profil-heng-plasser
+// (Vareplass variant='profil'). De ØVRIGE HENG_IDS har fortsatt tom
+// spriteHengProfil; `spriteFor(..,'profil')` faller tilbake til front-spriten som
+// dev-placeholder til flere profil-ark kommer. Nye profil-ark: splitt med
+// scripts/split-profil-ark.py og legg id-ene til under.
 
 /** Passform for et antrekk på en dukke — SKULDER-ANKRET (antrekket henger fra
  *  skuldrene, ikke sentrert). `offsetX/offsetY` er brøk av dukke-boksen fra
@@ -43,10 +45,11 @@ export interface Plagg {
 }
 
 const P = (n: string) => `/assets/raw/klar/${n}.png`
+const PP = (n: string) => `/assets/raw/klar-profil/${n}.png`   // heng PROFIL
 const navnAv = (id: string) => id.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase())
 
-// Hengende plagg (forfra) — dame, herre, barn, vinter, sommer. Kan snappes til
-// heng-plasser (stativ / lite stativ). Profil-variant mangler (se filkommentar).
+// Hengende plagg (forfra) — dame, herre, barn, vinter, sommer. Front-variant;
+// snapper til front-heng-plasser. (Profil-variant: se PROFIL_HERRE_IDS under.)
 const HENG_IDS = [
   'bluse', 'cardigan-dame', 'blazer-dame', 'maxikjole', 'denimskjort', 'trenchcoat', 'strikkekjole', 'dunvest-dame',
   'denimjakke', 'hvit-skjorte', 'graa-genser', 'brun-genser', 'sommerkjole', 'hoodie', 'blaa-genser', 'ullfrakk',
@@ -55,10 +58,22 @@ const HENG_IDS = [
   'linskjorte', 'sommerkjole-2', 'badeshorts', 'tskjorte', 'bomberjakke', 'singlet', 'linbukse', 'kimono',
 ]
 
+// HENG PROFIL (klar-profil-ark-04) — 4 HERRE-plagg hengende i profil på bøyle.
+// Egne oppføringer med KUN `spriteHengProfil` → snapper bare til profil-heng-
+// plasser (variant='profil'). (Front-variant finnes ikke for disse.)
+const PROFIL_HERRE_IDS = [
+  'frakk-morkgraa', 'strikkegenser-marine', 'flanellskjorte-brun', 'bomberjakke-svart',
+]
+
 // Brettede stabler — brett-plasser (hylle / bord / podiumbord).
 const BRETT_IDS = [
   't-skjorter-stabel', 'jeans-stabel', 'gensere-stabel', 'cardigan-stabel',
   'skjorter-stabel', 'chinos-stabel', 'hoodies-stabel', 'flanell-stabel', 'shorts-stabel', 'cardigans-stabel', 'skjerf-stabel', 'luer-stabel',
+]
+
+// Brettede stabler HERRE (klesark-10) — nye brett-plagg (merket herre).
+const BRETT_HERRE_IDS = [
+  'jeans-mork', 'tskjorter-marine-graa', 'gensere-jordtoner', 'flanell-rutet',
 ]
 
 // ANTREKK-PLAGG (ghost-antrekk) er FJERNET fra paletten/plaggdata: rendret over
@@ -71,7 +86,9 @@ const BRETT_IDS = [
 
 export const KLESBUTIKK_PLAGG: Plagg[] = [
   ...HENG_IDS.map(id => ({ id, navn: navnAv(id), spriteHengFront: P(id) })),
+  ...PROFIL_HERRE_IDS.map(id => ({ id, navn: navnAv(id), spriteHengProfil: PP(id) })),
   ...BRETT_IDS.map(id => ({ id, navn: navnAv(id), spriteBrett: P(id) })),
+  ...BRETT_HERRE_IDS.map(id => ({ id, navn: navnAv(id), spriteBrett: P(id) })),
 ]
 
 /** Grunnlinje-passform for et antrekk på en gitt dukketype. */

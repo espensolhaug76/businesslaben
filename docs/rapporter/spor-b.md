@@ -660,6 +660,34 @@ localStorage-utkastet + det RENDREDE plagget viste nøyaktig
 front-plagg sluppet på en profil-plass ble AVVIST (plassen forble ledig) mens det
 snappet fint på en front-plass. Ingen konsollfeil. `tsc -b` + `vite build` grønt.
 
+### 2 ark til: profil-heng (herre) + brett-stabler (herre)
+
+**`klar-profil-ark-04` → 4 HERRE profil-heng** (`public/assets/raw/klar-profil/`):
+`frakk-morkgraa`, `strikkegenser-marine`, `flanellskjorte-brun`, `bomberjakke-svart`.
+Plaggene henger TETT/STAGET i profil på bøyle → bakgrunnsfjerning ga ÉN blob
+(bøyle-tråder + overlapp), så den vanlige blob-splitten mislyktes. Egen splitter
+`scripts/split-profil-ark.py`: **vertikale striper** ved tetthets-daler
+(x≈224/362/492) + **kulør-basert nabo-sliver-fjerning** (blådominant marine ut av
+grå frakk; varm brun flanell ut av marine genser) + behold-største-komponent.
+Registrert i `klesbutikkPlagg.ts` som **nye oppføringer med kun `spriteHengProfil`**
+(`PROFIL_HERRE_IDS`) → snapper bare til **profil-heng-plasser** (`variant:'profil'`).
+
+**`klesark-10` → 4 brett-stabler HERRE** (`public/assets/raw/klar/`): `jeans-mork`,
+`tskjorter-marine-graa`, `gensere-jordtoner`, `flanell-rutet` (2×2, ren blob-split).
+Registrert som nye brett-plagg (`BRETT_HERRE_IDS`, merket herre i kommentar — ingen
+kjønnsfelt på `Plagg` ennå). `split-product-sheet.py` fikk `klar-profil`-familien +
+`klesark`→klar-ruting + navnekart «10»/«04».
+
+**Palett-integrasjon:** thumbnail- og drag-sprite-fallbacks utvidet med
+`spriteHengProfil` så profil-kun-plagg vises/dras. Profil-plaggene dukker opp i
+Hengende-gruppa, brett-herre i Brettet.
+
+✦-sjekk: vannmerket lå i tom bunn-h. på begge ark → utenfor alle utklipp (crops
+trimmes til alfa-bbox), halo=0 på alle 8. Verifisert (headless): 8 palett-thumbs
+med rett sti; profil-plagg (bomber) snappet til profil-plass og rendret
+`klar-profil/…` i profil; profil-plagg AVVIST av front-plass. `tsc -b` +
+`vite build` grønt.
+
 ---
 
 ## Verifisering

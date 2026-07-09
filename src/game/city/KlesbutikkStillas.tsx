@@ -720,7 +720,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   }
   function startPlaggDrag(plaggId: string, e: React.PointerEvent) {
     const p = plaggById(plaggId); if (!p) return
-    const sprite = p.spriteHengFront ?? p.spriteBrett ?? p.spriteAntrekk ?? ''
+    const sprite = p.spriteHengFront ?? p.spriteHengProfil ?? p.spriteBrett ?? p.spriteAntrekk ?? ''
     // Heng: hvilke varianter (front/profil) plagget støtter → plass-filter.
     const hengVarianter = plaggType(p) === 'heng'
       ? (['front', 'profil'] as HengVariant[]).filter(v => plaggStøtterHengVariant(p, v))
@@ -944,7 +944,7 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
           {/* Heng + brett (vanlige plagg) */}
           {(['heng', 'brett'] as VareplassType[]).map(t => {
             const list = KLESBUTIKK_PLAGG.filter(p => plaggType(p) === t)
-            const thumb = (p: Plagg) => p.spriteHengFront ?? p.spriteBrett ?? p.spriteAntrekk
+            const thumb = (p: Plagg) => p.spriteHengFront ?? p.spriteHengProfil ?? p.spriteBrett ?? p.spriteAntrekk
             return (
               <div key={t} style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: SLOT_COLOR[t], marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
