@@ -340,7 +340,9 @@ export const PRUTEKUNDEN: SalesScenario = {
 // vet noe om anledningen. Recommend-steget mot sortimentet, mersalg naturlig
 // (hun spør selv om hun trenger noe mer).
 
-const DRIKKE_TAGS = ['juice', 'iste', 'smoothie', 'saft', 'mineralvann', 'kaffe', 'sjokolade']
+// Barnevennlig drikke (mottaker-tilpasset mersalg til Maren — barnebursdag):
+// leser drikkesortimentet, men styrer unna kaffe/te.
+const BARNEVENNLIG_DRIKKE_TAGS = ['saft', 'juice', 'smoothie', 'brus', 'mineralvann', 'iste']
 const KAKE_BOLLE_TAGS = ['kake', 'bolle', 'muffin', 'skolebrod', 'kanelbolle', 'cake']
 
 export const DEN_USIKRE: SalesScenario = {
@@ -348,12 +350,12 @@ export const DEN_USIKRE: SalesScenario = {
   customerName: 'Maren',
   personaTag: 'Familieorienterte',
   sprite: '/assets/raw/customers/usikre.png',
-  description: 'En kunde som skal kjøpe til et bursdagsselskap i morgen, men aner ikke hva hun vil ha. Trenger noen å tenke høyt sammen med.',
+  description: 'En kunde som skal kjøpe til en barnebursdag i morgen, men aner ikke hva hun vil ha. Trenger noen å tenke høyt sammen med.',
   hiddenNeed: 'Vil ha noen som stiller spørsmål og hjelper henne finne ut hva hun faktisk trenger — ikke bare kaste ut et tilfeldig forslag med en gang.',
   steps: [
     {
       id: 'inn',
-      customerLine: 'Hei … jeg skal ha noe til et bursdagsselskap i morgen, men jeg aner faktisk ikke hva jeg burde velge.',
+      customerLine: 'Hei … jeg skal ha noe til en barnebursdag i morgen, men jeg aner faktisk ikke hva jeg burde velge.',
       note: 'Førsteinntrykk — vis at du vil hjelpe, ikke bare selge noe raskt.',
       choices: [
         { id: 'inn_a', text: 'Så gøy! Fortell litt — hvor mange skal dere være, og er det noen med spesielle ønsker?', quality: 'good',
@@ -393,17 +395,16 @@ export const DEN_USIKRE: SalesScenario = {
       customerLine: 'Åh, det passer sikkert bra! Trenger jeg noe mer, tror du?',
       note: 'Naturlig mersalgs-mulighet — hun spør faktisk deg selv.',
       choices: [
-        // Nøytral formulering («ved siden av», ikke «til barna») + ærlig
-        // feedback-flagg om drikkeutvalget (Salgsmotor-oppgaven, DEL 2):
-        // dagens kafé-sortiment har typisk kaffe/te/smoothie — ikke
-        // nødvendigvis det mest barnevennlige valget, og choice-teksten skal
-        // ikke late som om ETHVERT treff i DRIKKE_TAGS automatisk passer et
-        // barneselskap.
-        { id: 'me_a', text: 'Kanskje noe å drikke ved siden av også?', quality: 'good',
-          sell: { needTags: DRIKKE_TAGS, addon: true, qty: 8 },
-          feedback: 'Naturlig og hjelpsomt mersalg — hun spurte selv. Til et barneselskap er juice/saft/brus ofte et bedre valg enn kaffe eller te; vurder om drikkeutvalget ditt faktisk passer denne kundegruppen.' },
-        { id: 'me_b', text: 'Nei, det tror jeg går fint.', quality: 'warn',
-          feedback: 'Helt grei, men du går glipp av en åpenbar og ønsket mersalgsmulighet siden hun faktisk spurte deg.' },
+        // Mottaker-tilpasset valg (barnebursdag), etter David-mønsteret: begge
+        // drikke-valgene leser elevens FAKTISKE drikkesortiment via sell-
+        // direktivet (klemmes mot lager). Barnevennlig drikke treffer (good),
+        // kaffe er en warn — ikke hovedbehovet for et barneselskap.
+        { id: 'me_a', text: 'Kanskje litt saft eller juice til barna også?', quality: 'good',
+          sell: { needTags: BARNEVENNLIG_DRIKKE_TAGS, addon: true, qty: 8 },
+          feedback: 'Naturlig, ønsket mersalg — og barnevennlig. Saft, juice eller smoothie passer en barnebursdag mye bedre enn kaffe eller te.' },
+        { id: 'me_b', text: 'Skal jeg slenge med litt kaffe til alle sammen?', quality: 'warn',
+          sell: { needTags: KAFFE_TAGS, addon: true, qty: 8 },
+          feedback: 'Kaffe til et barneselskap? Barna kan jo ikke drikke det — saft eller juice er et tryggere valg. Litt kaffe til de voksne kan være greit, men det er ikke hovedbehovet her.' },
         { id: 'me_c', text: 'Du bør uansett kjøpe litt mer enn du tror du trenger.', quality: 'bad',
           feedback: 'Vagt og pushy uten noen konkret begrunnelse. Hjelper henne ikke videre i det hele tatt.' },
       ],
