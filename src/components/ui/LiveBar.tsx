@@ -25,8 +25,10 @@ export default function LiveBar() {
 
   return (
     <div style={{
+      // Statusindikator — hører hjemme oppe ved menyen/HUD-en (ved 💻 Dashbord),
+      // IKKE nede th der spill-mentoren står (kolliderte tidligere med figuren).
       position: 'fixed',
-      bottom: 20,
+      top: 70,
       right: 20,
       zIndex: 9999,
       display: 'flex',

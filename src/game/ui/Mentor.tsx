@@ -96,7 +96,12 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const activeId = reveal && hasQueued ? queue[0]! : null
   const melding = activeId ? mentorMelding(activeId) : null
 
-  // Pose-prioritet: leser > smil > peker > nøytral.
+  // Pose-prioritet: leser > smil (m/boble) > peker (kø) > nøytral.
+  // INVARIANT: smil ⇔ `melding != null` ⇔ bobla rendres nedenfor. En melding som
+  // ikke KAN vises (blokkert, ikke force-vist) gir melding=null ⇒ pose blir peker
+  // (kø) eller nøytral — ALDRI smil uten boble. Container-z (500) > alle
+  // spill-overlays, så bobla ligger aldri bak dashbord/oppgjør; LiveBar er flyttet
+  // vekk fra dette hjørnet.
   const pose = ordbokOpen ? POSE.leser
     : melding ? POSE.smil
     : (blocked && hasQueued) ? POSE.peker
