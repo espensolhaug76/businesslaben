@@ -34,18 +34,6 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'innboks',         label: 'Innboks',           emoji: '📬' },
 ]
 
-// LÆRINGSLAGET — fane → mentor-trigger (DEL 3). Én hint per fane, første besøk.
-const FANE_TRIGGER: Partial<Record<Tab, string>> = {
-  produkter: 'produkter_fane',
-  priser: 'priser_fane',
-  malgruppe: 'malgruppe_fane',
-  markedsforing: 'marked_fane',
-  personale: 'personale_fane',
-  okonomi: 'okonomi_fane',
-  forretningsplan: 'forretningsplan_fane',
-  lokasjon: 'lokasjon_fane',
-}
-
 // ── Tab bar (extracted so it can read unreadCount) ────────────────────────────
 
 function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveTab: (t: Tab) => void }) {
@@ -98,13 +86,12 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
     if (open && initialTab) setActiveTab(initialTab as Tab)
   }, [open, initialTab])
 
-  // LÆRINGSLAGET — fane-triggere (DEL 3). Første besøk på en fane fyrer ETT
-  // mentor-hint (maks én gang, styrt av mentorens fired-sett). Dashbordet
-  // blokkerer ikke, så bobla vises INNE i dashbordet.
+  // LÆRINGSLAGET — meld AKTIV fane til mentoren (kontekstbundne fane-triggere).
+  // Mentoren viser fane-hintet KUN mens fanen er aktiv, og re-armer det hvis det
+  // ikke rekker frem; null når dashbordet lukkes. Selve trigger-oppslaget
+  // (fane → melding) ligger i mentorTriggers (`fane`-feltet).
   useEffect(() => {
-    if (!open) return
-    const id = FANE_TRIGGER[activeTab]
-    if (id) window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id } }))
+    window.dispatchEvent(new CustomEvent('mentor:fane', { detail: { fane: open ? activeTab : null } }))
   }, [open, activeTab])
 
   return (
@@ -1620,11 +1607,9 @@ function PriserTab() {
   const { state, dispatch } = useGame()
   const [products, setProducts] = useState<Product[]>(() => state.products.map(p => ({ ...p })))
 
-  // LÆRINGSLAGET: signaliser mentor-triggeren «forste_prising» når Priser-fanen
-  // åpnes (mentoren køer meldingen til dashbordet lukkes).
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_prising' } }))
-  }, [])
+  // LÆRINGSLAGET: fane-hintene (forste_prising + priser_fane) er nå kontekst-
+  // bundne og styres av mentorens 'mentor:fane'-kanal (se DashboardOverlay-
+  // effekten) — ikke en egen mount-dispatch her.
 
   if (products.length === 0) {
     return <div style={{ textAlign: 'center', color: '#475569', padding: '3rem' }}>Ingen produkter bestilt. Gå til Produkter-fanen.</div>

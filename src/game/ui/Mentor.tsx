@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
-import { MENTOR_TRIGGERS, mentorMelding } from '../data/mentorTriggers'
+import { MENTOR_TRIGGERS, mentorMelding, faneTriggere } from '../data/mentorTriggers'
 import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
 import type { GameState } from '../types'
@@ -33,11 +33,12 @@ function saveFired(s: Set<string>) {
   try { localStorage.setItem(KEY, JSON.stringify([...s])) } catch { /* ignore */ }
 }
 
-/** Tilstands-avledede triggere. Flate-baserte (forste_prising/disk_stell/vindu/
- *  bykart/*_fane) fyres via window-event ('mentor:signal'), ikke herfra. */
+/** Tilstands-avledede HENDELSES-triggere. Scene-signaler (disk_stell/vindu/
+ *  bykart) kommer via 'mentor:signal'; fane-triggere via 'mentor:fane'. */
 function oppfylt(id: string, s: GameState): boolean {
   switch (id) {
     case 'forste_apning': return s.dayPhase === 'åpen'
+    case 'forste_bestilling_levert': return s.lastDelivery != null
     case 'forste_laan': return s.loans.length > 0
     case 'forste_manedsoppgjor': return s.lastMonthSettlement != null
     case 'forste_svinn': return (s.lastDayResult?.svinnStk ?? 0) > 0
@@ -66,35 +67,77 @@ function renderMelding(melding: string): ReactNode {
 export default function Mentor({ blocked }: { blocked: boolean }) {
   const { state } = useGame()
   const [fired, setFired] = useState<Set<string>>(loadFired)
-  const [queue, setQueue] = useState<string[]>([])
+  const [queue, setQueue] = useState<string[]>([])          // HENDELSES-kø (peker/kø)
+  const [faneMsg, setFaneMsg] = useState<string | null>(null)  // KONTEKSTBUNDET fane-melding
+  const [activeFane, setActiveFane] = useState<string | null>(null)
   const [failedImg, setFailedImg] = useState(false)
   const [ordbokOpen, setOrdbokOpen] = useState(false)
-  const [forceShow, setForceShow] = useState(false)   // DEL 4: bruker klikket peker-figuren
-  const firedRef = useRef(fired)
-  firedRef.current = fired
+  const [forceShow, setForceShow] = useState(false)   // bruker klikket peker-figuren
+  const firedRef = useRef(fired); firedRef.current = fired
+  // Refs så event-lyttere (mentor:fane) leser FERSKE verdier uten å re-bindes.
+  const ordbokOpenRef = useRef(ordbokOpen); ordbokOpenRef.current = ordbokOpen
+  const blockedRef = useRef(blocked); blockedRef.current = blocked
+  const activeFaneRef = useRef(activeFane)
 
-  const fire = useCallback((id: string) => {
-    if (!id || firedRef.current.has(id)) return
+  /** Marker en trigger som fyrt (persistert sett), UTEN å kø. Returnerer false
+   *  hvis den alt var fyrt. */
+  const persistFired = useCallback((id: string) => {
+    if (firedRef.current.has(id)) return false
     const n = new Set(firedRef.current).add(id)
     firedRef.current = n
     setFired(n); saveFired(n)
-    setQueue(q => (q.includes(id) ? q : [...q, id]))
+    return true
   }, [])
+
+  // HENDELSES-trigger: fyres én gang og legges i køen (vises når ikke blokkert,
+  // ellers peker figuren til den kan vises).
+  const fire = useCallback((id: string) => {
+    if (!id || !persistFired(id)) return
+    setQueue(q => (q.includes(id) ? q : [...q, id]))
+  }, [persistFired])
 
   useEffect(() => {
     for (const t of MENTOR_TRIGGERS) if (oppfylt(t.id, state)) fire(t.id)
   }, [state, fire])
 
+  // Scene-signaler (disk_stell/vindu/bykart) → hendelses-kø.
   useEffect(() => {
     const h = (e: Event) => fire((e as CustomEvent).detail?.id)
     window.addEventListener('mentor:signal', h)
     return () => window.removeEventListener('mentor:signal', h)
   }, [fire])
 
+  // KONTEKSTBUNDNE fane-triggere: dashbordet melder aktiv fane (eller null når
+  // det lukkes). Fane-meldingen vises KUN mens den fanen er aktiv. Rekker den
+  // ikke frem (ordbok/blokkert/aktiv hendelsesmelding ved fanebytte) blir den
+  // IKKE markert fyrt ⇒ re-armes til neste besøk. Aldri drypp i feil fane / ute
+  // i spillet.
+  const eventShowingRef = useRef(false)
+  const handleFane = useCallback((fane: string | null) => {
+    if (fane === activeFaneRef.current) return          // ingen reell endring
+    activeFaneRef.current = fane
+    setActiveFane(fane)
+    setFaneMsg(null)                                     // forlot forrige fane ⇒ dropp meldingen
+    if (!fane) return                                    // dashbordet lukket
+    if (ordbokOpenRef.current || blockedRef.current || eventShowingRef.current) return  // kan ikke vises → re-arm
+    const t = faneTriggere(fane).find(t => !firedRef.current.has(t.id))
+    if (t && persistFired(t.id)) setFaneMsg(t.id)
+  }, [persistFired])
+
+  useEffect(() => {
+    const h = (e: Event) => handleFane((e as CustomEvent).detail?.fane ?? null)
+    window.addEventListener('mentor:fane', h)
+    return () => window.removeEventListener('mentor:fane', h)
+  }, [handleFane])
+
   const hasQueued = queue.length > 0
   const reveal = !blocked || forceShow
-  const activeId = reveal && hasQueued ? queue[0]! : null
-  const melding = activeId ? mentorMelding(activeId) : null
+  const eventId = reveal && hasQueued ? queue[0]! : null
+  const eventMelding = eventId ? mentorMelding(eventId) : null
+  eventShowingRef.current = !!eventMelding
+  // Fane-melding vises kun mens fanen er aktiv, ikke under ordbok/blokkering.
+  const faneMelding = (faneMsg && !ordbokOpen && !blocked) ? mentorMelding(faneMsg) : null
+  const melding = eventMelding ?? faneMelding     // hendelse har forrang over fane
 
   // Pose-prioritet: leser > smil (m/boble) > peker (kø) > nøytral.
   // INVARIANT: smil ⇔ `melding != null` ⇔ bobla rendres nedenfor. En melding som
@@ -107,7 +150,10 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     : (blocked && hasQueued) ? POSE.peker
     : POSE.noytral
 
-  function dismiss() { setQueue(q => q.slice(1)); setForceShow(false) }
+  function dismiss() {
+    if (eventMelding) { setQueue(q => q.slice(1)); setForceShow(false) }
+    else if (faneMsg) setFaneMsg(null)
+  }
 
   function figureClick() {
     if (ordbokOpen) { setOrdbokOpen(false); return }
@@ -122,7 +168,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
       <AnimatePresence>
         {melding && (
           <motion.div
-            key={activeId}
+            key={eventId ?? faneMsg}
             initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
             style={{
               pointerEvents: 'auto', maxWidth: 300, marginBottom: 20,
