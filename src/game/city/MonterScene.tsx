@@ -108,6 +108,9 @@ export default function MonterScene({ districtId, lokaleId }: {
   const { state, dispatch } = useGame()
   const stageRef = useRef<HTMLDivElement>(null)
 
+  // LÆRINGSLAGET: kontekstuell mentor-trigger — disk-/monterflaten åpnet for styling.
+  useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_disk_stell' } })) }, [])
+
   const [imgFailed, setImgFailed] = useState(false)
   const [drag, setDrag] = useState<{ productId: string } | null>(null)
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)

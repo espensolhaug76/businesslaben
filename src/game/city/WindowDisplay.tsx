@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useGame } from '../GameContext'
 import { STOREFRONT_HOTSPOTS, INTERIOR_DISK_DISPLAY } from '../../data/districts'
@@ -469,6 +469,8 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
 // viser kun vinduet — som før.
 
 export default function WindowDisplayEditor() {
+  // LÆRINGSLAGET: kontekstuell mentor-trigger — vindusstyling åpnet (ytre salgsmiljø).
+  useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_vindu' } })) }, [])
   return (
     <div>
       <div style={{ marginBottom: '0.9rem' }}>

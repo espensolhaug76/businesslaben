@@ -29,6 +29,8 @@ function stageSize(vp: Viewport) {
 export default function CityMapView() {
   const navigate = useNavigate()
   const { state } = useGame()
+  // LÆRINGSLAGET: kontekstuell mentor-trigger — bykartet åpnet (lokasjon/beliggenhet).
+  useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_bykart' } })) }, [])
   const [vp, setVp] = useState<Viewport>({ w: window.innerWidth, h: window.innerHeight })
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
