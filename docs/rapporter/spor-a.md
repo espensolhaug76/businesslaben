@@ -809,6 +809,60 @@ dem. La til en INVARIANT-kommentar i `Mentor.tsx`.
 `noytral → peker (0 boble-noder) → smil (boble synlig)`; boble rendret OVER åpent
 salgsscenario (z-orden ok). `tsc -b` + `vite build` grønn, 0 konsollfeil.
 
+## 22. Spilltest-fikser (5 funn) + dev-port-lås
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn. Kode
+> committet lokalt, IKKE pushet — kode etter Espens Chrome-validering.**
+> (Dev-port-låsen `vite.config` ble committet på eget grunnlag da Espen ba om det.)
+
+**P1 — levering ved DAGSTART, ikke ved åpning.** Vareleveransen (ankomne
+`incomingOrders` → lager + `lastDelivery`/«Ferske varer klare»-banner) er flyttet
+fra `OPEN_DAY` til `START_NEW_DAY` i `GameContext`. Lageret fylles nå FØR åpning,
+så eleven kan stelle disk/vindu med de nye varene og så åpne — slik ekte
+butikkdrift fungerer. Ny hendelses-trigger `forste_bestilling_levert` (mentor:
+«Varene du bestilte i går er her — still dem ut i disken før du åpner …»).
+
+**P2 — ingen kunde i stengt butikk + Live m/hund.** In-scene-kunden rendres nå
+KUN når `dayPhase === 'åpen'` (InteriorView-gate), aldri i stengt/oppgjør. Rot-
+årsak til et gjenstående aktiv-flagg lukket: `RESOLVE_SALES_SCENARIO` nullstiller
+nå ALLTID `activeMeetingScenarioId` (før: bare `inDay`). `live.png`-assetet er
+bekreftet å inneholde HELE førerhund-blobben (ikke beskåret), og render bruker
+hele PNG-en. **Flagg:** på den delte kunde-skalaen (waist-forankret, 1.3×) havner
+hunden UNDER disk-okklusjonen/utenfor synsfeltet. La til hook `spriteScale?` på
+`SalesScenario` (+ brukt i InteriorView) — Live trenger en egen, MINDRE skala som
+må traces av deg via `?dev=1` (skala-slideren mens Live er aktiv). Jeg gjettet
+ingen verdi.
+
+**P3 — duplikate bestillingslinjer slås sammen.** `ORDER_PRODUCT` merger nå en ny
+bestilling inn i en eksisterende `incomingOrder` med samme vare + samme
+leveringsdag (sum antall + kostnad) i stedet for å legge til en ny rad. Fikser
+både data og «Underveis»-visning.
+
+**P4 — fane-meldinger kontekstbundne.** Fane-triggere (`fane`-felt i
+mentorTriggers) er skilt ut fra hendelses-køen til en egen kanal (`mentor:fane`).
+Mentoren viser fane-hintet KUN mens den fanen er aktiv; rekker det ikke frem
+(ordbok/blokkert/aktiv hendelsesmelding ved fanebytte) markeres det IKKE fyrt ⇒
+re-armes til neste besøk. Aldri drypp i feil fane eller ute i spillet. Flere
+triggere på samme fane sekvenseres (én per besøk). Hendelses-triggere beholder
+kø + peker-oppførselen. `forste_prising` er nå også fane-bundet (priser).
+
+**P5 — Maren: mottaker-tilpasset mersalg.** Det hardkodede 8×-drikke-mersalget
+(som resolverte til kaffe) er erstattet av et valg-steg etter David-mønsteret:
+barnevennlig drikke (`BARNEVENNLIG_DRIKKE_TAGS` — saft/juice/smoothie/brus) =
+**good**, kaffe (`KAFFE_TAGS`) = **warn** («Kaffe til et barneselskap? …»). Begge
+leser elevens faktiske drikkesortiment via `sell`. Scenarioteksten presiserer nå
+BARNEbursdag. Andre scenarier urørt.
+
+**Verifisert headless (Playwright, port-låst 5173):** P1 dag-syklus → dag 2 stengt
+viser «Ferske varer klare» FØR åpning (PASS). P2 stengt butikk = 0 kunde-sprites
+(PASS). P3 3× samme bestilling → én linje «30 stk» (PASS). P4 Priser-melding
+lekker IKKE til Økonomi + re-arm etter ordbok-blokkering (PASS). P5 Maren når
+mersalg med begge drikkevalg; saft → grønn «barnevennlig»-feedback (PASS).
+`tsc -b` + `vite build` grønn, 0 konsollfeil. **Ikke headless-dekket:** in-scene
+Live-møte kunne ikke tvinges fram (salgsoverlayet viser bare navn, ikke sprite;
+klokka velger møte tilfeldig) — Live m/hund-visningen + spriteScale-verdien hører
+til din ?dev=1-kalibrering.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
