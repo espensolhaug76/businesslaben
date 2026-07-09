@@ -26,7 +26,11 @@ Dette er REGLER, ikke historie. Les før du gjør noe; hold filen kort — under
 - All UI-tekst er bokmål.
 - Ingen tekst i bilde-assets (skilt/tavler/etiketter genereres tekstfrie;
   tekst legges alltid på i CSS/DOM).
-- Ingen ekte merkenavn/varemerker — kun fiktive.
+- Ekte merkenavn/selskaper ER tillatt i glossary-eksempler og annet
+  undervisningsinnhold når de brukes faktabasert og pedagogisk (som i fagbøker),
+  f.eks. «iPhone bruker skumming ved lansering». MEN: aldri i NB-bilder/assets,
+  aldri nedsettende, og aldri som fiktive aktører i spillmekanikken —
+  leverandører/kunder/konkurrenter i selve spillet forblir fiktive.
 
 ## Pris
 - `Product.retailPrice` er DEN ENE prissettingskilden (Priser-fanen). Ikke
