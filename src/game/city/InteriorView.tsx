@@ -115,7 +115,10 @@ export default function InteriorView({ districtId, lokaleId }: {
   // kundemøte forfaller setter reduceren (TICK) state.activeMeetingScenarioId;
   // vi slår opp scenariet og viser kunden. Når møtet er løst/hoppet over
   // nulles feltet og kunden forsvinner. Ingen lokal pool/spawn/navigasjon mer.
-  const activeScenario = state.activeMeetingScenarioId ? getScenario(state.activeMeetingScenarioId) ?? null : null
+  // GATE: kunden vises KUN i åpen butikk under et aktivt møte — aldri i stengt/
+  // oppgjør (defensivt mot et evt. gjenstående aktiv-flagg fra forrige dag).
+  const activeScenario = state.dayPhase === 'åpen' && state.activeMeetingScenarioId
+    ? getScenario(state.activeMeetingScenarioId) ?? null : null
   const [imgFailed, setImgFailed] = useState(false)
   const [custImgFailed, setCustImgFailed] = useState(false)  // kunde-sprite mangler/feiler
   const [shown, setShown] = useState(false)        // fade-in/ut (opacity)
@@ -238,10 +241,11 @@ export default function InteriorView({ districtId, lokaleId }: {
       </div>
 
       {/* MORGENLEVERANSE (docs/INNKJOP_LEVERING.md) — «varer klare»-pille når
-          state.lastDelivery er satt (OPEN_DAY la ankomne bestillinger på
-          lager). Ordlyden er bransjens (DEL 2): kafeen sier «ferske varer
-          klare», ikke «leveres» — via ACTIVE_DEF.forsyning.klarMelding.
-          Avvisbar med ✕ (CLEAR_DELIVERY). Toppmidtstilt under HUD. */}
+          state.lastDelivery er satt (START_NEW_DAY la ankomne bestillinger på
+          lager ved DAGSTART, før åpning). Ordlyden er bransjens (DEL 2): kafeen
+          sier «ferske varer klare», ikke «leveres» — via
+          ACTIVE_DEF.forsyning.klarMelding. Avvisbar med ✕ (CLEAR_DELIVERY).
+          Toppmidtstilt under HUD. */}
       {state.lastDelivery && (
         <div style={{
           position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 82,
@@ -515,7 +519,9 @@ export default function InteriorView({ districtId, lokaleId }: {
             style={{
               position: 'absolute',
               left: `${centerX}%`, top: `${waistY}%`,
-              height: `${scale * 100}%`, width: 'auto',
+              // Per-scenario skala (default 1) oppå den Espen-kalibrerte base-
+              // skalaen — for sprites med annen komposisjon (Live m/førerhund).
+              height: `${scale * (activeScenario.spriteScale ?? 1) * 100}%`, width: 'auto',
               // Forankring på livet: flytt opp WAIST_FRAC av egen høyde, sentrer x.
               transform: `translate(-50%, -${WAIST_FRAC * 100}%)`,
               opacity: shown ? 1 : 0,
