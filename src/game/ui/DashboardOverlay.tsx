@@ -9,7 +9,6 @@ import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_T
 import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
 import Fagord from './Fagord'
-import { search as glossarySearch, CATEGORIES, GLOSSARY, type GlossaryLevel } from '../data/glossary'
 import { BALANCE } from '../data/balance'
 import { aktiveFunksjoner, evaluerRefleksjon } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
@@ -18,7 +17,7 @@ import type { Loan } from '../types'
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
-type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter' | 'innboks' | 'ordbok'
+type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter' | 'innboks'
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'oversikt',        label: 'Oversikt',         emoji: '📊' },
@@ -33,8 +32,19 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'personale',       label: 'Personale',         emoji: '👥' },
   { id: 'rapporter',       label: 'Rapporter',         emoji: '📋' },
   { id: 'innboks',         label: 'Innboks',           emoji: '📬' },
-  { id: 'ordbok',          label: 'Ordbok',            emoji: '📖' },
 ]
+
+// LÆRINGSLAGET — fane → mentor-trigger (DEL 3). Én hint per fane, første besøk.
+const FANE_TRIGGER: Partial<Record<Tab, string>> = {
+  produkter: 'produkter_fane',
+  priser: 'priser_fane',
+  malgruppe: 'malgruppe_fane',
+  markedsforing: 'marked_fane',
+  personale: 'personale_fane',
+  okonomi: 'okonomi_fane',
+  forretningsplan: 'forretningsplan_fane',
+  lokasjon: 'lokasjon_fane',
+}
 
 // ── Tab bar (extracted so it can read unreadCount) ────────────────────────────
 
@@ -87,6 +97,15 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
   useEffect(() => {
     if (open && initialTab) setActiveTab(initialTab as Tab)
   }, [open, initialTab])
+
+  // LÆRINGSLAGET — fane-triggere (DEL 3). Første besøk på en fane fyrer ETT
+  // mentor-hint (maks én gang, styrt av mentorens fired-sett). Dashbordet
+  // blokkerer ikke, så bobla vises INNE i dashbordet.
+  useEffect(() => {
+    if (!open) return
+    const id = FANE_TRIGGER[activeTab]
+    if (id) window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id } }))
+  }, [open, activeTab])
 
   return (
     <AnimatePresence>
@@ -150,7 +169,6 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                   {activeTab === 'personale'       && <PersonaleTab />}
                   {activeTab === 'rapporter'       && <RapporterTab />}
                   {activeTab === 'innboks'         && <InnboksTab />}
-                  {activeTab === 'ordbok'          && <OrdbokTab />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -1635,6 +1653,20 @@ function PriserTab() {
         </button>
       </div>
 
+      {/* LÆRINGSLAGET — prissettingsstrategier (klikkbare fagord). Ikke en fasit;
+          spilleren velger selv hvordan prisen settes. */}
+      <div style={{
+        background: 'rgba(0,212,170,0.05)', border: '1px solid rgba(0,212,170,0.18)',
+        borderRadius: '0.75rem', padding: '0.7rem 1rem', marginBottom: '1rem',
+        fontSize: 12.5, color: '#94a3b8', lineHeight: 1.7,
+      }}>
+        <strong style={{ color: '#cbd5e1', fontWeight: 700 }}>Måter å sette pris på:</strong>{' '}
+        <Fagord id="MKT_048">kostnadsbasert</Fagord>, <Fagord id="MKT_049">konkurransebasert</Fagord> og{' '}
+        <Fagord id="MKT_050">verdibasert</Fagord> prissetting. Du kan gi et ekstra dytt med{' '}
+        <Fagord id="MKT_013">psykologisk prising</Fagord> (99-priser), <Fagord id="MKT_011">skumme fløten</Fagord>{' '}
+        i starten eller bruke <Fagord id="MKT_012">inntrengningspris</Fagord> for å vinne kunder raskt.
+      </div>
+
       {/* DEL 3 — kjøpbar innsikt, IKKE en fasit: et konkurrentpris-intervall
           per vare (snapshot av dagens sortiment ved kjøp). Nye varer ført
           etterpå er ikke dekket. */}
@@ -2346,80 +2378,6 @@ function VaktRad({ navn, sub, farge, vakt, onSet }: {
             }}>✕</button>
           : null}
       </div>
-    </div>
-  )
-}
-
-// ── Ordbok (LÆRINGSLAGET) ─────────────────────────────────────────────────────
-// Søk + kategori-/nivåfilter + alfabetisk liste. Hvert begrep er et <Fagord> —
-// klikk gir SAMME forklaringskort som fagordene ute i flatene.
-
-function OrdbokTab() {
-  const [q, setQ] = useState('')
-  const [cat, setCat] = useState('')
-  const [lvl, setLvl] = useState<'' | GlossaryLevel>('')
-
-  const list = glossarySearch(q)
-    .filter(t => (!cat || t.category === cat) && (!lvl || t.level === lvl))
-    .sort((a, b) => a.term.localeCompare(b.term, 'nb'))
-
-  const chip = (active: boolean, color: string): React.CSSProperties => ({
-    background: active ? `${color}22` : 'rgba(255,255,255,0.04)',
-    border: `1px solid ${active ? color : 'rgba(255,255,255,0.1)'}`,
-    borderRadius: 99, padding: '0.3rem 0.8rem', fontSize: 12, fontWeight: 700,
-    color: active ? color : '#94a3b8', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-  })
-
-  return (
-    <div>
-      <div style={{ marginBottom: '1rem' }}>
-        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>📖 Ordbok</h3>
-        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
-          {list.length} av {GLOSSARY.length} begreper. Klikk et begrep for forklaring, formel, eksempel og vanlige feil.
-        </p>
-      </div>
-
-      <input
-        value={q}
-        onChange={e => setQ(e.target.value)}
-        placeholder="Søk i term eller definisjon …"
-        style={{
-          width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '0.6rem 0.9rem',
-          color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit', marginBottom: '0.7rem',
-        }}
-      />
-
-      {/* Nivåfilter */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        <button onClick={() => setLvl('')} style={chip(lvl === '', '#7dd3fc')}>Alle nivå</button>
-        <button onClick={() => setLvl('VG1')} style={chip(lvl === 'VG1', '#22c55e')}>VG1</button>
-        <button onClick={() => setLvl('VG2')} style={chip(lvl === 'VG2', '#a855f7')}>VG2</button>
-      </div>
-      {/* Kategorifilter */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '1rem' }}>
-        <button onClick={() => setCat('')} style={chip(cat === '', '#00d4aa')}>Alle kategorier</button>
-        {CATEGORIES.map(c => (
-          <button key={c.value} onClick={() => setCat(c.value === cat ? '' : c.value)} style={chip(cat === c.value, '#00d4aa')}>{c.label}</button>
-        ))}
-      </div>
-
-      {list.length === 0 ? (
-        <div style={{ textAlign: 'center', color: '#475569', padding: '2rem' }}>Ingen treff.</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          {list.map(t => (
-            <div key={t.id} style={{
-              display: 'flex', alignItems: 'baseline', gap: 8,
-              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: 9, padding: '0.5rem 0.75rem',
-            }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700 }}><Fagord id={t.id}>{t.term}</Fagord></span>
-              <span style={{ fontSize: 10, color: '#64748b', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{t.level}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

@@ -1,19 +1,29 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { MENTOR_TRIGGERS, mentorMelding } from '../data/mentorTriggers'
 import Fagord from './Fagord'
+import OrdbokPanel from './OrdbokPanel'
 import type { GameState } from '../types'
 
 // ─── LÆRINGSLAGET — mentoren (Espen) ──────────────────────────────────────────
-// Hjørnefigur nede til høyre: nøytral i hvile, smiler når han snakker. Korte
-// meldinger i en snakkeboble (data i mentorTriggers.ts). ALDRI modal, avbryter
-// ALDRI et åpent scenario/overlay — meldinger køes til `blocked` er falsk.
-// Hver trigger fyres MAKS ÉN GANG; settet persisteres i localStorage (byspill-
-// state lagres ikke ellers), så én-gangs-logikken overlever reload. Klikk på
-// figuren uten aktiv melding = åpne ordboken.
+// Hjørnefigur nede til høyre, ALLTID synlig (også over dashbord/oppgjør), med en
+// liten 📖-bok ved figuren. Klikk boka/figuren (uten aktiv melding) → ordboken
+// «slår seg opp» ved figuren og Espen leser (espen-leser). Poser (prioritet):
+//   leser (ordbok åpen) > smil (aktiv melding) > peker (melding i kø/ventende) >
+//   nøytral.
+// Meldinger (data i mentorTriggers.ts) fyres MAKS ÉN GANG (localStorage-sett,
+// overlever reload). DASHBORD blokkerer IKKE — fane-triggere vises inne i
+// dashbordet. Scenario/dagsoppgjør blokkerer: da KØES meldingen og figuren PEKER
+// («jeg har noe til deg»); klikk peker-figuren for å vise den, og den vises av
+// seg selv når flaten lukkes.
 
-const NOYTRAL = '/assets/raw/mentor/espen-noytral.png'
-const SMIL = '/assets/raw/mentor/espen-smil.png'
+const POSE = {
+  noytral: '/assets/raw/mentor/espen-noytral.png',
+  smil: '/assets/raw/mentor/espen-smil.png',
+  leser: '/assets/raw/mentor/espen-leser.png',
+  peker: '/assets/raw/mentor/espen-peker.png',
+}
 const KEY = 'mentor_fired_v1'
 
 function loadFired(): Set<string> {
@@ -24,7 +34,7 @@ function saveFired(s: Set<string>) {
 }
 
 /** Tilstands-avledede triggere. Flate-baserte (forste_prising/disk_stell/vindu/
- *  bykart) fyres via window-event ('mentor:signal'), ikke herfra. */
+ *  bykart/*_fane) fyres via window-event ('mentor:signal'), ikke herfra. */
 function oppfylt(id: string, s: GameState): boolean {
   switch (id) {
     case 'forste_apning': return s.dayPhase === 'åpen'
@@ -53,11 +63,13 @@ function renderMelding(melding: string): ReactNode {
   return parts
 }
 
-export default function Mentor({ blocked, onOpenOrdbok }: { blocked: boolean; onOpenOrdbok: () => void }) {
+export default function Mentor({ blocked }: { blocked: boolean }) {
   const { state } = useGame()
   const [fired, setFired] = useState<Set<string>>(loadFired)
   const [queue, setQueue] = useState<string[]>([])
   const [failedImg, setFailedImg] = useState(false)
+  const [ordbokOpen, setOrdbokOpen] = useState(false)
+  const [forceShow, setForceShow] = useState(false)   // DEL 4: bruker klikket peker-figuren
   const firedRef = useRef(fired)
   firedRef.current = fired
 
@@ -69,60 +81,120 @@ export default function Mentor({ blocked, onOpenOrdbok }: { blocked: boolean; on
     setQueue(q => (q.includes(id) ? q : [...q, id]))
   }, [])
 
-  // Tilstands-avledede triggere: sjekk ved hver state-endring (fired-settet
-  // hindrer gjentakelse).
   useEffect(() => {
     for (const t of MENTOR_TRIGGERS) if (oppfylt(t.id, state)) fire(t.id)
   }, [state, fire])
 
-  // UI-signalerte triggere (Priser-fanen).
   useEffect(() => {
     const h = (e: Event) => fire((e as CustomEvent).detail?.id)
     window.addEventListener('mentor:signal', h)
     return () => window.removeEventListener('mentor:signal', h)
   }, [fire])
 
-  const activeId = !blocked && queue.length > 0 ? queue[0]! : null
+  const hasQueued = queue.length > 0
+  const reveal = !blocked || forceShow
+  const activeId = reveal && hasQueued ? queue[0]! : null
   const melding = activeId ? mentorMelding(activeId) : null
-  const speaking = !!melding
+
+  // Pose-prioritet: leser > smil > peker > nøytral.
+  const pose = ordbokOpen ? POSE.leser
+    : melding ? POSE.smil
+    : (blocked && hasQueued) ? POSE.peker
+    : POSE.noytral
+
+  function dismiss() { setQueue(q => q.slice(1)); setForceShow(false) }
+
+  function figureClick() {
+    if (ordbokOpen) { setOrdbokOpen(false); return }
+    if (blocked && hasQueued && !forceShow) { setForceShow(true); return }  // peker → vis kø-melding
+    if (melding) return                                                     // aktiv melding vises alt
+    setOrdbokOpen(true)                                                     // i ro → åpne ordboka
+  }
 
   return (
-    <div style={{ position: 'fixed', right: 14, bottom: 14, zIndex: 170, display: 'flex', alignItems: 'flex-end', gap: 8, fontFamily: "'Outfit', sans-serif", pointerEvents: 'none' }}>
-      {melding && (
-        <div style={{
-          pointerEvents: 'auto', maxWidth: 300, marginBottom: 20,
-          background: 'rgba(12,17,29,0.98)', border: '1px solid rgba(0,212,170,0.4)',
-          borderRadius: '14px 14px 4px 14px', padding: '0.75rem 0.9rem',
-          color: '#e2e8f0', boxShadow: '0 10px 34px rgba(0,0,0,0.5)',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: '#00d4aa', letterSpacing: '0.05em' }}>ESPEN</span>
-            <button onClick={() => setQueue(q => q.slice(1))} title="Lukk" style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 14, cursor: 'pointer', lineHeight: 1, padding: 0 }}>✕</button>
-          </div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>{renderMelding(melding)}</div>
-        </div>
-      )}
-
-      <button
-        onClick={() => { if (!melding) onOpenOrdbok() }}
-        title={melding ? 'Espen' : 'Åpne ordboken'}
-        style={{
-          pointerEvents: 'auto', background: 'transparent', border: 'none', cursor: melding ? 'default' : 'pointer',
-          padding: 0, width: 96, height: 120, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        }}
-      >
-        {!failedImg ? (
-          <img
-            src={speaking ? SMIL : NOYTRAL}
-            alt="Mentor Espen"
-            draggable={false}
-            onError={() => setFailedImg(true)}
-            style={{ height: '100%', width: 'auto', display: 'block', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.5))', userSelect: 'none' }}
-          />
-        ) : (
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#00d4aa22', border: '2px solid #00d4aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>🧑‍🏫</div>
+    <div style={{ position: 'fixed', right: 14, bottom: 14, zIndex: 500, display: 'flex', alignItems: 'flex-end', gap: 8, fontFamily: "'Outfit', sans-serif", pointerEvents: 'none' }}>
+      {/* Snakkeboble */}
+      <AnimatePresence>
+        {melding && (
+          <motion.div
+            key={activeId}
+            initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
+            style={{
+              pointerEvents: 'auto', maxWidth: 300, marginBottom: 20,
+              background: 'rgba(12,17,29,0.98)', border: '1px solid rgba(0,212,170,0.4)',
+              borderRadius: '14px 14px 4px 14px', padding: '0.75rem 0.9rem',
+              color: '#e2e8f0', boxShadow: '0 10px 34px rgba(0,0,0,0.5)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: '#00d4aa', letterSpacing: '0.05em' }}>ESPEN</span>
+              <button onClick={dismiss} title="Lukk" style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 14, cursor: 'pointer', lineHeight: 1, padding: 0 }}>✕</button>
+            </div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>{renderMelding(melding)}</div>
+          </motion.div>
         )}
-      </button>
+      </AnimatePresence>
+
+      {/* Ordbok — «slår seg opp» ved figuren (bok-ramme, lett åpne-animasjon) */}
+      <AnimatePresence>
+        {ordbokOpen && (
+          <motion.div
+            initial={{ opacity: 0, scaleX: 0.72, scaleY: 0.9, rotate: -2 }}
+            animate={{ opacity: 1, scaleX: 1, scaleY: 1, rotate: 0 }}
+            exit={{ opacity: 0, scaleX: 0.72, scaleY: 0.9, rotate: -2 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+            style={{
+              pointerEvents: 'auto', transformOrigin: 'bottom right',
+              position: 'fixed', right: 118, bottom: 24, width: 360, maxWidth: 'calc(100vw - 150px)',
+              maxHeight: 'min(72vh, 560px)', display: 'flex', flexDirection: 'column',
+              background: 'linear-gradient(180deg, rgba(18,24,38,0.99), rgba(12,17,29,0.99))',
+              border: '1px solid rgba(180,140,90,0.5)', borderLeft: '5px solid rgba(180,140,90,0.85)',
+              borderRadius: '10px 14px 14px 10px', boxShadow: '0 18px 50px rgba(0,0,0,0.6)', overflow: 'hidden',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.7rem 0.9rem 0.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#e2c290' }}>📖 Espens ordbok</span>
+              <button onClick={() => setOrdbokOpen(false)} title="Lukk ordboka" style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 16, cursor: 'pointer', lineHeight: 1, padding: 2 }}>✕</button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '0.8rem 0.9rem 1rem' }}>
+              <OrdbokPanel />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Figur + bok-knapp */}
+      <div style={{ position: 'relative', pointerEvents: 'auto' }}>
+        <button
+          onClick={figureClick}
+          title={ordbokOpen ? 'Lukk ordboka' : melding ? 'Espen' : (blocked && hasQueued) ? 'Espen har noe til deg — klikk' : 'Åpne ordboka'}
+          style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: 0, width: 96, height: 120, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          {!failedImg ? (
+            <img src={pose} alt="Mentor Espen" draggable={false} onError={() => setFailedImg(true)}
+              style={{ height: '100%', width: 'auto', display: 'block', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.5))', userSelect: 'none' }} />
+          ) : (
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#00d4aa22', border: '2px solid #00d4aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>🧑‍🏫</div>
+          )}
+        </button>
+
+        {/* Diskret 📖-bok ved figuren — alltid synlig, egen inngang til ordboka. */}
+        <button
+          onClick={e => { e.stopPropagation(); setOrdbokOpen(o => !o) }}
+          title="Espens ordbok"
+          style={{
+            position: 'absolute', left: -6, bottom: 6,
+            width: 30, height: 30, borderRadius: 8, cursor: 'pointer', fontSize: 15, lineHeight: 1,
+            background: ordbokOpen ? 'rgba(226,194,144,0.25)' : 'rgba(12,17,29,0.92)',
+            border: `1px solid ${ordbokOpen ? '#e2c290' : 'rgba(226,194,144,0.55)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+            boxShadow: '0 3px 10px rgba(0,0,0,0.4)',
+          }}
+        >📖</button>
+      </div>
     </div>
   )
 }

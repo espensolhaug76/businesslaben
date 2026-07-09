@@ -283,13 +283,13 @@ function GameContent() {
         />
       )}
 
-      {/* LÆRINGSLAGET — mentoren (Espen). Køer meldinger til ingen blokkerende
-          flate er åpen (scenario/dashbord/oppgjør/leiepanel). Klikk uten melding
-          åpner ordboken. */}
+      {/* LÆRINGSLAGET — mentoren (Espen). Synlig ALLTID (også over dashbordet).
+          DASHBORD blokkerer IKKE (fane-triggere vises inne i dashbordet); bare
+          scenario/dagsoppgjør/leiepanel køer meldinger (da peker figuren).
+          Ordboken bor hos mentoren (bok-panel), ikke i en dashbord-fane. */}
       <Mentor
-        blocked={simOpen || dashboardOpen || salesOpen || !!vacantInfo
+        blocked={simOpen || salesOpen || !!vacantInfo
           || state.dayPhase === 'oppgjør' || !!state.lastMonthSettlement || state.phase === 'year_end'}
-        onOpenOrdbok={() => { setDashboardTab('ordbok'); setDashboardOpen(true); setOverlay(true) }}
       />
     </>
   )
