@@ -28,6 +28,12 @@ from collections import deque
 
 PRODUCTS_DIR  = "/home/espen/adventure-web/public/assets/raw/products"
 CUSTOMERS_DIR = "/home/espen/adventure-web/public/assets/raw/customers"
+# sport-familien (eksperiment/autonom-sport): repo-relativ sti (dette repoet er
+# adventure-web-sport, ikke adventure-web — de to konstantene over peker på det
+# ANDRE repoet av historiske grunner; sport-familien løser fra scriptets egen
+# plassering så den alltid treffer riktig repo).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SPORT_DIR  = os.path.join(_REPO_ROOT, "public/assets/raw/sport")
 
 # Navnekart per ark-nummer, i LESE-rekkefølge (rad for rad, venstre->høyre).
 PRODUCTS_NAME_MAPS = {
@@ -59,6 +65,17 @@ CUSTOMERS_NAME_MAPS = {
     "02": ["usikre", "prutekunden", "allergikeren", "storbestiller"],
     "03": ["amira", "bjorn", "camilla", "david"],
     "04": ["emil", "live", "petter", "oda"],
+}
+# sport-ark (eksperiment/autonom-sport). Lese-rekkefølge rad-for-rad, v->h.
+# ark-01 = sko (2x3): rad1 løpe/terreng/tennis, rad2 basket/fjell/inne.
+# ark-02 = bekledning HENGENDE (jakker/gensere på bøyle).
+# ark-03 = bekledning BRETTET (t-skjorter/shorts/bukse foldet).
+# ark-04 = UTSTYR (ball/vekt/matte/flaske/sekk/hjelm).
+SPORT_NAME_MAPS = {
+    "01": ["lopesko", "terrengsko", "tennissko", "basketsko", "fjellsko", "innesko"],
+    "02": ["treningsjakke", "hettegenser", "regnjakke", "softshelljakke", "fleecegenser", "vindjakke"],
+    "03": ["t-skjorte", "singlet", "treningsshorts", "treningsbukse", "tights", "collegegenser"],
+    "04": ["fotball", "handvekt", "yogamatte", "vannflaske", "ryggsekk", "sykkelhjelm"],
 }
 
 ALPHA_THRESHOLD = 40      # alfa over dette = «vare-piksel»
@@ -130,6 +147,8 @@ def resolve_family(path):
     base = os.path.basename(path)
     if base.startswith("customers-ark"):
         return CUSTOMERS_DIR, CUSTOMERS_NAME_MAPS, CUSTOMERS_DIR
+    if base.startswith("sport-ark"):
+        return SPORT_DIR, SPORT_NAME_MAPS, SPORT_DIR
     return PRODUCTS_DIR, PRODUCTS_NAME_MAPS, PRODUCTS_DIR
 
 

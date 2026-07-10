@@ -37,6 +37,31 @@ builds the prompt via `generate-asset.sh`, calls the nano-banana MCP,
 locates the freshly written file, runs `clean-asset.sh`, and reports the
 final path.
 
+### No-MCP invocation: `nb-generate.sh`
+
+`nb-generate.sh` is the MCP-free path: it calls the Gemini image model
+**directly** over HTTP with `$GEMINI_API_KEY` and writes the PNG straight
+into `public/assets/raw/` (no `/mnt/c` Windows hop). Use it when the MCP
+server isn't available, or for scripted/batch generation.
+
+```bash
+# prompt only
+./scripts/nb-generate.sh test_prop "a small wooden crate, pure white background, no text"
+
+# with one or more reference images (base64-inlined)
+./scripts/nb-generate.sh bakery_v2 "$(./scripts/generate-asset.sh bakery_kongsvinger | sed -n '/===PROMPT===/,/===OUTPUT_FILENAME===/p' | sed '1d;$d')" refs/bakery_ref.png
+```
+
+- Default model: `gemini-3.1-flash-image` (stable flash tier — verified
+  present in the live model list; the `-preview` variant also exists).
+  Override with `NB_MODEL=…`. **Keep it on a flash tier** — Pro image tiers
+  bill heavily.
+- `$GEMINI_API_KEY` is exported from `~/.bashrc`; a non-interactive shell
+  may not have sourced it (`source ~/.bashrc` first, or pass it inline).
+- Exit codes: `2` = API access failure (403/401/429 → fall back to a manual
+  NB generation), `3` = responded but no image (safety block / empty).
+- Output still needs background removal — run `clean-asset.sh` on it.
+
 ### Manual / debugging invocation
 
 If you want to inspect or iterate on a prompt without burning an MCP call:
@@ -60,6 +85,7 @@ To run the cleaner standalone on an arbitrary input:
 | Path | Purpose |
 |------|---------|
 | `generate-asset.sh`            | Composes the prompt for one asset_id from `docs/ASSET_PROMPTS.json`. No network calls. |
+| `nb-generate.sh`               | Calls the Gemini image model directly (no MCP) with `$GEMINI_API_KEY`; prompt (+ optional reference images) → PNG in `public/assets/raw/`. |
 | `clean-asset.sh`               | Runs rembg on a single PNG and writes to `public/assets/raw/`. Hardcoded venv path. |
 | `parse-standard-competitions.mjs` | Unrelated one-off parser for the competitions data set. |
 
