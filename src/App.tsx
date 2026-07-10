@@ -60,6 +60,8 @@ import YearEndScreen from './screens/YearEndScreen'
 
 // AdVenture 3.0
 import GamePage from './game/GamePage'
+// Dev: sportsbutikk-stillas (eksperiment/autonom-sport)
+import SportStillas from './game/city/SportStillas'
 
 
 // Guards
@@ -495,6 +497,11 @@ function App() {
           {/* ── Teacher dashboard ────────────────────────────────────────── */}
           <Route path="/teacher" element={<ErrorBoundary><TeacherDashboard /></ErrorBoundary>} />
           <Route path="/student-questions" element={<StudentQuestionsScreen />} />
+
+          {/* ── Dev: sportsbutikk-stillas (BRANSJE: SPORT, eksperiment) ─────
+              Frittstående scene, IKKE koblet til onboarding/spillflyten.
+              /dev/sport = stocket butikk · /dev/sport?dev=1 = VareplassTracer. */}
+          <Route path="/dev/sport" element={<SportStillas />} />
 
           {/* ── Forum ────────────────────────────────────────────────────── */}
           <Route path="/forum" element={<TeacherForum />} />

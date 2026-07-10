@@ -87,6 +87,21 @@ function catalogItem(
   }
 }
 
+/** Bygger for SPORT-varer (eksperiment/autonom-sport) — DURABLE goods, ikke
+ *  ferskvare/trau som kafeens catalogItem(). `id` matcher sprite-filnavnet i
+ *  public/assets/raw/sport/. Ingen tiers (parket), ingen ferskvare/svinn. */
+function sportItem(
+  id: string, name: string, icon: string, category: ProductCategory,
+  maxDemand: number, cost: number, price: number,
+): IndustryCatalogItem {
+  return {
+    id, name, icon, category, trauVare: false,
+    sprite: `/assets/raw/sport/${id}.png`,
+    maxDemandPerMonth: maxDemand, quality: 8, sustainability: 6,
+    costPrice: cost, recommendedPrice: price,
+  }
+}
+
 export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
   tech: [
     { id: 'earbuds',   name: 'Trådløse ørepropper', icon: '🎧', maxDemandPerMonth: 90,  quality: 9, sustainability: 5,
@@ -177,25 +192,38 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
     catalogItem('grovbrod',        'Grovbrød',         '🍞', 'brod',    140, 14, 45),
     catalogItem('surdeigsbrod',    'Surdeigsbrød',     '🍞', 'brod',    120, 18, 59),
   ],
+  // SPORT (eksperiment/autonom-sport) — bygget helt av NB-genererte
+  // sprites (public/assets/raw/sport/), split fra 4 produktark. Ids matcher
+  // sprite-filnavn. Tre varegrupper: sko / bekledning / utstyr. `sportItem`
+  // setter durable-goods-semantikk (trauVare:false, ingen ferskvare/tiers) —
+  // motsatt av kafeens ferskvare-catalogItem().
   sports: [
-    { id: 'shoes',     name: 'Løpesko',          icon: '👟', maxDemandPerMonth: 40,  quality: 9, sustainability: 6,
-      costPrice: 400, recommendedPrice: 999,
-      tiers: { premium: { costPrice: 700, recommendedPrice: 1799 }, standard: { costPrice: 400, recommendedPrice: 999 }, budget: { costPrice: 180, recommendedPrice: 449 } } /* PARKET */ },
-    { id: 'outfit',    name: 'Treningsklær sett', icon: '🩱', maxDemandPerMonth: 60,  quality: 8, sustainability: 7,
-      costPrice: 280, recommendedPrice: 699,
-      tiers: { premium: { costPrice: 500, recommendedPrice: 1299 }, standard: { costPrice: 280, recommendedPrice: 699 }, budget: { costPrice: 130, recommendedPrice: 349 } } /* PARKET */ },
-    { id: 'yoga_mat',  name: 'Yogamatte',         icon: '🧘', maxDemandPerMonth: 80,  quality: 7, sustainability: 8,
-      costPrice: 130, recommendedPrice: 329,
-      tiers: { premium: { costPrice: 250, recommendedPrice: 599 }, standard: { costPrice: 130, recommendedPrice: 329 }, budget: { costPrice: 50, recommendedPrice: 149 } } /* PARKET */ },
-    { id: 'bottle',    name: 'Vannflaske',         icon: '💧', maxDemandPerMonth: 150, quality: 7, sustainability: 9,
-      costPrice: 90, recommendedPrice: 229,
-      tiers: { premium: { costPrice: 180, recommendedPrice: 399 }, standard: { costPrice: 90, recommendedPrice: 229 }, budget: { costPrice: 30, recommendedPrice: 89 } } /* PARKET */ },
-    { id: 'bag',       name: 'Treningsbag',        icon: '🎒', maxDemandPerMonth: 50,  quality: 8, sustainability: 7,
-      costPrice: 220, recommendedPrice: 549,
-      tiers: { premium: { costPrice: 400, recommendedPrice: 999 }, standard: { costPrice: 220, recommendedPrice: 549 }, budget: { costPrice: 100, recommendedPrice: 279 } } /* PARKET */ },
-    { id: 'weights',   name: 'Håndvekter',         icon: '🏋️', maxDemandPerMonth: 70,  quality: 8, sustainability: 8,
-      costPrice: 200, recommendedPrice: 499,
-      tiers: { premium: { costPrice: 350, recommendedPrice: 799 }, standard: { costPrice: 200, recommendedPrice: 499 }, budget: { costPrice: 80, recommendedPrice: 229 } } /* PARKET */ },
+    // ── Sko ──────────────────────────────────────────────────────────────
+    sportItem('lopesko',        'Løpesko',          '👟', 'sko',        40, 400,  999),
+    sportItem('terrengsko',     'Terrengsko',       '🥾', 'sko',        30, 500, 1199),
+    sportItem('tennissko',      'Tennissko',        '👟', 'sko',        35, 350,  899),
+    sportItem('basketsko',      'Basketsko',        '👟', 'sko',        25, 450, 1099),
+    sportItem('fjellsko',       'Fjellstøvel',      '🥾', 'sko',        20, 600, 1399),
+    sportItem('innesko',        'Innesko',          '👟', 'sko',        40, 300,  749),
+    // ── Bekledning ───────────────────────────────────────────────────────
+    sportItem('treningsjakke',  'Treningsjakke',    '🧥', 'bekledning', 45, 280,  699),
+    sportItem('hettegenser',    'Hettegenser',      '🧥', 'bekledning', 60, 200,  499),
+    sportItem('regnjakke',      'Regnjakke',        '🧥', 'bekledning', 40, 320,  799),
+    sportItem('softshelljakke', 'Softshelljakke',   '🧥', 'bekledning', 35, 400,  999),
+    sportItem('fleecegenser',   'Fleecegenser',     '🧥', 'bekledning', 55, 180,  449),
+    sportItem('vindjakke',      'Vindjakke',        '🧥', 'bekledning', 45, 240,  599),
+    sportItem('t-skjorte',      'Trenings-T-skjorte','👕', 'bekledning', 120, 90,  249),
+    sportItem('treningsshorts', 'Treningsshorts',   '🩳', 'bekledning', 90, 110,  299),
+    sportItem('treningsbukse',  'Treningsbukse',    '👖', 'bekledning', 70, 200,  499),
+    sportItem('tights',         'Tights',           '🩱', 'bekledning', 80, 160,  399),
+    sportItem('collegegenser',  'Collegegenser',    '🧥', 'bekledning', 65, 220,  549),
+    // ── Utstyr ───────────────────────────────────────────────────────────
+    sportItem('fotball',        'Fotball',          '⚽', 'utstyr',     90, 120,  299),
+    sportItem('handvekt',       'Håndvekter',       '🏋️', 'utstyr',     70, 200,  499),
+    sportItem('yogamatte',      'Yogamatte',        '🧘', 'utstyr',     80, 130,  329),
+    sportItem('vannflaske',     'Vannflaske',       '💧', 'utstyr',    150,  40,  129),
+    sportItem('ryggsekk',       'Treningsryggsekk', '🎒', 'utstyr',     50, 220,  549),
+    sportItem('sykkelhjelm',    'Sykkelhjelm',      '🪖', 'utstyr',     45, 350,  799),
   ],
 }
 

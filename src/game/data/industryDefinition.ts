@@ -103,6 +103,27 @@ export interface ForsyningTekst {
   utsolgtHint: string
 }
 
+/** SPORT (eksperiment/autonom-sport) — VAREPLASS-modell for BAKT interiør.
+ *  Samme mønster som klesbutikk-grenens `vareplasser`: scenebildet er en
+ *  ferdig møblert, TOM sportsbutikk (sport-interior-mobler.png), og hver
+ *  vareplass er et FAST, kalibrert punkt (% av scenebildet) der én sport-vare
+ *  vises oppå bildet. Kalibreres i /dev/sport?dev=1 (VareplassTracer) og låses
+ *  i SPORT.vareplasser under. */
+export type PlassType = 'sko' | 'heng' | 'brett' | 'utstyr'
+export interface Vareplass {
+  id: string
+  type: PlassType
+  /** Ankerpunkt i % av scenebildets bredde/høyde. */
+  x: number
+  y: number
+  /** Elementets bredde som BRØK av scenebildet (0–1); høyde skaleres proporsjonalt. */
+  scale: number
+  /** Sport-vare-id (sprite i /assets/raw/sport/) som står på denne plassen. */
+  vare?: string
+  /** Valgfri rotasjon i grader på det plasserte elementet. */
+  rot?: number
+}
+
 export interface IndustryDefinition {
   id: Industry
   navn: string
@@ -133,6 +154,10 @@ export interface IndustryDefinition {
    *  Innkjøpsansvarlig, HMS-ansvarlig). Kjerne-salgsrollens id er 'selger' i
    *  alle bransjer (bakgrunnssalgs-kapasiteten nøkler på den). */
   roller: RolleDef[]
+  /** SPORT (eksperiment/autonom-sport) — faste, kalibrerte vareplasser i det
+   *  bakte interiøret. Valgfritt: kun bransjer med «bakt interiør»-modellen
+   *  (sport) bruker det; kafeen bruker flater.lager (trau) i stedet. */
+  vareplasser?: Vareplass[]
 }
 
 export const CAFE: IndustryDefinition = {
@@ -252,9 +277,87 @@ export const KLESBUTIKK: IndustryDefinition = {
   ],
 }
 
+/** Bransje: SPORTSBUTIKK (eksperiment/autonom-sport). Bygget helt autonomt:
+ *  NB-genererte bilder (fasade + bakt interiør + 4 produktark → 26 sprites),
+ *  full katalog med varegrupper/priser, og FASTE kalibrerte `vareplasser` i
+ *  det bakte interiøret (kalibrert i /dev/sport?dev=1). Som KLESBUTIKK er den
+ *  IKKE registrert i INDUSTRY_DEFINITIONS — hovedmotorene (InteriorView/
+ *  MonterScene) rendrer fortsatt kun kafeen; sportsbutikken vises via sitt
+ *  eget stillas (/dev/sport, SportStillas.tsx). Scenarier er BEVISST utenfor
+ *  scope her (tom scenariePool) — kun katalog + butikk. */
+export const SPORT: IndustryDefinition = {
+  id: 'sports',
+  navn: INDUSTRY_META.sports.name,
+  emoji: INDUSTRY_META.sports.emoji,
+  beskrivelse: INDUSTRY_META.sports.description,
+  startingMoney: INDUSTRY_META.sports.startingMoney,
+  katalog: INDUSTRY_CATALOG.sports,
+  forsyning: {
+    åpningsordreTittel: '⚽ Åpningsbestilling',
+    åpningsordreLøfte: 'Varene står klare i hyllene til åpningsdagen.',
+    åpningsordreKnapp: 'Bestill til åpningsdagen',
+    underveisTittel: '📦 BESTILT',
+    ankomstEtikett: dag => `Klart dag ${dag}`,
+    klarMelding: linjer => `📦 Nye varer i hyllene: ${linjer}`,
+    utsolgtHint: 'Du gikk tom — tapte salg. Bestill mer av det som selger.',
+  },
+  oppstartssortiment: [],
+  flater: {
+    styling: { zone: STOREFRONT_HOTSPOTS.vindu },
+    lager: {
+      // Sportsbutikken bruker vareplass-modellen (bakt interiør), ikke
+      // disk-monterens trau — tom trau-geometri, scenebildet er kun referanse.
+      sceneImage: '/assets/raw/sport-interior-mobler.png',
+      trau: [],
+      trauCols: () => 1,
+      speil: { sceneImage: '', trau: [] },
+    },
+  },
+  ekstraFlater: [],
+  scenariePool: [],
+  personaBudsjett: { kind: 'kategori', table: FASHION_BUDGETS, step: 100 },
+  svinnRegel: 'sesong/kolleksjon',
+  roller: [
+    { id: 'selger',       funksjon: 'Salg',          tittel: 'Butikkmedarbeider',   emoji: '🛍️', farge: '#00d4aa', vaktrolle: true,  maanedseffekt: null,            kjerne: true },
+    { id: 'markedsforer', funksjon: 'Markedsføring', tittel: 'Markedsfører',        emoji: '📢', farge: '#38bdf8', vaktrolle: false, maanedseffekt: 'markedsforing', kjerne: true },
+    { id: 'okonom',       funksjon: 'Økonomi',       tittel: 'Økonom',              emoji: '📊', farge: '#f59e0b', vaktrolle: false, maanedseffekt: 'okonomi',       kjerne: true },
+    { id: 'innkjop',      funksjon: 'Innkjøp',       tittel: 'Innkjøpsansvarlig',   emoji: '📦', farge: '#a78bfa', vaktrolle: false, maanedseffekt: null,            kjerne: false },
+    { id: 'fagperson',    funksjon: 'Fag',           tittel: 'Sportsfaglig veileder',emoji: '🎽', farge: '#fb7185', vaktrolle: false, maanedseffekt: null,           kjerne: false },
+  ],
+  // Kalibrerte vareplasser i sport-interior-mobler.png (1365×768). x/y = %,
+  // scale = brøk av scenebredden. Startgjett fra rutenett-avlesning —
+  // finjustert via /dev/sport-render + skjermbilde-iterasjon (spor-c.md).
+  vareplasser: [
+    // Sko-vegg (venstre) — sittende på hylle-ledd (2 rader × 3)
+    { id: 'sko-1', type: 'sko', x: 8,  y: 31, scale: 0.052, vare: 'lopesko' },
+    { id: 'sko-2', type: 'sko', x: 16, y: 32, scale: 0.052, vare: 'terrengsko' },
+    { id: 'sko-3', type: 'sko', x: 24, y: 33, scale: 0.052, vare: 'tennissko' },
+    { id: 'sko-4', type: 'sko', x: 8,  y: 44, scale: 0.052, vare: 'basketsko' },
+    { id: 'sko-5', type: 'sko', x: 16, y: 45, scale: 0.052, vare: 'fjellsko' },
+    { id: 'sko-6', type: 'sko', x: 24, y: 46, scale: 0.052, vare: 'innesko' },
+    // Klesstativ (midt-venstre) — hengende på rail
+    { id: 'heng-1', type: 'heng', x: 34, y: 39, scale: 0.055, vare: 'treningsjakke' },
+    { id: 'heng-2', type: 'heng', x: 37, y: 39, scale: 0.055, vare: 'hettegenser' },
+    { id: 'heng-3', type: 'heng', x: 40, y: 39, scale: 0.055, vare: 'vindjakke' },
+    // Brettbord (midt-høyre) — topp (3) + underhylle (2)
+    { id: 'brett-1', type: 'brett', x: 58, y: 53, scale: 0.06, vare: 't-skjorte' },
+    { id: 'brett-2', type: 'brett', x: 64, y: 53, scale: 0.06, vare: 'treningsshorts' },
+    { id: 'brett-3', type: 'brett', x: 69, y: 54, scale: 0.06, vare: 'collegegenser' },
+    { id: 'brett-4', type: 'brett', x: 61, y: 60, scale: 0.06, vare: 'treningsbukse' },
+    { id: 'brett-5', type: 'brett', x: 68, y: 60, scale: 0.06, vare: 'tights' },
+    // Utstyrsvegg (høyre) — 3 tynne hyller (y26/34/41) + lav kubbe-enhet (y50)
+    { id: 'utstyr-1', type: 'utstyr', x: 85, y: 27, scale: 0.045, vare: 'fotball' },
+    { id: 'utstyr-2', type: 'utstyr', x: 85, y: 34, scale: 0.05,  vare: 'sykkelhjelm' },
+    { id: 'utstyr-3', type: 'utstyr', x: 84, y: 41, scale: 0.045, vare: 'handvekt' },
+    { id: 'utstyr-4', type: 'utstyr', x: 89, y: 41, scale: 0.03,  vare: 'vannflaske' },
+    { id: 'utstyr-5', type: 'utstyr', x: 86, y: 50, scale: 0.05,  vare: 'ryggsekk' },
+    { id: 'utstyr-6', type: 'utstyr', x: 92, y: 50, scale: 0.035, vare: 'yogamatte' },
+  ],
+}
+
 /** Registeret over bransjer som FAKTISK har en definisjon. Bevisst kun
- *  { cafe: CAFE } — KLESBUTIKK er skrevet (DEL 3) men ikke registrert, se
- *  filkommentaren øverst. */
+ *  { cafe: CAFE } — KLESBUTIKK og SPORT er skrevet men ikke registrert (vises
+ *  via egne stillas, ikke via hovedmotorene). Se filkommentaren øverst. */
 const INDUSTRY_DEFINITIONS: Partial<Record<Industry, IndustryDefinition>> = {
   cafe: CAFE,
 }

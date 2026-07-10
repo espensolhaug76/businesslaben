@@ -48,6 +48,8 @@ export type DistributionChannel =
 /** Varegruppe i katalogen — brukes til gruppering i UI og til å skille
  *  trau-varer (mat) fra ikke-trau (drikke). */
 export type ProductCategory = 'frokost' | 'lunsj' | 'brod' | 'kaker' | 'drikke'
+  // sport (eksperiment/autonom-sport) — varegrupper for sportsbutikken
+  | 'sko' | 'bekledning' | 'utstyr'
 
 export interface Product {
   id: string
