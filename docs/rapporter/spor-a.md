@@ -903,6 +903,26 @@ sprite-KLIKK for gjenåpning + dev-over-ekte-møte-isolasjonen er kode-/tsc-
 verifisert, men Playwright-klikket på spriten lander bak disk-forgrunnen (klikk
 øvre del manuelt) — verifiser gjenåpning + «ingen spøkelser» live.
 
+## 24. Per-kunde kalibrering (spriteCal) — kalibrer KUN Live
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn. Kode
+> lokal, IKKE pushet.**
+
+Reverserer «drop spriteScale» fra pkt. 23: Espen ville likevel kunne finjustere
+Live for seg selv. Løsning uten å røre de andre kundene: valgfri `spriteCal?:
+{ scale?, centerX?, waistY? }` per scenario (types.ts), som overstyrer den delte
+base-kalibreringen KUN for den kunden (Kari/Tom arver basen).
+
+Dev-arbeidsflyt: mens en kunde VISES (møte eller 👤-preview) styrer «Kunde-
+kalibrering»-sliderne (SCALE/CENTER_X/WAIST_Y) nå DEN kundens override — panelet
+viser «Kalibrerer KUN: {navn}» — og logger en ferdig `spriteCal: {…}`-linje for
+innliming i scenariet. Uten en vist kunde justeres den delte basen som før.
+OCCLUDE-sliderne (disken) er alltid delt.
+
+**Verifisert headless:** preview Live → panel «Kalibrerer KUN: Live»; dra
+CUSTOMER_SCALE → kun Live endrer størrelse (936→576 px) + `spriteCal`-linje
+logget. `tsc -b` + `vite build` grønn.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
