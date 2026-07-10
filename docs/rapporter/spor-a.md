@@ -863,6 +863,46 @@ Live-møte kunne ikke tvinges fram (salgsoverlayet viser bare navn, ikke sprite;
 klokka velger møte tilfeldig) — Live m/hund-visningen + spriteScale-verdien hører
 til din ?dev=1-kalibrering.
 
+## 23. Dev-verktøy for kundeinspeksjon + møte-livssyklus
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn. Kode
+> committet lokalt, IKKE pushet — kode etter Espens Chrome-validering.**
+
+**Drop Live-spriteScale (tidligere beslutning).** `spriteScale`-feltet + multi-
+plikatoren er fjernet igjen. Live rendres i vanlig kundeskala (1.30) — førerhunden
+okkludert bak disken er OK. Bekreftet med 👤-preview: Live ser normal ut.
+
+**1. «👤 Forhåndsvis kunde»-modus (🎭-panelet, kun ?dev=1).** Ny toggle i
+scenariovelgeren: velg et scenario → kunde-spriten rendres i kassevyen UTEN å
+starte et møte, uavhengig av åpen/stengt og av ventende ekte møter. Ren visning —
+rører ikke spill-state. Esc eller nytt valg bytter, klikk utenfor (eller på
+spriten) fjerner. Ekte møte har alltid forrang over previewen.
+
+**2. «👁 Vis kunde»-toggle (SalesScenarioOverlay, kun ?dev=1).** Skjuler/viser
+dialogkortet under et aktivt møte (bakgrunnen blir gjennomsiktig) så kunde-spriten
+i scenen bak kan inspiseres. SalesRun forblir montert → dialog-state bevares.
+
+**3. Dev-start ikke blokkert av et ventende/aktivt møte.** 🎭-scenariovelgeren
+tillater nå dev-start også mens en ekte kunde står i scenen. Isolasjon i
+reduceren: `RESOLVE_SALES_SCENARIO` konsumerer møte-state (activeMeeting/
+dayMeetings/meetingsToday) KUN når `scenarioId === activeMeetingScenarioId` (det
+EKTE møtet). Et dev-/øvingsscenario oppå (annen id) lar det ekte møtet stå urørt —
+det gjenopptas rent, ingen spøkelser.
+
+**5. ✕ minimerer — møtet består.** `closeSales` dispatcher ikke lenger
+`SKIP_MEETING`: X-en lukker bare VISNINGEN, mens `activeMeetingScenarioId`
+beholdes (klokka står pauset). Klikk på kunde-spriten (`talkToCustomer`)
+gjenåpner dialogen. Møtet avsluttes kun ved å FULLFØRE det (RESOLVE nuller
+flagget). Gjelder også utenfor dev.
+
+**Verifisert headless (Playwright, ?dev=1):** 👤-preview rendrer spriten i STENGT
+butikk (Live m/live.png), Esc fjerner (PASS). 👁-toggle skjuler/viser dialogkortet
+(PASS). Ekte møte spawnet; etter ✕ består kunde-spriten (møtet minimert, ikke
+skippet). `tsc -b` + `vite build` grønn, 0 konsollfeil. **Til Chrome-validering:**
+sprite-KLIKK for gjenåpning + dev-over-ekte-møte-isolasjonen er kode-/tsc-
+verifisert, men Playwright-klikket på spriten lander bak disk-forgrunnen (klikk
+øvre del manuelt) — verifiser gjenåpning + «ingen spøkelser» live.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
