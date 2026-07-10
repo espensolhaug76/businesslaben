@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, type InteriorMirrorTrau } from '../../data/districts'
 import { getScenario, SCENARIOS, FASHION_SCENARIOS } from '../sales/scenarios'
@@ -84,6 +84,14 @@ const DEFAULT_MENU_OFFSET_X = -11
 
 // ── Tracer-mål/soner (merket «spawn/stand» + «speil-N» for glassmonter-speilet) ─
 const ZONE_COLORS: Record<string, string> = { spawn: '#50dcff', stand: '#50e08c', speil: '#c084fc', meny: '#fbbf24' }
+
+// DEV: per-kunde spriteCal-overrides persisteres i localStorage så kalibrering
+// overlever reload. `__dumpCal()` skriver en ren, ferdig blokk til konsollen.
+type CustCal = { scale: number; centerX: number; waistY: number }
+const CUST_OVR_KEY = 'dev_cust_overrides_v1'
+function loadCustOverrides(): Record<string, CustCal> {
+  try { return JSON.parse(localStorage.getItem(CUST_OVR_KEY) || '{}') } catch { return {} }
+}
 
 function setRect(target: Rect, r: Rect) {
   target[0] = r[0]; target[1] = r[1]; target[2] = r[2]; target[3] = r[3]
@@ -178,7 +186,10 @@ export default function InteriorView({ districtId, lokaleId }: {
   const [scale, setScale] = useState(DEFAULT_SCALE)
   // PER-KUNDE override (dev): kalibrering av KUN den viste kunden (f.eks. Live),
   // keyet på scenario-id. Overstyrer den delte base-kalibreringen for den kunden.
-  const [custOverrides, setCustOverrides] = useState<Record<string, { scale: number; centerX: number; waistY: number }>>({})
+  // Init fra localStorage så kalibrering overlever reload.
+  const [custOverrides, setCustOverrides] = useState<Record<string, CustCal>>(() => IS_DEV_COORDS ? loadCustOverrides() : {})
+  useEffect(() => { if (IS_DEV_COORDS) try { localStorage.setItem(CUST_OVR_KEY, JSON.stringify(custOverrides)) } catch { /* ignore */ } }, [custOverrides])
+  const custOverridesRef = useRef(custOverrides); custOverridesRef.current = custOverrides
 
   // Tavle-tekstens vinkling/skala (?dev=1 — «📋 Tavle-kalibrering»-panelet).
   const [menuTiltY, setMenuTiltY] = useState(DEFAULT_MENU_TILT_Y)
@@ -237,12 +248,24 @@ export default function InteriorView({ districtId, lokaleId }: {
   //   __preview()                  → fjern forhåndsvisningen
   useEffect(() => {
     if (!IS_DEV_COORDS) return
-    const w = window as unknown as { __customers?: unknown; __preview?: (id?: string) => void }
+    const w = window as unknown as { __customers?: unknown; __preview?: (id?: string) => void; __dumpCal?: () => unknown }
     w.__customers = [...SCENARIOS, ...FASHION_SCENARIOS].map(s => ({ id: s.id, navn: s.customerName, sprite: s.sprite }))
     w.__preview = (id?: string) => setDevPreviewId(id ?? null)
-    console.log('%c[DEV] Kunde-sprites i konsollen: console.table(__customers) · __preview(\'likeverd\') · __preview() for av',
+    // Ren, ferdig eksport av ALLE kalibrerte kunder (persistert) — kjør én gang
+    // når du er ferdig, og lim hele blokka hit, så låser jeg dem i scenariene.
+    w.__dumpCal = () => {
+      const o = custOverridesRef.current
+      const ids = Object.keys(o)
+      const navn = (id: string) => [...SCENARIOS, ...FASHION_SCENARIOS].find(s => s.id === id)?.customerName ?? id
+      const block = ids.length
+        ? ids.map(id => `${id}  (${navn(id)}):  spriteCal: { scale: ${o[id]!.scale}, centerX: ${o[id]!.centerX}, waistY: ${o[id]!.waistY} },`).join('\n')
+        : '(ingen kunder kalibrert ennå)'
+      console.log('%c[DEV] spriteCal — endelige verdier (lim hele blokka til assistenten):\n' + block, 'color:#22c55e;font-weight:bold')
+      return o
+    }
+    console.log('%c[DEV] Kunde-sprites: console.table(__customers) · __preview(\'likeverd\') · __preview() av · __dumpCal() = ferdig-liste',
       'color:#7dd3fc;font-weight:bold')
-    return () => { delete w.__preview; delete w.__customers }
+    return () => { delete w.__preview; delete w.__customers; delete w.__dumpCal }
   }, [])
 
   // Oppdater én konstant + logg alle (snapshot med den nye verdien).
