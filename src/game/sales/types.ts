@@ -87,12 +87,6 @@ export interface SalesScenario {
   description: string
   /** Kundens sprite (ren PNG med alfa) som vises i interiørscenen. */
   sprite: string
-  /** Valgfri per-scenario skala-multiplikator på kunde-spriten i interiør-
-   *  scenen (default 1). Brukes når en sprite har annen komposisjon enn
-   *  Kari/Tom — f.eks. Live som står med førerhund og trenger mindre skala
-   *  for at HELE figuren + hunden skal være synlig over disken. Kalibreres
-   *  visuelt av Espen via ?dev=1 (skala-slideren mens kunden er aktiv). */
-  spriteScale?: number
   /** SKJULT behov — vises ikke til eleven før i resultat/feedback. */
   hiddenNeed: string
   /** Utfallstype (DEL 3). 'sale' (standard) = hovedmetrikken er salg.

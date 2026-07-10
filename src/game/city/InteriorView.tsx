@@ -115,10 +115,17 @@ export default function InteriorView({ districtId, lokaleId }: {
   // kundemøte forfaller setter reduceren (TICK) state.activeMeetingScenarioId;
   // vi slår opp scenariet og viser kunden. Når møtet er løst/hoppet over
   // nulles feltet og kunden forsvinner. Ingen lokal pool/spawn/navigasjon mer.
-  // GATE: kunden vises KUN i åpen butikk under et aktivt møte — aldri i stengt/
-  // oppgjør (defensivt mot et evt. gjenstående aktiv-flagg fra forrige dag).
-  const activeScenario = state.dayPhase === 'åpen' && state.activeMeetingScenarioId
+  // GATE: den EKTE kunden vises KUN i åpen butikk under et aktivt møte — aldri i
+  // stengt/oppgjør (defensivt mot et gjenstående aktiv-flagg fra forrige dag).
+  const realScenario = state.dayPhase === 'åpen' && state.activeMeetingScenarioId
     ? getScenario(state.activeMeetingScenarioId) ?? null : null
+  // DEV-PREVIEW (?dev=1): forhåndsvis en kunde-sprite i scenen UTEN å starte et
+  // møte, uavhengig av åpen/stengt og av ventende ekte møter. Ren visning — rører
+  // ikke spill-state. Ekte møte har alltid forrang over previewen.
+  const [devPreviewId, setDevPreviewId] = useState<string | null>(null)
+  const previewScenario = IS_DEV_COORDS && devPreviewId ? getScenario(devPreviewId) ?? null : null
+  const activeScenario = realScenario ?? previewScenario   // det som faktisk rendres i scenen
+  const isPreview = !realScenario && !!previewScenario
   const [imgFailed, setImgFailed] = useState(false)
   const [custImgFailed, setCustImgFailed] = useState(false)  // kunde-sprite mangler/feiler
   const [shown, setShown] = useState(false)        // fade-in/ut (opacity)
@@ -204,12 +211,22 @@ export default function InteriorView({ districtId, lokaleId }: {
   }, [])
 
   function talkToCustomer() {
-    if (!activeScenario) return
-    // Åpner DET scenariet kunden i scenen tilhører (samme inngang som
+    if (isPreview) { setDevPreviewId(null); return }   // preview: klikk på spriten fjerner den
+    if (!realScenario) return
+    // (Gjen)åpner DET scenariet kunden i scenen tilhører (samme inngang som
     // dev-knappene; GamePage lytter og håndterer __OVERLAY_OPEN__). Klokka er
-    // pauset så lenge overlayet står åpent (activeMeetingScenarioId er satt).
-    window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: activeScenario.id } }))
+    // pauset så lenge activeMeetingScenarioId er satt. X-en minimerer bare
+    // visningen — møtet består — så dette er veien tilbake til dialogen.
+    window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: realScenario.id } }))
   }
+
+  // DEV-PREVIEW: Esc fjerner previewen.
+  useEffect(() => {
+    if (!isPreview) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDevPreviewId(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isPreview])
 
   // Oppdater én konstant + logg alle (snapshot med den nye verdien).
   function update(key: 'CUSTOMER_SCALE' | 'CUSTOMER_CENTER_X' | 'CUSTOMER_WAIST_Y' | 'COUNTER_OCCLUDE_Y_LEFT' | 'COUNTER_OCCLUDE_Y_RIGHT', v: number, setter: (n: number) => void) {
@@ -510,18 +527,22 @@ export default function InteriorView({ districtId, lokaleId }: {
             planlagt kundemøte (activeMeetingScenarioId ⇒ activeScenario). Da
             ligger Dagspuls-panelet gjemt (gate på samme felt), så kunden står
             alene i scenen til eleven snakker med henne. */}
+        {/* DEV-PREVIEW: klikk-utenfor-lag som fjerner previewen (z=9, under kunden). */}
+        {isPreview && (
+          <div onClick={() => setDevPreviewId(null)} title="Klikk for å fjerne forhåndsvisningen"
+            style={{ position: 'absolute', inset: 0, zIndex: 9, cursor: 'zoom-out' }} />
+        )}
+
         {activeScenario && (
           <div
             onClick={talkToCustomer}
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
-            title="Snakk med kunden"
+            title={isPreview ? 'Forhåndsvisning (dev) — klikk for å fjerne' : 'Snakk med kunden'}
             style={{
               position: 'absolute',
               left: `${centerX}%`, top: `${waistY}%`,
-              // Per-scenario skala (default 1) oppå den Espen-kalibrerte base-
-              // skalaen — for sprites med annen komposisjon (Live m/førerhund).
-              height: `${scale * (activeScenario.spriteScale ?? 1) * 100}%`, width: 'auto',
+              height: `${scale * 100}%`, width: 'auto',
               // Forankring på livet: flytt opp WAIST_FRAC av egen høyde, sentrer x.
               transform: `translate(-50%, -${WAIST_FRAC * 100}%)`,
               opacity: shown ? 1 : 0,
@@ -571,7 +592,7 @@ export default function InteriorView({ districtId, lokaleId }: {
                 borderRadius: 8, padding: '0.3rem 0.7rem', color: '#f1f5f9',
                 fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>
-                💬 Snakk med kunden
+                {isPreview ? '👤 Forhåndsvisning — klikk for å fjerne' : '💬 Snakk med kunden'}
               </div>
             )}
           </div>
@@ -611,7 +632,7 @@ export default function InteriorView({ districtId, lokaleId }: {
       {/* ?dev=1: scenariovelger — start hvilket som helst salgsscenario
           umiddelbart i den EKTE overlay-flyten (samme dispatch som et planlagt
           møte). Klokka pauser (salesOpen), poolen røres ikke. */}
-      {IS_DEV_COORDS && <DevScenarioPicker />}
+      {IS_DEV_COORDS && <DevScenarioPicker onPreview={setDevPreviewId} previewId={devPreviewId} />}
 
       {/* ?dev=1: legg til flere speil-soner enn de faste (navngis speil-N
           fortløpende) — plasseres med sone-traceren over, lim resultatet inn
@@ -795,24 +816,27 @@ function CalSlider({ label, value, min, max, step, onChange, fmt }: {
 // via samme 'dev:openSalesScenario'-event som dev-knappene i dashbordet — så
 // scoring, lager-lesing og resultatkort er identiske med et ekte møte. Klokka
 // pauser mens overlayet er åpent (salesOpen-gaten i GamePage) og fortsetter
-// etterpå. Poolen (dayMeetings) røres IKKE: RESOLVE markerer bare et møte som
-// «done» når ett er SPAWNET (⇔ activeMeetingScenarioId satt), så dev-start er
-// AV mens en ekte kunde står i scenen. Spilte scenarier merkes ✓ (kun lokal
-// panel-state — ingen spill-effekt).
+// etterpå. Dev-start er nå TILLATT også mens et ekte møte står i scenen: dev-
+// møtet legger seg oppå, og RESOLVE isolerer det (scenarioId ≠ activeMeeting),
+// så det ekte møtet ikke konsumeres og gjenopptas rent. «👤 Forhåndsvis kunde»
+// rendrer i stedet spriten i scenen UTEN møte (ren visning). Spilte scenarier
+// merkes ✓ (kun lokal panel-state).
 
 function prettyTittel(id: string): string {
   const s = id.replace(/-/g, ' ')
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function DevScenarioPicker() {
-  const { state } = useGame()
+function DevScenarioPicker({ onPreview, previewId }: { onPreview: (id: string | null) => void; previewId: string | null }) {
   const [open, setOpen] = useState(false)
   const [played, setPlayed] = useState<Set<string>>(() => new Set())
-  const meetingActive = !!state.activeMeetingScenarioId
+  const [previewMode, setPreviewMode] = useState(false)
 
-  function start(id: string) {
-    if (meetingActive) return
+  // Dev-start er IKKE lenger blokkert av et aktivt/ventende møte: dev-møtet
+  // legger seg oppå, og RESOLVE isolerer det (scenarioId ≠ activeMeeting), så
+  // det ekte møtet gjenopptas rent etterpå (ingen spøkelser).
+  function pick(id: string) {
+    if (previewMode) { onPreview(id); return }   // 👤 forhåndsvis i scenen (ingen møte)
     setPlayed(p => new Set(p).add(id))
     window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: id } }))
   }
@@ -842,11 +866,18 @@ function DevScenarioPicker() {
           marginTop: 6, background: 'rgba(10,14,26,0.96)', border: '1px solid rgba(192,132,252,0.3)',
           borderRadius: 12, padding: '8px 9px', maxHeight: 'calc(100vh - 130px)', overflowY: 'auto',
         }}>
-          {meetingActive && (
-            <div style={{ fontSize: 10.5, color: '#fca5a5', lineHeight: 1.4, marginBottom: 8 }}>
-              Et kundemøte står i scenen — håndter det først. (Dev-start er av så møte-poolen ikke røres.)
-            </div>
-          )}
+          {/* 👤 Forhåndsvis-modus: valg rendrer spriten i scenen uten å starte møte. */}
+          <button
+            onClick={() => { setPreviewMode(m => !m); if (previewMode) onPreview(null) }}
+            style={{
+              width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8,
+              background: previewMode ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${previewMode ? '#38bdf8' : 'rgba(255,255,255,0.12)'}`,
+              borderRadius: 8, padding: '5px 9px', color: previewMode ? '#38bdf8' : '#94a3b8', fontSize: 11, fontWeight: 700,
+            }}
+          >
+            {previewMode ? '👤 Forhåndsvis kunde — PÅ (velg for å vise i scenen)' : '👤 Forhåndsvis kunde'}
+          </button>
           {grupper.map(g => (
             <div key={g.navn} style={{ marginBottom: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 800, color: g.farge, letterSpacing: '0.04em', margin: '2px 0 5px' }}>
@@ -855,21 +886,21 @@ function DevScenarioPicker() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {g.list.map(s => {
                   const spilt = played.has(s.id)
+                  const forhandsvist = previewMode && previewId === s.id
                   return (
                     <button
                       key={s.id}
-                      onClick={() => start(s.id)}
-                      disabled={meetingActive}
+                      onClick={() => pick(s.id)}
                       title={s.description}
                       style={{
                         display: 'flex', alignItems: 'baseline', gap: 6, textAlign: 'left', width: '100%',
-                        cursor: meetingActive ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-                        background: spilt ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${spilt ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                        borderRadius: 7, padding: '5px 8px', opacity: meetingActive ? 0.45 : 1,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                        background: forhandsvist ? 'rgba(56,189,248,0.16)' : spilt ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${forhandsvist ? '#38bdf8' : spilt ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                        borderRadius: 7, padding: '5px 8px',
                       }}
                     >
-                      <span style={{ fontSize: 11, color: spilt ? '#22c55e' : '#64748b', flexShrink: 0 }}>{spilt ? '✓' : '▸'}</span>
+                      <span style={{ fontSize: 11, color: forhandsvist ? '#38bdf8' : spilt ? '#22c55e' : '#64748b', flexShrink: 0 }}>{forhandsvist ? '👤' : spilt ? '✓' : '▸'}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ fontSize: 11.5, fontWeight: 700, color: '#f1f5f9' }}>{prettyTittel(s.id)}</span>
                         <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 5 }}>
