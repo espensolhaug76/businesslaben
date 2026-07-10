@@ -229,7 +229,7 @@ type Action =
   | { type: 'SET_MAIN_PRODUCT'; id: string }
   | { type: 'SET_WINDOW_DISPLAY'; fixtureId: WindowDisplayItem['fixtureId']; items: WindowDisplayItem[] }
   | { type: 'SET_COUNTER_LAYOUT'; items: TrauItem[] }
-  | { type: 'RESOLVE_SALES_SCENARIO'; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number; stockout?: boolean }
+  | { type: 'RESOLVE_SALES_SCENARIO'; scenarioId?: string; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number; stockout?: boolean }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   // Åpningsbestilling (docs/INNKJOP_LEVERING.md): elevens ene selvvalgte
   // startlager, ferdig på lager dag 1 (ingen ventetid). Tom liste tillates.
@@ -426,10 +426,16 @@ function reducer(state: GameState, action: Action): GameState {
       const stockoutNow = (action.stockout ?? false) || action.sales.some(l => l.qty === 0)
       const inDay = state.dayPhase === 'åpen'
 
-      // SPILLKLOKKE: dette møtet er ferdig — klokka kan gå videre. Marker det
-      // spawnede møtet som done og fjern aktiv-flagget (bakgrunnssalget dryppes
-      // per tick, IKKE her). Per-produkt møte-salg logges i dayProductStats.
-      const meetingIdx = inDay ? state.dayMeetings.findIndex(m => m.spawned && !m.done) : -1
+      // ISOLASJON: bare det EKTE møtet (scenarioId === activeMeeting) konsumerer
+      // møte-state. Et dev-/øvingsscenario startet oppå (annen id, eller ingen
+      // aktiv kunde) lar activeMeetingScenarioId/dayMeetings/meetingsToday stå
+      // urørt, så et ventende ekte møte gjenopptas rent — ingen spøkelser.
+      const isMeeting = inDay && state.activeMeetingScenarioId === action.scenarioId
+
+      // SPILLKLOKKE: er DETTE det ekte møtet? Marker det spawnede møtet som done
+      // og fjern aktiv-flagget (bakgrunnssalget dryppes per tick, IKKE her).
+      // Per-produkt møte-salg logges i dayProductStats.
+      const meetingIdx = isMeeting ? state.dayMeetings.findIndex(m => m.spawned && !m.done) : -1
       const dayMeetings = meetingIdx >= 0
         ? state.dayMeetings.map((m, i) => i === meetingIdx ? { ...m, done: true } : m)
         : state.dayMeetings
@@ -447,14 +453,13 @@ function reducer(state: GameState, action: Action): GameState {
         xp: newXp,
         level: newLevel,
         xpToNextLevel: xpToNext,
-        // Møtet/samtalen er over ⇒ ALLTID nulle aktiv-flagget (også for dev-
-        // scenarier utenfor handledag), så ingen kunde-sprite blir stående i
-        // scenen etterpå. Kunden vises uansett kun i åpen butikk (InteriorView
-        // gater på dayPhase).
-        activeMeetingScenarioId: null,
+        // Nuller aktiv-flagget KUN når det ekte møtet fullføres. Et isolert dev-
+        // scenario lar det stå (evt. ekte kunde gjenopptas). Kunden vises uansett
+        // bare i åpen butikk (InteriorView gater på dayPhase).
+        activeMeetingScenarioId: isMeeting ? null : state.activeMeetingScenarioId,
         dayMeetings,
         dayProductStats,
-        meetingsToday: inDay ? state.meetingsToday + 1 : state.meetingsToday,
+        meetingsToday: isMeeting ? state.meetingsToday + 1 : state.meetingsToday,
         dayStats: inDay ? {
           ...state.dayStats,
           soldStk: state.dayStats.soldStk + soldStk,

@@ -140,15 +140,14 @@ function GameContent() {
   function closeSim() { setSimOpen(false); setOverlay(false) }
   function closeDashboard() { setDashboardOpen(false); setOverlay(false) }
   function closeRentPanel() { setVacantInfo(null); setOverlay(false) }
-  // Lukk salgsoverlayet; behold __OVERLAY_OPEN__ hvis dashbordet fortsatt er åpent under.
-  // Varsle scenen (InteriorView) så kunden kan forlate butikken etter runden.
+  // Lukk salgsoverlayet. X-en MINIMERER bare visningen — et ekte møte BESTÅR
+  // (activeMeetingScenarioId er fortsatt satt, klokka står pauset), og eleven
+  // klikker kunde-spriten for å gjenåpne dialogen. Møtet avsluttes kun ved å
+  // FULLFØRE det (RESOLVE nuller flagget). Fullføring kaller også denne (etter
+  // at flagget er nullet), så ingen SKIP_MEETING her.
   function closeSales() {
     setSalesOpen(false)
     setOverlay(dashboardOpen)
-    window.dispatchEvent(new CustomEvent('sales:closed'))
-    // SPILLKLOKKE: lukkes et kundemøte uten å fullføre, hopp over det så klokka
-    // går videre (no-op om ingen møte er aktivt — RESOLVE har alt ryddet det).
-    dispatch({ type: 'SKIP_MEETING' })
   }
 
   function onVacantClick({ district, lokale, rent }: LokaleClick) {
