@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
+import { IS_DEV_COORDS } from '../city/DevCoordHelper'
 import { getScenario } from '../sales/scenarios'
 import { productMatchesNeed, findProductByTags, interpolateTokens, buildSalesResult, shuffle } from '../sales/engine'
 import type { SalesScenario, SalesStep, SalesChoice, SaleLine, ScoredPick, ChoiceQuality } from '../sales/types'
@@ -31,6 +32,11 @@ export default function SalesScenarioOverlay({ open, onClose, scenarioId }: {
   scenarioId: string
 }) {
   const scenario = getScenario(scenarioId)
+  // DEV (?dev=1): «👁 Vis kunde» skjuler dialogkortet midlertidig så kunde-
+  // spriten i scenen bak blir fullt synlig for inspeksjon/kalibrering. SalesRun
+  // forblir montert (dialog-state bevares) — det er bare visningen som skjules.
+  const [hideDialog, setHideDialog] = useState(false)
+  useEffect(() => { if (!open) setHideDialog(false) }, [open])
   return (
     <AnimatePresence>
       {open && (
@@ -38,13 +44,27 @@ export default function SalesScenarioOverlay({ open, onClose, scenarioId }: {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           style={{
             position: 'fixed', inset: 0, zIndex: 190,
-            background: 'rgba(0,0,0,0.78)',
+            background: hideDialog ? 'transparent' : 'rgba(0,0,0,0.78)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: "'Outfit', sans-serif", padding: '1.5rem',
           }}
-          onPointerDown={e => { e.stopPropagation(); if (e.target === e.currentTarget) onClose() }}
+          onPointerDown={hideDialog ? undefined : e => { e.stopPropagation(); if (e.target === e.currentTarget) onClose() }}
           onPointerUp={e => e.stopPropagation()}
         >
+          {IS_DEV_COORDS && (
+            <button
+              onClick={e => { e.stopPropagation(); setHideDialog(h => !h) }}
+              onPointerDown={e => e.stopPropagation()}
+              style={{
+                position: 'fixed', top: 70, left: '50%', transform: 'translateX(-50%)', zIndex: 200,
+                cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 800,
+                background: hideDialog ? 'rgba(56,189,248,0.2)' : 'rgba(10,14,26,0.94)',
+                border: '1px solid #38bdf8', borderRadius: 99, padding: '6px 14px', color: '#38bdf8',
+              }}
+            >
+              {hideDialog ? '↩ Vis dialogen igjen' : '👁 Vis kunde'}
+            </button>
+          )}
           <motion.div
             initial={{ scale: 0.93, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -56,7 +76,8 @@ export default function SalesScenarioOverlay({ open, onClose, scenarioId }: {
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '1.75rem', width: '100%', maxWidth: 560,
               maxHeight: 'calc(100vh - 3rem)',
-              display: 'flex', flexDirection: 'column',
+              // 👁 Vis kunde: skjul kortet (SalesRun forblir montert ⇒ state bevart).
+              display: hideDialog ? 'none' : 'flex', flexDirection: 'column',
               color: '#f1f5f9', overflow: 'hidden',
             }}
           >
@@ -260,6 +281,7 @@ function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () 
     // utsolgt-hintet også ved delsalg (ikke bare når en linje er helt tom).
     dispatch({
       type: 'RESOLVE_SALES_SCENARIO',
+      scenarioId: scenario.id,   // reduceren avgjør om DETTE er det ekte møtet
       sales: result.sales,
       cost: result.cost,
       reputationDelta: result.reputationDelta,
