@@ -176,6 +176,9 @@ export default function InteriorView({ districtId, lokaleId }: {
   const [centerX, setCenterX] = useState(DEFAULT_CENTER_X)
   const [waistY, setWaistY] = useState(DEFAULT_WAIST_Y)
   const [scale, setScale] = useState(DEFAULT_SCALE)
+  // PER-KUNDE override (dev): kalibrering av KUN den viste kunden (f.eks. Live),
+  // keyet på scenario-id. Overstyrer den delte base-kalibreringen for den kunden.
+  const [custOverrides, setCustOverrides] = useState<Record<string, { scale: number; centerX: number; waistY: number }>>({})
 
   // Tavle-tekstens vinkling/skala (?dev=1 — «📋 Tavle-kalibrering»-panelet).
   const [menuTiltY, setMenuTiltY] = useState(DEFAULT_MENU_TILT_Y)
@@ -245,6 +248,36 @@ export default function InteriorView({ districtId, lokaleId }: {
       MENU_TILT_Y: menuTiltY, MENU_TILT_X: menuTiltX, MENU_SCALE: menuScale, MENU_OFFSET_X: menuOffsetX,
       [key]: v,
     })
+  }
+
+  // Effektiv kunde-kalibrering for den VISTE kunden: per-kunde override >
+  // scenariets `spriteCal` > delt base. Kari/Tom (uten override/spriteCal)
+  // bruker basen; Live kan kalibreres for seg selv.
+  const shownId = activeScenario?.id ?? null
+  const scenCal = activeScenario?.spriteCal
+  const ovr = shownId ? custOverrides[shownId] : undefined
+  const effScale = ovr?.scale ?? scenCal?.scale ?? scale
+  const effCenterX = ovr?.centerX ?? scenCal?.centerX ?? centerX
+  const effWaistY = ovr?.waistY ?? scenCal?.waistY ?? waistY
+
+  // Dev: drar man en kunde-slider mens EN KUNDE VISES, skrives verdien til DENNE
+  // kundens override (og spriteCal logges for innliming) — den delte basen (og de
+  // andre kundene) røres ikke. Uten en vist kunde justeres basen som før.
+  function setCustField(field: 'scale' | 'centerX' | 'waistY', v: number) {
+    if (shownId && activeScenario) {
+      setCustOverrides(o => {
+        const cur = o[shownId] ?? { scale: effScale, centerX: effCenterX, waistY: effWaistY }
+        const next = { ...cur, [field]: v }
+        console.log(
+          `[InteriorView] spriteCal for «${activeScenario.customerName}» (${shownId}) — lim inn i scenariet i scenarios.ts:`,
+          `spriteCal: { scale: ${next.scale}, centerX: ${next.centerX}, waistY: ${next.waistY} },`,
+        )
+        return { ...o, [shownId]: next }
+      })
+    } else {
+      update(field === 'scale' ? 'CUSTOMER_SCALE' : field === 'centerX' ? 'CUSTOMER_CENTER_X' : 'CUSTOMER_WAIST_Y',
+        v, field === 'scale' ? setScale : field === 'centerX' ? setCenterX : setWaistY)
+    }
   }
 
   return (
@@ -541,8 +574,9 @@ export default function InteriorView({ districtId, lokaleId }: {
             title={isPreview ? 'Forhåndsvisning (dev) — klikk for å fjerne' : 'Snakk med kunden'}
             style={{
               position: 'absolute',
-              left: `${centerX}%`, top: `${waistY}%`,
-              height: `${scale * 100}%`, width: 'auto',
+              // Effektiv (per-kunde override > spriteCal > base) — se setCustField.
+              left: `${effCenterX}%`, top: `${effWaistY}%`,
+              height: `${effScale * 100}%`, width: 'auto',
               // Forankring på livet: flytt opp WAIST_FRAC av egen høyde, sentrer x.
               transform: `translate(-50%, -${WAIST_FRAC * 100}%)`,
               opacity: shown ? 1 : 0,
@@ -658,18 +692,29 @@ export default function InteriorView({ districtId, lokaleId }: {
       {IS_DEV_COORDS && (
         <div style={{ position: 'fixed', top: 320, right: 16, zIndex: 90, width: 224 }}>
           <CalPanel title="🎚️ Kunde-kalibrering" color="#7dd3fc" open={kundeOpen} onToggle={() => setKundeOpen(o => !o)}>
-            <CalSlider label="CUSTOMER_SCALE"     value={scale}    min={0.5} max={2.5} step={0.05}
-              onChange={v => update('CUSTOMER_SCALE', v, setScale)}      fmt={v => v.toFixed(2)} />
-            <CalSlider label="CUSTOMER_CENTER_X"  value={centerX}  min={0}   max={100} step={0.5}
-              onChange={v => update('CUSTOMER_CENTER_X', v, setCenterX)} fmt={v => v.toFixed(1)} />
-            <CalSlider label="CUSTOMER_WAIST_Y"   value={waistY}   min={0}   max={100} step={0.5}
-              onChange={v => update('CUSTOMER_WAIST_Y', v, setWaistY)}   fmt={v => v.toFixed(1)} />
+            {/* SCALE/CENTER_X/WAIST_Y gjelder DEN VISTE kunden: vises en kunde
+                (møte/preview) kalibreres KUN henne (spriteCal), ellers den delte
+                basen. OCCLUDE er disken (alltid delt). */}
+            <div style={{
+              fontSize: 10.5, fontWeight: 800, marginBottom: 6, padding: '3px 7px', borderRadius: 6,
+              background: shownId ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.05)',
+              color: shownId ? '#38bdf8' : '#94a3b8',
+            }}>
+              {shownId ? `Kalibrerer KUN: ${activeScenario!.customerName} (spriteCal)` : 'Kalibrerer: delt base (vis en kunde for å kalibrere kun henne)'}
+            </div>
+            <CalSlider label="CUSTOMER_SCALE"     value={effScale}   min={0.5} max={2.5} step={0.05}
+              onChange={v => setCustField('scale', v)}   fmt={v => v.toFixed(2)} />
+            <CalSlider label="CUSTOMER_CENTER_X"  value={effCenterX} min={0}   max={100} step={0.5}
+              onChange={v => setCustField('centerX', v)} fmt={v => v.toFixed(1)} />
+            <CalSlider label="CUSTOMER_WAIST_Y"   value={effWaistY}  min={0}   max={100} step={0.5}
+              onChange={v => setCustField('waistY', v)}  fmt={v => v.toFixed(1)} />
             <CalSlider label="COUNTER_OCCLUDE_Y_LEFT"  value={occludeYLeft} min={0} max={100} step={0.5}
               onChange={v => update('COUNTER_OCCLUDE_Y_LEFT', v, setOccludeYLeft)}   fmt={v => v.toFixed(1)} />
             <CalSlider label="COUNTER_OCCLUDE_Y_RIGHT" value={occludeYRight} min={0} max={100} step={0.5}
               onChange={v => update('COUNTER_OCCLUDE_Y_RIGHT', v, setOccludeYRight)} fmt={v => v.toFixed(1)} />
             <div style={{ fontSize: 10, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
-              Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
+              Verdiene logges i konsollen ved hver endring. For en enkeltkunde logges en
+              ferdig <code>spriteCal: {'{…}'}</code>-linje — meld den tilbake, så låser jeg den i scenariet.
             </div>
           </CalPanel>
         </div>

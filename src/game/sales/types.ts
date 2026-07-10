@@ -87,6 +87,12 @@ export interface SalesScenario {
   description: string
   /** Kundens sprite (ren PNG med alfa) som vises i interiørscenen. */
   sprite: string
+  /** Valgfri PER-SCENARIO kalibrering av kunde-spriten i interiørscenen —
+   *  overstyrer den delte base-kalibreringen (Kari/Tom) for KUN denne kunden.
+   *  Brukes når en sprite har annen komposisjon (f.eks. Live m/førerhund).
+   *  Kalibreres visuelt via ?dev=1 (Kunde-kalibrering-panelet mens kunden vises)
+   *  og limes inn her. Utelatte felt arver base-verdien. */
+  spriteCal?: { scale?: number; centerX?: number; waistY?: number }
   /** SKJULT behov — vises ikke til eleven før i resultat/feedback. */
   hiddenNeed: string
   /** Utfallstype (DEL 3). 'sale' (standard) = hovedmetrikken er salg.
