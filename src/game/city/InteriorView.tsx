@@ -231,6 +231,20 @@ export default function InteriorView({ districtId, lokaleId }: {
     return () => window.removeEventListener('keydown', onKey)
   }, [isPreview])
 
+  // DEV (?dev=1): eksponer kunde-katalogen + preview-styring i F12-konsollen.
+  //   console.table(__customers)   → alle kunder (id · navn · sprite)
+  //   __preview('likeverd')        → forhåndsvis den kunden i scenen
+  //   __preview()                  → fjern forhåndsvisningen
+  useEffect(() => {
+    if (!IS_DEV_COORDS) return
+    const w = window as unknown as { __customers?: unknown; __preview?: (id?: string) => void }
+    w.__customers = [...SCENARIOS, ...FASHION_SCENARIOS].map(s => ({ id: s.id, navn: s.customerName, sprite: s.sprite }))
+    w.__preview = (id?: string) => setDevPreviewId(id ?? null)
+    console.log('%c[DEV] Kunde-sprites i konsollen: console.table(__customers) · __preview(\'likeverd\') · __preview() for av',
+      'color:#7dd3fc;font-weight:bold')
+    return () => { delete w.__preview; delete w.__customers }
+  }, [])
+
   // Oppdater én konstant + logg alle (snapshot med den nye verdien).
   function update(key: 'CUSTOMER_SCALE' | 'CUSTOMER_CENTER_X' | 'CUSTOMER_WAIST_Y' | 'COUNTER_OCCLUDE_Y_LEFT' | 'COUNTER_OCCLUDE_Y_RIGHT', v: number, setter: (n: number) => void) {
     setter(v)
