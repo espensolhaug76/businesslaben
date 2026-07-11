@@ -20,9 +20,13 @@ import { IS_DEV_COORDS } from './DevCoordHelper'
 import { SPORT, type Vareplass, type PlassType } from '../data/industryDefinition'
 import { SPORT_VARER, sportVareById, repVareForType } from '../data/sportVarer'
 
-const INTERIOR_IMG = '/assets/raw/sport-interior-mobler.png'
-const SCENE_W = 1365
-const SCENE_H = 768
+// Disk-fri interiør (Espen fjernet den cafe-arvede glassdisken via NB, 2026-07-11).
+// Samme rom/kamera/møbelposisjoner som -mobler.png; kun bunnstripa (disk → gulv)
+// avviker + brettebordet er marginalt større. Høyoppløst (1672×940), ingen synlig
+// vannmerke. Se docs/rapporter/spor-c.md §9.
+const INTERIOR_IMG = '/assets/raw/sport-interior-uten-disk.png'
+const SCENE_W = 1672
+const SCENE_H = 940
 
 const PLASS_TYPER: PlassType[] = ['sko', 'heng', 'brett', 'utstyr']
 const TYPE_LABEL: Record<PlassType, string> = {

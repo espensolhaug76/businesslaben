@@ -173,3 +173,43 @@ headless (mangler emoji-font) — kosmetisk, ekte Chrome viser dem.
   (motorene leser alltid CAFE i dag).
 - **Vannflaske-seating** + evt. erstatte den ene røde jakka for mer variasjon.
 - **Fasade-integrasjon** i byen (i dag frittstående asset + vindusglimt).
+
+---
+
+## 9. Oppfølging (2026-07-11): disk-fri interiør
+
+Espen fjernet den cafe-arvede glassdisken via NB → `sport-interior-uten-disk-raw.png`.
+
+**Sammenligning mot originalen (gate: er kamera + ALLE møbelposisjoner identiske?):**
+Verifisert via pikseldiff, 50/50-blend og zoom-crops.
+- **Kamera/perspektiv:** identisk.
+- **Skovegg, klesstativ, utstyrsvegg (hyller/kroker), høyre benk/kubbe:**
+  posisjonelt identiske (helt skarpe i 50/50-blend, ingen ghosting). Disk-
+  fjerningen AVDEKKET mer av gulvet + benken som disken før skjulte.
+- **Ett reelt avvik:** brettebordet er marginalt STØRRE og litt lavere.
+- **Bunnstripa:** disk → gulv (den tiltenkte endringen).
+- **Dimensjon:** 1365×768 → 1672×940 (nær-identisk sideforhold 1.777→1.779;
+  %-koordinatmodellen bæres uendret over).
+
+**Konklusjon: JA (samme rom, samme kamera, samme fikstur-posisjoner)** — det ene
+avviket (bord) + de avdekkede lavere flatene faller under «juster de få som
+bommer nederst». Byttet gjennomført.
+
+**✦-vannmerke:** Sjekket nede t.h. + hele bunnstripa + hjørner (crop, kontrast-
+oppblåsing 3×, near-white-skann). **Ingen synlig ✦ funnet** — de lyseste bunn-
+pikslene klynger seg midt i bildet (dørlys-refleks på gulvet), ikke i et hjørne.
+Kun usynlig SynthID gjenstår trolig. Ingen patching nødvendig (som originalen).
+
+**Rekalibrering (skjermbilde-løkke, 2 iterasjoner):**
+- Uendret og fortsatt korrekt: 6 sko, 3 heng, 2 øvre utstyrshyller (ball/hjelm).
+- Justert NED (avdekkede lavere flater): 5 brett-plasser til det større/lavere
+  bordet; sekk/håndvekt/yogamatte ned på den nå-synlige lave benken; vannflaske
+  flyttet til 2. hylle. Alle 20 plasser treffer møblene i sluttrenderen.
+
+**Endret:** `SportStillas.tsx` (INTERIOR_IMG + SCENE_W/H=1672/940),
+`industryDefinition.ts` (sceneImage + 11 justerte vareplasser),
+`sport-interior-uten-disk.png` (ny scene), oppdaterte skjermbilder.
+
+**Merk — antall vareplasser:** oppdraget nevnte «37 vareplasser», men den bygde
+butikken har **20** (mandatet krevde min. 15; jeg kalibrerte 20). Ingen 37 har
+eksistert i denne grenen — flagget for ordens skyld.

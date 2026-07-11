@@ -307,7 +307,7 @@ export const SPORT: IndustryDefinition = {
     lager: {
       // Sportsbutikken bruker vareplass-modellen (bakt interiør), ikke
       // disk-monterens trau — tom trau-geometri, scenebildet er kun referanse.
-      sceneImage: '/assets/raw/sport-interior-mobler.png',
+      sceneImage: '/assets/raw/sport-interior-uten-disk.png',
       trau: [],
       trauCols: () => 1,
       speil: { sceneImage: '', trau: [] },
@@ -324,7 +324,7 @@ export const SPORT: IndustryDefinition = {
     { id: 'innkjop',      funksjon: 'Innkjøp',       tittel: 'Innkjøpsansvarlig',   emoji: '📦', farge: '#a78bfa', vaktrolle: false, maanedseffekt: null,            kjerne: false },
     { id: 'fagperson',    funksjon: 'Fag',           tittel: 'Sportsfaglig veileder',emoji: '🎽', farge: '#fb7185', vaktrolle: false, maanedseffekt: null,           kjerne: false },
   ],
-  // Kalibrerte vareplasser i sport-interior-mobler.png (1365×768). x/y = %,
+  // Kalibrerte vareplasser i sport-interior-uten-disk.png (1672×940). x/y = %,
   // scale = brøk av scenebredden. Startgjett fra rutenett-avlesning —
   // finjustert via /dev/sport-render + skjermbilde-iterasjon (spor-c.md).
   vareplasser: [
@@ -339,19 +339,21 @@ export const SPORT: IndustryDefinition = {
     { id: 'heng-1', type: 'heng', x: 34, y: 39, scale: 0.055, vare: 'treningsjakke' },
     { id: 'heng-2', type: 'heng', x: 37, y: 39, scale: 0.055, vare: 'hettegenser' },
     { id: 'heng-3', type: 'heng', x: 40, y: 39, scale: 0.055, vare: 'vindjakke' },
-    // Brettbord (midt-høyre) — topp (3) + underhylle (2)
-    { id: 'brett-1', type: 'brett', x: 58, y: 53, scale: 0.06, vare: 't-skjorte' },
-    { id: 'brett-2', type: 'brett', x: 64, y: 53, scale: 0.06, vare: 'treningsshorts' },
-    { id: 'brett-3', type: 'brett', x: 69, y: 54, scale: 0.06, vare: 'collegegenser' },
-    { id: 'brett-4', type: 'brett', x: 61, y: 60, scale: 0.06, vare: 'treningsbukse' },
-    { id: 'brett-5', type: 'brett', x: 68, y: 60, scale: 0.06, vare: 'tights' },
-    // Utstyrsvegg (høyre) — 3 tynne hyller (y26/34/41) + lav kubbe-enhet (y50)
+    // Brettbord (midt-høyre) — bord større/lavere i disk-fri versjon; senket
+    // bakre rad (3) + fremre rad (2) på bordplata (y-nivåene under)
+    { id: 'brett-1', type: 'brett', x: 58, y: 56, scale: 0.06, vare: 't-skjorte' },
+    { id: 'brett-2', type: 'brett', x: 64, y: 56, scale: 0.06, vare: 'treningsshorts' },
+    { id: 'brett-3', type: 'brett', x: 70, y: 56, scale: 0.06, vare: 'collegegenser' },
+    { id: 'brett-4', type: 'brett', x: 60, y: 61, scale: 0.06, vare: 'treningsbukse' },
+    { id: 'brett-5', type: 'brett', x: 67, y: 61, scale: 0.06, vare: 'tights' },
+    // Utstyrsvegg (høyre) — øvre tynne hyller (ball/hjelm/flaske) + lav kubbe/
+    // benk (nå mer synlig i disk-fri versjon: sekk/vekt/matte senket dit)
     { id: 'utstyr-1', type: 'utstyr', x: 85, y: 27, scale: 0.045, vare: 'fotball' },
-    { id: 'utstyr-2', type: 'utstyr', x: 85, y: 34, scale: 0.05,  vare: 'sykkelhjelm' },
-    { id: 'utstyr-3', type: 'utstyr', x: 84, y: 41, scale: 0.045, vare: 'handvekt' },
-    { id: 'utstyr-4', type: 'utstyr', x: 89, y: 41, scale: 0.03,  vare: 'vannflaske' },
-    { id: 'utstyr-5', type: 'utstyr', x: 86, y: 50, scale: 0.05,  vare: 'ryggsekk' },
-    { id: 'utstyr-6', type: 'utstyr', x: 92, y: 50, scale: 0.035, vare: 'yogamatte' },
+    { id: 'utstyr-2', type: 'utstyr', x: 84, y: 34, scale: 0.05,  vare: 'sykkelhjelm' },
+    { id: 'utstyr-4', type: 'utstyr', x: 90, y: 33, scale: 0.03,  vare: 'vannflaske' },
+    { id: 'utstyr-5', type: 'utstyr', x: 84, y: 55, scale: 0.05,  vare: 'ryggsekk' },
+    { id: 'utstyr-3', type: 'utstyr', x: 89, y: 57, scale: 0.045, vare: 'handvekt' },
+    { id: 'utstyr-6', type: 'utstyr', x: 94, y: 58, scale: 0.035, vare: 'yogamatte' },
   ],
 }
 
