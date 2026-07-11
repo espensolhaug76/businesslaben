@@ -15,6 +15,7 @@ import { TEACHER_MODULE_PHASES } from './learninghub/shared/teacherModuleRegistr
 import type { DrawerPhase, DrawerExercise } from './learninghub/shared/DrawerModule'
 import LiveOktTab from './teacher/LiveOktTab'
 import LeaderboardTab from './teacher/LeaderboardTab'
+import TemaAktiveringPanel from './teacher/TemaAktiveringPanel'
 import KonkurranserTab from './teacher/KonkurranserTab'
 import { MINE_FAG_OPTIONS, normalizeSubjectId } from '../lib/teacherSubjects'
 
@@ -1073,6 +1074,16 @@ export default function TeacherDashboard() {
 
         {activeTab === 'spillet' && (
           <>
+            {/* Tema-aktivering per klasse (KODEKART steg 1) */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="mb-6"
+            >
+              <TemaAktiveringPanel />
+            </motion.div>
+
             {/* Subject selector */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}

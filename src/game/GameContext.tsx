@@ -1,4 +1,7 @@
-import { createContext, useContext, useReducer, type ReactNode } from 'react'
+import { createContext, useContext, useReducer, useState, useEffect, type ReactNode } from 'react'
+import { ref, onValue } from 'firebase/database'
+import { db } from '../lib/firebase'
+import type { TemaAktivering, TemaNivaa } from './data/temaer'
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
@@ -1207,19 +1210,65 @@ function reducer(state: GameState, action: Action): GameState {
 interface GameContextValue {
   state: GameState
   dispatch: React.Dispatch<Action>
+  /** Temaer læreren har aktivert for denne klassen (temaId → { aktiv, nivaa }).
+   *  Fylles fra Firebase RTDB når klassekode finnes, ellers fra lokal fallback. */
+  aktiveTemaer: Record<string, TemaAktivering>
 }
 
 const GameContext = createContext<GameContextValue | null>(null)
 
+// ─── Tema-aktivering: klassekode + fallback ──────────────────────────────────
+// Gjenbruker live-økt-flytens klassekode-kobling (?live-code / student-classroom-
+// code). Uten klassekode brukes en lokal dev-fallback (localStorage-JSON), så
+// tema-gating kan testes lokalt uten en levende klasse.
+function hentKlassekode(): string | null {
+  try {
+    const url = new URLSearchParams(window.location.search).get('live-code')
+    return url ?? localStorage.getItem('student-classroom-code')
+  } catch { return null }
+}
+function lesTemaFallback(): Record<string, TemaAktivering> {
+  try {
+    const raw = localStorage.getItem('tema-aktivering-dev')
+    if (raw) { const v = JSON.parse(raw); if (v && typeof v === 'object') return v as Record<string, TemaAktivering> }
+  } catch { /* korrupt/utilgjengelig — tom */ }
+  return {}
+}
+
 export function GameProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState)
-  return <GameContext.Provider value={{ state, dispatch }}>{children}</GameContext.Provider>
+  const [aktiveTemaer, setAktiveTemaer] = useState<Record<string, TemaAktivering>>(() => lesTemaFallback())
+
+  // Abonnér på tema-aktiveringsnoden ved øktstart når klassekode finnes.
+  useEffect(() => {
+    const kode = hentKlassekode()
+    if (!kode) { setAktiveTemaer(lesTemaFallback()); return }
+    return onValue(ref(db, `klasser/${kode}/temaAktivering`), snap => {
+      setAktiveTemaer((snap.val() as Record<string, TemaAktivering> | null) ?? {})
+    })
+  }, [])
+
+  return <GameContext.Provider value={{ state, dispatch, aktiveTemaer }}>{children}</GameContext.Provider>
 }
 
 export function useGame() {
   const ctx = useContext(GameContext)
   if (!ctx) throw new Error('useGame must be used inside GameProvider')
   return ctx
+}
+
+// ─── Tema-selektorer (fremtidige temajobber gater på disse) ───────────────────
+export function useAktiveTemaer(): Record<string, TemaAktivering> {
+  return useGame().aktiveTemaer
+}
+/** Enkel selector-hook: er temaet aktivert for denne klassen? */
+export function useErTemaAktivt(temaId: string): boolean {
+  return !!useGame().aktiveTemaer[temaId]?.aktiv
+}
+/** Hvilket nivå (vg1/vg2) temaet er aktivert på, om aktivt. */
+export function useTemaNivaa(temaId: string): TemaNivaa | undefined {
+  const t = useGame().aktiveTemaer[temaId]
+  return t?.aktiv ? t.nivaa : undefined
 }
 
 // Re-export types for consumers
