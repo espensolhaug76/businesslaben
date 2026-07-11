@@ -122,6 +122,10 @@ export interface Vareplass {
   vare?: string
   /** Valgfri rotasjon i grader på det plasserte elementet. */
   rot?: number
+  /** Valgfri skjærtransform (grader) — gir flate sprites (brettede/hengende
+   *  klær) perspektiv så de matcher bordets/stativets vinkel. */
+  skewX?: number
+  skewY?: number
 }
 
 /** SPORT — HYLLELINJE (Espens designidé): en linje langs en hyllekant i
@@ -343,24 +347,25 @@ export const SPORT: IndustryDefinition = {
   // scale = brøk av scenebredden. Startgjett fra rutenett-avlesning —
   // finjustert via /dev/sport-render + skjermbilde-iterasjon (spor-c.md).
   vareplasser: [
-    // Sko-vegg (venstre) — sittende på hylle-ledd (2 rader × 3)
-    { id: 'sko-1', type: 'sko', x: 8,  y: 31, scale: 0.052, vare: 'lopesko' },
-    { id: 'sko-2', type: 'sko', x: 16, y: 32, scale: 0.052, vare: 'terrengsko' },
-    { id: 'sko-3', type: 'sko', x: 24, y: 33, scale: 0.052, vare: 'tennissko' },
-    { id: 'sko-4', type: 'sko', x: 8,  y: 44, scale: 0.052, vare: 'basketsko' },
-    { id: 'sko-5', type: 'sko', x: 16, y: 45, scale: 0.052, vare: 'fjellsko' },
-    { id: 'sko-6', type: 'sko', x: 24, y: 46, scale: 0.052, vare: 'innesko' },
+    // Sko-vegg (venstre) — venstre = NÆR kamera (større), høyre = FJERN (mindre).
+    // Perspektiv-korrekt skala-gradient (Espens funn: var uniform → fjern for stor).
+    { id: 'sko-1', type: 'sko', x: 8,  y: 31, scale: 0.058, vare: 'lopesko' },
+    { id: 'sko-2', type: 'sko', x: 16, y: 32, scale: 0.050, vare: 'terrengsko' },
+    { id: 'sko-3', type: 'sko', x: 24, y: 33, scale: 0.043, vare: 'tennissko' },
+    { id: 'sko-4', type: 'sko', x: 8,  y: 44, scale: 0.058, vare: 'basketsko' },
+    { id: 'sko-5', type: 'sko', x: 16, y: 45, scale: 0.050, vare: 'fjellsko' },
+    { id: 'sko-6', type: 'sko', x: 24, y: 46, scale: 0.043, vare: 'innesko' },
     // Klesstativ (midt-venstre) — hengende på rail
-    { id: 'heng-1', type: 'heng', x: 34, y: 39, scale: 0.055, vare: 'treningsjakke' },
-    { id: 'heng-2', type: 'heng', x: 37, y: 39, scale: 0.055, vare: 'hettegenser' },
-    { id: 'heng-3', type: 'heng', x: 40, y: 39, scale: 0.055, vare: 'vindjakke' },
+    { id: 'heng-1', type: 'heng', x: 34, y: 39, scale: 0.055, vare: 'treningsjakke', skewX: -4 },
+    { id: 'heng-2', type: 'heng', x: 37, y: 39, scale: 0.055, vare: 'hettegenser', skewX: -4 },
+    { id: 'heng-3', type: 'heng', x: 40, y: 39, scale: 0.055, vare: 'vindjakke', skewX: -4 },
     // Brettbord (midt-høyre) — bord større/lavere i disk-fri versjon; senket
     // bakre rad (3) + fremre rad (2) på bordplata (y-nivåene under)
-    { id: 'brett-1', type: 'brett', x: 58, y: 56, scale: 0.06, vare: 't-skjorte' },
-    { id: 'brett-2', type: 'brett', x: 64, y: 56, scale: 0.06, vare: 'treningsshorts' },
-    { id: 'brett-3', type: 'brett', x: 70, y: 56, scale: 0.06, vare: 'collegegenser' },
-    { id: 'brett-4', type: 'brett', x: 60, y: 61, scale: 0.06, vare: 'treningsbukse' },
-    { id: 'brett-5', type: 'brett', x: 67, y: 61, scale: 0.06, vare: 'tights' },
+    { id: 'brett-1', type: 'brett', x: 58, y: 56, scale: 0.06, vare: 't-skjorte', skewX: -8 },
+    { id: 'brett-2', type: 'brett', x: 64, y: 56, scale: 0.06, vare: 'treningsshorts', skewX: -8 },
+    { id: 'brett-3', type: 'brett', x: 70, y: 56, scale: 0.06, vare: 'collegegenser', skewX: -8 },
+    { id: 'brett-4', type: 'brett', x: 60, y: 61, scale: 0.06, vare: 'treningsbukse', skewX: -8 },
+    { id: 'brett-5', type: 'brett', x: 67, y: 61, scale: 0.06, vare: 'tights', skewX: -8 },
     // Utstyrsvegg (høyre) — øvre tynne hyller (ball/hjelm/flaske) + lav kubbe/
     // benk (nå mer synlig i disk-fri versjon: sekk/vekt/matte senket dit)
     { id: 'utstyr-1', type: 'utstyr', x: 85, y: 27, scale: 0.045, vare: 'fotball' },
@@ -375,8 +380,8 @@ export const SPORT: IndustryDefinition = {
   // Skala interpoleres langs linjen; vareplasser snapper hit (bunn-ankret).
   // Skovegg: front (høyre) lavere+større; utstyrsvegg: front (venstre) lavere+større.
   hyllelinjer: [
-    { id: 'sko-hylle-ovre', x1: 4, y1: 31, x2: 28, y2: 36, scale1: 0.045, scale2: 0.058 },
-    { id: 'sko-hylle-nedre', x1: 4, y1: 44, x2: 28, y2: 50, scale1: 0.048, scale2: 0.06 },
+    { id: 'sko-hylle-ovre', x1: 4, y1: 31, x2: 28, y2: 36, scale1: 0.06, scale2: 0.042 },
+    { id: 'sko-hylle-nedre', x1: 4, y1: 44, x2: 28, y2: 50, scale1: 0.062, scale2: 0.044 },
     { id: 'utstyr-hylle-2', x1: 80, y1: 33, x2: 91, y2: 30, scale1: 0.035, scale2: 0.03 },
     { id: 'utstyr-benk', x1: 82, y1: 53, x2: 99, y2: 62, scale1: 0.05, scale2: 0.048 },
   ],

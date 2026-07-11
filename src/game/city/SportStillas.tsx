@@ -39,14 +39,13 @@ const r1 = (n: number) => Math.round(n * 10) / 10
 const r3 = (n: number) => Math.round(n * 1000) / 1000
 
 // heng = topp-ankret (henger ned fra rail-punktet), resten = bunn-ankret.
-function plassTransform(vp: { type: PlassType; rot?: number }) {
+// skewX/skewY gir flate klær-sprites perspektiv (matcher bord/stativ-vinkel).
+function plassTransform(vp: { type: PlassType; rot?: number; skewX?: number; skewY?: number }) {
   const bunn = vp.type !== 'heng'
   const anchor = bunn ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)'
-  const rot = vp.rot ?? 0
-  return {
-    transform: `${anchor}${rot ? ` rotate(${rot}deg)` : ''}`,
-    transformOrigin: bunn ? '50% 100%' : '50% 50%',
-  }
+  const rot = vp.rot ?? 0, sx = vp.skewX ?? 0, sy = vp.skewY ?? 0
+  const t = `${anchor}${rot ? ` rotate(${rot}deg)` : ''}${sx ? ` skewX(${sx}deg)` : ''}${sy ? ` skewY(${sy}deg)` : ''}`
+  return { transform: t, transformOrigin: bunn ? '50% 100%' : '50% 50%' }
 }
 
 // ── Geometri: nærmeste punkt på en hyllelinje + interpolert skala ────────────
@@ -90,8 +89,12 @@ function saveDraft() {
 // ── Tekst-dump klart til innliming i SPORT (industryDefinition.ts) ───────────
 function vareplasserText(pts: Vareplass[]): string {
   const rows = pts.map(v => {
-    const extra = v.rot ? `, rot: ${v.rot}` : ''
-    return `    { id: '${v.id}', type: '${v.type}', x: ${v.x}, y: ${v.y}, scale: ${v.scale}${v.vare ? `, vare: '${v.vare}'` : ''}${extra} },`
+    const extra = [
+      v.rot ? `rot: ${v.rot}` : '',
+      v.skewX ? `skewX: ${v.skewX}` : '',
+      v.skewY ? `skewY: ${v.skewY}` : '',
+    ].filter(Boolean).join(', ')
+    return `    { id: '${v.id}', type: '${v.type}', x: ${v.x}, y: ${v.y}, scale: ${v.scale}${v.vare ? `, vare: '${v.vare}'` : ''}${extra ? ', ' + extra : ''} },`
   })
   return `vareplasser: [\n${rows.join('\n')}\n  ],`
 }
@@ -190,10 +193,10 @@ export default function SportStillas() {
     pts.push(vp); setSelId(vp.id); setSelLinje(null); saveDraft(); bump()
   }
 
-  function adjustVp(id: string, dScale: number, dRot: number) {
+  function adjustVp(id: string, dScale: number, key?: 'rot' | 'skewX' | 'skewY', dAngle?: number) {
     const vp = pts.find(p => p.id === id); if (!vp) return
     if (dScale) vp.scale = Math.max(0.01, r3(vp.scale + dScale))
-    if (dRot) vp.rot = r1((vp.rot ?? 0) + dRot)
+    if (key && dAngle) vp[key] = r1((vp[key] ?? 0) + dAngle)
     saveDraft(); bump()
   }
   function removeVp(id: string) {
@@ -332,16 +335,26 @@ export default function SportStillas() {
               {sel && (
                 <div style={{ background: '#1e293b', borderRadius: 6, padding: 8, marginBottom: 8 }}>
                   <div style={{ marginBottom: 4 }}><b>{sel.id}</b> · {sel.vare ?? '—'}</div>
-                  <div>x {sel.x} · y {sel.y} · s {sel.scale}{sel.rot ? ` · ${sel.rot}°` : ''}</div>
+                  <div>x {sel.x} · y {sel.y} · s {sel.scale}{sel.rot ? ` · rot ${sel.rot}°` : ''}{sel.skewX ? ` · sx ${sel.skewX}°` : ''}{sel.skewY ? ` · sy ${sel.skewY}°` : ''}</div>
                   <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-                    <button onClick={() => adjustVp(sel.id, -0.005, 0)}>–</button>
+                    <button onClick={() => adjustVp(sel.id, -0.005)}>–</button>
                     <span style={{ flex: 1, textAlign: 'center' }}>skala</span>
-                    <button onClick={() => adjustVp(sel.id, +0.005, 0)}>+</button>
+                    <button onClick={() => adjustVp(sel.id, +0.005)}>+</button>
                   </div>
                   <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                    <button onClick={() => adjustVp(sel.id, 0, -1)}>↺</button>
+                    <button onClick={() => adjustVp(sel.id, 0, 'rot', -1)}>↺</button>
                     <span style={{ flex: 1, textAlign: 'center' }}>rot</span>
-                    <button onClick={() => adjustVp(sel.id, 0, +1)}>↻</button>
+                    <button onClick={() => adjustVp(sel.id, 0, 'rot', +1)}>↻</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                    <button onClick={() => adjustVp(sel.id, 0, 'skewX', -1)}>–</button>
+                    <span style={{ flex: 1, textAlign: 'center' }}>skewX</span>
+                    <button onClick={() => adjustVp(sel.id, 0, 'skewX', +1)}>+</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                    <button onClick={() => adjustVp(sel.id, 0, 'skewY', -1)}>–</button>
+                    <span style={{ flex: 1, textAlign: 'center' }}>skewY</span>
+                    <button onClick={() => adjustVp(sel.id, 0, 'skewY', +1)}>+</button>
                   </div>
                   <select value={sel.vare ?? ''} onChange={e => { sel.vare = e.target.value || undefined; saveDraft(); bump() }}
                     style={{ width: '100%', marginTop: 6 }}>

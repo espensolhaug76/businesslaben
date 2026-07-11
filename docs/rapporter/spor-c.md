@@ -249,3 +249,29 @@ Alle 20 vareplasser treffer fortsatt. `tsc -b` + `vite build` grønne.
 **Endret:** `SportStillas.tsx` (full tracer-omskriving), `industryDefinition.ts`
 (Hyllelinje-type + `hyllelinjer`-felt + 4 linjer + 2 reseatede plasser),
 oppdaterte skjermbilder.
+
+---
+
+## 11. Oppfølging (2026-07-11): sko-perspektiv + skew på klær
+
+**1. Sko-perspektiv (Espens funn: størrelsen ØKTE lenger vekk — motsatt av virkeligheten).**
+Årsak: alle 6 skoene hadde UNIFORM skala (0.052), så de fjerne (mot sentrum) krympet
+ikke og så for store ut. Skoveggen er på venstre side: **venstre = nær kamera (stor),
+høyre = fjern (liten)**. Fikset:
+- De 6 skoene fikk perspektiv-korrekt skala-gradient: nær (x8) 0.058 → midt (x16)
+  0.050 → fjern (x24) 0.043.
+- De to skovegg-hyllelinjene fikk snudd skala-gradienten (scale1 nær STØRRE enn
+  scale2 fjern), så framtidige snap arver riktig størrelse.
+
+**2. Skew på brettede + hengende klær (Espens ønske).**
+- Ny `skewX?`/`skewY?` på `Vareplass` + i `plassTransform` (CSS `skewX/skewY`), og
+  ± skewX/skewY-knapper i traceren; «📋 Kopier» tar dem med.
+- **Brett** (folder på det skrå bordet): `skewX: -8` — topp lener mot bordets
+  recesjon opp-mot-høyre, så de flate spritene «ligger» på flaten i stedet for å stå
+  som kort.
+- **Heng** (på stativet): `skewX: -4` — subtilt drapé-fall.
+- Verdiene er øyemål; Espen kan finjustere live i `/dev/sport?dev=1` (± skewX/skewY).
+
+`tsc -b` + `vite build` grønne. **Endret:** `industryDefinition.ts` (skew-felt +
+sko-skala + skew-verdier + snudde skovegg-linjer), `SportStillas.tsx`
+(skew i transform/tracer/dump), oppdaterte skjermbilder.
