@@ -923,6 +923,60 @@ OCCLUDE-sliderne (disken) er alltid delt.
 CUSTOMER_SCALE → kun Live endrer størrelse (936→576 px) + `spriteCal`-linje
 logget. `tsc -b` + `vite build` grønn.
 
+## 25. TEMA-FUNDAMENT (steg 0+1) — avpubliser v1 + temaAktivering via Firebase
+
+> **⚠️ Manglende referanse:** `docs/KODEKART.md` finnes ikke (verken i tre, worktree
+> eller git-historikk). Oppdraget ba om å lese §2/§3/§6 der. Jeg utledet derfor
+> v1-skjermflyt-familien (§2) direkte fra `App.tsx`-rutene. **Bekreft scope + lag
+> KODEKART.md** hvis noe skal justeres.
+>
+> **Leveranse-status:** committet på review-grenen **`spor-a/tema-fundament`**
+> (base = gjeldende `origin/main` `7c27b62`; DEL 1 = `bf64a4f`, DEL 2 = `fd3bcd7`).
+> **`main` er URØRT** — koden avventer din validering (ingen auto-deploy i repoet,
+> så ingenting er live). Merge grenen til main når validert. Grenen rører KUN 5
+> filer (App.tsx + GameContext.tsx + temaer.ts + TeacherDashboard.tsx +
+> TemaAktiveringPanel.tsx) — ingen andre spor-A-endringer berøres.
+
+### DEL 1 — Avpublisert legacy-spillet (v1)
+De 21 rutene i v1 skjermflyt-familien er fjernet fra `App.tsx` og **redirecter til
+`/game`** (`<Navigate replace>`): startup-flyten (`/start /industry /sustainability
+/target-audience /business-model /market-research /location /products
+/price-calculation /budget-planning /financing /starting-capital`), City/Desktop
+(`/city /desktop`) og gameplay (`/dashboard /pricing /distribution /marketing
+/personnel /monthly-report /year-end`).
+
+Skjerm-/layout-**FILENE er urørt** (død kode). Kun import-linjene + rutene i
+`App.tsx` fjernet (også `FeatureGuard`-importen, kun brukt av v1-portene der).
+Byspill/hub/lærer/konkurranse/eksamen/presentasjoner **består**. `CityView.tsx`
+importerer fortsatt `DashboardScreen` — filen finnes, så ingen brekk.
+**Verifisert headless:** alle 21 v1-URL-er → `/game`; `/game`, `/learning`, `/` intakt.
+
+### DEL 2 — temaAktivering via Firebase
+RTDB-node `klasser/{klassekode}/temaAktivering/{temaId} = { aktiv, nivaa:'vg1'|'vg2' }`.
+- **`src/game/data/temaer.ts`** (ny, tunbar): `TemaDef { id, navn, nivaaer,
+  hubModulRefs, beskrivelse }` + `TemaAktivering`. Første tema **`beredskap`**
+  (kun definisjon — innhold i egen jobb; `hubModulRefs` = teacherModuleRegistry-
+  rutestier).
+- **`GameContext`**: `aktiveTemaer` i context. Abonnerer på noden ved øktstart når
+  klassekode finnes (gjenbruker live-økt-koblingen `?live-code` /
+  `student-classroom-code`); lokal fallback (`localStorage['tema-aktivering-dev']`)
+  uten klassekode. Selektor-hooks **`useErTemaAktivt(temaId)`**, `useTemaNivaa`,
+  `useAktiveTemaer` — fremtidige temajobber gater på disse.
+- **«Spillet»-fanen** (`TeacherDashboard`): ny `TemaAktiveringPanel` skriver til
+  noden per klasse (av/på-toggle + vg1/vg2-velger). Lokal feature-/leksjon-mekanikk
+  urørt.
+
+**Verifisert headless** (RTDB har åpne regler): spillklient med klassekode
+abonnerte på `klasser/{kode}/temaAktivering`, mottok initiell verdi **og live
+oppdatering** (vg2→vg1); uten klassekode gjøres INGEN klasse-abonnement (fallback).
+Test-node ryddet. `tsc -b` + `vite build` grønt.
+
+**➡️ Til Espen (valider i Chrome):** Lærer-panelet er auth-gated (`/teacher`
+redirecter til `/` uten innlogging), så headless kan ikke nå UI-en. Logg inn →
+Spillet-fanen → «Temaer»: slå `Beredskap` på + velg vg1/vg2 for en klasse. Åpne
+`/game` som elev med samme klassekode — `useErTemaAktivt('beredskap')` blir sann
+live. Panelets skriving er identisk med den verifiserte `set()`-pathen.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
