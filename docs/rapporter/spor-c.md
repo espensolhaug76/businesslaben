@@ -213,3 +213,39 @@ Kun usynlig SynthID gjenstår trolig. Ingen patching nødvendig (som originalen)
 **Merk — antall vareplasser:** oppdraget nevnte «37 vareplasser», men den bygde
 butikken har **20** (mandatet krevde min. 15; jeg kalibrerte 20). Ingen 37 har
 eksistert i denne grenen — flagget for ordens skyld.
+
+---
+
+## 10. Oppfølging (2026-07-11): tracer-sensitivitet + hyllelinjer
+
+**1. Sensitivitetsfiks (Espens «17 spøkelsessko»).** Årsak: scene-klikk la ALLTID
+til en ny plass. Ny oppførsel i `SportStillas.tsx`:
+- Klikk innen **1.8 % av bredden** rundt en eksisterende plass → SELEKTERER den
+  (flytt ved å dra, ± skala/rot, høyreklikk = slett). Ny plass KUN ved klikk på
+  tom scene.
+- **Esc** = avvelg (plass + linje + linje-utkast).
+
+**2. Hyllelinjer (Espens designidé — implementert).**
+- Ny type `Hyllelinje { id, x1,y1, x2,y2, scale1,scale2 }` (industryDefinition.ts).
+  Skala interpoleres lineært langs linjen.
+- Ny **📏 Linje-modus** i traceren: 2 klikk = linje, dra endepunkt-håndtak,
+  ± = skala i hver ende. **Preview-sko** rendres PÅ linjen (viser skala-gradienten).
+- **Snap:** en bunn-ankret vareplass som slippes innen **4 % av bredden** fra en
+  linje festes til nærmeste punkt på linjen og ARVER interpolert skala. Nye
+  plasser snapper også ved plassering; frihånd ellers.
+- «📋 Kopier» dumper nå BÅDE `vareplasser` og `hyllelinjer`.
+
+**4 hyllelinjer definert** (via skjermbilde-løkka, verifisert med preview-sko):
+skovegg øvre + nedre rad (front/høyre lavere+større), utstyr-hylle-2, utstyr-benk
+(front/venstre lavere+større).
+
+**Reseat (Espens funn: svevde fortsatt):**
+- `vannflaske` → snappet til `utstyr-hylle-2` (x88, y31) — sitter nå på hyllen.
+- `yogamatte` → snappet til `utstyr-benk` (x94, y59) — sto først for høyt; benken
+  skrår brattere ned mot høyre enn først antatt, så linjen ble rettet
+  (y2 58→62) og matta senket. Sitter nå på benken.
+
+Alle 20 vareplasser treffer fortsatt. `tsc -b` + `vite build` grønne.
+**Endret:** `SportStillas.tsx` (full tracer-omskriving), `industryDefinition.ts`
+(Hyllelinje-type + `hyllelinjer`-felt + 4 linjer + 2 reseatede plasser),
+oppdaterte skjermbilder.

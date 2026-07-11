@@ -124,6 +124,19 @@ export interface Vareplass {
   rot?: number
 }
 
+/** SPORT — HYLLELINJE (Espens designidé): en linje langs en hyllekant i
+ *  scenebildet. Skalaen interpoleres LINEÆRT langs linjen (perspektiv: varer
+ *  lenger bak/til siden er mindre), så en vareplass som SNAPPER til linjen
+ *  arver riktig størrelse + bunn-posisjon automatisk. Kalibreres i
+ *  /dev/sport?dev=1 (linje-modus: 2 klikk = linje). */
+export interface Hyllelinje {
+  id: string
+  x1: number; y1: number   // % — endepunkt 1
+  x2: number; y2: number   // % — endepunkt 2
+  scale1: number           // varebredde-brøk (0–1) ved endepunkt 1
+  scale2: number           // ved endepunkt 2 (interpoleres mellom)
+}
+
 export interface IndustryDefinition {
   id: Industry
   navn: string
@@ -158,6 +171,8 @@ export interface IndustryDefinition {
    *  bakte interiøret. Valgfritt: kun bransjer med «bakt interiør»-modellen
    *  (sport) bruker det; kafeen bruker flater.lager (trau) i stedet. */
   vareplasser?: Vareplass[]
+  /** SPORT — hyllelinjer (Espens designidé) som vareplasser snapper til. */
+  hyllelinjer?: Hyllelinje[]
 }
 
 export const CAFE: IndustryDefinition = {
@@ -350,10 +365,20 @@ export const SPORT: IndustryDefinition = {
     // benk (nå mer synlig i disk-fri versjon: sekk/vekt/matte senket dit)
     { id: 'utstyr-1', type: 'utstyr', x: 85, y: 27, scale: 0.045, vare: 'fotball' },
     { id: 'utstyr-2', type: 'utstyr', x: 84, y: 34, scale: 0.05,  vare: 'sykkelhjelm' },
-    { id: 'utstyr-4', type: 'utstyr', x: 90, y: 33, scale: 0.03,  vare: 'vannflaske' },
+    // vannflaske reseatet på utstyr-hylle-2, yogamatte på utstyr-benk (snappet)
+    { id: 'utstyr-4', type: 'utstyr', x: 88, y: 31, scale: 0.031, vare: 'vannflaske' },
     { id: 'utstyr-5', type: 'utstyr', x: 84, y: 55, scale: 0.05,  vare: 'ryggsekk' },
     { id: 'utstyr-3', type: 'utstyr', x: 89, y: 57, scale: 0.045, vare: 'handvekt' },
-    { id: 'utstyr-6', type: 'utstyr', x: 94, y: 58, scale: 0.035, vare: 'yogamatte' },
+    { id: 'utstyr-6', type: 'utstyr', x: 94, y: 59, scale: 0.048, vare: 'yogamatte' },
+  ],
+  // Hyllelinjer (Espens designidé) — kalibrert i /dev/sport?dev=1 (linje-modus).
+  // Skala interpoleres langs linjen; vareplasser snapper hit (bunn-ankret).
+  // Skovegg: front (høyre) lavere+større; utstyrsvegg: front (venstre) lavere+større.
+  hyllelinjer: [
+    { id: 'sko-hylle-ovre', x1: 4, y1: 31, x2: 28, y2: 36, scale1: 0.045, scale2: 0.058 },
+    { id: 'sko-hylle-nedre', x1: 4, y1: 44, x2: 28, y2: 50, scale1: 0.048, scale2: 0.06 },
+    { id: 'utstyr-hylle-2', x1: 80, y1: 33, x2: 91, y2: 30, scale1: 0.035, scale2: 0.03 },
+    { id: 'utstyr-benk', x1: 82, y1: 53, x2: 99, y2: 62, scale1: 0.05, scale2: 0.048 },
   ],
 }
 
