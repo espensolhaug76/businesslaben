@@ -1,35 +1,21 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ToastProvider } from './components/ui/Toast'
 import { useThemeEffect } from './components/ui/ThemeToggle'
 import LiveBar from './components/ui/LiveBar'
 
 // Layouts
-import AppLayout from './components/layout/AppLayout'
-import StartupLayout from './components/layout/StartupLayout'
-import CityLayout from './components/layout/CityLayout'
+// AVPUBLISERT v1 (KODEKART steg 0): AppLayout/StartupLayout/CityLayout brukte KUN
+// legacy-skjermflyten. Filene beholdes (død kode); rutene redirecter til /game.
 import LearningLayout from './components/layout/LearningLayout'
 
 // Landing page
 import LandingPage from './screens/LandingPage'
 import AboutPage from './screens/AboutPage'
 
-// Startup screens
-import StartScreen from './screens/StartScreen'
-import IndustryScreen from './screens/IndustryScreen'
-import SustainabilityScreen from './screens/SustainabilityScreen'
-import TargetAudienceScreen from './screens/TargetAudienceScreen'
-import BusinessModelScreen from './screens/BusinessModelScreen'
-import MarketResearchScreen from './screens/MarketResearchScreen'
-import LocationScreen from './screens/LocationScreen'
-import ProductCatalogScreen from './screens/ProductCatalogScreen'
-import PriceCalculationScreen from './screens/PriceCalculationScreen'
-import BudgetPlanningScreen from './screens/BudgetPlanningScreen'
-import FinancingScreen from './screens/FinancingScreen'
-import StartingCapitalScreen from './screens/StartingCapitalScreen'
-
-// City & Desktop
-import CityScreen from './screens/CityScreen'
-import DesktopScreen from './screens/DesktopScreen'
+// AVPUBLISERT v1 (KODEKART steg 0) — legacy skjermflyt-familie: startup-skjermer
+// (StartScreen…StartingCapitalScreen) + City/Desktop (CityScreen/DesktopScreen).
+// Import-linjene er FJERNET fra App (rutene redirecter til /game), men skjerm-
+// FILENE er beholdt urørt som død kode.
 
 // Teacher dashboard
 import TeacherDashboard from './screens/TeacherDashboard'
@@ -49,21 +35,15 @@ import ExamBuilder from './screens/exam/ExamBuilder'
 import ExamSession from './screens/exam/ExamSession'
 import ExamResults from './screens/exam/ExamResults'
 
-// Gameplay screens
-import DashboardScreen from './screens/DashboardScreen'
-import PricingScreen from './screens/PricingScreen'
-import DistributionScreen from './screens/DistributionScreen'
-import MarketingScreen from './screens/MarketingScreen'
-import PersonnelScreen from './screens/PersonnelScreen'
-import MonthResultScreen from './screens/MonthResultScreen'
-import YearEndScreen from './screens/YearEndScreen'
+// AVPUBLISERT v1 (KODEKART steg 0) — legacy gameplay-skjermer (Dashboard/Pricing/
+// Distribution/Marketing/Personnel/MonthResult/YearEnd) + FeatureGuard-portene på
+// dem. Import-linjene fjernet (rutene redirecter til /game); filene beholdt.
 
 // AdVenture 3.0
 import GamePage from './game/GamePage'
 
 
 // Guards
-import FeatureGuard from './components/guards/FeatureGuard'
 import ErrorBoundary from './components/ErrorBoundary'
 
 // Learning hub
@@ -463,27 +443,23 @@ function App() {
           <Route path="/game/d/:districtId/l/:lokaleId/disk" element={<GamePage />} />
 
 
-          {/* ── Startup flow ─────────────────────────────────────────────── */}
-          <Route element={<StartupLayout />}>
-            <Route path="/start" element={<StartScreen />} />
-            <Route path="/industry" element={<IndustryScreen />} />
-            <Route path="/sustainability" element={<FeatureGuard featureId="sustainability_screen" redirectTo="/industry"><SustainabilityScreen /></FeatureGuard>} />
-            <Route path="/target-audience" element={<FeatureGuard featureId="target_audience_screen" redirectTo="/industry"><TargetAudienceScreen /></FeatureGuard>} />
-            <Route path="/business-model" element={<FeatureGuard featureId="business_model_screen" redirectTo="/industry"><BusinessModelScreen /></FeatureGuard>} />
-            <Route path="/market-research" element={<MarketResearchScreen />} />
-            <Route path="/location" element={<LocationScreen />} />
-            <Route path="/products" element={<ProductCatalogScreen />} />
-            <Route path="/price-calculation" element={<PriceCalculationScreen />} />
-            <Route path="/budget-planning" element={<BudgetPlanningScreen />} />
-            <Route path="/financing" element={<FinancingScreen />} />
-            <Route path="/starting-capital" element={<StartingCapitalScreen />} />
-          </Route>
-
-          {/* ── City & Desktop ───────────────────────────────────────────── */}
-          <Route element={<CityLayout />}>
-            <Route path="/city" element={<CityScreen />} />
-            <Route path="/desktop" element={<DesktopScreen />} />
-          </Route>
+          {/* ── AVPUBLISERT v1 (KODEKART §2 skjermflyt-familie) → /game ──────
+              Legacy-spillet (startup-flyt + city/desktop + gameplay-skjermer) er
+              AVPUBLISERT (KODEKART steg 0). Gamle URL-er redirecter til /game.
+              Skjerm-FILENE beholdes urørt som død kode. */}
+          {[
+            // Startup-flyt
+            '/start', '/industry', '/sustainability', '/target-audience',
+            '/business-model', '/market-research', '/location', '/products',
+            '/price-calculation', '/budget-planning', '/financing', '/starting-capital',
+            // City & Desktop
+            '/city', '/desktop',
+            // Gameplay
+            '/dashboard', '/pricing', '/distribution', '/marketing',
+            '/personnel', '/monthly-report', '/year-end',
+          ].map(path => (
+            <Route key={path} path={path} element={<Navigate to="/game" replace />} />
+          ))}
 
           {/* ── Join live session ────────────────────────────────────────── */}
           <Route path="/join" element={<JoinSessionScreen />} />
@@ -510,16 +486,8 @@ function App() {
           <Route path="/exam/results/:examId" element={<ExamResults />} />
           <Route path="/exam/:examCode" element={<ExamSession />} />
 
-          {/* ── Gameplay (AppLayout) ─────────────────────────────────────── */}
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<DashboardScreen />} />
-            <Route path="/pricing" element={<FeatureGuard featureId="pricing_screen"><PricingScreen /></FeatureGuard>} />
-            <Route path="/distribution" element={<FeatureGuard featureId="distribution_screen"><DistributionScreen /></FeatureGuard>} />
-            <Route path="/marketing" element={<FeatureGuard featureId="marketing"><MarketingScreen /></FeatureGuard>} />
-            <Route path="/personnel" element={<FeatureGuard featureId="personnel"><PersonnelScreen /></FeatureGuard>} />
-            <Route path="/monthly-report" element={<MonthResultScreen />} />
-            <Route path="/year-end" element={<YearEndScreen />} />
-          </Route>
+          {/* ── Gameplay (AppLayout) — AVPUBLISERT v1: rutene ligger nå i
+              legacy-redirect-blokken over (→ /game). ───────────────────── */}
 
           {/* ── Presentations (full-screen, no layout wrapper) ───────────── */}
           <Route path="/learning/presentations/konkurransemidlene" element={<KonkurransemidlenePresentation />} />
