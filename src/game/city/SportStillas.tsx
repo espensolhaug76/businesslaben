@@ -18,8 +18,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { IS_DEV_COORDS } from './DevCoordHelper'
-import { SPORT, type Vareplass, type PlassType, type Hyllelinje } from '../data/industryDefinition'
+import { SPORT, type Vareplass, type PlassType } from '../data/industryDefinition'
 import { SPORT_VARER, sportVareById, repVareForType } from '../data/sportVarer'
+// Portabel scene-geometri (delt modul — se docs/AUTONOM_PIPELINE.md).
+import { plassTransform, snapToLine, pointAlong, type Hyllelinje } from '../geometry/hyllelinje'
 
 // Disk-fri interiør (Espen fjernet den cafe-arvede glassdisken via NB, 2026-07-11).
 const INTERIOR_IMG = '/assets/raw/sport-interior-uten-disk.png'
@@ -38,38 +40,9 @@ const TYPE_LABEL: Record<PlassType, string> = {
 const r1 = (n: number) => Math.round(n * 10) / 10
 const r3 = (n: number) => Math.round(n * 1000) / 1000
 
-// heng = topp-ankret (henger ned fra rail-punktet), resten = bunn-ankret.
-// skewX/skewY gir flate klær-sprites perspektiv (matcher bord/stativ-vinkel).
-function plassTransform(vp: { type: PlassType; rot?: number; skewX?: number; skewY?: number }) {
-  const bunn = vp.type !== 'heng'
-  const anchor = bunn ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)'
-  const rot = vp.rot ?? 0, sx = vp.skewX ?? 0, sy = vp.skewY ?? 0
-  const t = `${anchor}${rot ? ` rotate(${rot}deg)` : ''}${sx ? ` skewX(${sx}deg)` : ''}${sy ? ` skewY(${sy}deg)` : ''}`
-  return { transform: t, transformOrigin: bunn ? '50% 100%' : '50% 50%' }
-}
-
-// ── Geometri: nærmeste punkt på en hyllelinje + interpolert skala ────────────
-function projOnLine(px: number, py: number, L: Hyllelinje) {
-  const ax = L.x1, ay = L.y1 * ASPECT, bx = L.x2, by = L.y2 * ASPECT
-  const qx = px, qy = py * ASPECT
-  const dx = bx - ax, dy = by - ay
-  const len2 = dx * dx + dy * dy || 1e-6
-  let t = ((qx - ax) * dx + (qy - ay) * dy) / len2
-  t = Math.max(0, Math.min(1, t))
-  const sx = ax + t * dx, sy = ay + t * dy
-  return { t, x: sx, y: sy / ASPECT, dist: Math.hypot(qx - sx, qy - sy), scale: L.scale1 + t * (L.scale2 - L.scale1) }
-}
-function snapToLine(px: number, py: number, lines: Hyllelinje[], maxDist: number) {
-  let best: { x: number; y: number; scale: number; dist: number } | null = null
-  for (const L of lines) {
-    const p = projOnLine(px, py, L)
-    if (p.dist <= maxDist && (!best || p.dist < best.dist)) best = { x: r1(p.x), y: r1(p.y), scale: r3(p.scale), dist: p.dist }
-  }
-  return best
-}
-function pointAlong(L: Hyllelinje, t: number) {
-  return { x: L.x1 + t * (L.x2 - L.x1), y: L.y1 + t * (L.y2 - L.y1), scale: L.scale1 + t * (L.scale2 - L.scale1) }
-}
+// plassTransform / snapToLine / pointAlong bor nå i ../geometry/hyllelinje
+// (portabel modul). Denne fila sender inn ASPECT + bottomAnchored (heng =
+// topp-ankret) ved kall — ingen adferdsendring.
 
 // ── localStorage-utkast (vareplasser + hyllelinjer) ──────────────────────────
 const LS_KEY = 'sport-stillas-utkast-v2'
@@ -153,7 +126,7 @@ export default function SportStillas() {
       if (d?.kind === 'vp') {
         const vp = pts.find(p => p.id === d.id)
         if (vp && vp.type !== 'heng') {
-          const s = snapToLine(vp.x, vp.y, lines, SNAP_DIST)
+          const s = snapToLine(vp.x, vp.y, lines, SNAP_DIST, ASPECT)
           if (s) { vp.x = s.x; vp.y = s.y; vp.scale = s.scale; saveDraft(); bump() }
         }
       }
@@ -182,7 +155,7 @@ export default function SportStillas() {
     const near = nearestVp(x, y, SELECT_RADIUS)
     if (near) { setSelId(near.id); setSelLinje(null); return }
     // ellers ny plass — snapp til nærmeste linje hvis nær
-    const snap = snapToLine(x, y, lines, SNAP_DIST)
+    const snap = snapToLine(x, y, lines, SNAP_DIST, ASPECT)
     const n = pts.filter(p => p.type === selType).length + 1
     const rep = repVareForType(selType)
     const vp: Vareplass = {
@@ -277,7 +250,7 @@ export default function SportStillas() {
         {pts.map(vp => {
           const vare = sportVareById(vp.vare) ?? (IS_DEV_COORDS ? repVareForType(vp.type) : undefined)
           if (!vare) return null
-          const xf = plassTransform(vp)
+          const xf = plassTransform({ bottomAnchored: vp.type !== 'heng', rot: vp.rot, skewX: vp.skewX, skewY: vp.skewY })
           const isSel = IS_DEV_COORDS && selId === vp.id
           return (
             <img key={vp.id} src={vare.sprite} alt={vare.navn} draggable={false}

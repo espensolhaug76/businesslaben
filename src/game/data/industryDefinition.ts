@@ -24,6 +24,9 @@ import {
 } from '../../data/districts'
 import { CAFE_SCENARIO_IDS } from '../sales/scenarios'
 import { CAFE_SPEND, FASHION_BUDGETS, type PersonaBudsjett } from './personas'
+// Portabel scene-geometri (eksperiment/autonom-sport → gjenbruk).
+import type { Hyllelinje } from '../geometry/hyllelinje'
+export type { Hyllelinje }
 
 /** Lager-flaten (disk-monter): trau-geometri + hvilket bilde de er kalibrert
  *  mot, pluss speil-sonene som viser SAMME lager i interiør-scenen
@@ -128,18 +131,8 @@ export interface Vareplass {
   skewY?: number
 }
 
-/** SPORT — HYLLELINJE (Espens designidé): en linje langs en hyllekant i
- *  scenebildet. Skalaen interpoleres LINEÆRT langs linjen (perspektiv: varer
- *  lenger bak/til siden er mindre), så en vareplass som SNAPPER til linjen
- *  arver riktig størrelse + bunn-posisjon automatisk. Kalibreres i
- *  /dev/sport?dev=1 (linje-modus: 2 klikk = linje). */
-export interface Hyllelinje {
-  id: string
-  x1: number; y1: number   // % — endepunkt 1
-  x2: number; y2: number   // % — endepunkt 2
-  scale1: number           // varebredde-brøk (0–1) ved endepunkt 1
-  scale2: number           // ved endepunkt 2 (interpoleres mellom)
-}
+// `Hyllelinje` bor nå i ../geometry/hyllelinje (portabel modul) — importert +
+// re-eksportert øverst i fila.
 
 export interface IndustryDefinition {
   id: Industry

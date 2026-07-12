@@ -275,3 +275,44 @@ høyre = fjern (liten)**. Fikset:
 `tsc -b` + `vite build` grønne. **Endret:** `industryDefinition.ts` (skew-felt +
 sko-skala + skew-verdier + snudde skovegg-linjer), `SportStillas.tsx`
 (skew i transform/tracer/dump), oppdaterte skjermbilder.
+
+---
+
+## 12. Høsting (2026-07-12): portabel hyllelinje-modul (DEL 2)
+
+Eksperimentet er ferdig — gevinsten pakkes for gjenbruk. Scene-geometrien er
+trukket ut av sport-spesifikk kode til en frittstående, kopierbar modul.
+
+**Ny fil `src/game/geometry/hyllelinje.ts`** (ingen import fra sport-/bransje-
+kode → cherry-pick-bar rått inn i jobb/klesbutikk):
+- `interface Hyllelinje` (flyttet HIT fra `industryDefinition.ts`).
+- `interface PlassTransformOpts` + `plassTransform(o)` — tar nå `bottomAnchored`
+  eksplisitt (før: leste `vp.type !== 'heng'` internt) så modulen ikke kjenner
+  `PlassType`. rot/skewX/skewY uendret.
+- `pointAlong(L, t)` — uendret.
+- `projOnLine(px, py, L, aspect)` + `snapToLine(px, py, lines, maxDist, aspect)`
+  — tar nå `aspect` (scenehøyde/bredde) som PARAMETER (før: leste modul-
+  konstanten `ASPECT` i SportStillas). Gjør avstandsmåling isotrop uten å binde
+  modulen til sportsscenens dimensjoner.
+
+**Refaktor (ingen adferdsendring):**
+- `industryDefinition.ts` — importerer + re-eksporterer `Hyllelinje` fra modulen
+  (så eksisterende `import { …, Hyllelinje } from '../data/industryDefinition'`
+  fortsatt virker). Inline-typen slettet.
+- `SportStillas.tsx` — importerer `plassTransform`/`snapToLine`/`pointAlong`/
+  `Hyllelinje` fra modulen; sender inn `ASPECT` + `bottomAnchored` ved kall. De
+  tre inline-funksjonene slettet.
+
+**Verifisering — pikseldiff før/etter refaktor (headless Chromium, 1672×940):**
+Rendret arbeidstreet, `git stash`-et de to filene til pre-refaktor-tilstand,
+rendret på nytt, `git stash pop`. Diff:
+- `/dev/sport` (les-modus, alle 20 vareplasser): **max pikseldiff 0, 0 avvikende
+  piksler av 1 571 680**.
+- `/dev/sport?dev=1` (tracer + 4 hyllelinjer + preview-sko langs linjene):
+  **max pikseldiff 0, 0 avvikende piksler**.
+Byte-identisk i begge moduser → refaktoren er beviselig adferdsbevarende.
+
+`tsc -b` + `vite build` grønne. **B-treet tar den i bruk** ved å kopiere KUN
+`hyllelinje.ts` inn i sitt tre og kalle `plassTransform`/`snapToLine` med sin
+egen scenes `aspect` + `bottomAnchored` — ingen sport-avhengigheter følger med.
+Full oppskrift i `docs/AUTONOM_PIPELINE.md`.
