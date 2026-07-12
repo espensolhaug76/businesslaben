@@ -316,3 +316,35 @@ Byte-identisk i begge moduser → refaktoren er beviselig adferdsbevarende.
 `hyllelinje.ts` inn i sitt tre og kalle `plassTransform`/`snapToLine` med sin
 egen scenes `aspect` + `bottomAnchored` — ingen sport-avhengigheter følger med.
 Full oppskrift i `docs/AUTONOM_PIPELINE.md`.
+
+---
+
+## 13. Høsting (2026-07-12): `docs/AUTONOM_PIPELINE.md` (DEL 1)
+
+Gjenbruksoppskriften — den komplette pipelinen for å bygge en NY bransje
+autonomt, skrevet ut fra det eksperimentet FAKTISK gjorde. Målgruppe: en fersk
+CC-instans i en ny worktree (f.eks. et hotell) med kun `CLAUDE.md` + dokumentet
+som kontekst. Innhold (506 linjer):
+
+- **Fasene i rekkefølge:** NB-prompting (`nb-generate.sh`, stilformelen «3D-
+  rendered miniature diorama», referansebilde-anker, maks 2 piloter før batch,
+  aldri tekst/logo) → splitting (`split-product-sheet.py`, familie-mønster,
+  u2net vs `isnet-general-use` for lav-kontrast metall/grå) → katalog/datamodell
+  (`sportItem`/`sportVarer`/`SPORT`-mønsteret) → stillas-scene med tracer →
+  SELVKALIBRERING via skjermbilde-løkka.
+- **Skjermbilde-løkka i detalj:** eksakte kommandoer (dev-server på egen port,
+  headless Chromium `--screenshot --window-size=$SCENE_W,$SCENE_H`, LES bildet,
+  juster, gjenta), 2–3 iterasjoner, og — viktigst — hvordan man AVGJØR
+  perspektiv-retningen FØR man setter skala-gradienter (sko-saken: nær=stor,
+  fjern=liten; følg møbelkantene mot forsvinningspunktet). Pluss hva som IKKE kan
+  verifiseres headless (visuell kvalitet = alltid Espens).
+- **Hyllelinje-mekanikken:** konsept, datamodell, snap-adferd, skala-
+  interpolering, skew-feltene.
+- **Arbeidsdelingen:** CC gjør førstepasning; Espen finpusser i `?dev=1` og LÅSER.
+- **Portabel modul (§7):** hvordan B-treet cherry-picker `hyllelinje.ts` +
+  pikseldiff-verifisering ved refaktor.
+- **Sjekkliste** til slutt: alt som må på plass før en ny bransje kan vises fram.
+
+Skrevet ærlig — inkluderer forkastede ark, svevende varer, nær-duplikate jakker,
+hardkodede repo-stier og hva som ikke ble pikselperfekt. `tsc -b` grønn (kun
+docs — ingen kode-endring i DEL 1).
