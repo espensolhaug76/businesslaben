@@ -75,42 +75,42 @@ export const RISIKO_RADER_DEFAULT: RisikoRad[] = [
   { id: 'strom', fare: 'Strømbrudd', sannsynlighet: 'lav', konsekvens: 'middels', tiltak: '' },
 ]
 
-// ── DEL 3 — BRANNALARM-HENDELSE ──────────────────────────────────────────────
-export type BrannalarmKvalitet = 'good' | 'warn' | 'bad'
+// ── DEL 3/5 — BRANNALARM som REKKEFØLGE-ØVELSE ───────────────────────────────
+export type BrannalarmKvalitet = 'good' | 'bad'   // trygg evakuering vs kaos
 
-export interface BrannalarmValg {
+export interface BrannalarmKort {
   id: string
   tekst: string
-  kvalitet: BrannalarmKvalitet
-  reputationDelta: number
-  moneyDelta: number
-  /** Utfallstekst; {ekte} interpoleres til ekte-brann/falsk-alarm-varianten. */
-  utfall: string
+  /** Riktig plass (1–5) i planen. Distraktor hvis udefinert. */
+  riktigPlass?: number
 }
+
+/** 7 handlingskort — 5 riktige (speiler beredskapsplanens brann-punkter) + 2
+ *  distraktorer som frister, men er gale. Tunbare. Stokkes før visning. */
+export const BRANNALARM_KORT: BrannalarmKort[] = [
+  { id: 'varsle', tekst: '📣 Varsle: rop «brann» og trykk brannalarmen', riktigPlass: 1 },
+  { id: 'evakuer', tekst: '🚶 Evakuer kunder og ansatte ut nærmeste utgang', riktigPlass: 2 },
+  { id: 'moteplass', tekst: '📍 Møteplass på fortauet — tell opp at alle er ute', riktigPlass: 3 },
+  { id: 'slukk', tekst: '🧯 Slukk KUN hvis det er trygt (fri fluktvei)', riktigPlass: 4 },
+  { id: 'ring', tekst: '📞 Ring 110', riktigPlass: 5 },
+  { id: 'kassa', tekst: '💰 Redd kassaoppgjøret først' },
+  { id: 'story', tekst: '📱 Post en story om brannen' },
+]
+
+/** Riktig rekkefølge (kort-id 1..5). */
+export const BRANNALARM_FASIT = ['varsle', 'evakuer', 'moteplass', 'slukk', 'ring']
+/** Nedtelling i sekunder (tunbar). Går tiden ut løses øvelsen med det som ligger. */
+export const BRANNALARM_SEKUNDER = 60
 
 export const BRANNALARM = {
   type: 'beredskap' as const,
   tittel: '🔥 Brannalarmen går!',
-  intro: 'Brannalarmen uler gjennom butikken. Kundene ser seg forvirret rundt. Du har sekunder på å bestemme deg — heldigvis kjenner du beredskapsplanen.',
-  valg: [
-    {
-      id: 'plan', tekst: '📋 Følg planen: evakuer kundene til møteplassen og varsle', kvalitet: 'good',
-      reputationDelta: 3, moneyDelta: -300,
-      utfall: 'Du evakuerer rolig og bestemt til møteplassen og varsler. {ekte} Kundene følte seg trygge og ivaretatt — akkurat slik planen sier. Dagen tok en kort pause, men tapet ble lite.',
-    },
-    {
-      id: 'selg', tekst: '💰 Fortsett å selge — «det er sikkert falsk alarm»', kvalitet: 'bad',
-      reputationDelta: -8, moneyDelta: 0,
-      utfall: 'Du lar kundene stå igjen mens alarmen uler. {ekte} Folk ble utrygge, og noen klaget høylytt. Å gamble med sikkerheten er nettopp grunnen til at planen finnes.',
-    },
-    {
-      id: 'slukk', tekst: '🧯 Grip slukkeapparatet uansett', kvalitet: 'warn',
-      reputationDelta: 0, moneyDelta: -150,
-      utfall: 'Du løper etter slukkeapparatet. {ekte} Husk planen: slukk KUN hvis det er trygt og du har fri fluktvei — ellers er det å evakuere og varsle viktigere enn å slukke selv.',
-    },
-  ] as BrannalarmValg[],
+  intro: 'Brannalarmen uler gjennom butikken. Legg de riktige handlingene inn i planen — i riktig rekkefølge. Du har dårlig tid!',
   ekteBrann: 'Det viste seg å være en overopphetet kaffemaskin — raskt under kontroll.',
   falskAlarm: 'Det var falsk alarm denne gangen.',
+  utfallTrygg: 'Du handlet raskt og i riktig rekkefølge — varsling først, så evakuering og opptelling. {ekte} Alle kom trygt ut og tapet ble lite. Akkurat slik en øvelse skal sitte.',
+  utfallKaos: 'Det ble kaos. {ekte} Feil prioritering under en alarm koster dyrt — folk må UT først, ting kan erstattes. Ryktet fikk en trøkk.',
+  konsekvens: { good: { rep: 3, money: -300 }, bad: { rep: -8, money: -500 } } as Record<BrannalarmKvalitet, { rep: number; money: number }>,
   /** VG2: brannøvelse-evaluering etter håndtert alarm (dekker brannøvelse-målet). */
   evalSporsmal: [
     'Hva fungerte godt i måten du håndterte alarmen på?',
@@ -118,8 +118,19 @@ export const BRANNALARM = {
   ],
 }
 
-export function brannalarmValg(id: string): BrannalarmValg | undefined {
-  return BRANNALARM.valg.find(v => v.id === id)
+export type BrannalarmVurdering = { kvalitet: BrannalarmKvalitet; distraktorBrukt: boolean; varslingForst: boolean }
+
+/** Vurder elevens rekkefølge (5 kort-id-er) UTEN å avsløre fasit underveis:
+ *  distraktor valgt ELLER varsling ikke først ⇒ kaos; ellers trygg. */
+export function vurderBrannalarm(rekkefolge: string[]): BrannalarmVurdering {
+  const distraktorBrukt = rekkefolge.some(id => id && !BRANNALARM_FASIT.includes(id))
+  const varslingForst = rekkefolge[0] === 'varsle'
+  const kvalitet: BrannalarmKvalitet = (distraktorBrukt || !varslingForst) ? 'bad' : 'good'
+  return { kvalitet, distraktorBrukt, varslingForst }
+}
+
+export function brannalarmKort(id: string): BrannalarmKort | undefined {
+  return BRANNALARM_KORT.find(k => k.id === id)
 }
 
 // ── DEL 5 — HUB-KOBLING (📚 Lær mer) ─────────────────────────────────────────

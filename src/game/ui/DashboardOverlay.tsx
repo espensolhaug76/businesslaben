@@ -10,7 +10,8 @@ import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
 import Fagord from './Fagord'
 import HmsTab from './HmsTab'
-import { BRANNALARM, brannalarmValg } from '../data/beredskap'
+import BrannalarmOvelse from './BrannalarmOvelse'
+import { BRANNALARM, BRANNALARM_FASIT, brannalarmKort } from '../data/beredskap'
 import { BALANCE } from '../data/balance'
 import { aktiveFunksjoner, evaluerRefleksjon } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
@@ -2423,12 +2424,6 @@ function InnboksTab() {
     dispatch({ type: 'RESOLVE_GAME_EVENT', eventId, choiceId, messageId })
     setChoiceMade(c => ({ ...c, [messageId]: choiceId }))
   }
-  // TEMA 1 — brannalarm-hendelsen resolves via egen action (beredskap-utfall).
-  function handleBeredskap(messageId: string, valgId: string) {
-    dispatch({ type: 'RESOLVE_BRANNALARM', valgId, messageId })
-    setChoiceMade(c => ({ ...c, [messageId]: valgId }))
-  }
-
   const TYPE_ICON: Record<string, string> = {
     mentor: '🧑‍🏫', pest_event: '📰', game_event: '🚀', beredskap: '🦺',
     customer_complaint: '😤', supplier: '📦', teacher_task: '📚',
@@ -2512,13 +2507,7 @@ function InnboksTab() {
                         {msg.choices.map((c, i) => (
                           <button
                             key={i}
-                            onClick={() => {
-                              if (msg.type === 'beredskap' && c.choiceId) {
-                                handleBeredskap(msg.id, c.choiceId)
-                              } else if (c.eventId && c.choiceId) {
-                                handleChoice(msg.id, c.eventId, c.choiceId)
-                              }
-                            }}
+                            onClick={() => { if (c.eventId && c.choiceId) handleChoice(msg.id, c.eventId, c.choiceId) }}
                             style={{
                               background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)',
                               borderRadius: 8, padding: '0.5rem 0.75rem',
@@ -2536,12 +2525,34 @@ function InnboksTab() {
                     </div>
                   )}
 
-                  {resolved && msg.type === 'beredskap' && state.beredskap.brannalarmUtfall?.valgId && (
-                    <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.6, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
-                      {(brannalarmValg(state.beredskap.brannalarmUtfall.valgId)?.utfall ?? '')
-                        .replace('{ekte}', state.beredskap.brannalarmUtfall.ekte ? BRANNALARM.ekteBrann : BRANNALARM.falskAlarm)}
-                      <div style={{ marginTop: 6, fontSize: 11, color: '#64748b' }}>Se 🦺 HMS-fanen for evaluering av øvelsen.</div>
-                    </div>
+                  {/* TEMA 1 — brannalarm som rekkefølge-øvelse, deretter utfall + sammenligning */}
+                  {msg.type === 'beredskap' && (
+                    (state.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.6, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
+                          {(state.beredskap.brannalarmUtfall!.kvalitet === 'good' ? BRANNALARM.utfallTrygg : BRANNALARM.utfallKaos)
+                            .replace('{ekte}', state.beredskap.brannalarmUtfall!.ekte ? BRANNALARM.ekteBrann : BRANNALARM.falskAlarm)}
+                        </div>
+                        {/* Se selv hvor det skar seg */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 11.5 }}>
+                          <div>
+                            <div style={{ fontWeight: 800, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Din rekkefølge</div>
+                            {state.beredskap.brannalarmUtfall!.rekkefolge.map((id, i) => (
+                              <div key={i} style={{ color: id && BRANNALARM_FASIT[i] === id ? '#22c55e' : '#fca5a5', padding: '2px 0', lineHeight: 1.35 }}>{i + 1}. {brannalarmKort(id)?.tekst ?? '— (tomt)'}</div>
+                            ))}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Planens rekkefølge</div>
+                            {BRANNALARM_FASIT.map((id, i) => (
+                              <div key={i} style={{ color: '#cbd5e1', padding: '2px 0', lineHeight: 1.35 }}>{i + 1}. {brannalarmKort(id)?.tekst}</div>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>Se 🦺 HMS-fanen for evaluering av øvelsen.</div>
+                      </div>
+                    ) : (
+                      <BrannalarmOvelse messageId={msg.id} />
+                    )
                   )}
 
                   {resolved && msg.type !== 'beredskap' && (
