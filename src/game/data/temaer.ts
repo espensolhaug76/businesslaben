@@ -33,10 +33,15 @@ export const TEMAER: TemaDef[] = [
     id: 'beredskap',
     navn: 'Beredskap',
     nivaaer: ['vg1', 'vg2'],
-    // VG1 (Forretningsdrift: beredskap) + VG2 (HMS: beredskap). Innhold i egen jobb.
+    // VG1 (Forretningsdrift): Contingency + Risikovurdering.
+    // VG2 (HMS): Beredskap + Brannvern + Risikoanalyse. Vises som «📚 Lær mer»
+    // i HMS-fanen per nivå (se HUB_LENKER i data/beredskap.ts).
     hubModulRefs: [
       '/learning/forretningsdrift/contingency',
+      '/learning/forretningsdrift/risikovurdering',
       '/learning/vg2/hms/beredskap',
+      '/learning/vg2/hms/brannvern',
+      '/learning/vg2/hms/risikoanalyse',
     ],
     beskrivelse: 'Kriseberedskap og beredskapsplaner — håndtering av uventede ' +
       'hendelser i bedriften. Innhold bygges i egen jobb; her kun definisjon.',

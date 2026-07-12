@@ -1,5 +1,7 @@
 // ─── AdVenture 3.0 — Core Types ───────────────────────────────────────────
 
+import type { RisikoRad, BrannalarmKvalitet } from './data/beredskap'
+
 export type Industry = 'cafe' | 'fashion' | 'tech' | 'sports'
 export type LocationZone = 'utkant' | 'hovedgata' | 'gagata'
 export type BusinessModel = 'detaljhandel' | 'netthandel' | 'produsent' | 'kombinasjon'
@@ -261,7 +263,7 @@ export interface PestEvent {
 
 export interface InboxMessage {
   id: string
-  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event'
+  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event' | 'beredskap'
   title: string
   body: string
   date: string
@@ -620,4 +622,24 @@ export interface GameState {
 
   // Progress checklist
   progress: GameProgress
+
+  // ── TEMA 1: Beredskap og risiko (kun i bruk når temaet er aktivt) ──────────
+  beredskap: BeredskapState
+}
+
+/** All spilltilstand for tema Beredskap (HMS-fanen + brannalarm-hendelsen).
+ *  Nullstilt/tom når temaet er av. */
+export interface BeredskapState {
+  /** Eleven har lest og bekreftet beredskapsplanen. */
+  planBekreftet: boolean
+  /** VG2-refleksjon knyttet til planen (fritekst). */
+  planRefleksjon: { storsteRisiko: string; leggeTil: string }
+  /** Risikoskjemaet (4 startrader; VG2 kan legge til egne). */
+  risikoRader: RisikoRad[]
+  /** currentMonth da brannalarmen sist gikk (maks én gang per måned). */
+  brannalarmMnd: number | null
+  /** Elevens valg + utfall for siste brannalarm (null før håndtert). */
+  brannalarmUtfall: { valgId: string; kvalitet: BrannalarmKvalitet; ekte: boolean } | null
+  /** VG2 brannøvelse-evaluering (fritekst, etter håndtert alarm). */
+  brannovelseEval: { q0: string; q1: string } | null
 }

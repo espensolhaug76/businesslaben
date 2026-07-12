@@ -10,6 +10,8 @@ import type {
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
+import type { RisikoRad } from './data/beredskap'
+import { RISIKO_RADER_DEFAULT, BRANNALARM, brannalarmValg } from './data/beredskap'
 import { EVENT_POOL } from '../strategies/innovation/eventPool'
 import { getEventsForMonth } from '../strategies/innovation/eventEngine'
 import { updateFlags } from '../strategies/innovation/flagSystem'
@@ -213,11 +215,26 @@ const initialState: GameState = {
     pricesSet: false,
     marketingSet: false,
   },
+  beredskap: {
+    planBekreftet: false,
+    planRefleksjon: { storsteRisiko: '', leggeTil: '' },
+    risikoRader: RISIKO_RADER_DEFAULT.map(r => ({ ...r })),
+    brannalarmMnd: null,
+    brannalarmUtfall: null,
+    brannovelseEval: null,
+  },
 }
 
 // ─── Actions ────────────────────────────────────────────────────────────────
 
 type Action =
+  // ── TEMA 1: Beredskap ──
+  | { type: 'CONFIRM_BEREDSKAP_PLAN' }
+  | { type: 'SET_BEREDSKAP_REFLEKSJON'; felt: 'storsteRisiko' | 'leggeTil'; verdi: string }
+  | { type: 'SET_RISIKO_RADER'; rader: RisikoRad[] }
+  | { type: 'TRIGGER_BRANNALARM' }
+  | { type: 'RESOLVE_BRANNALARM'; valgId: string; messageId: string }
+  | { type: 'SET_BRANNOVELSE_EVAL'; q0: string; q1: string }
   | { type: 'SET_PHASE'; phase: GamePhase }
   | { type: 'START_GAME'; companyName: string; industry: Industry; businessModel?: BusinessModel; finansiering?: GameFlags['finansieringStart']; personlighet?: GameFlags['personlighet'] }
   | { type: 'RENT_LOCATION'; id: string; zone: LocationZone; rent: number; capacity: number }
@@ -626,6 +643,63 @@ function reducer(state: GameState, action: Action): GameState {
         unreadCount: messages.filter(m => !m.read).length,
       }
     }
+
+    // ── TEMA 1: BEREDSKAP ─────────────────────────────────────────────────────
+    case 'CONFIRM_BEREDSKAP_PLAN':
+      return { ...state, beredskap: { ...state.beredskap, planBekreftet: true } }
+
+    case 'SET_BEREDSKAP_REFLEKSJON':
+      return { ...state, beredskap: { ...state.beredskap, planRefleksjon: { ...state.beredskap.planRefleksjon, [action.felt]: action.verdi } } }
+
+    case 'SET_RISIKO_RADER':
+      return { ...state, beredskap: { ...state.beredskap, risikoRader: action.rader } }
+
+    case 'TRIGGER_BRANNALARM': {
+      // Spawnes i innboksen KUN i åpen dag, når planen er bekreftet og alarmen
+      // ikke alt har gått denne måneden. (Tema-aktivt-sjekken gjøres av kalleren
+      // — HMS-fanen/effekten finnes bare når temaet er på.) Ekte/falsk
+      // randomiseres til utfallsteksten (poenget er handlingen, ikke flaks).
+      if (state.dayPhase !== 'åpen' || !state.beredskap.planBekreftet) return state
+      if (state.beredskap.brannalarmMnd === state.currentMonth) return state
+      const ekte = ((dagSeed(state.dayNumber, state.currentMonth, state.currentYear) >>> 0) % 2) === 0
+      const msg: InboxMessage = {
+        id: `brannalarm_${state.currentMonth}_${state.dayNumber}`,
+        type: 'beredskap',
+        title: BRANNALARM.tittel,
+        body: BRANNALARM.intro,
+        date: `Dag ${state.dayNumber} · Måned ${state.currentMonth}`,
+        read: false,
+        competenceGoal: 'Beredskap og risiko (VG1/VG2 HMS)',
+        choices: BRANNALARM.valg.map(v => ({ text: v.tekst, effect: '', choiceId: v.id })),
+      }
+      const messages = [...state.messages, msg]
+      return {
+        ...state,
+        messages,
+        unreadCount: messages.filter(m => !m.read).length,
+        beredskap: { ...state.beredskap, brannalarmMnd: state.currentMonth, brannalarmUtfall: { valgId: '', kvalitet: 'warn', ekte } },
+      }
+    }
+
+    case 'RESOLVE_BRANNALARM': {
+      const valg = brannalarmValg(action.valgId)
+      if (!valg) return state
+      const ekte = state.beredskap.brannalarmUtfall?.ekte ?? true
+      const reputation = Math.max(0, Math.min(100, state.reputation + valg.reputationDelta))
+      const money = state.money + valg.moneyDelta
+      const messages = state.messages.map(m => m.id === action.messageId ? { ...m, read: true } : m)
+      return {
+        ...state,
+        money,
+        reputation,
+        messages,
+        unreadCount: messages.filter(m => !m.read).length,
+        beredskap: { ...state.beredskap, brannalarmUtfall: { valgId: valg.id, kvalitet: valg.kvalitet, ekte } },
+      }
+    }
+
+    case 'SET_BRANNOVELSE_EVAL':
+      return { ...state, beredskap: { ...state.beredskap, brannovelseEval: { q0: action.q0, q1: action.q1 } } }
 
     case 'BUY_MARKET_RESEARCH': {
       if (state.money < 10_000) return state
