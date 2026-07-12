@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useGame, useTemaNivaa } from '../GameContext'
 import Fagord from './Fagord'
 import { IS_DEV_COORDS } from '../city/DevCoordHelper'
@@ -25,7 +24,6 @@ const felt: React.CSSProperties = {
 
 export default function HmsTab() {
   const { state, dispatch } = useGame()
-  const navigate = useNavigate()
   const nivaa = useTemaNivaa('beredskap') ?? 'vg1'
   const b = state.beredskap
   const handtert = (b.brannalarmUtfall?.rekkefolge.length ?? 0) > 0
@@ -204,16 +202,19 @@ export default function HmsTab() {
       </div>
 
       {/* ── DEL 5: HUB-KOBLING ── */}
+      {/* KRITISK: læringshuben åpnes ALLTID i NY fane (target=_blank + noopener) —
+          eleven skal aldri navigeres ut av spillet og miste spilltilstanden. */}
       <div style={{ ...card, marginBottom: 0 }}>
         <div style={{ fontWeight: 700, fontSize: 15, marginBottom: '0.6rem' }}>📚 Lær mer</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {HUB_LENKER[nivaa].map(l => (
-            <button key={l.rute} onClick={() => navigate(l.rute)}
-              style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 8, padding: '0.45rem 0.9rem', color: '#c084fc', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-              📚 {l.navn}
-            </button>
+            <a key={l.rute} href={l.rute} target="_blank" rel="noopener noreferrer"
+              style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 8, padding: '0.45rem 0.9rem', color: '#c084fc', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'none', display: 'inline-block' }}>
+              📚 {l.navn} ↗
+            </a>
           ))}
         </div>
+        <p style={{ fontSize: 11, color: '#64748b', margin: '0.55rem 0 0' }}>Åpnes i ny fane — spillet ditt står trygt her.</p>
       </div>
     </div>
   )
