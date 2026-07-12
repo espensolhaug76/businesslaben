@@ -1103,6 +1103,16 @@ trygt utfall (rykte 50→53) + grønn sammenligning; distraktor først → kaos-
 triggere → 1 boble; dismiss → badge «2» + peker; figurklikk → neste boble (siterer
 elevens tillegg + peker videre). `tsc -b` + `vite build` grønn.
 
+## 28. Mentor pose-ommapping v2 (kosmetisk)
+
+> Kort. Rett på main. `tsc -b` + `vite build` + headless grønn.
+
+Nytt asset `espen-vanlig.png` (v5, rembg fra `mentor-espen-05-raw.jpg`). Ny
+pose-mapping i `Mentor.tsx` (prioritet: leser > aktiv melding > kø > hvile):
+HVILE + INTRO = `vanlig` (v5), AKTIV MELDING = `noytral` (v2, var smil), KØ-SIGNAL
+= `peker` (v4) + badge, ORDBOK = `leser` (v3). v1 `smil` er pensjonert fra bruk
+(fila beholdt). Headless bekreftet alle fire tilstander via figurens `src`.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå

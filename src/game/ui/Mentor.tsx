@@ -10,8 +10,8 @@ import type { GameState } from '../types'
 // Hjørnefigur nede til høyre, ALLTID synlig (også over dashbord/oppgjør), med en
 // liten 📖-bok ved figuren. Klikk boka/figuren (uten aktiv melding) → ordboken
 // «slår seg opp» ved figuren og Espen leser (espen-leser). Poser (prioritet):
-//   leser (ordbok åpen) > smil (aktiv melding) > peker (melding i kø/ventende) >
-//   nøytral.
+//   leser (ordbok åpen) > nøytral (aktiv melding) > peker (melding i kø/ventende)
+//   > vanlig (hvile). (v1/smil er pensjonert fra bruk; fila beholdes.)
 // Meldinger (data i mentorTriggers.ts) fyres MAKS ÉN GANG (localStorage-sett,
 // overlever reload). DASHBORD blokkerer IKKE — fane-triggere vises inne i
 // dashbordet. Scenario/dagsoppgjør blokkerer: da KØES meldingen og figuren PEKER
@@ -19,10 +19,11 @@ import type { GameState } from '../types'
 // seg selv når flaten lukkes.
 
 const POSE = {
-  noytral: '/assets/raw/mentor/espen-noytral.png',
-  smil: '/assets/raw/mentor/espen-smil.png',
-  leser: '/assets/raw/mentor/espen-leser.png',
-  peker: '/assets/raw/mentor/espen-peker.png',
+  vanlig: '/assets/raw/mentor/espen-vanlig.png',  // v5 — hvile + intro
+  noytral: '/assets/raw/mentor/espen-noytral.png', // v2 — aktiv melding
+  smil: '/assets/raw/mentor/espen-smil.png',       // v1 — pensjonert fra bruk
+  leser: '/assets/raw/mentor/espen-leser.png',     // v3 — ordbok åpen
+  peker: '/assets/raw/mentor/espen-peker.png',     // v4 — kø-signal
 }
 const KEY = 'mentor_fired_v1'
 
@@ -196,11 +197,11 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const venter = hasQueued && !eventMelding
   const badge = venter ? queue.length : 0
 
-  // Pose-prioritet: leser > smil (m/boble) > peker (venter i kø) > nøytral.
+  // Pose-prioritet: leser > nøytral (aktiv melding) > peker (venter i kø) > vanlig (hvile).
   const pose = ordbokOpen ? POSE.leser
-    : melding ? POSE.smil
+    : melding ? POSE.noytral
     : venter ? POSE.peker
-    : POSE.noytral
+    : POSE.vanlig
 
   function dismiss() {
     if (eventMelding) {
@@ -236,7 +237,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
             }}
           >
             <motion.img
-              src={POSE.smil} alt="Espen" draggable={false}
+              src={POSE.vanlig} alt="Espen" draggable={false}
               initial={{ scale: 0.6, opacity: 0, y: 24 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.22, x: '42vw', y: '42vh', opacity: 0 }}   // krymper mot hjørnet
