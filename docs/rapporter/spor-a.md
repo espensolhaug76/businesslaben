@@ -1015,6 +1015,52 @@ Dashbord-knapp; 👁 toggler passord til tekst (login + 2 i register-modalen);
 bransjevalg viser 3× «KOMMER», Kafé valgbar, Klesbutikk `disabled`. `tsc -b` +
 `vite build` grønn, 0 konsollfeil.
 
+## 27. TEMA 1: BEREDSKAP OG RISIKO (første ekte tema)
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn, 0
+> konsollfeil. Levert på gren `spor-a/tema-beredskap` (main urørt) — IKKE merget,
+> venter Espens validering.** Base: main @ d1c0b8b.
+
+Alt gates på `useErTemaAktivt('beredskap')`; nivå via `useTemaNivaa`. Tema av =
+null spor. Prinsipp: refleksjon, ALDRI fasit — ingen poeng for «riktig».
+
+**DEL 1 — 🦺 HMS-fane** (ny `HmsTab.tsx`, fane vises kun når temaet er aktivt;
+gaten i `DashboardOverlay` filtrerer `TABS` på `t.tema`). a) **Beredskapsplan**
+(tunbar i `data/beredskap.ts`: brann/ulykke/trussel, hvert med konkrete punkter)
+— eleven **bekrefter** («Jeg kjenner planen», lagres i `state.beredskap`); VG2
+får 2 refleksjonsfelt. b) **Risikoskjema** — 4 tunbare rader (brann/fall/svinn/
+strøm) med sannsynlighet×konsekvens + tiltak; VG1 = faste rader, VG2 = kan legge
+til egne. Alt i `state.beredskap`, ingen retting.
+
+**DEL 2 — Fagord**: `beredskapsplan` (RST_003), `risikovurdering` (RST_002),
+`evakuering` (RST_004) lagt til i glossary (VGS-nivå, example + common_mistake)
+og markert i HMS-fanen med `<Fagord>`. (`Risikomatrise`/`HMS` fantes fra før.)
+
+**DEL 3 — Brannalarm-hendelse**: spawnes i innboksen i en åpen dag (auto-sjanse
+per dag, deterministisk seed; + `dev:brannalarm`-hook og HMS-fanens dev-knapp),
+KUN når temaet er aktivt + planen bekreftet, maks 1×/måned (reducer-gate). 3 valg
+— (1) følg planen (good: lite tap, +rykte), (2) selg videre (bad: −rykte), (3)
+grip slukker (warn) — med utfallstekst der ekte/falsk alarm randomiseres.
+`RESOLVE_BRANNALARM` skriver rykte/penger + utfall; innboksen viser resultatet.
+VG2: «evaluer øvelsen» (2 refleksjonsfelt) i HMS-fanen etterpå.
+
+**DEL 4 — Mentor-triggere** (mentorTriggers-mønster, én gang, tokens):
+`tema_beredskap_aktivert` (fyres via `aktiveTemaer`-effekt i Mentor, peker på
+[[RST_003|beredskapsplanen]]), `beredskap_plan_bekreftet`, `beredskap_risiko_levert`
+og `beredskap_brannalarm_handtert` — de to siste er **dynamiske** (leser elevens
+verste risiko-rad / brannalarm-valg via `dynamiskMentorMelding`).
+
+**DEL 5 — Hub-kobling**: HMS-fanen har «📚 Lær mer»-knapper til temaets hub-
+moduler per nivå (`HUB_LENKER`): VG1 Contingency + Risikovurdering; VG2 Beredskap
++ Brannvern + Risikoanalyse.
+
+**Verifisert headless (Playwright):** tema AV = ingen HMS-fane. Tema PÅ (VG1) =
+fane synlig, plan bekreftes (lagres), fagord til stede, brannalarm fyrer i åpen
+dag → 3 valg → «Følg planen» gir god-utfall (rykte 50→53, −300 kr, falsk-alarm-
+interpolering). Tema PÅ (VG2) = refleksjonsfelt + «Legg til egen rad» synlige.
+`tema_beredskap_aktivert`-mentormeldingen bekreftet i skjermbilde. `tsc -b` +
+`vite build` grønn.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
