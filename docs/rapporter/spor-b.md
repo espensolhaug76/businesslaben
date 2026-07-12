@@ -745,6 +745,75 @@ Verifisert (headless): palett-overskrifter «Hengende (40) / Hengende — profil
 
 ---
 
+## LEVERANDØRKATALOG v1 — datalag + innkjøp + palettkobling
+
+Bygget etter `docs/BRANSJE2_LEVERANDORER.md`: kvalitet er en egenskap ved
+LEVERANDØREN (merkeposisjon + innkjøpspris = kvalitetssignal), ikke en tier-meny.
+
+### DEL 1 — DATALAG
+- **`klesbutikkBrands.ts` (ny):** `Brand { id, navn, segment, brandPull,
+  personaAffinity[], kostFaktor, paaslag, farge }` + de **4 fiktive merkene** fra
+  designdok:
+  - **Basiq** (billigvolum, brandPull ingen, prisbevisste, kostFaktor 0.65)
+  - **Strøm & Berg** (norsk-midt, moderat, familie/karriere, 1.0)
+  - **Nordheim Atelier** (premium, sterk, trendsettere/karriere, 1.8)
+  - **Fjellrev Works** (nisje-kvalitet, sterk, miljøbevisste/helse, 1.35)
+  `BRAND_QUALITY` gir quality/sustainability per segment.
+- **Plagg får `gender: 'dame'|'herre'|'barn'|'unisex'`** (`klesbutikkPlagg.ts`),
+  migrert fra herre-/dame-/barn-kommentarene via regelbasert `genderFor()`
+  ('-barn'/'-dame'-suffiks vinner; ellers eksplisitte herre/dame/barn-sett; resten
+  unisex). Tunbart — juster settene i fila.
+- **`klesbutikkKatalog.ts` (ny):** `VARE_TYPER` (18 plaggtyper med `plaggId` +
+  `basisKost` + hvilke merker som fører den) → **`KLESBUTIKK_KATALOG`**: én
+  `IndustryCatalogItem` per **(plaggtype × merke)** = 37 katalogvarer.
+  `costPrice = basisKost × kostFaktor`, `recommended = costPrice × paaslag`. **Samme
+  plaggtype føres av flere merker med ulik pris** (f.eks. Tskjorte: Basiq 36 /
+  Strøm & Berg 55 / Nordheim 99 kr) — sammenlignings-mekanikken. Hver katalogvare
+  peker på plaggets **sprite-sett** (front/profil/brett — det som finnes) via
+  `plaggId`, og arver `gender`.
+- `IndustryCatalogItem` utvidet med valgfrie `brandId/plaggId/gender/klesKategori`.
+  `KLESBUTIKK.katalog = KLESBUTIKK_KATALOG` (var tom). `forteplaggIds()` for DEL 3.
+
+### DEL 2 — INNKJØPSKATALOG (🏷 Innkjøp-fane)
+- Ny toppnivå-fane i stillaset (`topView` = stillas ↔ innkjop). `InnkjopKatalog.tsx`
+  grupperer katalogen på plaggtype så **merke-variantene ligger side om side** —
+  eleven sammenligner samme plagg på tvers av merker. Per variant vises **innkjøp
+  (costPrice) + veil. pris + MARGIN (kr + %)** — margin-regnestykket synlig per valg.
+- **Filtre:** kjønn (dame/herre/barn/unisex) + kategori (overdel/skjorte/kjole/
+  strikk/ytterplagg/bukse/stabel). «X varer ført»-teller.
+- **«Før vare»-toggle** → `state.klesbutikkSortiment` (samme state-mønster som
+  resten av stillaset: `SET_KLESBUTIKK_SORTIMENT`).
+
+### DEL 3 — PALETT = KUN FØRTE VARER
+- Styling-palettens plagg-grupper (**Hengende / Hengende — profil / Brettet**)
+  viser **KUN førte plagg** (`forteplaggIds(state.klesbutikkSortiment)` — plaggId-er
+  med ≥1 ført katalogvare). **Tom føring → tom palett + hint** «Gå til Innkjøp og
+  velg sortiment». **`?dev=1` «vis alle»-bryter** un-gater (kalibrering uavhengig
+  av føring).
+- **Scope-valg (flagget):** **Dukker** (påkledde dukker) beholdes ALLTID synlige.
+  De er en styling-primitiv, ikke en leverandørkatalog-vare i designet (merker
+  gjelder plagg). Å føre dukker ville krevd en dukke-katalog utenfor
+  BRANSJE2_LEVERANDORER.md — tas evt. i en senere jobb.
+
+**Avgrensning (som bedt):** brandPull-effekt på trafikk, persona-scoring,
+sesong-nedskrivning og kafé-leverandører er IKKE i denne jobben — kun
+datalag + innkjøp + palettkobling.
+
+**Verifisert (headless, `?dev=1`):** Tskjorte fra 3 merker med ulik costPrice
+(36/55/99) + stigende margin (54/58/61 %); «Før vare» inkrementerer teller;
+gender=Herre → kun herre-plagg (Frakk mørkgrå, Jeans mørk); palett viser kun ført
+plagg, tom føring gir hint; dev «vis alle» → alle 72 plagg (+ 20 dukker). Ingen
+konsollfeil. `tsc -b` + `vite build` grønt.
+
+**➡️ Til Espen (valider + finpuss):** åpne `/dev/klesbutikk` → 🏷 Innkjøp: sjekk at
+merke-miksen/prisene kjennes riktige (juster `basisKost` + hvilke merker som fører
+hver plaggtype i `klesbutikkKatalog.ts`, og `kostFaktor`/`paaslag` i
+`klesbutikkBrands.ts`). Før et sortiment → 🛍 Interiør: kun de førte plaggene er i
+paletten. Vurder gender-tildelingen (`genderFor` + settene i `klesbutikkPlagg.ts`)
+og om Dukker skal kunne føres.
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.
