@@ -9,6 +9,8 @@ import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_T
 import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
 import Fagord from './Fagord'
+import HmsTab from './HmsTab'
+import { BRANNALARM, brannalarmValg } from '../data/beredskap'
 import { BALANCE } from '../data/balance'
 import { aktiveFunksjoner, evaluerRefleksjon } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
@@ -17,9 +19,9 @@ import type { Loan } from '../types'
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
-type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'rapporter' | 'innboks'
+type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'hms' | 'rapporter' | 'innboks'
 
-const TABS: { id: Tab; label: string; emoji: string }[] = [
+const TABS: { id: Tab; label: string; emoji: string; tema?: string }[] = [
   { id: 'oversikt',        label: 'Oversikt',         emoji: '📊' },
   { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋' },
   { id: 'produkter',       label: 'Produkter',         emoji: '📦' },
@@ -30,6 +32,8 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'priser',          label: 'Priser',            emoji: '🏷️' },
   { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢' },
   { id: 'personale',       label: 'Personale',         emoji: '👥' },
+  // TEMA-fane: vises KUN når temaet er aktivt (se InnboksTabBar-filteret).
+  { id: 'hms',             label: 'HMS',               emoji: '🦺', tema: 'beredskap' },
   { id: 'rapporter',       label: 'Rapporter',         emoji: '📋' },
   { id: 'innboks',         label: 'Innboks',           emoji: '📬' },
 ]
@@ -37,7 +41,9 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
 // ── Tab bar (extracted so it can read unreadCount) ────────────────────────────
 
 function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveTab: (t: Tab) => void }) {
-  const { state } = useGame()
+  const { state, aktiveTemaer } = useGame()
+  // TEMA-faner (t.tema satt) vises kun når det temaet er aktivt for klassen.
+  const synligeTabs = TABS.filter(t => !t.tema || !!aktiveTemaer[t.tema]?.aktiv)
   return (
     <div className="dashboard-tab-bar" style={{
       display: 'flex', gap: '0.5rem', padding: '1rem 2rem 0',
@@ -45,7 +51,7 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
       overflowX: 'auto', flexShrink: 0,
       scrollbarWidth: 'none',
     }}>
-      {TABS.map(t => (
+      {synligeTabs.map(t => (
         <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
           background: activeTab === t.id ? 'rgba(0,212,170,0.12)' : 'transparent',
           border: `1px solid ${activeTab === t.id ? '#00d4aa' : 'transparent'}`,
@@ -154,6 +160,7 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                   {activeTab === 'priser'          && <PriserTab />}
                   {activeTab === 'markedsforing'   && <MarkedsforingTab />}
                   {activeTab === 'personale'       && <PersonaleTab />}
+                  {activeTab === 'hms'             && <HmsTab />}
                   {activeTab === 'rapporter'       && <RapporterTab />}
                   {activeTab === 'innboks'         && <InnboksTab />}
                 </motion.div>
@@ -2416,9 +2423,14 @@ function InnboksTab() {
     dispatch({ type: 'RESOLVE_GAME_EVENT', eventId, choiceId, messageId })
     setChoiceMade(c => ({ ...c, [messageId]: choiceId }))
   }
+  // TEMA 1 — brannalarm-hendelsen resolves via egen action (beredskap-utfall).
+  function handleBeredskap(messageId: string, valgId: string) {
+    dispatch({ type: 'RESOLVE_BRANNALARM', valgId, messageId })
+    setChoiceMade(c => ({ ...c, [messageId]: valgId }))
+  }
 
   const TYPE_ICON: Record<string, string> = {
-    mentor: '🧑‍🏫', pest_event: '📰', game_event: '🚀',
+    mentor: '🧑‍🏫', pest_event: '📰', game_event: '🚀', beredskap: '🦺',
     customer_complaint: '😤', supplier: '📦', teacher_task: '📚',
   }
 
@@ -2501,7 +2513,9 @@ function InnboksTab() {
                           <button
                             key={i}
                             onClick={() => {
-                              if (c.eventId && c.choiceId) {
+                              if (msg.type === 'beredskap' && c.choiceId) {
+                                handleBeredskap(msg.id, c.choiceId)
+                              } else if (c.eventId && c.choiceId) {
                                 handleChoice(msg.id, c.eventId, c.choiceId)
                               }
                             }}
@@ -2522,13 +2536,21 @@ function InnboksTab() {
                     </div>
                   )}
 
-                  {resolved && (
+                  {resolved && msg.type === 'beredskap' && state.beredskap.brannalarmUtfall?.valgId && (
+                    <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.6, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
+                      {(brannalarmValg(state.beredskap.brannalarmUtfall.valgId)?.utfall ?? '')
+                        .replace('{ekte}', state.beredskap.brannalarmUtfall.ekte ? BRANNALARM.ekteBrann : BRANNALARM.falskAlarm)}
+                      <div style={{ marginTop: 6, fontSize: 11, color: '#64748b' }}>Se 🦺 HMS-fanen for evaluering av øvelsen.</div>
+                    </div>
+                  )}
+
+                  {resolved && msg.type !== 'beredskap' && (
                     <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>
                       ✅ Valg registrert
                     </div>
                   )}
 
-                  {msg.choices && msg.choices.length > 0 && !msg.choices[0].eventId && (
+                  {msg.choices && msg.choices.length > 0 && !msg.choices[0].eventId && msg.type !== 'beredskap' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                       {msg.choices.map((c, i) => (
                         <div key={i} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 6, padding: '0.4rem 0.6rem', fontSize: 12 }}>

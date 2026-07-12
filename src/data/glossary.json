@@ -1664,6 +1664,39 @@
       "formula": null,
       "related_terms": ["Posisjonering", "Psykologisk prising"],
       "common_mistake": "Å tro at høy pris alene skaper verdi. Kunden må faktisk oppleve at de får noe ekstra for pengene."
+    },
+    {
+      "id": "RST_002",
+      "term": "Risikovurdering",
+      "category": "Risikostyring",
+      "level": "VG1",
+      "definition": "Å kartlegge hva som kan gå galt, hvor sannsynlig det er og hvor alvorlig det blir — og bestemme tiltak som reduserer risikoen.",
+      "example": "En kafé vurderer brann (lite sannsynlig, men alvorlig) og fall på vått gulv (ganske sannsynlig, middels alvorlig) og setter opp tiltak for begge.",
+      "formula": null,
+      "related_terms": ["Risikomatrise", "Beredskapsplan"],
+      "common_mistake": "Å bare liste opp farer uten å vurdere sannsynlighet og konsekvens — da vet du ikke hva du bør prioritere."
+    },
+    {
+      "id": "RST_003",
+      "term": "Beredskapsplan",
+      "category": "Risikostyring",
+      "level": "VG1",
+      "definition": "En ferdig plan for hva man skal gjøre når noe uventet skjer — brann, ulykke eller trussel — så alle vet hvordan de handler raskt og trygt.",
+      "example": "Butikkens beredskapsplan sier: ved brann rop «brann», evakuer til fortauet, tell opp at alle er ute, og ring 110.",
+      "formula": null,
+      "related_terms": ["Risikovurdering", "Evakuering"],
+      "common_mistake": "Å lage planen og så aldri øve på den — en plan ingen kjenner hjelper lite når det først brenner."
+    },
+    {
+      "id": "RST_004",
+      "term": "Evakuering",
+      "category": "Risikostyring",
+      "level": "VG1",
+      "definition": "Å få alle mennesker trygt ut av et område ved fare, til en avtalt møteplass der man teller opp at ingen er igjen.",
+      "example": "Da brannalarmen gikk, ledet den ansatte kundene ut til møteplassen på fortauet og sjekket at alle var ute.",
+      "formula": null,
+      "related_terms": ["Beredskapsplan"],
+      "common_mistake": "Å bruke tid på å redde varer eller kassa i stedet for å få folk ut først — liv går alltid foran ting."
     }
   ]
 }
