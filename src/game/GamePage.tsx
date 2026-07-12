@@ -205,23 +205,18 @@ function GameContent() {
         />
       )}
 
-      {/* Snarveier nederst til høyre når man leier */}
-      {state.rentedLocationId && !simOpen && !dashboardOpen && !vacantInfo && (
+      {/* «Gå til butikken»-snarvei nederst til høyre når man leier og står ute i
+          byen. Dashbord åpnes KUN fra topp-knappen (💻 Dashbord i HUD) — den
+          gamle Dashbord-knappen her (bak mentoren) er fjernet, så mentoren står
+          fritt i hjørnet. */}
+      {state.rentedLocationId && !lokaleId && !simOpen && !dashboardOpen && !vacantInfo && (
         <div style={{
           position: 'fixed', bottom: 30, right: 24, zIndex: 92,
           display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end',
           fontFamily: "'Outfit', sans-serif",
         }}>
-          {!lokaleId && (
-            <button onClick={() => gotoOwnStorefront()} style={pillStyle('linear-gradient(135deg, #0d9488, #0f766e)', 'rgba(14,165,141,0.4)')}>
-              🏪 Gå til butikken
-            </button>
-          )}
-          <button
-            onClick={() => { setDashboardTab('oversikt'); setDashboardOpen(true); setOverlay(true) }}
-            style={pillStyle('linear-gradient(135deg, #334155, #1e293b)', 'rgba(148,163,184,0.3)')}
-          >
-            🖥️ Dashbord
+          <button onClick={() => gotoOwnStorefront()} style={pillStyle('linear-gradient(135deg, #0d9488, #0f766e)', 'rgba(14,165,141,0.4)')}>
+            🏪 Gå til butikken
           </button>
         </div>
       )}
