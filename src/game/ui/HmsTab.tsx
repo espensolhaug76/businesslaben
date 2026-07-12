@@ -28,7 +28,9 @@ export default function HmsTab() {
   const navigate = useNavigate()
   const nivaa = useTemaNivaa('beredskap') ?? 'vg1'
   const b = state.beredskap
-  const handtert = !!b.brannalarmUtfall?.valgId
+  const handtert = (b.brannalarmUtfall?.rekkefolge.length ?? 0) > 0
+  const harTillegg = Object.values(b.planTillegg).some(t => t.trim() !== '')
+  const kanBekrefte = nivaa === 'vg1' || harTillegg   // VG2 krever minst ett eget tillegg
   const [evalQ, setEvalQ] = useState<[string, string]>(() => [b.brannovelseEval?.q0 ?? '', b.brannovelseEval?.q1 ?? ''])
 
   function setRad(i: number, patch: Partial<RisikoRad>) {
@@ -63,6 +65,13 @@ export default function HmsTab() {
               <ul style={{ margin: 0, paddingLeft: '1.1rem', color: '#cbd5e1', fontSize: 12.5, lineHeight: 1.7 }}>
                 {sek.punkter.map((p, i) => <li key={i}>{p}</li>)}
               </ul>
+              {/* Elevens eget bidrag (valgfritt VG1, VG2 krever minst ett). */}
+              <textarea
+                rows={1} style={{ ...felt, marginTop: 8, fontSize: 12 }}
+                value={b.planTillegg[sek.id] ?? ''}
+                onChange={e => dispatch({ type: 'SET_PLAN_TILLEGG', seksjon: sek.id, verdi: e.target.value })}
+                placeholder={`✍️ Ditt tillegg for DIN butikk (${sek.tittel.toLowerCase()}) …`}
+              />
             </div>
           ))}
         </div>
@@ -70,18 +79,25 @@ export default function HmsTab() {
           «Evakuere» betyr å få folk trygt ut — se <Fagord id="RST_004">evakuering</Fagord>.
         </p>
 
-        {/* Bekreft */}
+        {/* Bekreft — VG2 krever minst ett eget tillegg. */}
         {b.planBekreftet ? (
           <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 6 }}>
             ✓ Du har bekreftet at du kjenner planen.
           </div>
         ) : (
-          <button
-            onClick={() => dispatch({ type: 'CONFIRM_BEREDSKAP_PLAN' })}
-            style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.4rem', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            Jeg kjenner planen ✓
-          </button>
+          <>
+            <button
+              onClick={() => dispatch({ type: 'CONFIRM_BEREDSKAP_PLAN' })}
+              disabled={!kanBekrefte}
+              title={kanBekrefte ? undefined : 'Legg til minst ett eget punkt for din butikk først'}
+              style={{ background: kanBekrefte ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 99, padding: '0.6rem 1.4rem', color: kanBekrefte ? '#fff' : '#475569', fontWeight: 800, fontSize: 14, cursor: kanBekrefte ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
+            >
+              Jeg kjenner planen ✓
+            </button>
+            {nivaa === 'vg2' && !kanBekrefte && (
+              <div style={{ fontSize: 11.5, color: '#facc15', marginTop: 6 }}>VG2: skriv minst ett eget tillegg over før du bekrefter.</div>
+            )}
+          </>
         )}
 
         {/* VG2: refleksjon */}
@@ -128,6 +144,14 @@ export default function HmsTab() {
             + Legg til egen rad
           </button>
         )}
+        {/* Lagre vurdering + kvittering (driver mentor-flyten videre). */}
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => dispatch({ type: 'LAGRE_RISIKO' })}
+            style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.55rem 1.3rem', color: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Lagre vurdering
+          </button>
+          {b.risikoLagret && <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>✓ Lagret</span>}
+        </div>
       </div>
 
       {/* ── DEL 3: BRANNØVELSE / brannalarm ── */}
@@ -153,7 +177,7 @@ export default function HmsTab() {
         ) : (
           <>
             <div style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.6 }}>
-              Du håndterte brannalarmen ({b.brannalarmUtfall!.kvalitet === 'good' ? '✓ etter planen' : b.brannalarmUtfall!.kvalitet === 'warn' ? '⚠ delvis' : '✗ ikke etter planen'}).
+              Du håndterte brannalarmen ({b.brannalarmUtfall!.kvalitet === 'good' ? '✓ trygg evakuering' : '✗ det skar seg'}).
             </div>
             {/* VG2: evaluer øvelsen */}
             {nivaa === 'vg2' && (
