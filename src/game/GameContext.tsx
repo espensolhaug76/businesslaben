@@ -224,6 +224,7 @@ const initialState: GameState = {
     brannalarmMnd: null,
     brannalarmUtfall: null,
     brannovelseEval: null,
+    brannovelser: [],
   },
 }
 
@@ -238,6 +239,7 @@ type Action =
   | { type: 'LAGRE_RISIKO' }
   | { type: 'TRIGGER_BRANNALARM' }
   | { type: 'RESOLVE_BRANNALARM'; rekkefolge: string[]; messageId: string }
+  | { type: 'RESOLVE_BRANNOVELSE'; rekkefolge: string[] }
   | { type: 'SET_BRANNOVELSE_EVAL'; q0: string; q1: string }
   | { type: 'SET_PHASE'; phase: GamePhase }
   | { type: 'START_GAME'; companyName: string; industry: Industry; businessModel?: BusinessModel; finansiering?: GameFlags['finansieringStart']; personlighet?: GameFlags['personlighet'] }
@@ -712,6 +714,17 @@ function reducer(state: GameState, action: Action): GameState {
         unreadCount: messages.filter(m => !m.read).length,
         beredskap: { ...state.beredskap, brannalarmUtfall: { rekkefolge: action.rekkefolge, kvalitet, ekte } },
       }
+    }
+
+    case 'RESOLVE_BRANNOVELSE': {
+      // ØVELSESMODUS (DEL 4): samme vurdering som skarp alarm, men INGEN penge-
+      // eller rykteeffekt og ingen innboks-melding — kun historikk + refleksjon.
+      const { kvalitet } = vurderBrannalarm(action.rekkefolge)
+      const forsok = {
+        rekkefolge: action.rekkefolge, kvalitet,
+        dag: state.dayNumber, maaned: state.currentMonth, aar: state.currentYear,
+      }
+      return { ...state, beredskap: { ...state.beredskap, brannovelser: [...state.beredskap.brannovelser, forsok] } }
     }
 
     case 'SET_BRANNOVELSE_EVAL':

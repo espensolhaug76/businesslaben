@@ -116,6 +116,20 @@ export const BRANNALARM = {
     'Hva fungerte godt i måten du håndterte alarmen på?',
     'Hva ville du gjort annerledes neste gang?',
   ],
+  // ── ØVELSESMODUS (DEL 4, fiksrunde 2) — samme øvelse, men uten konsekvens. ──
+  utfallOvelseTrygg: 'Godt øvd! Du varslet først, så evakuering og opptelling — akkurat rekkefølgen som får folk trygt ut. Dette er en øvelse, så ingen penger eller rykte står på spill; men det er nettopp derfor vi øver til det sitter.',
+  utfallOvelseKaos: 'I en øvelse gjør det ikke vondt å bomme — det er hele poenget med å øve. Men se på rekkefølgen: folk må UT først, ting kan erstattes. Kjør en ny øvelse til varsling og evakuering kommer før alt annet.',
+}
+
+/** Ett øvelsesmodus-forsøk (ikke skarp alarm) — historikk i state.beredskap.
+ *  Ingen penge-/rykteeffekt; kun refleksjon og grønn/rød sammenligning etterpå. */
+export interface BrannovelseForsok {
+  rekkefolge: string[]
+  kvalitet: BrannalarmKvalitet
+  /** Spilltidspunkt (in-game) for forsøket. */
+  dag: number
+  maaned: number
+  aar: number
 }
 
 export type BrannalarmVurdering = { kvalitet: BrannalarmKvalitet; distraktorBrukt: boolean; varslingForst: boolean }

@@ -10,8 +10,8 @@ import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
 import Fagord from './Fagord'
 import HmsTab from './HmsTab'
-import BrannalarmOvelse from './BrannalarmOvelse'
-import { BRANNALARM, BRANNALARM_FASIT, brannalarmKort } from '../data/beredskap'
+import BrannalarmOvelse, { BrannalarmSammenligning } from './BrannalarmOvelse'
+import { BRANNALARM } from '../data/beredskap'
 import { BALANCE } from '../data/balance'
 import { aktiveFunksjoner, evaluerRefleksjon } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
@@ -2581,22 +2581,9 @@ function InnboksTab() {
                           {(state.beredskap.brannalarmUtfall!.kvalitet === 'good' ? BRANNALARM.utfallTrygg : BRANNALARM.utfallKaos)
                             .replace('{ekte}', state.beredskap.brannalarmUtfall!.ekte ? BRANNALARM.ekteBrann : BRANNALARM.falskAlarm)}
                         </div>
-                        {/* Se selv hvor det skar seg */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 11.5 }}>
-                          <div>
-                            <div style={{ fontWeight: 800, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Din rekkefølge</div>
-                            {state.beredskap.brannalarmUtfall!.rekkefolge.map((id, i) => (
-                              <div key={i} style={{ color: id && BRANNALARM_FASIT[i] === id ? '#22c55e' : '#fca5a5', padding: '2px 0', lineHeight: 1.35 }}>{i + 1}. {brannalarmKort(id)?.tekst ?? '— (tomt)'}</div>
-                            ))}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 800, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Planens rekkefølge</div>
-                            {BRANNALARM_FASIT.map((id, i) => (
-                              <div key={i} style={{ color: '#cbd5e1', padding: '2px 0', lineHeight: 1.35 }}>{i + 1}. {brannalarmKort(id)?.tekst}</div>
-                            ))}
-                          </div>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>Se 🦺 HMS-fanen for evaluering av øvelsen.</div>
+                        {/* Se selv hvor det skar seg (delt komponent) */}
+                        <BrannalarmSammenligning rekkefolge={state.beredskap.brannalarmUtfall!.rekkefolge} />
+                        <div style={{ fontSize: 11, color: '#64748b' }}>Se 🦺 HMS-fanen for evaluering og for å øve på nytt.</div>
                       </div>
                     ) : (
                       <BrannalarmOvelse messageId={msg.id} />

@@ -81,6 +81,11 @@ function oppfylt(id: string, s: GameState): boolean {
     case 'beredskap_plan_bekreftet': return s.beredskap.planBekreftet
     case 'beredskap_risiko_levert': return s.beredskap.risikoLagret
     case 'beredskap_brannalarm_handtert': return (s.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0
+    // DEL 4 (fiksrunde 2): første brannØVELSE etter en FEILET skarp alarm.
+    case 'beredskap_ovelse_etter_feil':
+      return (s.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0
+        && s.beredskap.brannalarmUtfall?.kvalitet === 'bad'
+        && s.beredskap.brannovelser.length > 0
     default: return false
   }
 }
@@ -108,6 +113,12 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
     const k = s.beredskap.brannalarmUtfall?.kvalitet
     if (k === 'good') return 'Godt jobbet under brannalarmen — du prioriterte varsling og evakuering, og fikk folk trygt ut. Det er nettopp derfor vi øver.'
     if (k === 'bad') return 'Det ble kaos under alarmen. Tenk gjennom rekkefølgen: hva MÅ komme først når det brenner, og hva kan vente?'
+  }
+  if (id === 'beredskap_ovelse_etter_feil') {
+    // Oppmuntrende + refleksjon, aldri fasit. Leser om den ferske øvelsen gikk bra.
+    const siste = s.beredskap.brannovelser[s.beredskap.brannovelser.length - 1]
+    if (siste?.kvalitet === 'good') return 'Der satt det! Den skarpe alarmen gikk ikke helt som du ville — men nå kjørte du øvelsen med varsling og evakuering først. Akkurat sånn skal det sitte. Hva var det som klaffet denne gangen?'
+    return 'Fint at du øver videre — den første alarmen gikk ikke helt på skinner, og det er helt greit. Tenk på hva som MÅ skje aller først når det brenner, og prøv en gang til. Ingenting står på spill her.'
   }
   return mentorMelding(id)
 }

@@ -115,6 +115,11 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     betingelse: 'Eleven har håndtert brannalarmen (dynamisk melding leser valget)',
     melding: 'Du håndterte brannalarmen. Tenk gjennom hva du gjorde.',
   },
+  {
+    id: 'beredskap_ovelse_etter_feil',
+    betingelse: 'Første gang eleven kjører en brannØVELSE etter en feilet skarp alarm (dynamisk melding leser om øvelsen gikk bra)',
+    melding: 'Fint at du øver videre — den første alarmen gikk ikke helt på skinner, og det er helt greit. Hva ville du gjort først neste gang?',
+  },
 
   // ── FANE-TRIGGERE (kontekstbundne) ──────────────────────────────────────────
   // Én per dashbord-fane (`fane`-feltet), første besøk. Vises KUN mens fanen er

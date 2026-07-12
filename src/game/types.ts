@@ -1,6 +1,6 @@
 // ─── AdVenture 3.0 — Core Types ───────────────────────────────────────────
 
-import type { RisikoRad, BrannalarmKvalitet } from './data/beredskap'
+import type { RisikoRad, BrannalarmKvalitet, BrannovelseForsok } from './data/beredskap'
 
 export type Industry = 'cafe' | 'fashion' | 'tech' | 'sports'
 export type LocationZone = 'utkant' | 'hovedgata' | 'gagata'
@@ -645,6 +645,9 @@ export interface BeredskapState {
   brannalarmMnd: number | null
   /** Elevens rekkefølge + utfall for siste brannalarm (null før håndtert). */
   brannalarmUtfall: { rekkefolge: string[]; kvalitet: BrannalarmKvalitet; ekte: boolean } | null
-  /** VG2 brannøvelse-evaluering (fritekst, etter håndtert alarm). */
+  /** VG2 brannøvelse-evaluering (fritekst, etter siste forsøk — skarp eller øvelse). */
   brannovelseEval: { q0: string; q1: string } | null
+  /** ØVELSESMODUS-historikk (DEL 4): «Kjør ny brannøvelse»-forsøk uten
+   *  konsekvens. Nyeste sist. Skarp alarm lagres separat i brannalarmUtfall. */
+  brannovelser: BrannovelseForsok[]
 }

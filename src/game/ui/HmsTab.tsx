@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGame, useTemaNivaa } from '../GameContext'
 import Fagord from './Fagord'
 import { IS_DEV_COORDS } from '../city/DevCoordHelper'
+import BrannalarmOvelse, { BrannalarmSammenligning } from './BrannalarmOvelse'
 import {
   BEREDSKAPSPLAN, PLAN_REFLEKSJON_VG2, NIVAA_VALG, HUB_LENKER, BRANNALARM,
   type RisikoRad, type Sannsynlighet,
@@ -30,6 +31,18 @@ export default function HmsTab() {
   const harTillegg = Object.values(b.planTillegg).some(t => t.trim() !== '')
   const kanBekrefte = nivaa === 'vg1' || harTillegg   // VG2 krever minst ett eget tillegg
   const [evalQ, setEvalQ] = useState<[string, string]>(() => [b.brannovelseEval?.q0 ?? '', b.brannovelseEval?.q1 ?? ''])
+
+  // ØVELSESMODUS (DEL 4): historikken ligger i state.beredskap.brannovelser;
+  // her er kun UI-tilstanden for den pågående øvelsen.
+  const ovelser = b.brannovelser
+  const antallOvelser = ovelser.length
+  const riktigeOvelser = ovelser.filter(o => o.kvalitet === 'good').length
+  const sisteForsok = ovelser[antallOvelser - 1]
+  const harNoenForsok = handtert || antallOvelser > 0   // gate for VG2-evaluering
+  const [ovelseKjorer, setOvelseKjorer] = useState(false)
+  const [ovelseRunId, setOvelseRunId] = useState(0)         // key → friske, stokkede kort
+  const [sisteOvelse, setSisteOvelse] = useState<string[] | null>(null)  // nettopp levert
+  function startOvelse() { setSisteOvelse(null); setOvelseRunId(n => n + 1); setOvelseKjorer(true) }
 
   function setRad(i: number, patch: Partial<RisikoRad>) {
     dispatch({ type: 'SET_RISIKO_RADER', rader: b.risikoRader.map((r, j) => j === i ? { ...r, ...patch } : r) })
@@ -152,13 +165,15 @@ export default function HmsTab() {
         </div>
       </div>
 
-      {/* ── DEL 3: BRANNØVELSE / brannalarm ── */}
+      {/* ── DEL 3/4: BRANNØVELSE / brannalarm ── */}
       <div style={card}>
         <div style={{ fontWeight: 700, fontSize: 15, marginBottom: '0.3rem' }}>🔥 Brannøvelse</div>
+
+        {/* Skarp alarm — status (uendret mekanikk: auto-sjanse i åpen dag, maks 1x/mnd) */}
         {!handtert ? (
           <>
             <p style={{ color: '#94a3b8', fontSize: 12.5, margin: '0 0 0.7rem' }}>
-              I løpet av en åpen dag kan brannalarmen gå. Da dukker den opp i 📬 Innboks — håndter den etter planen.
+              I løpet av en åpen dag kan brannalarmen gå på ekte. Da dukker den opp i 📬 Innboks — håndter den etter planen (ekte konsekvens).
               {!b.planBekreftet && ' (Bekreft planen over først.)'}
             </p>
             {IS_DEV_COORDS && (
@@ -173,31 +188,72 @@ export default function HmsTab() {
             )}
           </>
         ) : (
-          <>
-            <div style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.6 }}>
-              Du håndterte brannalarmen ({b.brannalarmUtfall!.kvalitet === 'good' ? '✓ trygg evakuering' : '✗ det skar seg'}).
-            </div>
-            {/* VG2: evaluer øvelsen */}
-            {nivaa === 'vg2' && (
-              b.brannovelseEval ? (
-                <div style={{ fontSize: 12.5, color: '#22c55e', fontWeight: 700, marginTop: 8 }}>✓ Evaluering lagret.</div>
-              ) : (
-                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#cbd5e1' }}>Evaluer øvelsen:</div>
-                  {BRANNALARM.evalSporsmal.map((sp, i) => (
-                    <div key={i}>
-                      <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>{sp}</label>
-                      <textarea rows={2} style={felt} value={evalQ[i]} onChange={e => setEvalQ(q => (i === 0 ? [e.target.value, q[1]] : [q[0], e.target.value]))} />
-                    </div>
-                  ))}
-                  <button onClick={() => dispatch({ type: 'SET_BRANNOVELSE_EVAL', q0: evalQ[0], q1: evalQ[1] })}
-                    style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.45rem 1.1rem', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Lagre evaluering
-                  </button>
-                </div>
-              )
+          <div style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.6 }}>
+            Skarp alarm håndtert ({b.brannalarmUtfall!.kvalitet === 'good' ? '✓ trygg evakuering' : '✗ det skar seg'}).
+          </div>
+        )}
+
+        {/* ── ØVELSESMODUS (DEL 4): øv fritt uten konsekvens ── */}
+        {b.planBekreftet ? (
+          <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.9rem' }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 5 }}>🎯 Øvelsesmodus</div>
+            <p style={{ color: '#94a3b8', fontSize: 12.5, margin: '0 0 0.7rem' }}>
+              Øv så mye du vil — nye, stokkede kort hver gang, og verken penger eller rykte står på spill. Bare deg og planen.
+            </p>
+
+            {/* Historikk-sammendrag */}
+            {antallOvelser > 0 && (
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '0.5rem 0.7rem', fontSize: 12.5, color: '#cbd5e1', marginBottom: '0.7rem' }}>
+                <strong style={{ color: '#f1f5f9' }}>{riktigeOvelser} av {antallOvelser} forsøk riktige.</strong>
+                {sisteForsok && (
+                  <span> Siste: {sisteForsok.kvalitet === 'good' ? '✓ trygg evakuering' : '✗ det skar seg'} · Dag {sisteForsok.dag} · Måned {sisteForsok.maaned}.</span>
+                )}
+              </div>
             )}
-          </>
+
+            {ovelseKjorer ? (
+              <BrannalarmOvelse key={ovelseRunId} ovelse onLevert={rek => { setSisteOvelse(rek); setOvelseKjorer(false) }} />
+            ) : sisteOvelse ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.6, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
+                  {sisteForsok?.kvalitet === 'good' ? BRANNALARM.utfallOvelseTrygg : BRANNALARM.utfallOvelseKaos}
+                </div>
+                <BrannalarmSammenligning rekkefolge={sisteOvelse} />
+                <button onClick={startOvelse}
+                  style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.5rem 1.2rem', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  🔁 Kjør ny brannøvelse
+                </button>
+              </div>
+            ) : (
+              <button onClick={startOvelse}
+                style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.55rem 1.3rem', color: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+                🎯 Kjør ny brannøvelse
+              </button>
+            )}
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: '#facc15', marginTop: '0.8rem' }}>Bekreft beredskapsplanen over for å låse opp øvelsesmodus.</p>
+        )}
+
+        {/* VG2: evaluer øvelsen — refererer siste forsøk (skarp eller øvelse) */}
+        {nivaa === 'vg2' && harNoenForsok && (
+          b.brannovelseEval ? (
+            <div style={{ fontSize: 12.5, color: '#22c55e', fontWeight: 700, marginTop: 12 }}>✓ Evaluering lagret.</div>
+          ) : (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#cbd5e1' }}>Evaluer siste forsøk:</div>
+              {BRANNALARM.evalSporsmal.map((sp, i) => (
+                <div key={i}>
+                  <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>{sp}</label>
+                  <textarea rows={2} style={felt} value={evalQ[i]} onChange={e => setEvalQ(q => (i === 0 ? [e.target.value, q[1]] : [q[0], e.target.value]))} />
+                </div>
+              ))}
+              <button onClick={() => dispatch({ type: 'SET_BRANNOVELSE_EVAL', q0: evalQ[0], q1: evalQ[1] })}
+                style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.45rem 1.1rem', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Lagre evaluering
+              </button>
+            </div>
+          )
         )}
       </div>
 
