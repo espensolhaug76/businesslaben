@@ -308,12 +308,10 @@ export const KLESBUTIKK: IndustryDefinition = {
     },
     scaleFront: 0.42, scaleBack: 0.24,
   },
-  // Vareplasser (% av klesbutikk-interior-mobler.png). HENG-plassene er
-  // Espen-KALIBRERT og låst (11 opphengspunkter på gullstengene). Brett- og
-  // dukke-plassene er fortsatt GROVE defaults — kalibreres senere med ?dev=1-
-  // vareplass-traceren («Logg array» / «Kopier array» → lim inn HIT).
+  // Vareplasser (% av klesbutikk-interior-mobler.png) — Espen-KALIBRERT v2
+  // (43 plasser: heng/brett/dukke + profil-heng, låst 2026-07). Rediger videre
+  // med ?dev=1-vareplass-traceren («Logg array» / «Kopier array» → lim inn HIT).
   vareplasser: [
-    // Heng — Espen-kalibrert (11 punkter, sortert på x). Topp-ankret på stanga.
     { id: 'heng-1', type: 'heng', x: 44.9, y: 41.5, scale: 0.05 },
     { id: 'heng-2', type: 'heng', x: 46.6, y: 41.5, scale: 0.05 },
     { id: 'heng-3', type: 'heng', x: 48.1, y: 41.4, scale: 0.05 },
@@ -322,19 +320,40 @@ export const KLESBUTIKK: IndustryDefinition = {
     { id: 'heng-6', type: 'heng', x: 58, y: 43.9, scale: 0.05 },
     { id: 'heng-7', type: 'heng', x: 59.9, y: 44.1, scale: 0.05 },
     { id: 'heng-8', type: 'heng', x: 61.6, y: 44.1, scale: 0.05 },
-    { id: 'heng-9', type: 'heng', x: 67.2, y: 42.2, scale: 0.06 },
-    { id: 'heng-10', type: 'heng', x: 67.9, y: 42.5, scale: 0.06 },
-    { id: 'heng-11', type: 'heng', x: 68.7, y: 42.8, scale: 0.06 },
-    // Brett — hyller (venstre + høyre vegg), rund pidestall, lavt bord
-    { id: 'brett-1', type: 'brett', x: 44, y: 47, scale: 0.06 },
-    { id: 'brett-2', type: 'brett', x: 44, y: 55, scale: 0.06 },
-    { id: 'brett-3', type: 'brett', x: 53, y: 57, scale: 0.06 },
-    { id: 'brett-4', type: 'brett', x: 52, y: 73, scale: 0.10 },
-    { id: 'brett-5', type: 'brett', x: 90, y: 52, scale: 0.06 },
-    // Dukke (DEL 4) — 2 bakte DAMEDUKKER: én foran t.v., én t.h. Bunn-ankret ved
-    // føttene, skalert til å dekke den bakte dukka. GROVE — Espen kalibrerer.
-    { id: 'dukke-1', type: 'dukke', x: 40, y: 69, scale: 0.05, dukketype: 'dame' },
-    { id: 'dukke-2', type: 'dukke', x: 81, y: 89, scale: 0.105, dukketype: 'dame' },
+    { id: 'heng-9', type: 'heng', x: 67.2, y: 42.2, scale: 0.075 },
+    { id: 'dukke-1', type: 'dukke', x: 41.2, y: 66.9, scale: 0.04, dukketype: 'dame' },
+    { id: 'dukke-2', type: 'dukke', x: 80, y: 86.1, scale: 0.085, dukketype: 'dame' },
+    { id: 'brett-b401', type: 'brett', x: 55.1, y: 84, scale: 0.055 },
+    { id: 'brett-cbf2', type: 'brett', x: 62.2, y: 83.9, scale: 0.055 },
+    { id: 'brett-0684', type: 'brett', x: 48, y: 83.9, scale: 0.055 },
+    { id: 'brett-78a5', type: 'brett', x: 44.9, y: 60.1, scale: 0.025 },
+    { id: 'brett-96ab', type: 'brett', x: 48.4, y: 60.2, scale: 0.025 },
+    { id: 'brett-9701', type: 'brett', x: 92.1, y: 61.2, scale: 0.03 },
+    { id: 'brett-eaf2', type: 'brett', x: 89, y: 61.2, scale: 0.035 },
+    { id: 'brett-125f', type: 'brett', x: 67.9, y: 73.7, scale: 0.03 },
+    { id: 'brett-e7b2', type: 'brett', x: 84.9, y: 59.9, scale: 0.025 },
+    { id: 'brett-db53', type: 'brett', x: 92.4, y: 67.3, scale: 0.035, rot: 0.5, skewX: 2.5 },
+    { id: 'brett-ae53', type: 'brett', x: 89, y: 66.7, scale: 0.035 },
+    { id: 'heng-52ef', type: 'heng', x: 55.9, y: 32.8, scale: 0.045 },
+    { id: 'heng-6bc9', type: 'heng', x: 60.3, y: 32.6, scale: 0.045 },
+    { id: 'brett-9525', type: 'brett', x: 35, y: 100, scale: 0.1 },
+    { id: 'brett-6489', type: 'brett', x: 24.4, y: 100, scale: 0.095 },
+    { id: 'brett-7d98', type: 'brett', x: 76.9, y: 100, scale: 0.1 },
+    { id: 'brett-bee7', type: 'brett', x: 88.3, y: 100, scale: 0.1 },
+    { id: 'heng-aea1', type: 'heng', x: 68.2, y: 42.1, scale: 0.08 },
+    { id: 'heng-13bd', type: 'heng', x: 69.1, y: 41.7, scale: 0.085 },
+    { id: 'heng-p-d8d3', type: 'heng', x: 83.5, y: 41.9, scale: 0.03, variant: 'profil' },
+    { id: 'heng-p-3f3c', type: 'heng', x: 84.8, y: 42, scale: 0.035, variant: 'profil' },
+    { id: 'heng-p-0dd3', type: 'heng', x: 85.7, y: 41.8, scale: 0.035, variant: 'profil' },
+    { id: 'heng-p-3176', type: 'heng', x: 87, y: 41.8, scale: 0.035, variant: 'profil' },
+    { id: 'heng-p-c623', type: 'heng', x: 88.4, y: 41.8, scale: 0.035, variant: 'profil' },
+    { id: 'brett-3aa9', type: 'brett', x: 45.8, y: 100, scale: 0.1 },
+    { id: 'brett-e10b', type: 'brett', x: 56.8, y: 100, scale: 0.1 },
+    { id: 'brett-bcdc', type: 'brett', x: 66.7, y: 99.7, scale: 0.1 },
+    { id: 'heng-p-1bd7', type: 'heng', x: 52.7, y: 53.6, scale: 0.05, variant: 'profil' },
+    { id: 'heng-p-f01b', type: 'heng', x: 54.5, y: 53.6, scale: 0.05, variant: 'profil' },
+    { id: 'heng-p-9aaf', type: 'heng', x: 56.2, y: 53.8, scale: 0.05, variant: 'profil' },
+    { id: 'heng-p-6010', type: 'heng', x: 51, y: 53.4, scale: 0.05, variant: 'profil' },
   ],
 }
 
