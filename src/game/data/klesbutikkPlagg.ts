@@ -59,10 +59,9 @@ const HENG_IDS = [
 
 // HENG PROFIL (klar-profil-ark-01..04) — 16 plagg hengende i PROFIL på bøyle.
 // Egne oppføringer med KUN `spriteHengProfil` → snapper bare til profil-heng-
-// plasser (variant='profil'). NB (Espen-avklaring): disse er registrert som
-// STANDALONE profil-plagg. Om noen skal være PROFIL-VARIANT av et eksisterende
-// front-plagg (front-motpart, dual-variant), gi id-paringen så flyttes
-// spriteHengProfil over på front-plagget i stedet (se spor-b.md).
+// plasser (variant='profil'). AVKLART (Espen 2026-07): disse BEHOLDES STANDALONE.
+// Evt. paring til et front-plagg (front-motpart / dual-variant) tas i en SENERE
+// jobb — da flyttes `spriteHengProfil` over på front-plagget i stedet.
 const PROFIL_IDS = [
   // ark-04 (herre)
   'frakk-morkgraa', 'strikkegenser-marine', 'flanellskjorte-brun', 'bomberjakke-svart',

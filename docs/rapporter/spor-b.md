@@ -719,11 +719,9 @@ låser jeg den + committer «vareplasser: Espen-kalibrert v2 (43 plasser)».**
    strip-modus. Paletten grupperer nå: **Hengende (40 front) · Hengende — profil
    (16) · Brettet (16)**. `startPlaggDrag` fikk `forceVariant` så drag fra en
    gruppe låser front/profil-varianten.
-   - **NB (Espen-avklaring trengs):** de 12 nye er registrert som **STANDALONE**
-     profil-plagg (som ark-04). Om noen skal være **profil-variant av et
-     eksisterende front-plagg** (front-motpart / dual-variant), gi id-paringen
-     (hvilket front-id ↔ hvilket profil-sprite), så flytter jeg `spriteHengProfil`
-     over på front-plagget. Navn (innholds-basert): trenchcoat-beige, kabelgenser-
+   - **AVKLART (Espen 2026-07):** profil-plaggene **beholdes STANDALONE**. Evt.
+     paring til et eksisterende front-plagg (front-motpart / dual-variant) tas i
+     en **senere jobb** — da flyttes `spriteHengProfil` over på front-plagget. Navn (innholds-basert): trenchcoat-beige, kabelgenser-
      hvit, skjorte-lyseblaa, lang-kjole-gronn, denimjakke-blaa, hoodie-beige,
      blazer-graa, lang-kjole-rosa, parka-gronn, skjorte-hvit, dunjakke-roed,
      denim-selebukse (+ ark-04: frakk-morkgraa, strikkegenser-marine,
