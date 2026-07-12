@@ -10,6 +10,42 @@ import { auth, db } from '../lib/firebase'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+/** Passordfelt med vis/skjul-toggle (👁). Brukes for logg inn, registrer og
+ *  bekreft passord. */
+function PasswordField({ label, value, onChange, placeholder, required }: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  required?: boolean
+}) {
+  const [show, setShow] = useState(false)
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-slate-600 mb-1.5">{label}</label>
+      <div className="relative">
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          className="w-full px-4 py-3 pr-11 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-slate-50"
+        />
+        <button
+          type="button"
+          onClick={() => setShow(s => !s)}
+          aria-label={show ? 'Skjul passord' : 'Vis passord'}
+          title={show ? 'Skjul passord' : 'Vis passord'}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-lg leading-none text-slate-400 hover:text-slate-600 focus:outline-none"
+        >
+          {show ? '🙈' : '👁️'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function mapAuthError(code: string): string {
   switch (code) {
     case 'auth/wrong-password':
@@ -157,16 +193,7 @@ function TeacherCard({ onOpenRegister }: { onOpenRegister: () => void }) {
             className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-slate-50"
           />
         </div>
-        <div>
-          <label className="block text-sm font-semibold text-slate-600 mb-1.5">Passord</label>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-slate-50"
-          />
-        </div>
+        <PasswordField label="Passord" value={password} onChange={setPassword} placeholder="••••••••" />
 
         {error && (
           <p className="text-sm text-red-600 font-medium bg-red-50 px-3 py-2 rounded-lg border border-red-100">
@@ -320,29 +347,9 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-600 mb-1.5">Passord</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Minst 6 tegn"
-              required
-              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-slate-50"
-            />
-          </div>
+          <PasswordField label="Passord" value={password} onChange={setPassword} placeholder="Minst 6 tegn" required />
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-600 mb-1.5">Bekreft passord</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="Gjenta passordet"
-              required
-              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-slate-50"
-            />
-          </div>
+          <PasswordField label="Bekreft passord" value={confirmPassword} onChange={setConfirmPassword} placeholder="Gjenta passordet" required />
 
           {error && (
             <p className="text-sm text-red-600 font-medium bg-red-50 px-3 py-2 rounded-lg border border-red-100">
