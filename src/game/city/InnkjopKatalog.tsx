@@ -44,7 +44,16 @@ export default function InnkjopKatalog() {
   }, [])
 
   const kategorier = useMemo(() => [...new Set(grupper.map(g => g.kategori))].sort(), [grupper])
-  const filtrert = grupper.filter(g => (genderF === 'alle' || g.gender === genderF) && (katF === 'alle' || g.kategori === katF))
+  // Kjønnsfilter INKLUDERER unisex for dame/herre (unisex-plagg passer begge).
+  // Barn = kun barn (barnestørrelser er egne varer). Unisex = kun unisex.
+  const matchGender = (g: Gruppe): boolean => {
+    if (genderF === 'alle') return true
+    if (genderF === 'dame') return g.gender === 'dame' || g.gender === 'unisex'
+    if (genderF === 'herre') return g.gender === 'herre' || g.gender === 'unisex'
+    if (genderF === 'barn') return g.gender === 'barn'
+    return g.gender === 'unisex'   // 'unisex'-knappen
+  }
+  const filtrert = grupper.filter(g => matchGender(g) && (katF === 'alle' || g.kategori === katF))
 
   const toggle = (vareId: string) => {
     const next = fortSet.has(vareId) ? sortiment.filter(x => x !== vareId) : [...sortiment, vareId]

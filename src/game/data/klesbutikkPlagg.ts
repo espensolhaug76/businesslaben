@@ -89,25 +89,35 @@ const BRETT_HERRE_IDS = [
   'jeans-mork', 'tskjorter-marine-graa', 'gensere-jordtoner', 'flanell-rutet',
 ]
 
-// ── Gender per plagg (migrert fra herre-/dame-/barn-kommentarene) ────────────
-// Regelbasert: '-barn'/'-dame'-suffiks vinner; ellers slås id opp i eksplisitte
-// herre/dame/barn-sett; resten er unisex. Tunbart — juster settene under.
-const HERRE_SET = new Set<string>([
-  ...BRETT_HERRE_IDS,
-  'frakk-morkgraa', 'strikkegenser-marine', 'flanellskjorte-brun', 'bomberjakke-svart', // profil ark-04
-  'badeshorts',
-])
-const DAME_SET = new Set<string>([
-  'bluse', 'maxikjole', 'strikkekjole', 'sommerkjole', 'sommerkjole-2', 'ullkaape', 'kimono',
-  'lang-kjole-gronn', 'lang-kjole-rosa',
-])
-const BARN_SET = new Set<string>(['denim-selebukse', 'dunjakke-roed'])
-function genderFor(id: string): Gender {
-  if (id.includes('barn') || BARN_SET.has(id)) return 'barn'
-  if (id.includes('dame') || DAME_SET.has(id)) return 'dame'
-  if (HERRE_SET.has(id)) return 'herre'
-  return 'unisex'
+// ── Gender per plagg — EKSPLISITT, satt etter VISUELL audit av alle 72 sprites ─
+// (Erstatter den tidligere regelen som sendte for mye til unisex.) Kun genuint
+// kjønnsnøytrale plagg (t-skjorter, hoodies, enkle gensere, jeans, skjerf, luer,
+// og unisex-ytterplagg som dun/fleece/softshell) er unisex; dresskjorter/frakk/
+// bomber/parka/flanell = herre; kjoler/bluser/skjørt/kåpe = dame; barnestørrelser
+// = barn. Tunbart — flytt id-er mellom listene under.
+const GENDER_DAME: string[] = [
+  'bluse', 'cardigan-dame', 'blazer-dame', 'maxikjole', 'denimskjort', 'trenchcoat',
+  'strikkekjole', 'dunvest-dame', 'sommerkjole', 'ullkaape', 'sommerkjole-2', 'singlet', 'kimono',
+  'trenchcoat-beige', 'lang-kjole-gronn', 'lang-kjole-rosa',
+]
+const GENDER_HERRE: string[] = [
+  'hvit-skjorte', 'ullfrakk', 'dunparkas', 'linskjorte', 'badeshorts', 'bomberjakke',
+  'frakk-morkgraa', 'strikkegenser-marine', 'flanellskjorte-brun', 'bomberjakke-svart',
+  'skjorte-lyseblaa', 'blazer-graa', 'parka-gronn', 'skjorte-hvit',
+  'skjorter-stabel', 'flanell-stabel', 'jeans-mork', 'tskjorter-marine-graa', 'gensere-jordtoner', 'flanell-rutet',
+]
+const GENDER_BARN: string[] = [
+  'regnjakke-barn', 'hoodie-barn', 'denimjakke-barn', 'genser-barn', 'sommerkjole-barn',
+  'parkas-barn', 'tskjorte-barn', 'kjeledress-barn', 'dunjakke-roed', 'denim-selebukse',
+]
+const PLAGG_GENDER: Record<string, Gender> = {
+  ...Object.fromEntries(GENDER_DAME.map(id => [id, 'dame' as Gender])),
+  ...Object.fromEntries(GENDER_HERRE.map(id => [id, 'herre' as Gender])),
+  ...Object.fromEntries(GENDER_BARN.map(id => [id, 'barn' as Gender])),
 }
+// Resten (t-skjorter, hoodies, enkle gensere, jeans, skjerf, luer, dun/fleece/
+// softshell/vest, denimjakke, chinos, shorts, cardigan-stabler …) = unisex.
+const genderFor = (id: string): Gender => PLAGG_GENDER[id] ?? 'unisex'
 
 // ANTREKK-PLAGG (ghost-antrekk) er FJERNET fra paletten/plaggdata: rendret over
 // naken dukke avslørte illusjonen (grå kropp skinte gjennom). Erstattet av

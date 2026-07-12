@@ -812,6 +812,31 @@ hver plaggtype i `klesbutikkKatalog.ts`, og `kostFaktor`/`paaslag` i
 paletten. Vurder gender-tildelingen (`genderFor` + settene i `klesbutikkPlagg.ts`)
 og om Dukker skal kunne føres.
 
+### FIKSJOBB — katalogdekning + kjønnsfilter (Espens funn: altfor tynt)
+
+Tre årsaker fikset:
+
+1. **Kjønnsmerking var for gjerrig** (regelen sendte for mye til unisex).
+   **Audit av ALLE 72 sprites visuelt** → gender satt **eksplisitt** i
+   `klesbutikkPlagg.ts` (`GENDER_DAME`/`GENDER_HERRE`/`GENDER_BARN`-lister,
+   resten unisex). Fordeling: **16 dame · 20 herre · 10 barn · 26 unisex**.
+   Dresskjorter/frakk/bomber/parka/flanell = herre; kjoler/bluser/skjørt/kåpe =
+   dame; barnestørrelser = barn; kun genuint nøytrale (t-skjorter, hoodies, enkle
+   gensere, jeans, skjerf/luer, dun/fleece/softshell) = unisex. De 4 herre-brettene
+   + 4 herre-profil-plaggene (ark 04) er herre.
+2. **Filter-semantikk:** kjønnsfilteret **inkluderer unisex** —
+   Herre = herre + unisex, Dame = dame + unisex, Barn = kun barn (barnestørrelser
+   er egne varer), Unisex = kun unisex, Alle = alt (`InnkjopKatalog.tsx`).
+3. **Katalogdekning:** `VARE_TYPER` utvidet fra 18 → **72** (dekker ALLE plagg med
+   sprites). Hver type føres av 1–3 merker etter segmentlogikken (merke-kombiner
+   `M.budget/bred/premium/premOut/outdoor/kvalitet/kids`). Ny kategori `tilbehor`
+   (skjerf/luer); `stabel` erstattet av garment-kategori.
+
+**Verifisert (headless) — plaggtyper per kjønnsfilter:**
+**Alle 72 · Dame 42 · Herre 46 · Barn 10 · Unisex 26** (mål ≥8–10 nådd for
+Dame/Herre/Barn). T-skjorte (unisex) vises under **både Dame og Herre**. 0 grupper
+uten sprite (ingen brutt plaggId). Ingen konsollfeil. `tsc -b` + `vite build` grønt.
+
 ---
 
 ## Verifisering
