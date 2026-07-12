@@ -977,6 +977,44 @@ Spillet-fanen → «Temaer»: slå `Beredskap` på + velg vg1/vg2 for en klasse.
 `/game` som elev med samme klassekode — `useErTemaAktivt('beredskap')` blir sann
 live. Panelets skriving er identisk med den verifiserte `set()`-pathen.
 
+## 26. Søndagsfunn — mentor-intro, dashbord-dup, passord-øye, bransje-gate
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn. Kode
+> committet lokalt, IKKE pushet — kode etter Espens Chrome-validering.**
+> Base: `spor-a/tema-fundament` @ 135af46 (= main 7c27b62 + tema-fundament DEL 1/2)
+> — dvs. «main etter tema-fundament-merge». De 4 fiksene er uavhengige av
+> tema-koden, men bygger oppå den her.
+
+**P1 — Mentor-intro ved spillstart.** Første gang etter oppstartsvalg (én gang
+per lagring, `mentor_intro_v1` i localStorage) presenterer Espen seg STOR midt på
+skjermen (espen-smil, ~46vh) med en 3-stegs sekvens (Neste →, progressprikker,
+«Hopp over»): (1) hvem han er, (2) kom-i-gang-rekkefølgen (lokale → bestill →
+still ut → åpne), (3) de tre hjelperne (💻 Dashbord, mentoren, 📖-boka). På «Kom
+i gang!» krymper han mot hjørnet (framer-motion exit) og faller tilbake til
+vanlig hjørneplass. Gjenbruker Mentor-komponenten; tekstene ligger tunbart i
+`MENTOR_INTRO` (mentorTriggers.ts).
+
+**P2 — duplisert dashbord-knapp fjernet.** Den gamle «🖥️ Dashbord»-knappen nede
+til høyre (bak mentoren, GamePage) er fjernet — Dashbord åpnes nå KUN fra
+topp-HUD-knappen (💻 Dashbord). «Gå til butikken»-snarveien beholdes, og blokka
+gates på `!lokaleId` så den ikke rendrer tomt. Mentoren står fritt i hjørnet.
+
+**P3 — passord-øye i BusinessLab-innlogging.** Ny `PasswordField`-komponent
+(vis/skjul-toggle, 👁/🙈) erstatter alle tre passord-input i `LandingPage`:
+logg inn, registrer og bekreft passord.
+
+**P4 — inaktive bransjer gatet.** Ny tunbar `ACTIVE_INDUSTRIES = ['cafe']` +
+`isIndustryActive()` (industries.ts). I oppstartens bransjevalg vises Klesbutikk /
+Tech & Gadgets / Sports & Fritid nedtonet (grayscale, opacity 0.5) med
+«KOMMER»-merke og `disabled` — kan ikke velges. Kun Kafé & Bakeri er valgbar.
+Klesbutikk slås på ved å legge `'fashion'` i lista når grenen merges.
+
+**Verifisert headless (Playwright):** intro vises én gang (steg 1→2→3 → «Kom i
+gang!» lukker; reload viser den IKKE igjen; «Hopp over» lukker); kun ÉN
+Dashbord-knapp; 👁 toggler passord til tekst (login + 2 i register-modalen);
+bransjevalg viser 3× «KOMMER», Kafé valgbar, Klesbutikk `disabled`. `tsc -b` +
+`vite build` grønn, 0 konsollfeil.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
