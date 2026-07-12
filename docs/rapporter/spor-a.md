@@ -1113,6 +1113,135 @@ HVILE + INTRO = `vanlig` (v5), AKTIV MELDING = `noytral` (v2, var smil), KØ-SIG
 = `peker` (v4) + badge, ORDBOK = `leser` (v3). v1 `smil` er pensjonert fra bruk
 (fila beholdt). Headless bekreftet alle fire tilstander via figurens `src`.
 
+## 29. FIKSRUNDE 2 — Espens valideringsfunn 12.07 (6 deler)
+
+> **Status: bygget. `tsc -b` + `vite build` grønn etter HVER del (ett bygg om
+> gangen, ressursregel). Gren `spor-a/fiksrunde-2` (main urørt) — IKKE merget,
+> venter Espens visuelle validering i Chrome.** Base: main. 6 commits (DEL 1–6).
+> Headless ikke kjørt (Playwright ikke installert lokalt + 5173 nede) —
+> verifisert via tsc/build + måling (DEL 2) + kodegjennomgang. Visuell kvalitet
+> er Espens; sjekklista per del ligger nederst i punktet.
+
+**DEL 1 — «Lær mer» navigerer aldri eleven ut av spillet (kritisk).**
+`HUB_LENKER`-knappene i `HmsTab` brukte `navigate(l.rute)` → samme fane →
+spilltilstanden gikk tapt. Nå `<a target="_blank" rel="noopener noreferrer">` +
+«↗» + hint «Åpnes i ny fane — spillet ditt står trygt her». Verifisert at
+`HmsTab` er ENESTE sted i `src/game/` som lenker til `/learning`-huben (grep);
+øvrige `navigate()`-kall er intern spillnavigasjon (bykart/bydeler). Commit
+`28f69ad`.
+
+**DEL 2 — Mentor: større + pose-normalisert + peker verifisert.**
+- a) `MENTOR_FIGUR_HOYDE = 170` (tunbar) — figuren rendres ~45 % større enn den
+  gamle effektive høyden (~118 px for tett-beskårne poser).
+- b) **Pose-normalisering.** Målte asset-metrikkene med et lite rent-Node
+  PNG-alpha-bbox-skript (`scratchpad/pngbbox.js`): v5 `vanlig` er LØST beskåret
+  (synlig figur 68 % av canvas, fot 80,7 % ned), mens v2/v3/v4 er TETT beskåret
+  (98 %/~99 %). Siden koden skalerte hele canvaset til fast høyde, HOPPET figuren
+  ~44 % i størrelse + baseline ved pose-bytte (Espens funn). `POSE_JUSTERING`
+  (chf/foot per pose) rendrer nå hver pose så synlig figur = 170 px og henger den
+  transparente bunnpaddingen under foten → LIK høyde OG LIK fotlinje uansett pose.
+- c) **Peker verifisert (v4).** Åpnet `espen-peker.png` — korrekt peke-pose:
+  Espen (grå dress, briller, skjegg) med høyre pekefinger opp. Kø→`peker`-mapping
+  + rød «N»-badge + vis-neste-ved-klikk var alt på plass fra P1 (pkt. 27b) og er
+  uendret. **Reproduser kø manuelt i `?dev=1`:** åpne HMS-fanen, bekreft planen
+  (fyrer `beredskap_plan_bekreftet` i køen), lagre risikovurderingen (fyrer
+  `beredskap_risiko_levert`), og utløs så «🔔 Utløs brannalarm (dev)» i åpen dag
+  → flere mentor-meldinger står i kø samtidig. Lukk (✕) den synlige bobla mens
+  minst én venter → figuren skifter til peker-posituren med rød badge «N»; klikk
+  figuren for neste. Commit `6096b98`.
+
+**DEL 3 — Fanene gruppert etter programfag med diskret fargekoding.**
+`FAG_FARGER` (tunbar, ett sted i `DashboardOverlay`), `t.fag` per fane, `TABS`
+sortert så hvert fag ligger samlet. Diskret: 3 px fag-stripe under hver fane
+(tydeligere når aktiv) + liten faglegende under fanelinja. Dagens tema-look
+(teal aktiv-fane) beholdt; HMS beholder tema-gatingen. Fane→fag-mapping (fasit:
+`TEMAER_OG_KOMPETANSEMAL.md`, SSR01-01 VG1 / SSR02-01 VG2):
+
+| Fane | Primærfag (VG1 → VG2) | Farge | Merknad |
+|---|---|---|---|
+| Oversikt | Forretningsdrift → Økonomi og adm. | blå | Driftsdashbord (tverrgående) |
+| Forretningsplan | Forretningsdrift | blå | Etablering |
+| Økonomi | Forretningsdrift | blå | Regnskap/kontantstrøm/lån |
+| Priser | Forretningsdrift | blå | Prising = kalkyle/lønnsomhet; Pris-P sekundært |
+| Målgruppe | Markedsføring og innovasjon → Komm. og markedsføring | lilla | Segmentering |
+| Produkter | Markedsføring og innovasjon | lilla | Produkt-P + sortiment |
+| Lokasjon | Markedsføring og innovasjon | lilla | Plass-P |
+| Markedsføring | Markedsføring og innovasjon | lilla | Promosjon-P |
+| Utstilling | Markedsføring og innovasjon | lilla | Vareeksponering/indre salgsmiljø |
+| Personale | Kultur og samhandling | rosa | Organisering/samhandling (+ lønn = FD sekundært) |
+| HMS | HMS (VG2 eget fag) | rav | Tema-gated (beredskap) |
+| Rapporter / Innboks | Verktøy (tverrgående) | grå | Ikke ett fag |
+
+Commit `311123a`.
+
+**DEL 4 — Brannøvelse: «prøv igjen» som øvelsesmodus.**
+- a) «🎯 Kjør ny brannøvelse» i HMS-fanen, tilgjengelig når temaet er aktivt og
+  planen bekreftet. Samme rekkefølge-øvelse med friske, stokkede kort (remount
+  via `runId`-key), men ØVELSESMODUS: `RESOLVE_BRANNOVELSE` gir INGEN penge-/
+  rykteeffekt og ingen innboks-melding. Tydelig «🎯 ØVELSE · ingen konsekvens»-
+  merke i widgeten.
+- b) Skarp alarm i åpen dag UENDRET (auto-sjanse, maks 1×/mnd, ekte konsekvens);
+  `RESOLVE_BRANNALARM` rørt kun for tom-`messageId`-fallback.
+- c) `state.beredskap.brannovelser` lagrer historikk (rekkefølge, kvalitet,
+  in-game tidspunkt). Seksjonen viser «X av Y forsøk riktige» + siste utfall +
+  drill-konsekvenstekst + grønn/rød sammenligning ETTER levering (delt
+  `BrannalarmSammenligning`-komponent, gjenbrukt i innboksen). VG2-evalueringen
+  gates nå på ETHVERT forsøk (skarp eller øvelse) og refererer siste.
+- d) Dynamisk mentor-trigger `beredskap_ovelse_etter_feil`: fyrer ved første
+  øvelse etter en FEILET skarp alarm — oppmuntrende refleksjon, aldri fasit;
+  leser om den ferske øvelsen gikk bra.
+
+Commit `a28e9e2`.
+
+**DEL 5 — Personale: «Hvem gjør hva?» (rolleoppgaver før org-kart).**
+Personale-fanen har nå to steg (veksler øverst).
+- a) STEG 1: personkort (Daglig leder + hver ansatt) + oppgavepalett (bransjens
+  rolleoppgaver: Salg/Markedsføring/Økonomi-regnskap/Innkjøp/HMS). Dra en oppgave
+  PÅ en person — én person kan ha flere, samme oppgave kan deles. «Outsourcet»-
+  boks tar KUN Økonomi/regnskap → fast månedskostnad `BALANCE.regnskapOutsourcing
+  Mnd = 4000` (tunbar), egen linje «Regnskap (outsourcet)» i månedsoppgjøret via
+  den delte `manedligeFasteKostnader` (så den også vises i Økonomi-fanen).
+- b) STEG 2 = dagens org-kart, uendret motor. «Bruk fordelingen i
+  organisasjonskartet →» dispatcher `SEED_ORG_FROM_TASKS` (union — oppretter
+  funksjoner fra fordelingen, fjerner ingenting; outsourcet økonomi opprettes
+  ikke som intern funksjon) og bytter til steg 2. Eleven endrer alt fritt;
+  tomt-kart-prinsippet består.
+- c) `oppgaveRefleksjoner()` (i `orgRefleksjon.ts`, tunbar terskel
+  `OPPGAVE_REGEL_PARAM.mangeOppgaverTerskel = 4`) reagerer med SPØRSMÅL, aldri
+  fasit: for mange oppgaver på deg selv, outsourcet regnskap, udekt Salg/Økonomi.
+  Fordelingen har INGEN mekanisk effekt denne runden (kun refleksjon +
+  outsourcing-kostnaden) — mekanisk effekt tas i senere balansejobb.
+- d) `personale_fane`-mentortriggeren peker nå på «Hvem gjør hva?» (fyrer ved
+  første åpning av Personale-fanen, som viser steg 1).
+
+Ny state: `oppgaveFordeling: Record<personId, roller>` + `regnskapOutsourcet` på
+`GameState`. Commit `d519c07`.
+
+**DEL 6 — dok.** Ny «Horisont»-seksjon i `TEMAER_OG_KOMPETANSEMAL.md` (pkt. 7):
+(1) kroppsspråk-øvelse (Kultur og samhandling, gjenbruk kunde-sprites),
+(2) risikovurdering per bransje (beredskap-state keyes per bransje når bransje
+2+ aktiveres), (3) hotell som kandidat-bransje via autonom-pipelinen. Kun dok.
+
+### Espens Chrome-sjekkliste (visuell validering per del)
+
+- **DEL 1:** HMS-fanen → «📚 Lær mer»-knappene åpner hub-modulen i NY fane;
+  spill-fanen står urørt med all tilstand.
+- **DEL 2:** På 100 % zoom + 1366×768 — figuren er merkbart større og
+  kolliderer ikke med dashbordet; bytt pose (hvile → aktiv melding → kø/peker →
+  ordbok) og se at figuren IKKE hopper i størrelse eller fotlinje; peke-fingeren
+  synlig i kø-tilstand; badge + peker ved lukket boble med kø (repro over).
+- **DEL 3:** Fag-stripene under fanene + faglegenden; fanene ligger samlet per
+  fag; dagens aktiv-fane-look uendret; HMS-fanen dukker kun opp med temaet på.
+- **DEL 4:** HMS → «Kjør ny brannøvelse» (uten skarp alarm) → «ØVELSE»-merke,
+  ingen penge-/rykteendring; utfall + grønn/rød sammenligning; «X av Y forsøk
+  riktige» oppdateres; kjør flere ganger; skarp alarm i åpen dag fortsatt ekte;
+  (feil skarp alarm → første øvelse etterpå gir oppmuntrende mentormelding).
+- **DEL 5:** Personale → steg 1: dra oppgaver på deg selv/ansatte (flere per
+  person, delt på flere); dra Økonomi/regnskap til Outsourcet → −4 000/mnd-linje
+  i månedsoppgjøret + Økonomi-fanen; refleksjonsspørsmålene endrer seg med
+  fordelingen; «Bruk fordelingen …» → steg 2 har funksjonene forhåndsopprettet
+  og kan endres fritt.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå

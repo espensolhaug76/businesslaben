@@ -162,7 +162,37 @@ skal bygges — de skal KOBLES:
   tema, ellers uendret mekanikk.
 - Org-designerens RolleDef — HMS-/verneombudsrolle er datainnlegg, ikke kode.
 
-## 7. Vedlikehold
+## 7. Horisont (idékandidater — ikke planlagt, ingen kode ennå)
+
+Notert fra fiksrunde 2 (12.07). Rene kandidater — skal utredes/prioriteres før
+bygging, ikke løftes rett til implementasjon.
+
+1. **Kroppsspråk-øvelse (Kultur og samhandling).** Gjenbruk de eksisterende
+   kunde-spritene: vis én kunde og spør «hva utstråler denne kunden?» (åpen,
+   avvisende, stresset, nysgjerrig …). Refleksjon/tolkning — aldri fasit
+   (org-refleksjon-mønsteret) — kobler til kommunikasjon og førsteinntrykk i
+   kundemøtet. Ingen nye assets (spritene finnes, se pkt. 16 i spor-a-rapporten);
+   kan starte som en liten scenariomotor-utvidelse eller et eget mini-tema.
+   Nabomål til salgs-/servicescenariene.
+
+2. **Risikovurdering per bransje (når flere bransjer aktiveres).** I dag er
+   `state.beredskap` én global blokk (implisitt kafé). Risiko og beredskap er
+   BRANSJESPESIFIKKE (kafé: brann/overopphetet kaffemaskin; klesbutikk:
+   tyveri/svinn i prøverom; hotell: gjestesikkerhet/nattevakt). Når bransje 2+
+   slås på må beredskap-staten keyes per bransje (f.eks.
+   `beredskap: Record<Industry, BeredskapState>`), med egne risikorader og
+   brannalarm-tekster per bransje. Migrering: dagens flate state blir kafé-
+   nøkkelen. Berører `types.ts` (BeredskapState-eierskap), `data/beredskap.ts`
+   (tunbart innhold per bransje) og persisteringen (`beredskap_state_v1`).
+
+3. **Hotell som kandidat-bransje via autonom-pipelinen.** Reiseliv er i dag
+   udekket i byspillet; hotell dekker SSR-reiselivsmålene (vertskapsrolle,
+   booking, gjesteservice). Kandidat for den autonome bransje-pipelinen
+   (`docs/BRANSJE_DEFINISJON.md` + `BRANSJE2_*`): egen IndustryDefinition,
+   bilder/soner/scenarier genereres, kobles på samme motorer som kafé. Krever
+   egne by-/interiør-/scenebilder (som klesbutikk-stubben) — ikke gratis.
+
+## 8. Vedlikehold
 
 - Nye temaer registreres i tema-definisjonsfilen og i dette dokumentet.
 - Holdes i sync med docs/KODEKART.md (kodeinventaret).
