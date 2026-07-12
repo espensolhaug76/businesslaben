@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
-import { MENTOR_TRIGGERS, mentorMelding, faneTriggere } from '../data/mentorTriggers'
+import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, MENTOR_INTRO } from '../data/mentorTriggers'
 import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
 import type { GameState } from '../types'
@@ -31,6 +31,15 @@ function loadFired(): Set<string> {
 }
 function saveFired(s: Set<string>) {
   try { localStorage.setItem(KEY, JSON.stringify([...s])) } catch { /* ignore */ }
+}
+
+// INTRO: vises én gang per lagring (localStorage-flagg).
+const INTRO_KEY = 'mentor_intro_v1'
+function introDone(): boolean {
+  try { return localStorage.getItem(INTRO_KEY) === '1' } catch { return false }
+}
+function saveIntroDone() {
+  try { localStorage.setItem(INTRO_KEY, '1') } catch { /* ignore */ }
 }
 
 /** Tilstands-avledede HENDELSES-triggere. Scene-signaler (disk_stell/vindu/
@@ -73,6 +82,9 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const [failedImg, setFailedImg] = useState(false)
   const [ordbokOpen, setOrdbokOpen] = useState(false)
   const [forceShow, setForceShow] = useState(false)   // bruker klikket peker-figuren
+  // INTRO ved spillstart (null = ferdig/skjult, 0..2 = steg). Vises én gang.
+  const [introStep, setIntroStep] = useState<number | null>(() => introDone() ? null : 0)
+  function finishIntro() { saveIntroDone(); setIntroStep(null) }
   const firedRef = useRef(fired); firedRef.current = fired
   // Refs så event-lyttere (mentor:fane) leser FERSKE verdier uten å re-bindes.
   const ordbokOpenRef = useRef(ordbokOpen); ordbokOpenRef.current = ordbokOpen
@@ -163,6 +175,57 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   }
 
   return (
+    <>
+      {/* INTRO ved spillstart — stor Espen midt på skjermen, 3 steg, kan hoppes
+          over; på siste steg «Kom i gang!» krymper han mot hjørnet. */}
+      <AnimatePresence>
+        {introStep !== null && (
+          <motion.div
+            key="mentor-intro"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 600, pointerEvents: 'auto',
+              background: 'rgba(5,8,15,0.85)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              fontFamily: "'Outfit', sans-serif", padding: '1.5rem',
+            }}
+          >
+            <motion.img
+              src={POSE.smil} alt="Espen" draggable={false}
+              initial={{ scale: 0.6, opacity: 0, y: 24 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.22, x: '42vw', y: '42vh', opacity: 0 }}   // krymper mot hjørnet
+              transition={{ type: 'spring', stiffness: 190, damping: 22 }}
+              style={{ height: 'min(46vh, 380px)', width: 'auto', filter: 'drop-shadow(0 12px 30px rgba(0,0,0,0.6))', userSelect: 'none' }}
+            />
+            <div style={{
+              maxWidth: 460, marginTop: 18, textAlign: 'center',
+              background: 'rgba(12,17,29,0.98)', border: '1px solid rgba(0,212,170,0.4)',
+              borderRadius: 16, padding: '1.1rem 1.4rem', color: '#e2e8f0', boxShadow: '0 20px 50px rgba(0,0,0,0.55)',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#00d4aa', letterSpacing: '0.09em', marginBottom: 8 }}>ESPEN</div>
+              <div style={{ fontSize: 15.5, lineHeight: 1.55, minHeight: 72 }}>{renderMelding(MENTOR_INTRO[introStep] ?? '')}</div>
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', margin: '14px 0 2px' }}>
+                {MENTOR_INTRO.map((_, i) => (
+                  <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: i === introStep ? '#00d4aa' : 'rgba(255,255,255,0.22)' }} />
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                <button onClick={finishIntro} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Hopp over
+                </button>
+                <button
+                  onClick={() => introStep < MENTOR_INTRO.length - 1 ? setIntroStep(introStep + 1) : finishIntro()}
+                  style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.55rem 1.5rem', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  {introStep < MENTOR_INTRO.length - 1 ? 'Neste →' : 'Kom i gang!'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     <div style={{ position: 'fixed', right: 14, bottom: 14, zIndex: 500, display: 'flex', alignItems: 'flex-end', gap: 8, fontFamily: "'Outfit', sans-serif", pointerEvents: 'none' }}>
       {/* Snakkeboble */}
       <AnimatePresence>
@@ -247,5 +310,6 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
         >📖</button>
       </div>
     </div>
+    </>
   )
 }

@@ -151,3 +151,13 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
 export function mentorMelding(id: string): string | undefined {
   return MENTOR_TRIGGERS.find(t => t.id === id)?.melding
 }
+
+/** INTRO-SEKVENS ved første spillstart (én gang per lagring): stor Espen midt på
+ *  skjermen, 3 steg med «Neste», kan hoppes over — så krymper han til hjørnet.
+ *  Tunbar tekst (samme mønster som triggerne); [[GLOSSARY_ID|ord]] blir klikkbare.
+ *  Rendres av Mentor.tsx. */
+export const MENTOR_INTRO: string[] = [
+  'Hei! Jeg er Espen — jeg følger deg gjennom hele bedriften din.',
+  'Slik kommer du i gang: finn et ledig lokale i byen, bestill varer, still dem ut i disken — og så åpner du butikken.',
+  'Tre hjelpere er alltid med deg: 💻 Dashbord oppe til høyre, meg her nede i hjørnet, og 📖-boka mi når du lurer på hva et ord betyr.',
+]
