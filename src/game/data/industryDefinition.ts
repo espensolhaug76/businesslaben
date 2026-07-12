@@ -18,6 +18,7 @@
 
 import type { Industry } from '../types'
 import { INDUSTRY_CATALOG, INDUSTRY_META, type IndustryCatalogItem } from './industries'
+import { KLESBUTIKK_KATALOG } from './klesbutikkKatalog'
 import {
   MONTER_TRAU, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, STOREFRONT_HOTSPOTS,
   KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG,
@@ -255,10 +256,10 @@ export const KLESBUTIKK: IndustryDefinition = {
   emoji: INDUSTRY_META.fashion.emoji,
   beskrivelse: INDUSTRY_META.fashion.description,
   startingMoney: INDUSTRY_META.fashion.startingMoney,
-  // Katalogen er TOM med vilje: klesbutikkens sortiment kommer fra en
-  // leverandør-/merkekatalog (docs/BRANSJE2_LEVERANDORER.md) som ikke er
-  // bygget ennå — IKKE gjenbruk av den gamle fashion-tier-katalogen.
-  katalog: [],
+  // Leverandør-/merkekatalog (docs/BRANSJE2_LEVERANDORER.md): plagg × 4 merker
+  // = katalogvarer med ulik costPrice per merke (klesbutikkKatalog.ts). Erstatter
+  // det parkerte tier-systemet — merkeposisjon er kvalitetssignalet.
+  katalog: KLESBUTIKK_KATALOG,
   // Klesbutikk-ordlyd (stub, DEL 2): plagg BESTILLES mot sesong (docs/
   // BRANSJE2_SESONG.md), ikke bakes. Nøytral tekst inntil bransje 2 bygges ut.
   forsyning: {

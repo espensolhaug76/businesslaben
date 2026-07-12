@@ -32,9 +32,14 @@ export interface AntrekkFit {
   perDukke?: Partial<Record<DukkeType, Fit>>
 }
 
+/** Målgruppe-kjønn for et plagg (migrert fra herre-kommentarene). Brukes til
+ *  gender-filter i innkjøpskatalogen + fremtidig persona-scoring. */
+export type Gender = 'dame' | 'herre' | 'barn' | 'unisex'
+
 export interface Plagg {
   id: string
   navn: string
+  gender: Gender
   spriteHengFront?: string
   spriteHengProfil?: string
   spriteBrett?: string
@@ -84,6 +89,26 @@ const BRETT_HERRE_IDS = [
   'jeans-mork', 'tskjorter-marine-graa', 'gensere-jordtoner', 'flanell-rutet',
 ]
 
+// ── Gender per plagg (migrert fra herre-/dame-/barn-kommentarene) ────────────
+// Regelbasert: '-barn'/'-dame'-suffiks vinner; ellers slås id opp i eksplisitte
+// herre/dame/barn-sett; resten er unisex. Tunbart — juster settene under.
+const HERRE_SET = new Set<string>([
+  ...BRETT_HERRE_IDS,
+  'frakk-morkgraa', 'strikkegenser-marine', 'flanellskjorte-brun', 'bomberjakke-svart', // profil ark-04
+  'badeshorts',
+])
+const DAME_SET = new Set<string>([
+  'bluse', 'maxikjole', 'strikkekjole', 'sommerkjole', 'sommerkjole-2', 'ullkaape', 'kimono',
+  'lang-kjole-gronn', 'lang-kjole-rosa',
+])
+const BARN_SET = new Set<string>(['denim-selebukse', 'dunjakke-roed'])
+function genderFor(id: string): Gender {
+  if (id.includes('barn') || BARN_SET.has(id)) return 'barn'
+  if (id.includes('dame') || DAME_SET.has(id)) return 'dame'
+  if (HERRE_SET.has(id)) return 'herre'
+  return 'unisex'
+}
+
 // ANTREKK-PLAGG (ghost-antrekk) er FJERNET fra paletten/plaggdata: rendret over
 // naken dukke avslørte illusjonen (grå kropp skinte gjennom). Erstattet av
 // PÅKLEDDE DUKKER (src/game/data/klesbutikkDukker.ts) som bytter ut den nakne
@@ -93,10 +118,10 @@ const BRETT_HERRE_IDS = [
 // bytte-pathen, men ikke slettet — jf. oppdrag).
 
 export const KLESBUTIKK_PLAGG: Plagg[] = [
-  ...HENG_IDS.map(id => ({ id, navn: navnAv(id), spriteHengFront: P(id) })),
-  ...PROFIL_IDS.map(id => ({ id, navn: navnAv(id), spriteHengProfil: PP(id) })),
-  ...BRETT_IDS.map(id => ({ id, navn: navnAv(id), spriteBrett: P(id) })),
-  ...BRETT_HERRE_IDS.map(id => ({ id, navn: navnAv(id), spriteBrett: P(id) })),
+  ...HENG_IDS.map(id => ({ id, navn: navnAv(id), gender: genderFor(id), spriteHengFront: P(id) })),
+  ...PROFIL_IDS.map(id => ({ id, navn: navnAv(id), gender: genderFor(id), spriteHengProfil: PP(id) })),
+  ...BRETT_IDS.map(id => ({ id, navn: navnAv(id), gender: genderFor(id), spriteBrett: P(id) })),
+  ...BRETT_HERRE_IDS.map(id => ({ id, navn: navnAv(id), gender: genderFor(id), spriteBrett: P(id) })),
 ]
 
 /** Grunnlinje-passform for et antrekk på en gitt dukketype. */
