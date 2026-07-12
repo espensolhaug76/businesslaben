@@ -94,6 +94,28 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Her er byen — og hvor du legger butikken betyr mye. Sentrale, folksomme steder koster mer i leie, men gir flere kunder forbi. Hvor tror du folk går mest?',
   },
 
+  // ── TEMA 1: BEREDSKAP (kun når temaet er aktivt) ────────────────────────────
+  {
+    id: 'tema_beredskap_aktivert',
+    betingelse: 'Temaet Beredskap slås på (via lærerens Spillet-fane)',
+    melding: 'Klassen din jobber med beredskap nå — sjekk den nye 🦺 HMS-fanen i dashbordet. Start med [[RST_003|beredskapsplanen]], så du vet hva du gjør hvis noe skjer.',
+  },
+  {
+    id: 'beredskap_plan_bekreftet',
+    betingelse: 'Eleven bekrefter beredskapsplanen',
+    melding: 'Bra — nå kjenner du planen. Neste steg: fyll ut [[RST_002|risikovurderingen]] i HMS-fanen. Hva kan gå galt i akkurat DIN butikk?',
+  },
+  {
+    id: 'beredskap_risiko_levert',
+    betingelse: 'Eleven har fylt inn tiltak i risikoskjemaet (dynamisk melding leser skjemaet)',
+    melding: 'Du har vurdert risikoen i butikken. Hva er det viktigste tiltaket ditt?',
+  },
+  {
+    id: 'beredskap_brannalarm_handtert',
+    betingelse: 'Eleven har håndtert brannalarmen (dynamisk melding leser valget)',
+    melding: 'Du håndterte brannalarmen. Tenk gjennom hva du gjorde.',
+  },
+
   // ── FANE-TRIGGERE (kontekstbundne) ──────────────────────────────────────────
   // Én per dashbord-fane (`fane`-feltet), første besøk. Vises KUN mens fanen er
   // aktiv (mentor:fane-kanalen i Mentor.tsx), re-armes hvis de ikke rekker frem.

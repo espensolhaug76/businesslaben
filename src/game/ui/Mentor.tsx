@@ -55,8 +55,31 @@ function oppfylt(id: string, s: GameState): boolean {
     case 'forste_ko': return (s.lastDayResult?.koKunder ?? 0) > 0
     case 'forste_p_fullfort': return s.p1_complete || s.p2_complete || s.p3_complete || s.p4_complete
     case 'alle_p_fullfort': return s.p1_complete && s.p2_complete && s.p3_complete && s.p4_complete
+    // TEMA 1: Beredskap (tema_beredskap_aktivert fyres via aktiveTemaer-effekten).
+    case 'beredskap_plan_bekreftet': return s.beredskap.planBekreftet
+    case 'beredskap_risiko_levert': return s.beredskap.risikoRader.some(r => r.tiltak.trim() !== '')
+    case 'beredskap_brannalarm_handtert': return !!s.beredskap.brannalarmUtfall?.valgId
     default: return false
   }
+}
+
+const RISIKO_RANG: Record<string, number> = { lav: 1, middels: 2, høy: 3 }
+
+/** Dynamiske mentor-meldinger som leser elevens egne verdier (beredskap).
+ *  Faller tilbake på den statiske teksten for andre id-er. */
+function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
+  if (id === 'beredskap_risiko_levert') {
+    const verst = [...s.beredskap.risikoRader]
+      .sort((a, b) => (RISIKO_RANG[b.sannsynlighet]! + RISIKO_RANG[b.konsekvens]!) - (RISIKO_RANG[a.sannsynlighet]! + RISIKO_RANG[a.konsekvens]!))[0]
+    if (verst?.fare) return `Du vurderte «${verst.fare}» som en av de største risikoene (${verst.sannsynlighet} sannsynlighet × ${verst.konsekvens} konsekvens). Hva er det viktigste tiltaket ditt akkurat der?`
+  }
+  if (id === 'beredskap_brannalarm_handtert') {
+    const k = s.beredskap.brannalarmUtfall?.kvalitet
+    if (k === 'good') return 'Godt jobbet under brannalarmen — du fulgte planen og satte tryggheten først. Det er nettopp derfor vi øver.'
+    if (k === 'bad') return 'Du valgte å selge videre mens alarmen ulte. Hvorfor tror du butikken har en beredskapsplan i det hele tatt?'
+    if (k === 'warn') return 'Du grep slukkeapparatet. Husk at planen sier «slukk KUN hvis det er trygt» — ellers går evakuering og varsling først. Hva ville du gjort neste gang?'
+  }
+  return mentorMelding(id)
 }
 
 /** Render en melding med [[GLOSSARY_ID|tekst]]-tokens som klikkbare <Fagord>. */
@@ -74,7 +97,7 @@ function renderMelding(melding: string): ReactNode {
 }
 
 export default function Mentor({ blocked }: { blocked: boolean }) {
-  const { state } = useGame()
+  const { state, aktiveTemaer } = useGame()
   const [fired, setFired] = useState<Set<string>>(loadFired)
   const [queue, setQueue] = useState<string[]>([])          // HENDELSES-kø (peker/kø)
   const [faneMsg, setFaneMsg] = useState<string | null>(null)  // KONTEKSTBUNDET fane-melding
@@ -112,6 +135,11 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     for (const t of MENTOR_TRIGGERS) if (oppfylt(t.id, state)) fire(t.id)
   }, [state, fire])
 
+  // TEMA: fyr «tema_beredskap_aktivert» når temaet slås på for klassen.
+  useEffect(() => {
+    if (aktiveTemaer['beredskap']?.aktiv) fire('tema_beredskap_aktivert')
+  }, [aktiveTemaer, fire])
+
   // Scene-signaler (disk_stell/vindu/bykart) → hendelses-kø.
   useEffect(() => {
     const h = (e: Event) => fire((e as CustomEvent).detail?.id)
@@ -145,7 +173,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const hasQueued = queue.length > 0
   const reveal = !blocked || forceShow
   const eventId = reveal && hasQueued ? queue[0]! : null
-  const eventMelding = eventId ? mentorMelding(eventId) : null
+  const eventMelding = eventId ? dynamiskMentorMelding(eventId, state) : null
   eventShowingRef.current = !!eventMelding
   // Fane-melding vises kun mens fanen er aktiv, ikke under ordbok/blokkering.
   const faneMelding = (faneMsg && !ordbokOpen && !blocked) ? mentorMelding(faneMsg) : null
