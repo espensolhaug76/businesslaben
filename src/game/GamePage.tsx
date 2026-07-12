@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { GameProvider, useGame } from './GameContext'
+import { GameProvider, useGame, useErTemaAktivt } from './GameContext'
 import HUD from './ui/HUD'
 import SimulationModal from './ui/SimulationModal'
 import DashboardOverlay from './ui/DashboardOverlay'
@@ -115,6 +115,15 @@ function GameContent() {
     return () => window.removeEventListener('dev:openSalesScenario', handler)
   }, [])
 
+  // TEMA 1 — dev/test-hook: utløs brannalarmen manuelt (reduceren gater åpen dag
+  // + bekreftet plan + maks én gang i måneden). Samme effekt som HMS-fanens
+  // «Utløs brannalarm (dev)»-knapp, men uten dashbord — praktisk for testing.
+  useEffect(() => {
+    const h = () => dispatch({ type: 'TRIGGER_BRANNALARM' })
+    window.addEventListener('dev:brannalarm', h)
+    return () => window.removeEventListener('dev:brannalarm', h)
+  }, [dispatch])
+
   // SPILLKLOKKE (DEL 1): én timer driver den åpne dagen. Leser LIVE-verdier via
   // en ref (intervallet lages én gang). Pauser under salgsscenario, åpent
   // dashbord og aktivt kundemøte. Ved 17:00 (dayMinute >= DAG_VARIGHET) stenges
@@ -131,6 +140,17 @@ function GameContent() {
     }, BALANCE.klokke.tickMs)
     return () => window.clearInterval(iv)
   }, [dispatch])
+
+  // TEMA 1 — BRANNALARM: kan gå i løpet av en åpen dag når temaet er aktivt og
+  // planen er bekreftet, maks én gang per måned. Deterministisk sjanse per dag
+  // (dayNumber-seed) så den ikke spammer. Reduceren gater resten (åpen/plan/mnd).
+  const beredskapAktiv = useErTemaAktivt('beredskap')
+  useEffect(() => {
+    if (!beredskapAktiv || state.dayPhase !== 'åpen' || !state.beredskap.planBekreftet) return
+    if (state.beredskap.brannalarmMnd === state.currentMonth) return
+    const seed = (state.dayNumber * 2654435761) >>> 0
+    if (seed % 100 < 35) dispatch({ type: 'TRIGGER_BRANNALARM' })
+  }, [beredskapAktiv, state.dayPhase, state.dayNumber, state.currentMonth, state.beredskap.planBekreftet, state.beredskap.brannalarmMnd, dispatch])
 
   if (state.phase === 'startup') {
     if (IS_DEV_SKIP) return null
