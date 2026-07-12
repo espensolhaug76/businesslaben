@@ -45,6 +45,12 @@ export const BALANCE = {
   /** Hver bakgrunnskunde kjøper 1–2 varer: P(2 varer), ellers 1. */
   sannsynlighetToVarer: 0.5,
 
+  /** PERSONALE / DEL 5 (fiksrunde 2): fast månedskostnad når regnskapet er satt
+   *  ut til en regnskapsfører («Outsourcet»-boksen i «Hvem gjør hva?»). Trekkes
+   *  i månedsoppgjøret som egen linje. Realistisk størrelsesorden for en liten
+   *  norsk bedrift (regnskapsfører ~3 000–6 000 kr/mnd). Tunbar. */
+  regnskapOutsourcingMnd: 4000,
+
   /** SPILLKLOKKE — klokka eier den åpne dagen (09:00–17:00). Tempo: tickMs
    *  sanntid per tikk, minutterPerTick spillminutter per tikk. Default:
    *  480 spillminutter / (1 min pr 0,75 s) = 360 s ≈ 6 min åpen dag

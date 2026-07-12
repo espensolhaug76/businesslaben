@@ -74,3 +74,38 @@ export function evaluerRefleksjon(k: OrgKontekst): RefleksjonRegel[] {
 export function toppRefleksjon(k: OrgKontekst): string | null {
   return evaluerRefleksjon(k)[0]?.spørsmål ?? null
 }
+
+// ─── DEL 5 (fiksrunde 2) — «Hvem gjør hva?» (steg 1) refleksjon ────────────────
+// Reager på OPPGAVEFORDELINGEN med SPØRSMÅL, aldri fasit. Ingen mekanisk effekt
+// denne runden — mange oppgaver på én person gir kun refleksjon (mekanisk effekt
+// tas i en senere balansejobb). Tunbare terskler i OPPGAVE_REGEL_PARAM.
+export const OPPGAVE_REGEL_PARAM = {
+  /** Antall oppgaver på ÉN person før «for mye på én»-spørsmålet slår ut. */
+  mangeOppgaverTerskel: 4,
+}
+
+export interface OppgaveKontekst {
+  /** personId ('meg' = daglig leder, ellers employee.id) → tildelte oppgaveroller. */
+  fordeling: Record<string, EmployeeRole[]>
+  regnskapOutsourcet: boolean
+  /** Kjerneoppgaver å sjekke dekning for (id + visningsnavn). */
+  kjerneOppgaver: { id: EmployeeRole; navn: string }[]
+}
+
+/** Refleksjonsspørsmål om oppgavefordelingen (viktigst først, maks 4). */
+export function oppgaveRefleksjoner(k: OppgaveKontekst): string[] {
+  const q: string[] = []
+  const lederOppg = k.fordeling['meg'] ?? []
+  if (lederOppg.length >= OPPGAVE_REGEL_PARAM.mangeOppgaverTerskel)
+    q.push(`Du har lagt ${lederOppg.length} oppgaver på deg selv — hva skjer i rushet når alt henger på én person?`)
+  if (k.regnskapOutsourcet)
+    q.push('Du satte regnskapet ut til en regnskapsfører — hva vinner du tid til, og hva mister du oversikt over?')
+  // Udekte kjerneoppgaver (ingen person har dem, og ikke satt ut).
+  const dekket = new Set<EmployeeRole>()
+  for (const roller of Object.values(k.fordeling)) for (const r of roller) dekket.add(r)
+  for (const opp of k.kjerneOppgaver) {
+    if (opp.id === 'okonom' && k.regnskapOutsourcet) continue
+    if (!dekket.has(opp.id)) q.push(`Ingen har fått «${opp.navn}» — hvem tar den når det trengs?`)
+  }
+  return q.slice(0, 4)
+}

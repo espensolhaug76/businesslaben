@@ -4,6 +4,7 @@
 // stemmer overens med det som faktisk trekkes fra kassa.
 
 import type { GameState, Loan } from '../types'
+import { BALANCE } from './balance'
 
 /** Fast «forsikring/div.»-post per måned (samme tall kontantstrømmen har vist). */
 export const FORSIKRING_MND = 2000
@@ -65,7 +66,7 @@ export function amortiserLaan(loans: Loan[]): AmortiseringsResultat {
  *  urørt). Når lån kobles inn i dagssyklusen må avdrag legges til her SAMMEN med
  *  nedskriving av `loans[].remainingBalance`. */
 export function manedligeFasteKostnader(
-  state: Pick<GameState, 'monthlyRent' | 'monthlyPayroll' | 'marketingBudget'>,
+  state: Pick<GameState, 'monthlyRent' | 'monthlyPayroll' | 'marketingBudget' | 'regnskapOutsourcet'>,
 ): { linjer: { navn: string; belop: number }[]; sum: number } {
   const markedsforing = Object.values(state.marketingBudget).reduce((s, v) => s + v, 0)
   const linjer = [
@@ -74,5 +75,7 @@ export function manedligeFasteKostnader(
     { navn: 'Forsikring/div.', belop: FORSIKRING_MND },
     { navn: 'Markedsføring', belop: markedsforing },
   ]
+  // DEL 5: outsourcet regnskap = egen fast månedslinje (tunbar i balance.ts).
+  if (state.regnskapOutsourcet) linjer.push({ navn: 'Regnskap (outsourcet)', belop: BALANCE.regnskapOutsourcingMnd })
   return { linjer, sum: linjer.reduce((s, k) => s + k.belop, 0) }
 }

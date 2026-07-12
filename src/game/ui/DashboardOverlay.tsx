@@ -13,7 +13,7 @@ import HmsTab from './HmsTab'
 import BrannalarmOvelse, { BrannalarmSammenligning } from './BrannalarmOvelse'
 import { BRANNALARM } from '../data/beredskap'
 import { BALANCE } from '../data/balance'
-import { aktiveFunksjoner, evaluerRefleksjon } from '../data/orgRefleksjon'
+import { aktiveFunksjoner, evaluerRefleksjon, oppgaveRefleksjoner } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
 import type { Loan } from '../types'
 
@@ -1969,7 +1969,37 @@ function hhmm(min: number): string { return `${String(Math.floor(min / 60)).padS
 // benk↔funksjon) eller en funksjon (dra ut = fjern).
 type OrgDrag = { kind: 'nyRolle' | 'emp' | 'funksjon'; id: string }
 
+// ── PERSONALE-fanen: to steg (DEL 5, fiksrunde 2) ─────────────────────────────
+// STEG 1 «Hvem gjør hva?» (rolleoppgaver på personer) → STEG 2 org-kartet.
+// Steg 1 er utgangspunktet, ikke en lås — eleven kan endre alt i steg 2.
 function PersonaleTab() {
+  const [steg, setSteg] = useState<1 | 2>(1)
+  return (
+    <div>
+      <div style={{ marginBottom: '1.1rem' }}>
+        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Personale</h3>
+        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0.7rem' }}>
+          Først: hvem gjør hva? I en liten bedrift har som regel én person flere
+          roller. Deretter bygger du organisasjonskartet.
+        </p>
+        {/* Steg-veksler */}
+        <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: 3, gap: 3 }}>
+          {([[1, '① Hvem gjør hva?'], [2, '② Organisasjonskart']] as const).map(([n, label]) => (
+            <button key={n} onClick={() => setSteg(n)} style={{
+              background: steg === n ? 'rgba(0,212,170,0.14)' : 'transparent',
+              border: `1px solid ${steg === n ? '#00d4aa' : 'transparent'}`,
+              borderRadius: 8, padding: '0.35rem 0.9rem', cursor: 'pointer', fontFamily: 'inherit',
+              color: steg === n ? '#00d4aa' : '#94a3b8', fontSize: 12.5, fontWeight: 700,
+            }}>{label}</button>
+          ))}
+        </div>
+      </div>
+      {steg === 1 ? <HvemGjorHvaSteg onNeste={() => setSteg(2)} /> : <OrgKartSteg />}
+    </div>
+  )
+}
+
+function OrgKartSteg() {
   const { state, dispatch } = useGame()
   const [role, setRole] = useState<EmployeeRole>('selger')
   const [level, setLevel] = useState<EmployeeLevel>('junior')
@@ -2020,14 +2050,12 @@ function PersonaleTab() {
 
   return (
     <div>
-      <div style={{ marginBottom: '1.1rem' }}>
-        <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Personale</h3>
-        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
-          Bygg organisasjonen selv: dra roller fra paletten inn i kartet for å
-          opprette funksjoner → ansett inn i dem → sett Salg på vakt. Lønn
-          trekkes månedlig — også for udisponerte.
-        </p>
-      </div>
+      <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 1.1rem' }}>
+        Bygg organisasjonen selv: dra roller fra paletten inn i kartet for å
+        opprette funksjoner → ansett inn i dem → sett Salg på vakt. Lønn
+        trekkes månedlig — også for udisponerte. (Steg 1 fylte inn et
+        utgangspunkt — endre fritt.)
+      </p>
 
       {/* ORG-KART — starter tomt (kun Daglig leder); eleven bygger det ut. */}
       <SectionTittel emoji="🏢" tekst="Organisasjonskart" />
@@ -2300,6 +2328,144 @@ function PersonaleTab() {
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── STEG 1 «Hvem gjør hva?» ───────────────────────────────────────────────────
+// Personkort (Daglig leder + ansatte) og en oppgavepalett (rolleoppgavene fra
+// bransjen). Dra en oppgave PÅ en person — én person kan ha flere, samme oppgave
+// kan deles. Egen «Outsourcet»-boks tar KUN Økonomi/regnskap (fast månedskostnad).
+// Ingen mekanisk effekt (unntatt outsourcing-kostnaden) — kun refleksjon + seed
+// til org-kartet i steg 2.
+function oppgaveNavn(r: RolleDef): string {
+  return r.id === 'okonom' ? 'Økonomi/regnskap' : r.funksjon
+}
+
+function HvemGjorHvaSteg({ onNeste }: { onNeste: () => void }) {
+  const { state, dispatch } = useGame()
+  const [dragRole, setDragRole] = useState<EmployeeRole | null>(null)
+  const [over, setOver] = useState<string | null>(null)
+
+  const alleRoller = getActiveIndustryDefinition().roller
+  const fordeling = state.oppgaveFordeling ?? {}
+  const personer = [
+    { id: 'meg', navn: 'Deg', undertittel: 'Daglig leder', emoji: '👑', farge: '#ffd700' },
+    ...state.employees.map(e => ({ id: e.id, navn: e.navn, undertittel: LEVEL_INFO[e.level].label, emoji: '🧑', farge: '#94a3b8' })),
+  ]
+
+  function sone(key: string, accept: boolean, drop: () => void) {
+    return {
+      onDragOver: (e: React.DragEvent) => { if (dragRole && accept) { e.preventDefault(); setOver(key) } },
+      onDragLeave: () => setOver(o => (o === key ? null : o)),
+      onDrop: (e: React.DragEvent) => { e.preventDefault(); if (dragRole && accept) drop(); setDragRole(null); setOver(null) },
+    }
+  }
+
+  const refleksjoner = oppgaveRefleksjoner({
+    fordeling, regnskapOutsourcet: state.regnskapOutsourcet,
+    kjerneOppgaver: [{ id: 'selger', navn: 'Salg' }, { id: 'okonom', navn: 'Økonomi/regnskap' }],
+  })
+
+  function chip(r: RolleDef, onFjern: () => void) {
+    return (
+      <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: `${r.farge}1e`, border: `1px solid ${r.farge}55`, borderRadius: 99, padding: '1px 4px 1px 8px', fontSize: 11, fontWeight: 700, color: '#f1f5f9' }}>
+        {r.emoji} {oppgaveNavn(r)}
+        <button onClick={onFjern} title="Fjern oppgave" style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, lineHeight: 1, padding: '0 2px', fontFamily: 'inherit' }}>✕</button>
+      </span>
+    )
+  }
+
+  return (
+    <div>
+      {/* OPPGAVEPALETT */}
+      <SectionTittel emoji="🧩" tekst="Oppgavepalett — dra en oppgave på en person" />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginBottom: '1.3rem' }}>
+        {alleRoller.map(r => (
+          <div key={r.id} draggable onDragStart={() => setDragRole(r.id)} onDragEnd={() => { setDragRole(null); setOver(null) }}
+            title="Dra på en person (eller Økonomi/regnskap til Outsourcet)"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'grab', background: `${r.farge}12`, border: `1px solid ${r.farge}40`, borderRadius: 8, padding: '0.4rem 0.7rem' }}>
+            <span style={{ fontSize: 15 }}>{r.emoji}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>{oppgaveNavn(r)}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* PERSONKORT */}
+      <SectionTittel emoji="🧑‍🤝‍🧑" tekst="Hvem gjør hva?" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.6rem', marginBottom: '1.2rem' }}>
+        {personer.map(p => {
+          const roller = (fordeling[p.id] ?? []).map(id => alleRoller.find(r => r.id === id)).filter(Boolean) as RolleDef[]
+          const aktiv = over === `p_${p.id}`
+          return (
+            <div key={p.id} {...sone(`p_${p.id}`, !!dragRole, () => dispatch({ type: 'SET_OPPGAVE', personId: p.id, roleId: dragRole!, on: true }))}
+              style={{ background: aktiv ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${aktiv ? '#00d4aa' : `${p.farge}55`}`, borderRadius: 12, padding: '0.6rem', minHeight: 96, transition: 'background 0.12s, border 0.12s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: 16 }}>{p.emoji}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.navn}</div>
+                  <div style={{ fontSize: 9.5, color: '#64748b' }}>{p.undertittel}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {roller.length > 0
+                  ? roller.map(r => chip(r, () => dispatch({ type: 'SET_OPPGAVE', personId: p.id, roleId: r.id, on: false })))
+                  : <span style={{ fontSize: 10, color: '#475569', fontStyle: 'italic' }}>Dra oppgaver hit …</span>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* OUTSOURCET-BOKS (kun Økonomi/regnskap) */}
+      <SectionTittel emoji="🏦" tekst="Outsourcet — sett bort til andre" />
+      {(() => {
+        const okonom = alleRoller.find(r => r.id === 'okonom')
+        const aktiv = over === 'outsourced'
+        const kanTaImot = dragRole === 'okonom'
+        return (
+          <div {...sone('outsourced', kanTaImot, () => dispatch({ type: 'SET_REGNSKAP_OUTSOURCET', on: true }))}
+            style={{ background: aktiv ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.02)', border: `1px dashed ${aktiv ? '#f59e0b' : 'rgba(245,158,11,0.4)'}`, borderRadius: 12, padding: '0.7rem 0.8rem', marginBottom: '1.3rem' }}>
+            {state.regnskapOutsourcet && okonom ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {chip(okonom, () => dispatch({ type: 'SET_REGNSKAP_OUTSOURCET', on: false }))}
+                  <span style={{ fontSize: 12, color: '#cbd5e1' }}>Regnskapsfører håndterer regnskapet.</span>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#f59e0b' }}>−{formatKr(BALANCE.regnskapOutsourcingMnd)}/mnd</span>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                Dra <strong style={{ color: '#f1f5f9' }}>Økonomi/regnskap</strong> hit for å sette det ut til en regnskapsfører
+                — fast kostnad {formatKr(BALANCE.regnskapOutsourcingMnd)}/mnd, egen linje i månedsoppgjøret. (Kun regnskapet kan settes ut.)
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* REFLEKSJON (spørsmål, aldri fasit) */}
+      <div style={{ background: 'rgba(56,189,248,0.05)', border: '1px solid rgba(56,189,248,0.22)', borderRadius: 12, padding: '0.85rem 1rem', marginBottom: '1.3rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: '#7dd3fc', letterSpacing: '0.03em' }}>🔍 TENK GJENNOM FORDELINGEN</div>
+        {refleksjoner.length > 0 ? (
+          refleksjoner.map((sp, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#cbd5e1', lineHeight: 1.45 }}>
+              <span style={{ flexShrink: 0 }}>🤔</span><span>{sp}</span>
+            </div>
+          ))
+        ) : (
+          <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.45 }}>🤔 Fordel oppgavene på personene — så kommer det noen spørsmål å tenke over.</div>
+        )}
+      </div>
+
+      {/* NESTE → seed org-kartet fra fordelingen */}
+      <button onClick={() => { dispatch({ type: 'SEED_ORG_FROM_TASKS' }); onNeste() }}
+        style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.7rem 1.6rem', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+        Bruk fordelingen i organisasjonskartet →
+      </button>
+      <p style={{ fontSize: 11, color: '#64748b', margin: '0.55rem 0 0' }}>
+        Oppgavene du har fordelt opprettes som funksjoner i kartet. Du kan endre alt der — dette er bare et utgangspunkt.
+      </p>
     </div>
   )
 }

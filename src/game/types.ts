@@ -569,6 +569,14 @@ export interface GameState {
    *  org-kartet ved å dra rollekort inn. Tomt = kartet har kun Daglig leder.
    *  Ansettelse er kun mulig for roller som finnes her. */
   orgRoller: EmployeeRole[]
+  /** DEL 5 (fiksrunde 2) — STEG 1 «Hvem gjør hva?»: personId ('meg' = daglig
+   *  leder, ellers employee.id) → tildelte rolleoppgaver. Rein rolle-planlegging;
+   *  INGEN mekanisk effekt denne runden (kun refleksjon + utgangspunkt for
+   *  org-kartet i steg 2). */
+  oppgaveFordeling: Record<string, EmployeeRole[]>
+  /** Regnskap/Økonomi satt ut til regnskapsfører («Outsourcet»-boksen) — fast
+   *  månedskostnad (balance.regnskapOutsourcingMnd), egen linje i oppgjøret. */
+  regnskapOutsourcet: boolean
 
   // Target audience
   targetAudience: {

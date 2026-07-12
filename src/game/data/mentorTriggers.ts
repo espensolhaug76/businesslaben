@@ -151,9 +151,9 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
   },
   {
     id: 'personale_fane',
-    betingelse: 'Første gang Personale-fanen åpnes',
+    betingelse: 'Første gang Personale-fanen åpnes (viser steg 1 «Hvem gjør hva?»)',
     fane: 'personale',
-    melding: 'Folk på jobb er både god service OG en [[ECO_007|fast kostnad]] som løper uansett omsetning. Flere hender gir mer kapasitet i rushet, men lønna skal betales hver dag. Hvor mange trenger du egentlig?',
+    melding: 'Start med «Hvem gjør hva?» — i en liten bedrift har som regel én person flere roller. Dra oppgavene på deg selv og de ansatte, eller sett regnskapet ut. Folk er både god service OG en [[ECO_007|fast kostnad]]. Hvem skal gjøre hva hos DEG?',
   },
   {
     id: 'okonomi_fane',

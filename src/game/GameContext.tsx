@@ -171,6 +171,8 @@ const initialState: GameState = {
   monthlyPayroll: 0,
   playerShift: null,
   orgRoller: [],
+  oppgaveFordeling: {},
+  regnskapOutsourcet: false,
 
   targetAudience: {
     geography: null,
@@ -271,6 +273,10 @@ type Action =
   | { type: 'SET_PLAYER_SHIFT'; vakt: Shift | null }
   | { type: 'CREATE_ORG_ROLE'; roleId: EmployeeRole }
   | { type: 'REMOVE_ORG_ROLE'; roleId: EmployeeRole }
+  // DEL 5 — «Hvem gjør hva?» (steg 1): oppgavefordeling + outsourcing + seed.
+  | { type: 'SET_OPPGAVE'; personId: string; roleId: EmployeeRole; on: boolean }
+  | { type: 'SET_REGNSKAP_OUTSOURCET'; on: boolean }
+  | { type: 'SEED_ORG_FROM_TASKS' }
   | { type: 'APPLY_MONTH_RESULT'; result: MonthResult }
   | { type: 'ADD_MESSAGE'; message: InboxMessage }
   | { type: 'READ_MESSAGE'; id: string }
@@ -809,6 +815,33 @@ function reducer(state: GameState, action: Action): GameState {
     case 'REMOVE_ORG_ROLE':
       if (state.employees.some(e => e.grenId === action.roleId)) return state
       return { ...state, orgRoller: state.orgRoller.filter(r => r !== action.roleId) }
+
+    // ── DEL 5 — «Hvem gjør hva?» (steg 1) ─────────────────────────────────────
+    // Rein planlegging: tildel/fjern en rolleoppgave på en person. Én person kan
+    // ha flere; samme oppgave kan deles av flere. Ingen mekanisk effekt.
+    case 'SET_OPPGAVE': {
+      const fordeling = state.oppgaveFordeling ?? {}
+      const cur = fordeling[action.personId] ?? []
+      const next = action.on
+        ? (cur.includes(action.roleId) ? cur : [...cur, action.roleId])
+        : cur.filter(r => r !== action.roleId)
+      return { ...state, oppgaveFordeling: { ...fordeling, [action.personId]: next } }
+    }
+
+    // Kun Økonomi/regnskap kan settes ut; fast månedskostnad i oppgjøret.
+    case 'SET_REGNSKAP_OUTSOURCET':
+      return { ...state, regnskapOutsourcet: action.on }
+
+    // Steg 1 → steg 2: opprett funksjoner fra oppgavefordelingen. UNION — fjerner
+    // ingenting eleven alt har i kartet (utgangspunkt, ikke lås). Outsourcet
+    // økonomi opprettes IKKE som intern funksjon.
+    case 'SEED_ORG_FROM_TASKS': {
+      const tildelte = new Set<string>()
+      for (const roller of Object.values(state.oppgaveFordeling ?? {})) for (const r of roller) tildelte.add(r)
+      if (state.regnskapOutsourcet) tildelte.delete('okonom')
+      const merged = [...new Set<string>([...state.orgRoller, ...tildelte])]
+      return { ...state, orgRoller: merged }
+    }
 
     case 'APPLY_MONTH_RESULT': {
       const r = action.result
