@@ -1036,7 +1036,8 @@ til egne. Alt i `state.beredskap`, ingen retting.
 `evakuering` (RST_004) lagt til i glossary (VGS-nivå, example + common_mistake)
 og markert i HMS-fanen med `<Fagord>`. (`Risikomatrise`/`HMS` fantes fra før.)
 
-**DEL 3 — Brannalarm-hendelse**: spawnes i innboksen i en åpen dag (auto-sjanse
+**DEL 3 — Brannalarm-hendelse** (3-valget under er ERSTATTET av rekkefølge-
+øvelsen i pkt. 27b/P5 — behold avsnittet som historikk): spawnes i innboksen i en åpen dag (auto-sjanse
 per dag, deterministisk seed; + `dev:brannalarm`-hook og HMS-fanens dev-knapp),
 KUN når temaet er aktivt + planen bekreftet, maks 1×/måned (reducer-gate). 3 valg
 — (1) følg planen (good: lite tap, +rykte), (2) selg videre (bad: −rykte), (3)
@@ -1060,6 +1061,47 @@ dag → 3 valg → «Følg planen» gir god-utfall (rykte 50→53, −300 kr, fa
 interpolering). Tema PÅ (VG2) = refleksjonsfelt + «Legg til egen rad» synlige.
 `tema_beredskap_aktivert`-mentormeldingen bekreftet i skjermbilde. `tsc -b` +
 `vite build` grønn.
+
+### 27b. Fiksjobb — Espens valideringsfunn (5 stk)
+
+> **Status: bygget + verifisert headless. `tsc -b` + `vite build` grønn.** Gren
+> `spor-a/tema-beredskap` (main urørt) — IKKE merget, venter Espens re-validering.
+> 4 commits (`cc74b43` kjerne · `4076d61` P5 · `6cba24c` P2/P3 · `1160c76` P1).
+
+- **P1 — mentor-bobler stables aldri.** Kun én boble om gangen; ny melding mens
+  en vises ⇒ køes. Lukker eleven den synlige, går figuren i PEKER-positur med rød
+  «N»-badge; neste vises først når figuren klikkes (`Mentor.tsx`: `paused`/`venter`
+  /`badge`, `dismiss`/`figureClick`). Gjelder ALLE mentor-meldinger.
+- **P2 — elevens eget bidrag i planen.** Fritekst «Ditt tillegg for DIN butikk»
+  per plan-avsnitt (`planTillegg` på `BeredskapState`, `SET_PLAN_TILLEGG`).
+  Valgfritt VG1; VG2 krever minst ett før bekreftelse. `beredskap_plan_bekreftet`-
+  mentormeldingen siterer tillegget.
+- **P3 — lagre-feedback + Espen driver flyten.** «Lagre vurdering»-knapp på
+  risikoskjemaet med synlig «✓ Lagret» (`risikoLagret`, `LAGRE_RISIKO`). Etter
+  plan-bekreftelse og risiko-lagring peker mentoren aktivt til neste steg (via
+  P1-køen).
+- **P4 — persistert beredskaps-state.** Hele `state.beredskap` (bekreftelse,
+  tillegg, risikorader, refleksjon, øvelses-utfall) lagres i localStorage
+  (`beredskap_state_v1`), lastes ved reducer-init og **bevares gjennom
+  `START_GAME`** — overlever reload (samme «overlever alt» som mentor-fired-set).
+- **P5 — brannalarm som REKKEFØLGE-ØVELSE** (erstatter 3-valget; «følg planen» var
+  for åpenbart). Alarmen går → 7 handlingskort i tilfeldig rekkefølge, eleven drar
+  5 inn i en nummerert plan (1–5). 5 riktige speiler plan-punktene + 2 fristende
+  distraktorer («Redd kassaoppgjøret», «Post en story»). Diskret 60s-nedtelling
+  (tunbar `BRANNALARM_SEKUNDER`; tiden ut ⇒ leveres det som ligger). Ingen fasit
+  underveis: eleven leverer → utfallet FORTELLES som konsekvens (riktig ⇒ trygg
+  evakuering/lite tap/+rykte; distraktor el. varsling ikke først ⇒ kaos/−rykte) og
+  VISER så elevens rekkefølge ved siden av planens, grønt/rødt per plass («se selv
+  hvor det skar seg»). Ingen poeng. (`beredskap.ts` data + `vurderBrannalarm`,
+  `BrannalarmOvelse.tsx`, innboks-integrasjon i `DashboardOverlay`.)
+
+**Verifisert headless (Playwright, VG2):** plan-bekreft blokkert uten tillegg →
+åpnes med tillegg → `planBekreftet`; «Lagre vurdering» → `risikoLagret`+«✓ Lagret»;
+brannalarm i åpen dag → øvelse (5 slots, live 60s-nedtelling 60→57), 5 riktige →
+trygt utfall (rykte 50→53) + grønn sammenligning; distraktor først → kaos-utfall
+(`kvalitet:'bad'`); alt `state.beredskap` overlever reload. Mentor-kø: 3 køede
+triggere → 1 boble; dismiss → badge «2» + peker; figurklikk → neste boble (siterer
+elevens tillegg + peker videre). `tsc -b` + `vite build` grønn.
 
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
