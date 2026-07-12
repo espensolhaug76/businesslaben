@@ -632,14 +632,19 @@ export interface GameState {
 export interface BeredskapState {
   /** Eleven har lest og bekreftet beredskapsplanen. */
   planBekreftet: boolean
+  /** Elevens eget tillegg per plan-avsnitt (brann/ulykke/trussel). Valgfritt på
+   *  VG1; VG2 krever minst ett før bekreftelse. */
+  planTillegg: Record<string, string>
   /** VG2-refleksjon knyttet til planen (fritekst). */
   planRefleksjon: { storsteRisiko: string; leggeTil: string }
   /** Risikoskjemaet (4 startrader; VG2 kan legge til egne). */
   risikoRader: RisikoRad[]
+  /** Eleven har trykt «Lagre vurdering» (kvittering + driver mentor-flyten). */
+  risikoLagret: boolean
   /** currentMonth da brannalarmen sist gikk (maks én gang per måned). */
   brannalarmMnd: number | null
-  /** Elevens valg + utfall for siste brannalarm (null før håndtert). */
-  brannalarmUtfall: { valgId: string; kvalitet: BrannalarmKvalitet; ekte: boolean } | null
+  /** Elevens rekkefølge + utfall for siste brannalarm (null før håndtert). */
+  brannalarmUtfall: { rekkefolge: string[]; kvalitet: BrannalarmKvalitet; ekte: boolean } | null
   /** VG2 brannøvelse-evaluering (fritekst, etter håndtert alarm). */
   brannovelseEval: { q0: string; q1: string } | null
 }

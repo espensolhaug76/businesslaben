@@ -11,7 +11,7 @@ import type {
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
 import type { RisikoRad } from './data/beredskap'
-import { RISIKO_RADER_DEFAULT, BRANNALARM, brannalarmValg } from './data/beredskap'
+import { RISIKO_RADER_DEFAULT, BRANNALARM, vurderBrannalarm } from './data/beredskap'
 import { EVENT_POOL } from '../strategies/innovation/eventPool'
 import { getEventsForMonth } from '../strategies/innovation/eventEngine'
 import { updateFlags } from '../strategies/innovation/flagSystem'
@@ -217,8 +217,10 @@ const initialState: GameState = {
   },
   beredskap: {
     planBekreftet: false,
+    planTillegg: {},
     planRefleksjon: { storsteRisiko: '', leggeTil: '' },
     risikoRader: RISIKO_RADER_DEFAULT.map(r => ({ ...r })),
+    risikoLagret: false,
     brannalarmMnd: null,
     brannalarmUtfall: null,
     brannovelseEval: null,
@@ -230,10 +232,12 @@ const initialState: GameState = {
 type Action =
   // ── TEMA 1: Beredskap ──
   | { type: 'CONFIRM_BEREDSKAP_PLAN' }
+  | { type: 'SET_PLAN_TILLEGG'; seksjon: string; verdi: string }
   | { type: 'SET_BEREDSKAP_REFLEKSJON'; felt: 'storsteRisiko' | 'leggeTil'; verdi: string }
   | { type: 'SET_RISIKO_RADER'; rader: RisikoRad[] }
+  | { type: 'LAGRE_RISIKO' }
   | { type: 'TRIGGER_BRANNALARM' }
-  | { type: 'RESOLVE_BRANNALARM'; valgId: string; messageId: string }
+  | { type: 'RESOLVE_BRANNALARM'; rekkefolge: string[]; messageId: string }
   | { type: 'SET_BRANNOVELSE_EVAL'; q0: string; q1: string }
   | { type: 'SET_PHASE'; phase: GamePhase }
   | { type: 'START_GAME'; companyName: string; industry: Industry; businessModel?: BusinessModel; finansiering?: GameFlags['finansieringStart']; personlighet?: GameFlags['personlighet'] }
@@ -334,6 +338,10 @@ function reducer(state: GameState, action: Action): GameState {
     case 'START_GAME':
       return {
         ...initialState,
+        // Beredskap persisteres i localStorage og lastes ved init — bevar det
+        // gjennom START_GAME (samme «overlever alt»-oppførsel som mentor-
+        // triggernes fired-set), slik at temaarbeid ikke nullstilles ved reload.
+        beredskap: state.beredskap,
         companyName: action.companyName,
         industry: action.industry,
         money: STARTING_MONEY[action.industry],
@@ -648,11 +656,18 @@ function reducer(state: GameState, action: Action): GameState {
     case 'CONFIRM_BEREDSKAP_PLAN':
       return { ...state, beredskap: { ...state.beredskap, planBekreftet: true } }
 
+    case 'SET_PLAN_TILLEGG':
+      return { ...state, beredskap: { ...state.beredskap, planTillegg: { ...state.beredskap.planTillegg, [action.seksjon]: action.verdi } } }
+
     case 'SET_BEREDSKAP_REFLEKSJON':
       return { ...state, beredskap: { ...state.beredskap, planRefleksjon: { ...state.beredskap.planRefleksjon, [action.felt]: action.verdi } } }
 
     case 'SET_RISIKO_RADER':
-      return { ...state, beredskap: { ...state.beredskap, risikoRader: action.rader } }
+      // Endring nullstiller lagret-kvitteringen (eleven må lagre på nytt).
+      return { ...state, beredskap: { ...state.beredskap, risikoRader: action.rader, risikoLagret: false } }
+
+    case 'LAGRE_RISIKO':
+      return { ...state, beredskap: { ...state.beredskap, risikoLagret: true } }
 
     case 'TRIGGER_BRANNALARM': {
       // Spawnes i innboksen KUN i åpen dag, når planen er bekreftet og alarmen
@@ -670,23 +685,24 @@ function reducer(state: GameState, action: Action): GameState {
         date: `Dag ${state.dayNumber} · Måned ${state.currentMonth}`,
         read: false,
         competenceGoal: 'Beredskap og risiko (VG1/VG2 HMS)',
-        choices: BRANNALARM.valg.map(v => ({ text: v.tekst, effect: '', choiceId: v.id })),
+        // Rekkefølge-øvelsen rendres i innboksen (ingen faste choices her).
       }
       const messages = [...state.messages, msg]
       return {
         ...state,
         messages,
         unreadCount: messages.filter(m => !m.read).length,
-        beredskap: { ...state.beredskap, brannalarmMnd: state.currentMonth, brannalarmUtfall: { valgId: '', kvalitet: 'warn', ekte } },
+        beredskap: { ...state.beredskap, brannalarmMnd: state.currentMonth, brannalarmUtfall: { rekkefolge: [], kvalitet: 'bad', ekte } },
       }
     }
 
     case 'RESOLVE_BRANNALARM': {
-      const valg = brannalarmValg(action.valgId)
-      if (!valg) return state
+      // Vurder rekkefølgen (uten fasit-avsløring); distraktor/varsling-sist = kaos.
+      const { kvalitet } = vurderBrannalarm(action.rekkefolge)
+      const k = BRANNALARM.konsekvens[kvalitet]
       const ekte = state.beredskap.brannalarmUtfall?.ekte ?? true
-      const reputation = Math.max(0, Math.min(100, state.reputation + valg.reputationDelta))
-      const money = state.money + valg.moneyDelta
+      const reputation = Math.max(0, Math.min(100, state.reputation + k.rep))
+      const money = state.money + k.money
       const messages = state.messages.map(m => m.id === action.messageId ? { ...m, read: true } : m)
       return {
         ...state,
@@ -694,7 +710,7 @@ function reducer(state: GameState, action: Action): GameState {
         reputation,
         messages,
         unreadCount: messages.filter(m => !m.read).length,
-        beredskap: { ...state.beredskap, brannalarmUtfall: { valgId: valg.id, kvalitet: valg.kvalitet, ekte } },
+        beredskap: { ...state.beredskap, brannalarmUtfall: { rekkefolge: action.rekkefolge, kvalitet, ekte } },
       }
     }
 
@@ -1309,8 +1325,22 @@ function lesTemaFallback(): Record<string, TemaAktivering> {
   return {}
 }
 
+const BEREDSKAP_KEY = 'beredskap_state_v1'
+
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState)
+  // Persister hele state.beredskap (bekreftelse, tillegg, risikorader, refleksjon,
+  // øvelses-resultat) i localStorage — overlever reload (samme mønster som
+  // mentor-triggernes sett-liste).
+  const [state, dispatch] = useReducer(reducer, initialState, init => {
+    try {
+      const raw = localStorage.getItem(BEREDSKAP_KEY)
+      if (raw) return { ...init, beredskap: { ...init.beredskap, ...JSON.parse(raw) } }
+    } catch { /* korrupt/utilgjengelig */ }
+    return init
+  })
+  useEffect(() => {
+    try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
+  }, [state.beredskap])
   const [aktiveTemaer, setAktiveTemaer] = useState<Record<string, TemaAktivering>>(() => lesTemaFallback())
 
   // Abonnér på tema-aktiveringsnoden ved øktstart når klassekode finnes.
