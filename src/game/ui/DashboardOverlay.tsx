@@ -22,21 +22,41 @@ function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
 type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'hms' | 'rapporter' | 'innboks'
 
-const TABS: { id: Tab; label: string; emoji: string; tema?: string }[] = [
-  { id: 'oversikt',        label: 'Oversikt',         emoji: '📊' },
-  { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋' },
-  { id: 'produkter',       label: 'Produkter',         emoji: '📦' },
-  { id: 'utstilling',      label: 'Utstilling',        emoji: '🪟' },
-  { id: 'malgruppe',       label: 'Målgruppe',         emoji: '🎯' },
-  { id: 'okonomi',         label: 'Økonomi',           emoji: '💰' },
-  { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍' },
-  { id: 'priser',          label: 'Priser',            emoji: '🏷️' },
-  { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢' },
-  { id: 'personale',       label: 'Personale',         emoji: '👥' },
-  // TEMA-fane: vises KUN når temaet er aktivt (se InnboksTabBar-filteret).
-  { id: 'hms',             label: 'HMS',               emoji: '🦺', tema: 'beredskap' },
-  { id: 'rapporter',       label: 'Rapporter',         emoji: '📋' },
-  { id: 'innboks',         label: 'Innboks',           emoji: '📬' },
+// ── FAGKODING (DEL 3, fiksrunde 2) ────────────────────────────────────────────
+// Fanene grupperes etter PROGRAMFAG (fasit: docs/TEMAER_OG_KOMPETANSEMAL.md,
+// SSR01-01 VG1 + SSR02-01 VG2). Diskret koding: en tynn fargestripe under hver
+// fane + en liten faglegende — IKKE full omfarging (dagens tema-look beholdes).
+// Faner som dekker flere fag får PRIMÆRfagets farge (se rapport for mappingen).
+// Alle farger er tunbare og defineres KUN her.
+type FagId = 'forretningsdrift' | 'markedsforing' | 'kultur' | 'hms' | 'verktoy'
+const FAG_FARGER: Record<FagId, { navn: string; farge: string }> = {
+  forretningsdrift: { navn: 'Forretningsdrift',            farge: '#38bdf8' }, // VG2: Økonomi og administrasjon
+  markedsforing:    { navn: 'Markedsføring og innovasjon', farge: '#a855f7' }, // VG2: Kommunikasjon og markedsføring
+  kultur:           { navn: 'Kultur og samhandling',       farge: '#f472b6' },
+  hms:              { navn: 'HMS',                          farge: '#f59e0b' }, // VG2 eget programfag
+  verktoy:          { navn: 'Verktøy',                      farge: '#64748b' }, // tverrgående, ikke ett fag
+}
+
+// Rekkefølgen her ER visningsrekkefølgen — sortert så hvert fag ligger samlet.
+const TABS: { id: Tab; label: string; emoji: string; fag: FagId; tema?: string }[] = [
+  // ── Forretningsdrift ──
+  { id: 'oversikt',        label: 'Oversikt',         emoji: '📊', fag: 'forretningsdrift' },
+  { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋', fag: 'forretningsdrift' },
+  { id: 'okonomi',         label: 'Økonomi',           emoji: '💰', fag: 'forretningsdrift' },
+  { id: 'priser',          label: 'Priser',            emoji: '🏷️', fag: 'forretningsdrift' }, // prising = kalkyle/lønnsomhet (Pris-P sekundært)
+  // ── Markedsføring og innovasjon (markedsmiksens Produkt/Plass/Promosjon) ──
+  { id: 'malgruppe',       label: 'Målgruppe',         emoji: '🎯', fag: 'markedsforing' },
+  { id: 'produkter',       label: 'Produkter',         emoji: '📦', fag: 'markedsforing' },
+  { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍', fag: 'markedsforing' },
+  { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢', fag: 'markedsforing' },
+  { id: 'utstilling',      label: 'Utstilling',        emoji: '🪟', fag: 'markedsforing' },
+  // ── Kultur og samhandling ──
+  { id: 'personale',       label: 'Personale',         emoji: '👥', fag: 'kultur' },
+  // ── HMS (TEMA-fane: vises KUN når temaet er aktivt, se InnboksTabBar-filteret) ──
+  { id: 'hms',             label: 'HMS',               emoji: '🦺', fag: 'hms', tema: 'beredskap' },
+  // ── Verktøy (tverrgående) ──
+  { id: 'rapporter',       label: 'Rapporter',         emoji: '📋', fag: 'verktoy' },
+  { id: 'innboks',         label: 'Innboks',           emoji: '📬', fag: 'verktoy' },
 ]
 
 // ── Tab bar (extracted so it can read unreadCount) ────────────────────────────
@@ -45,38 +65,66 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
   const { state, aktiveTemaer } = useGame()
   // TEMA-faner (t.tema satt) vises kun når det temaet er aktivt for klassen.
   const synligeTabs = TABS.filter(t => !t.tema || !!aktiveTemaer[t.tema]?.aktiv)
+  // Faglegende: kun de fagene som faktisk har en synlig fane (i visnings-
+  // rekkefølge, uten duplikater). Diskret — forklarer stripene under fanene.
+  const synligeFag: FagId[] = []
+  for (const t of synligeTabs) if (!synligeFag.includes(t.fag)) synligeFag.push(t.fag)
   return (
-    <div className="dashboard-tab-bar" style={{
-      display: 'flex', gap: '0.5rem', padding: '1rem 2rem 0',
-      borderBottom: '1px solid rgba(255,255,255,0.08)',
-      overflowX: 'auto', flexShrink: 0,
-      scrollbarWidth: 'none',
-    }}>
-      {synligeTabs.map(t => (
-        <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-          background: activeTab === t.id ? 'rgba(0,212,170,0.12)' : 'transparent',
-          border: `1px solid ${activeTab === t.id ? '#00d4aa' : 'transparent'}`,
-          borderBottom: 'none', borderRadius: '8px 8px 0 0',
-          padding: '0.6rem 1.2rem',
-          color: activeTab === t.id ? '#00d4aa' : '#64748b',
-          fontWeight: 600, fontSize: 14, cursor: 'pointer',
-          fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s',
-          flexShrink: 0, position: 'relative',
-        }}>
-          {t.emoji} {t.label}
-          {t.id === 'innboks' && state.unreadCount > 0 && (
-            <span style={{
-              position: 'absolute', top: 4, right: 4,
-              background: '#ef4444', color: '#fff',
-              borderRadius: 99, fontSize: 9, fontWeight: 800,
-              padding: '1px 5px', lineHeight: 1.4,
+    <>
+      <div className="dashboard-tab-bar" style={{
+        display: 'flex', gap: '0.5rem', padding: '1rem 2rem 0',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        overflowX: 'auto', flexShrink: 0,
+        scrollbarWidth: 'none',
+      }}>
+        {synligeTabs.map(t => {
+          const aktiv = activeTab === t.id
+          const fagFarge = FAG_FARGER[t.fag].farge
+          return (
+            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+              background: aktiv ? 'rgba(0,212,170,0.12)' : 'transparent',
+              border: `1px solid ${aktiv ? '#00d4aa' : 'transparent'}`,
+              borderBottom: 'none', borderRadius: '8px 8px 0 0',
+              padding: '0.6rem 1.2rem 0.65rem',
+              color: aktiv ? '#00d4aa' : '#64748b',
+              fontWeight: 600, fontSize: 14, cursor: 'pointer',
+              fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s',
+              flexShrink: 0, position: 'relative',
             }}>
-              {state.unreadCount}
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
+              {t.emoji} {t.label}
+              {t.id === 'innboks' && state.unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 4, right: 4,
+                  background: '#ef4444', color: '#fff',
+                  borderRadius: 99, fontSize: 9, fontWeight: 800,
+                  padding: '1px 5px', lineHeight: 1.4,
+                }}>
+                  {state.unreadCount}
+                </span>
+              )}
+              {/* Diskret fag-stripe (venstre-til-høyre under fanen); tydeligere når aktiv. */}
+              <span style={{
+                position: 'absolute', left: 8, right: 8, bottom: 0, height: 3, borderRadius: 2,
+                background: fagFarge, opacity: aktiv ? 1 : 0.5, pointerEvents: 'none',
+              }} />
+            </button>
+          )
+        })}
+      </div>
+      {/* Faglegende — hvilket programfag hver farge står for. */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem', alignItems: 'center',
+        padding: '0.5rem 2rem 0', flexShrink: 0, fontSize: 10.5, color: '#64748b',
+      }}>
+        <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>PROGRAMFAG:</span>
+        {synligeFag.map(f => (
+          <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 9, height: 9, borderRadius: 2, background: FAG_FARGER[f].farge, display: 'inline-block' }} />
+            {FAG_FARGER[f].navn}
+          </span>
+        ))}
+      </div>
+    </>
   )
 }
 
