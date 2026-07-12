@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useGame } from '../GameContext'
-import { INDUSTRY_META } from '../data/industries'
+import { INDUSTRY_META, isIndustryActive } from '../data/industries'
 import type { Industry } from '../types'
 import type { BusinessModel, GameFlags } from '../types'
 import { FINANSIERING_OPTIONS, PERSONLIGHET_OPTIONS } from '../../strategies/innovation/startupChoices'
@@ -97,29 +97,43 @@ export default function StartupScreen() {
             Velg din bransje
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-            {INDUSTRIES.map(([id, meta], i) => (
+            {INDUSTRIES.map(([id, meta], i) => {
+              const active = isIndustryActive(id)
+              return (
               <motion.button
                 key={id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
-                onClick={() => setSelectedIndustry(id)}
+                onClick={() => active && setSelectedIndustry(id)}
+                disabled={!active}
+                title={active ? undefined : 'Denne bransjen kommer senere'}
                 style={{
-                  background: selectedIndustry === id ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
-                  border: `2px solid ${selectedIndustry === id ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+                  position: 'relative',
+                  background: !active ? 'rgba(255,255,255,0.02)' : selectedIndustry === id ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
+                  border: `2px solid ${!active ? 'rgba(255,255,255,0.06)' : selectedIndustry === id ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
                   borderRadius: '1.5rem', padding: '1.5rem',
-                  cursor: 'pointer', textAlign: 'left',
+                  cursor: active ? 'pointer' : 'not-allowed', textAlign: 'left',
+                  opacity: active ? 1 : 0.5,
                   transition: 'all 0.2s', fontFamily: 'inherit', color: '#f1f5f9',
                 }}
               >
-                <div style={{ fontSize: 38, marginBottom: '0.6rem' }}>{meta.emoji}</div>
+                {!active && (
+                  <span style={{
+                    position: 'absolute', top: 12, right: 12,
+                    background: 'rgba(250,204,21,0.15)', border: '1px solid rgba(250,204,21,0.5)',
+                    color: '#facc15', fontSize: 11, fontWeight: 800, letterSpacing: '0.04em',
+                    borderRadius: 99, padding: '2px 9px',
+                  }}>KOMMER</span>
+                )}
+                <div style={{ fontSize: 38, marginBottom: '0.6rem', filter: active ? 'none' : 'grayscale(1)' }}>{meta.emoji}</div>
                 <div style={{ fontWeight: 700, fontSize: 17, marginBottom: '0.3rem' }}>{meta.name}</div>
                 <div style={{ fontSize: 13, color: '#64748b', marginBottom: '0.8rem', lineHeight: 1.5 }}>
                   {meta.description}
                 </div>
-                <Chip label={`Startkapital: ${formatKr(meta.startingMoney)}`} color="#22c55e" />
+                <Chip label={active ? `Startkapital: ${formatKr(meta.startingMoney)}` : 'Ikke tilgjengelig ennå'} color={active ? '#22c55e' : '#64748b'} />
               </motion.button>
-            ))}
+            )})}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <button

@@ -206,6 +206,14 @@ export const INDUSTRY_META: Record<Industry, { name: string; emoji: string; desc
   sports:  { name: 'Sports & Fritid',  emoji: '⚽', description: 'Utstyr for sport og friluftsliv. Sterk sesongvariasjon, men trofaste kunder.', startingMoney: 200_000 },
 }
 
+/** SPILLBARE bransjer på main. Bare disse kan velges i oppstarten — de øvrige
+ *  vises nedtonet med «Kommer». Tunbar: legg til f.eks. 'fashion' når
+ *  klesbutikk-grenen merges inn. */
+export const ACTIVE_INDUSTRIES: Industry[] = ['cafe']
+export function isIndustryActive(id: Industry): boolean {
+  return ACTIVE_INDUSTRIES.includes(id)
+}
+
 /** Build a Product from a catalog item (initial stock = 0, retailPrice =
  *  recommendedPrice — eleven endrer den videre i Priser-fanen). Tier-valg er
  *  PARKET (se IndustryCatalogItem.tiers) — én katalogvare gir nå ETT
