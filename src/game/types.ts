@@ -457,6 +457,10 @@ export interface GameState {
   /** Plagg auto-snappet til vareplasser på møblene (presentasjonslag,
    *  KlesbutikkStillas). Tom liste = ingen plagg. Se KlesbutikkPlaggItem. */
   klesbutikkPlaggLayout: KlesbutikkPlaggItem[]
+  /** FØRT sortiment (BRANSJE 2, leverandørkatalog) — katalogvare-id-er
+   *  (`${plaggId}@${brandId}`) eleven har «ført» i Innkjøp-fanen. Styrer hvilke
+   *  plagg styling-paletten viser. Tom liste = ingen varer ført. */
+  klesbutikkSortiment: string[]
   marketingBudget: {
     socialMedia: number
     google: number

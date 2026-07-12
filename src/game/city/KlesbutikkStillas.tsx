@@ -10,6 +10,8 @@ import { KLESBUTIKK_DUKKER, dukkeById, FIXTURE_FOR_DUKKETYPE, type Dukketype } f
 import type { KlesbutikkFixtureId, Fotpunkt, KlesbutikkPlaggItem, ElevFit } from '../types'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Target, type DrawZone, type Rect } from './ZoneTracer'
+import InnkjopKatalog from './InnkjopKatalog'
+import { forteplaggIds } from '../data/klesbutikkKatalog'
 
 // ── KlesbutikkStillas (BRANSJE 2) — STILLAS-scene for klesbutikk ──────────────
 // Frittstående dev-scene (/dev/klesbutikk, IKKE koblet til onboarding/spillet).
@@ -182,6 +184,8 @@ function KlesbutikkStillasInner() {
   const [sceneId, setSceneId] = useState<Scene['id']>('interior')
   const [imgFailed, setImgFailed] = useState(false)
   const [devMode, setDevMode] = useState<DevMode>('scene')
+  // Toppnivå-visning: stillaset (scene/tracere) vs. innkjøpskatalogen (🏷 Innkjøp).
+  const [topView, setTopView] = useState<'stillas' | 'innkjop'>('stillas')
   const [, setRev] = useState(0)
   const bump = () => setRev(r => r + 1)
   const scene = SCENES.find(s => s.id === sceneId)!
@@ -202,11 +206,12 @@ function KlesbutikkStillasInner() {
         background: 'rgba(10,14,26,0.85)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '6px 10px',
       }}>
         {SCENES.map(s => (
-          <button key={s.id} onClick={() => { setSceneId(s.id); setImgFailed(false) }} style={tabStyle(s.id === sceneId)}>{s.label}</button>
+          <button key={s.id} onClick={() => { setSceneId(s.id); setImgFailed(false); setTopView('stillas') }} style={tabStyle(topView === 'stillas' && s.id === sceneId)}>{s.label}</button>
         ))}
+        <button onClick={() => setTopView('innkjop')} style={tabStyle(topView === 'innkjop')}>🏷 Innkjøp</button>
         {/* Bakt interiør: ingen Plan/Scene-veksling (Interiør = scenen). Dev-
             tracere bak ?dev=1; 🛍 Scene lar deg gå tilbake fra en tracer. */}
-        {IS_DEV_COORDS && (
+        {IS_DEV_COORDS && topView === 'stillas' && (
           <span style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
             {scene.id === 'interior' && (
               <>
@@ -232,7 +237,9 @@ function KlesbutikkStillasInner() {
       {/* PARKERT: plantegning (fri møblering). PlanView holdes i live men rendres
           aldri (FRI_MOBLERING=false). */}
       {FRI_MOBLERING && mode === 'plan' && <PlanView />}
-      {(
+      {topView === 'innkjop' ? (
+        <InnkjopKatalog />
+      ) : (
         <div style={{
           position: 'relative', aspectRatio: `${scene.aspect}`,
           width: `min(96vw, calc(86vh * ${scene.aspect}))`, height: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
@@ -276,11 +283,13 @@ function KlesbutikkStillasInner() {
         position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 80,
         background: 'rgba(10,14,26,0.85)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
         padding: '0.4rem 1rem', color: '#cbd5e1', fontSize: 12, whiteSpace: 'nowrap',
-      }}>{scene.id === 'interior' && mode === 'gulvplan'
-        ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
-        : scene.id === 'interior' && mode === 'vareplass'
-          ? 'Vareplass-tracer: velg type, klikk = ny plass, dra = flytt, ± = scale, «Logg array».'
-          : scene.hint}</div>
+      }}>{topView === 'innkjop'
+        ? '🏷 Innkjøp: bla per merke, filtrer på kjønn/kategori, sammenlign pris/margin — «Før vare» legger den i sortimentet (vises i styling-paletten).'
+        : scene.id === 'interior' && mode === 'gulvplan'
+          ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
+          : scene.id === 'interior' && mode === 'vareplass'
+            ? 'Vareplass-tracer: velg type, klikk = ny plass, dra = flytt, ± = scale, «Logg array».'
+            : scene.hint}</div>
     </div>
   )
 }
@@ -606,6 +615,10 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
   const { state, dispatch } = useGame()
   const g = KLESBUTIKK.gulvplan!
   const overlayRef = useRef<HTMLDivElement>(null)
+  // DEL 3: styling-paletten viser KUN FØRTE plagg (fra Innkjøp). ?dev=1 gir en
+  // «vis alle»-bryter så kalibrering ikke avhenger av føring.
+  const fortePlagg = forteplaggIds(state.klesbutikkSortiment)
+  const [visAllePlagg, setVisAllePlagg] = useState(false)
   const [items, setItems] = useState(state.klesbutikkFixtureLayout)
   const itemsRef = useRef(items)
   const [newType, setNewType] = useState<KlesbutikkFixtureId | null>(null)
@@ -949,15 +962,27 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
           <div style={{ fontSize: 9, color: '#64748b', marginBottom: 8, lineHeight: 1.4 }}>
             Dra: heng→stativ, brett→hylle/bord, påkledd dukke→matchende naken dukke.
           </div>
-          {/* Heng (front) · Heng — PROFIL · Brett. Egen profil-undergruppe så ALLE
-              profil-plagg er synlige/dragbare (før havnet de skjult i «Hengende»).
-              forceVariant låser drag-varianten fra riktig gruppe. */}
+          {/* DEL 3: dev «vis alle»-bryter (kalibrering uten føring). */}
+          {IS_DEV_COORDS && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#94a3b8', marginBottom: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={visAllePlagg} onChange={e => setVisAllePlagg(e.target.checked)} />
+              vis alle (ignorer føring)
+            </label>
+          )}
+          {/* Tom føring → tom palett med hint (med mindre «vis alle» er på). */}
+          {!visAllePlagg && fortePlagg.size === 0 && (
+            <div style={{ fontSize: 11, color: '#fca5a5', background: 'rgba(239,68,68,0.1)', border: '1px solid #ef444455', borderRadius: 8, padding: '8px', marginBottom: 8, lineHeight: 1.4 }}>
+              Ingen varer ført. Gå til <b>🏷 Innkjøp</b> og velg sortiment — plaggene dukker opp her.
+            </div>
+          )}
+          {/* Heng (front) · Heng — PROFIL · Brett. Viser KUN FØRTE plagg (DEL 3);
+              dev «vis alle» un-gater. forceVariant låser drag-varianten. */}
           {([
             { key: 'front', tittel: 'Hengende', col: SLOT_COLOR.heng, variant: 'front' as HengVariant | undefined, sprite: (p: Plagg) => p.spriteHengFront },
             { key: 'profil', tittel: 'Hengende — profil', col: PROFIL_COLOR, variant: 'profil' as HengVariant | undefined, sprite: (p: Plagg) => p.spriteHengProfil },
             { key: 'brett', tittel: 'Brettet', col: SLOT_COLOR.brett, variant: undefined, sprite: (p: Plagg) => p.spriteBrett },
           ]).map(grp => {
-            const list = KLESBUTIKK_PLAGG.filter(p => !!grp.sprite(p))
+            const list = KLESBUTIKK_PLAGG.filter(p => !!grp.sprite(p) && (visAllePlagg || fortePlagg.has(p.id)))
             if (!list.length) return null
             return (
               <div key={grp.key} style={{ marginBottom: 8 }}>

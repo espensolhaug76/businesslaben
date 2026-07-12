@@ -122,6 +122,7 @@ const initialState: GameState = {
   counterLayout: [],
   klesbutikkFixtureLayout: [],
   klesbutikkPlaggLayout: [],
+  klesbutikkSortiment: [],
   marketingBudget: { socialMedia: 0, google: 0, influencer: 0, print: 0, tv: 0 },
   appealType: null,
 
@@ -192,6 +193,7 @@ type Action =
   | { type: 'SET_COUNTER_LAYOUT'; items: TrauItem[] }
   | { type: 'SET_KLESBUTIKK_FIXTURES'; items: KlesbutikkFixtureItem[] }
   | { type: 'SET_KLESBUTIKK_PLAGG'; items: KlesbutikkPlaggItem[] }
+  | { type: 'SET_KLESBUTIKK_SORTIMENT'; items: string[] }
   | { type: 'RESOLVE_SALES_SCENARIO'; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number; stockout?: boolean }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   // Åpningsbestilling (docs/INNKJOP_LEVERING.md): elevens ene selvvalgte
@@ -414,6 +416,10 @@ function reducer(state: GameState, action: Action): GameState {
     case 'SET_KLESBUTIKK_PLAGG':
       // Plagg auto-snappet til vareplasser på møblene (presentasjonslag).
       return { ...state, klesbutikkPlaggLayout: action.items }
+
+    case 'SET_KLESBUTIKK_SORTIMENT':
+      // Ført sortiment (leverandørkatalog, Innkjøp-fanen) — katalogvare-id-er.
+      return { ...state, klesbutikkSortiment: action.items }
 
     case 'ORDER_PRODUCT': {
       // Innkjøp med LEVERINGSTID (docs/INNKJOP_LEVERING.md): pengene trekkes
