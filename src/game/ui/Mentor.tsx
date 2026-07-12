@@ -23,7 +23,28 @@ const POSE = {
   noytral: '/assets/raw/mentor/espen-noytral.png', // v2 — aktiv melding
   smil: '/assets/raw/mentor/espen-smil.png',       // v1 — pensjonert fra bruk
   leser: '/assets/raw/mentor/espen-leser.png',     // v3 — ordbok åpen
-  peker: '/assets/raw/mentor/espen-peker.png',     // v4 — kø-signal
+  peker: '/assets/raw/mentor/espen-peker.png',     // v4 — kø-signal (peker med fingeren)
+}
+
+// DEL 2 (fiksrunde 2) — RENDRET FIGURSTØRRELSE (tunbar). Økt ~45 % fra den
+// gamle effektive høyden (~118 px for tett-beskårne poser) etter Espens 100 %-
+// zoom-validering. Juster kun disse to konstantene for å skalere figuren.
+const MENTOR_FIGUR_HOYDE = 170   // synlig figurhøyde i px (lik for ALLE poser)
+const MENTOR_FIGUR_BREDDE = 150  // klikkflatens bredde (rommer bredeste pose)
+
+// POSE-NORMALISERING. Posene er ULIKT beskåret: v5 «vanlig» har mye luft rundt
+// figuren (foten 80,7 % ned i canvaset), mens v2/v3/v4 er tett beskåret (foten
+// ~99 % ned). Uten kompensasjon «hopper» figuren i størrelse og fotlinje ved
+// pose-bytte (Espens funn). Målt med scratchpad/pngbbox.js mot de faktiske
+// PNG-ene (12.07): chf = synlig figurhøyde / canvashøyde, foot = fotlinjens
+// y-andel. Vi rendrer hver pose så synlig figur = MENTOR_FIGUR_HOYDE og henger
+// den transparente bunnpaddingen under baselinen → lik høyde OG lik fotlinje.
+const POSE_JUSTERING: Record<keyof typeof POSE, { chf: number; foot: number }> = {
+  vanlig:  { chf: 0.684, foot: 0.807 },
+  noytral: { chf: 0.983, foot: 0.992 },
+  smil:    { chf: 0.983, foot: 0.992 },
+  leser:   { chf: 0.983, foot: 0.992 },
+  peker:   { chf: 0.983, foot: 0.991 },
 }
 const KEY = 'mentor_fired_v1'
 
@@ -198,10 +219,14 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const badge = venter ? queue.length : 0
 
   // Pose-prioritet: leser > nøytral (aktiv melding) > peker (venter i kø) > vanlig (hvile).
-  const pose = ordbokOpen ? POSE.leser
-    : melding ? POSE.noytral
-    : venter ? POSE.peker
-    : POSE.vanlig
+  const poseKey: keyof typeof POSE = ordbokOpen ? 'leser' : melding ? 'noytral' : venter ? 'peker' : 'vanlig'
+  const pose = POSE[poseKey]
+  // Normaliser høyde + fotlinje (se POSE_JUSTERING): rendret canvashøyde så
+  // synlig figur = MENTOR_FIGUR_HOYDE, og heng transparent bunnpadding under
+  // foten så baselinen er lik uansett pose.
+  const j = POSE_JUSTERING[poseKey]
+  const renderH = Math.round(MENTOR_FIGUR_HOYDE / j.chf)
+  const hang = Math.round((1 - j.foot) * renderH)
 
   function dismiss() {
     if (eventMelding) {
@@ -330,12 +355,13 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
           title={ordbokOpen ? 'Lukk ordboka' : melding ? 'Espen' : venter ? 'Espen har noe til deg — klikk' : 'Åpne ordboka'}
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
-            padding: 0, width: 96, height: 120, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: 0, width: MENTOR_FIGUR_BREDDE, height: MENTOR_FIGUR_HOYDE,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center', overflow: 'visible',
           }}
         >
           {!failedImg ? (
             <img src={pose} alt="Mentor Espen" draggable={false} onError={() => setFailedImg(true)}
-              style={{ height: '100%', width: 'auto', display: 'block', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.5))', userSelect: 'none' }} />
+              style={{ height: renderH, width: 'auto', marginBottom: -hang, display: 'block', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.5))', userSelect: 'none' }} />
           ) : (
             <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#00d4aa22', border: '2px solid #00d4aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>🧑‍🏫</div>
           )}
