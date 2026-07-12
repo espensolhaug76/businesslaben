@@ -57,8 +57,8 @@ function oppfylt(id: string, s: GameState): boolean {
     case 'alle_p_fullfort': return s.p1_complete && s.p2_complete && s.p3_complete && s.p4_complete
     // TEMA 1: Beredskap (tema_beredskap_aktivert fyres via aktiveTemaer-effekten).
     case 'beredskap_plan_bekreftet': return s.beredskap.planBekreftet
-    case 'beredskap_risiko_levert': return s.beredskap.risikoRader.some(r => r.tiltak.trim() !== '')
-    case 'beredskap_brannalarm_handtert': return !!s.beredskap.brannalarmUtfall?.valgId
+    case 'beredskap_risiko_levert': return s.beredskap.risikoLagret
+    case 'beredskap_brannalarm_handtert': return (s.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0
     default: return false
   }
 }
@@ -68,16 +68,24 @@ const RISIKO_RANG: Record<string, number> = { lav: 1, middels: 2, høy: 3 }
 /** Dynamiske mentor-meldinger som leser elevens egne verdier (beredskap).
  *  Faller tilbake på den statiske teksten for andre id-er. */
 function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
+  if (id === 'beredskap_plan_bekreftet') {
+    // Referer elevens eget tillegg når det finnes; pek videre til risikoskjemaet.
+    const tillegg = Object.values(s.beredskap.planTillegg).map(t => t.trim()).filter(Boolean)[0]
+    if (tillegg) return `Bra — og fint at du la til noe eget: «${tillegg}». Nå kjenner du planen. Neste steg: fyll ut [[RST_002|risikovurderingen]] i HMS-fanen og trykk «Lagre vurdering».`
+    return 'Bra — nå kjenner du planen. Neste steg: fyll ut [[RST_002|risikovurderingen]] i HMS-fanen og trykk «Lagre vurdering». Hva kan gå galt i akkurat DIN butikk?'
+  }
   if (id === 'beredskap_risiko_levert') {
     const verst = [...s.beredskap.risikoRader]
       .sort((a, b) => (RISIKO_RANG[b.sannsynlighet]! + RISIKO_RANG[b.konsekvens]!) - (RISIKO_RANG[a.sannsynlighet]! + RISIKO_RANG[a.konsekvens]!))[0]
-    if (verst?.fare) return `Du vurderte «${verst.fare}» som en av de største risikoene (${verst.sannsynlighet} sannsynlighet × ${verst.konsekvens} konsekvens). Hva er det viktigste tiltaket ditt akkurat der?`
+    const del = verst?.fare
+      ? `Du vurderte «${verst.fare}» som en av de største risikoene (${verst.sannsynlighet} × ${verst.konsekvens}). Hva er det viktigste tiltaket ditt akkurat der?`
+      : 'Du har lagret risikovurderingen.'
+    return `${del} Neste øvelse: en brannalarm kan gå i løpet av en åpen dag — er du klar?`
   }
   if (id === 'beredskap_brannalarm_handtert') {
     const k = s.beredskap.brannalarmUtfall?.kvalitet
-    if (k === 'good') return 'Godt jobbet under brannalarmen — du fulgte planen og satte tryggheten først. Det er nettopp derfor vi øver.'
-    if (k === 'bad') return 'Du valgte å selge videre mens alarmen ulte. Hvorfor tror du butikken har en beredskapsplan i det hele tatt?'
-    if (k === 'warn') return 'Du grep slukkeapparatet. Husk at planen sier «slukk KUN hvis det er trygt» — ellers går evakuering og varsling først. Hva ville du gjort neste gang?'
+    if (k === 'good') return 'Godt jobbet under brannalarmen — du prioriterte varsling og evakuering, og fikk folk trygt ut. Det er nettopp derfor vi øver.'
+    if (k === 'bad') return 'Det ble kaos under alarmen. Tenk gjennom rekkefølgen: hva MÅ komme først når det brenner, og hva kan vente?'
   }
   return mentorMelding(id)
 }
@@ -105,6 +113,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const [failedImg, setFailedImg] = useState(false)
   const [ordbokOpen, setOrdbokOpen] = useState(false)
   const [forceShow, setForceShow] = useState(false)   // bruker klikket peker-figuren
+  const [paused, setPaused] = useState(false)         // melding lukket, neste venter bak peker
   // INTRO ved spillstart (null = ferdig/skjult, 0..2 = steg). Vises én gang.
   const [introStep, setIntroStep] = useState<number | null>(() => introDone() ? null : 0)
   function finishIntro() { saveIntroDone(); setIntroStep(null) }
@@ -171,35 +180,43 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   }, [handleFane])
 
   const hasQueued = queue.length > 0
-  const reveal = !blocked || forceShow
-  const eventId = reveal && hasQueued ? queue[0]! : null
+  // KUN ÉN boble om gangen. En event-melding vises når køen ikke er tom, INGEN er
+  // pauset (eleven lukket forrige), og den ikke er blokkert (eller er force-vist).
+  const eventVises = hasQueued && !paused && (!blocked || forceShow)
+  const eventId = eventVises ? queue[0]! : null
   const eventMelding = eventId ? dynamiskMentorMelding(eventId, state) : null
   eventShowingRef.current = !!eventMelding
-  // Fane-melding vises kun mens fanen er aktiv, ikke under ordbok/blokkering.
-  const faneMelding = (faneMsg && !ordbokOpen && !blocked) ? mentorMelding(faneMsg) : null
-  const melding = eventMelding ?? faneMelding     // hendelse har forrang over fane
+  // Fane-melding: kun når INGEN event ligger i kø (så aldri to bobler), og ikke
+  // under ordbok/blokkering.
+  const faneMelding = (faneMsg && !ordbokOpen && !blocked && !hasQueued) ? mentorMelding(faneMsg) : null
+  const melding = eventMelding ?? faneMelding     // én boble; hendelse har forrang
 
-  // Pose-prioritet: leser > smil (m/boble) > peker (kø) > nøytral.
-  // INVARIANT: smil ⇔ `melding != null` ⇔ bobla rendres nedenfor. En melding som
-  // ikke KAN vises (blokkert, ikke force-vist) gir melding=null ⇒ pose blir peker
-  // (kø) eller nøytral — ALDRI smil uten boble. Container-z (500) > alle
-  // spill-overlays, så bobla ligger aldri bak dashbord/oppgjør; LiveBar er flyttet
-  // vekk fra dette hjørnet.
+  // VENTER: meldinger står i kø men ingen boble vises (pauset eller blokkert) ⇒
+  // figuren PEKER + «N»-badge; neste vises når eleven klikker figuren.
+  const venter = hasQueued && !eventMelding
+  const badge = venter ? queue.length : 0
+
+  // Pose-prioritet: leser > smil (m/boble) > peker (venter i kø) > nøytral.
   const pose = ordbokOpen ? POSE.leser
     : melding ? POSE.smil
-    : (blocked && hasQueued) ? POSE.peker
+    : venter ? POSE.peker
     : POSE.noytral
 
   function dismiss() {
-    if (eventMelding) { setQueue(q => q.slice(1)); setForceShow(false) }
-    else if (faneMsg) setFaneMsg(null)
+    if (eventMelding) {
+      // Lukk den synlige; hvis flere venter → pause så neste ikke stables oppå,
+      // men dukker opp bak peker-figuren (badge). Ingen kø igjen → ingen pause.
+      setForceShow(false)
+      setPaused(queue.length > 1)
+      setQueue(q => q.slice(1))
+    } else if (faneMsg) setFaneMsg(null)
   }
 
   function figureClick() {
     if (ordbokOpen) { setOrdbokOpen(false); return }
-    if (blocked && hasQueued && !forceShow) { setForceShow(true); return }  // peker → vis kø-melding
-    if (melding) return                                                     // aktiv melding vises alt
-    setOrdbokOpen(true)                                                     // i ro → åpne ordboka
+    if (venter) { setPaused(false); setForceShow(true); return }   // peker → vis neste kø-melding
+    if (melding) return                                            // aktiv melding vises alt
+    setOrdbokOpen(true)                                            // i ro → åpne ordboka
   }
 
   return (
@@ -309,7 +326,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
       <div style={{ position: 'relative', pointerEvents: 'auto' }}>
         <button
           onClick={figureClick}
-          title={ordbokOpen ? 'Lukk ordboka' : melding ? 'Espen' : (blocked && hasQueued) ? 'Espen har noe til deg — klikk' : 'Åpne ordboka'}
+          title={ordbokOpen ? 'Lukk ordboka' : melding ? 'Espen' : venter ? 'Espen har noe til deg — klikk' : 'Åpne ordboka'}
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
             padding: 0, width: 96, height: 120, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
@@ -322,6 +339,16 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
             <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#00d4aa22', border: '2px solid #00d4aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>🧑‍🏫</div>
           )}
         </button>
+
+        {/* «N»-badge: antall meldinger som venter bak peker-figuren. */}
+        {badge > 0 && (
+          <span style={{
+            position: 'absolute', top: 4, right: 2, minWidth: 20, height: 20, borderRadius: 99,
+            background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 800,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
+            border: '2px solid rgba(12,17,29,0.9)', boxShadow: '0 2px 6px rgba(0,0,0,0.4)', pointerEvents: 'none',
+          }}>{badge}</span>
+        )}
 
         {/* Diskret 📖-bok ved figuren — alltid synlig, egen inngang til ordboka. */}
         <button
