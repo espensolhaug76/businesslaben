@@ -18,8 +18,10 @@ som mister state — FØR Espen bruker Chrome-tid.
 npm run spilltest
 ```
 
-- Starter dev-serveren selv på **5173** (strictPort) hvis den ikke alt kjører
-  (`webServer` i `playwright.config.ts`, `reuseExistingServer: true`).
+- Starter sin EGEN dev-server på **5176** (strictPort) hvis den ikke alt kjører
+  (`webServer` i `playwright.config.ts`, `reuseExistingServer: true`). **ALDRI
+  5173** — den porten er reservert for Espens egen manuelle validering i Chrome,
+  og spilltesten skal aldri kollidere med den.
 - Kjører deterministisk: **én worker, ingen retries** (en flaky feil skjules
   ikke av et nytt forsøk).
 - Rydder `localStorage` før løpet og seeder `Math.random` (så alt som ikke går

@@ -4,6 +4,10 @@ import { defineConfig, devices } from '@playwright/test'
 // Kjører byspillet (/game) som en elev og verifiserer at kjerneløkka fungerer
 // ende til ende. IKKE visuell validering (se docs/SPILLTESTER.md). Determinisme
 // er et krav: single worker, ingen retries — to like løp skal gi likt resultat.
+//
+// PORT 5176 — BEVISST IKKE 5173: 5173 er reservert for Espens egen manuelle
+// validering i Chrome, og spilltesten skal ALDRI kollidere med den. Testen
+// starter sin EGEN dev-server på 5176 (strictPort).
 export default defineConfig({
   testDir: './tests/spilltest',
   // Determinisme: ett løp om gangen, ingen retry-maskering av flaky feil.
@@ -16,7 +20,7 @@ export default defineConfig({
   timeout: 300_000,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5176',
     headless: true,
     viewport: { width: 1440, height: 900 },
     // Egne skjermbilder tas ved FAIL i harness-en (docs/rapporter/spilltest-feil/).
@@ -26,11 +30,12 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
-  // Starter dev-serveren selv hvis den ikke alt kjører (strictPort 5173).
-  // reuseExistingServer: bruk en allerede kjørende server (raskere iterasjon).
+  // Starter sin EGEN dev-server på 5176 (strictPort) — ALDRI 5173 (Espens
+  // valideringsport). reuseExistingServer: gjenbruk en 5176-server hvis en test
+  // alt lot en stå (raskere iterasjon); ellers startes en fersk.
   webServer: {
-    command: 'npm run dev -- --port 5173 --strictPort',
-    url: 'http://localhost:5173',
+    command: 'npm run dev -- --port 5176 --strictPort',
+    url: 'http://localhost:5176',
     reuseExistingServer: true,
     timeout: 120_000,
     stdout: 'ignore',

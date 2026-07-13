@@ -34,7 +34,8 @@ Sluttresultat per løp: `docs/rapporter/spilltest-siste.md` (overskrives).
 
 - **`playwright.config.ts`** — testDir `tests/spilltest`, single worker, 0 retries
   (determinisme-krav), timeout 300 s (ett monolittisk løp), `webServer` starter
-  dev-serveren på 5173 (strictPort, reuseExistingServer).
+  sin EGEN dev-server på 5176 (strictPort, reuseExistingServer) — ALDRI 5173
+  (reservert for Espens Chrome-validering).
 - **`tests/spilltest/harness.ts`** — `steg()`-runner (fanger feil → PASS/FAIL/
   KJENT FEIL + skjermbilde ved reell FAIL, løpet fortsetter), `lesState`,
   `ventState` (poll, ingen sleep), `dispatch`/`dispatchN` (tidsbro), rapport →
@@ -110,7 +111,7 @@ kanelbolle 17/10/8 på lager før åpning; bakgrunnssalg 972 kr / 25 kunder; lå
 ## 6. Kjøring
 
 ```bash
-npm run spilltest        # starter dev-server 5173 selv om nødvendig
+npm run spilltest        # starter sin egen dev-server på 5176 (ALDRI 5173)
 ```
 
 Konsollrapport + `docs/rapporter/spilltest-siste.md`. Exit ≠ 0 ved reell FAIL

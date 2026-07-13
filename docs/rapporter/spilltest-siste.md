@@ -1,22 +1,22 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-07-13T07:30:00.682Z
+> Startet: 2026-07-13T08:26:09.639Z
 
 **Resultat: ✅ GRØNT** — 9 PASS · 0 FAIL · 1 KJENT FEIL (10 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 173 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 6863 |
-| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 557 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 176 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 9244 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5342 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 2251 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 12676 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 4277 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | 🟡 KJENT FEIL | 4717 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 100 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 4790 |
+| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 439 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 151 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 7321 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 4848 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 1852 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 10900 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 2229 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | 🟡 KJENT FEIL | 3077 |
 
 ## Detaljer per steg
 
@@ -91,7 +91,7 @@ spillfanen skal bli på /game etter klikk på «📚 Beredskap (Contingency)» (
 [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
 
 Expected substring: [32m"/game"[39m
-Received string:    [31m"http://localhost:5173/learning/forretningsdrift/contingency"[39m
+Received string:    [31m"http://localhost:5176/learning/forretningsdrift/contingency"[39m
 ```
 
 ## Notater
