@@ -189,6 +189,7 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
           onPointerUp={e => e.stopPropagation()}
         >
           <motion.div
+            data-testid="dashbord"
             initial={{ scale: 0.93, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0 }}
@@ -209,7 +210,7 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                 <h2 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>💻 Bedriftsdashboard</h2>
                 <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>All bedriftsstyring på ett sted</p>
               </div>
-              <button onClick={onClose} style={{
+              <button data-testid="dashbord-lukk" onClick={onClose} style={{
                 background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: 99, width: 36, height: 36, color: '#94a3b8',
                 cursor: 'pointer', fontSize: 18, fontFamily: 'inherit',
@@ -1627,6 +1628,7 @@ function ProdukterTab() {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Antall å bestille</div>
                   <input
+                    data-testid={`qty-${item.id}`}
                     type="number" min={1} max={500} value={qty}
                     onChange={e => setQty(item.id, Math.max(1, parseInt(e.target.value) || 1))}
                     style={{
@@ -1646,6 +1648,7 @@ function ProdukterTab() {
                   )}
                 </div>
                 <button
+                  data-testid={`bestill-${item.id}`}
                   onClick={() => order(item.id)}
                   disabled={!canAfford || qty <= 0}
                   style={{

@@ -66,6 +66,7 @@ export default function SalesScenarioOverlay({ open, onClose, scenarioId }: {
             </button>
           )}
           <motion.div
+            data-testid="salgsoverlay"
             initial={{ scale: 0.93, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0 }}
@@ -584,7 +585,7 @@ function ResultView({ result, hiddenNeed, onFinish, onRestart }: {
 
 function ChoiceButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{
+    <button data-testid="salgsvalg" onClick={onClick} style={{
       textAlign: 'left', background: 'rgba(255,255,255,0.04)',
       border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
       padding: '0.8rem 1rem', color: '#f1f5f9', fontSize: 14,
