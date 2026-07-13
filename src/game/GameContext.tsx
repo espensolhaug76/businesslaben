@@ -1387,6 +1387,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
+
+  // TEST-BRO (KUN DEV): speil hele spilltilstanden + dispatch på window, så det
+  // automatiserte spilltest-løpet (Playwright — se docs/SPILLTESTER.md) kan LESE
+  // tall for assertering og FREMSKYNDE tid (TICK/CLOSE_DAY/START_NEW_DAY) uten å
+  // vente på sanntidsklokka. Rent lese-/testtillegg — ingen produksjonskode leser
+  // disse, og blokka finnes ikke i produksjonsbygg (import.meta.env.DEV=false →
+  // trestrukket bort). Endrer ingen spilladferd. Kjører hver render så speilet
+  // alltid er ferskt.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const w = window as unknown as { __GAME_STATE__?: unknown; __GAME_DISPATCH__?: unknown }
+    w.__GAME_STATE__ = state
+    w.__GAME_DISPATCH__ = dispatch
+  })
+
   const [aktiveTemaer, setAktiveTemaer] = useState<Record<string, TemaAktivering>>(() => lesTemaFallback())
 
   // Abonnér på tema-aktiveringsnoden ved øktstart når klassekode finnes.

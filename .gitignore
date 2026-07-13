@@ -29,3 +29,11 @@ __pycache__/
 
 # Windows NTFS "mark of the web" artifacts (created on WSL from Windows files)
 *:Zone.Identifier
+
+# Playwright (spilltest) — genererte artefakter, ikke kildekode
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+# Feil-skjermbilder regenereres per løp (kun ved reell FAIL) — ikke spor dem
+docs/rapporter/spilltest-feil/*.png
