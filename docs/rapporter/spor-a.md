@@ -1399,6 +1399,85 @@ Dekningsgrad for konsistens). Glossary-flagget fra pkt. 31 er dermed lukket.
 har åpnet budsjett …»; aktiver før start → boble ved første dashbord-åpning.
 (2) Klikk «Avvik» i oppgjøret og «Resultatgrad» i nøkkeltall → forklaringskort.
 
+## 33. TEMA 8 KAMPANJE OG MARKEDSPLAN (bølge 2)
+
+> **Status: bygget. `tsc -b` + `vite build` grønn etter HVER del. `npm run
+> spilltest` (5176): 12/12 PASS.** Gren `spor-a/tema-kampanje` (main urørt) —
+> IKKE merget, venter Espens validering. Base: main @ c667ad9. Nullpunkt før
+> jobb: 11/11. 8 commits (DEL 1–8).
+
+**Nivåregler (LK20):** VG1 ser ALDRI ROI/prosentanalyse. Kanal×segment-treffet
+er SKJULT i spillet — vises kun i hub-en; eleven må resonnere fra kildene.
+Avvik/resultat med fortegn + tekst (aldri farge alene). Spillet retter aldri.
+
+**Delt datalag (`data/kampanje.ts`)** — DEL 8: multiplikator/effekt regnes ETT
+sted, testbart: `KANALER` (6), `SEGMENT_TIL_IPSOS`, `kanalTreffISegmenter`,
+`kampanjefaktor`, `kampanjeKostnad`, `kampanjeFaktiskProsent`,
+`kampanjeMerinntekt`, `kampanjeRoi`. State-typer + `KAMPANJE_HUB`. Tuning i
+`balance.ts` (`kampanje`-blokka).
+
+- **DEL 1** — `temaer.ts` `kampanje` (vg1+vg2) + mentor `tema_kampanje_aktivert`
+  (peker på Marked-fanen). Commit `ec5fa1e`.
+- **DEL 2** — 6 kanaler: 4 EKTE (Ipsos SoMe-tracker Q4 2023, 18+) + 2 FIKTIVE
+  merket. Dagspriser (SoMe 300 / Facebook 500 / radio 800 / lokalavis 1200).
+  Commit `3b2a40c`.
+- **DEL 3** — KampanjeSeksjon i Marked-fanen: mål (SMART), målgruppe, 1–2 kanaler
+  + kr/dag, varighet 3–7, VG1 markedsplan (situasjon), salgskampanje m/førpris.
+  Prishistorikk (`prisendretDag`) i SET_PRODUCTS. Commit `91e2c0c` (m/DEL 4).
+- **DEL 4** — `kampanjefaktor` multipliserer bakgrunnskundene ved OPEN_DAY;
+  CLOSE_DAY akkumulerer + fullfører. Dagspuls «📣 Kampanje pågår». Commit `91e2c0c`.
+- **DEL 5** — KampanjeRapportOverlay (mål vs faktisk, kostnad vs merinntekt, VG2
+  ROI-elevoppgave + A/B). Historikk persistert. Commit `69094b9`.
+- **DEL 6** — hub Kommunikasjonskanaler fase 6 «Hvem bruker hvilke medier?»:
+  tabell (4 ekte m/Ipsos-tall + kilde/lenke, 2 fiktive merket) + kildekritikk.
+  `DrawerPhase` fikk `table`-felt. Commit `33b338a`.
+- **DEL 7** — planlegger-intro (3 steg) + dynamiske mentor-triggere
+  `kampanje_effekt` (mål/faktisk/kanal-treff) og `kampanje_forpris_brudd`
+  (refleksjon om regelen). Commit `11fa532`.
+- **DEL 8** — dev-knapper + spilltest steg 12 (multiplikator + rapport == fasit
+  + førpris-brudd → tilsynsbrev). **12/12 PASS.** Commit `0da3489`.
+
+### Segment → Ipsos-aldersgruppe-mapping (DEL 2, `SEGMENT_TIL_IPSOS`)
+Spillets AGE_GROUPS er grovere enn Ipsos-bucketene; treffet for et segment =
+snitt over de mappede bucketene.
+
+| Spill-segment | Ipsos-bucket(er) |
+|---|---|
+| 15-20 | 18-29 |
+| 21-30 | 18-29 |
+| 31-45 | 30-39 + 40-49 |
+| 46-60 | 50-59 |
+| 60+ | 60+ |
+
+### ⚠️ Glossary-flagg (IKKE oppdiktet)
+Brukt eksisterende: `målgruppe`=MKT_021. **Mangler i `glossary.json`:
+«kampanje», «rekkevidde», «ROI», «førpris», «markedsplan»** — vist som ren tekst.
+Bør legges til (Espen-godkjente definisjoner) før de brukes som klikkbare fagord
+— samme mønster som pkt. 31/32.
+
+### Designvalg
+- **Kampanjefaktor er konstant over perioden** (kanal×segment × avtagende
+  budsjett) — stabilt/forklarbart. Faktisk kunde-% = (faktor−1)×100.
+- **Førpris:** `prisendretDag` logges KUN når eleven aktivt endrer en pris; en
+  vare med etablert/urørt pris gir aldri brudd. Brudd = pris endret < 14 dager
+  før salgskampanjen → tilsynsbrev + bot (tunbar).
+- **DEV_SPOL_KAMPANJE** finaliserer uten spilte dager (akkBakgrunnKr=0 → ROI
+  −100 %); ekte dager gir reell merinntekt.
+
+### Espens Chrome-sjekkliste (per del)
+Aktiver `kampanje` (lærerdashbord eller `localStorage['tema-aktivering-dev'] =
+{"kampanje":{"aktiv":true,"nivaa":"vg1"}}`), åpne med `?dev=1`:
+- **DEL 1:** aktiver mens du spiller → mentor-boble «Læreren har åpnet Kampanje …».
+- **DEL 3:** Marked-fanen → «📣 Kampanje — planlegg»: 3-stegs intro, fire valg,
+  total kostnad live, 📚-lenker (treff-tall vises ALDRI her). «⏩ Fyll planlegger …».
+- **DEL 4:** Start kampanje → åpne en dag → Dagspuls viser «📣 Kampanje pågår».
+- **DEL 5:** «⏩ Spol til kampanjeslutt» → effektrapport (mål vs faktisk, kostnad
+  vs merinntekt). Bytt nivå vg2 → ROI-elevoppgave + A/B (etter to kampanjer).
+- **DEL 6:** hub `/learning/mfi/kommunikasjon-kanaler` → fase 6 «Hvem bruker
+  hvilke medier?» tabell + kilde + fiktiv-merking + kildekritikk.
+- **DEL 7:** ved effektrapport → mentoren peker med dine tall + kanal-treff.
+  Salgskampanje på nylig prisendret vare → tilsynsbrev + førpris-refleksjon.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
