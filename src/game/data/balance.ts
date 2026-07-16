@@ -37,10 +37,10 @@ export const BALANCE = {
   eksponeringMax: 1.15,
   eksponeringReferanse: 4,
 
-  /** Markedsføringsfaktor = klem(1 + mnd-budsjett / skala, min, max). */
-  markedsforingMin: 1.0,
-  markedsforingMax: 1.3,
-  markedsforingSkala: 100_000, // budsjett 30 000 ⇒ +0,30 ⇒ maks
+  // MERK: markedsforingMin/Max/Skala er FJERNET. Den løpende markedsføringens
+  // trafikkeffekt bor nå per kanal i `kampanje.lopende` (under) — Tema 8 DEL D
+  // erstattet den gamle flate skala-faktoren (se backgroundSales.ts). De gamle
+  // feltene hadde da null lesere.
 
   /** Hver bakgrunnskunde kjøper 1–2 varer: P(2 varer), ellers 1. */
   sannsynlighetToVarer: 0.5,

@@ -41,9 +41,12 @@ export function eksponeringsfaktor(fylteDisplayPlasser: number): number {
   return clamp(BALANCE.eksponeringMin + andel * (BALANCE.eksponeringMax - BALANCE.eksponeringMin), BALANCE.eksponeringMin, BALANCE.eksponeringMax)
 }
 
-export function markedsforingsfaktor(mndBudsjett: number): number {
-  return clamp(1 + mndBudsjett / Math.max(1, BALANCE.markedsforingSkala), BALANCE.markedsforingMin, BALANCE.markedsforingMax)
-}
+// MERK: den gamle `markedsforingsfaktor(mndBudsjett)` (som leste
+// BALANCE.markedsforingSkala/Min/Max) er FJERNET. Tema 8 DEL D erstattet den
+// samlede markedsføringsfaktoren med `lopendeMarkedsforingsfaktor` (per kanal ×
+// målgruppe-treff, se kampanje.ts) — brukt i beregnBakgrunnskunder under. Den
+// gamle funksjonen hadde da null kallere (verifisert), og skala-verdiene i
+// balance.ts ble død kode; alt er ryddet ut.
 
 /** Antall fylte display-plasser (trau + vindu) MED lager — driver eksponering. */
 export function tellFylteDisplayPlasser(
