@@ -1286,6 +1286,86 @@ KJENT FEIL → PASS: hub-lenken «📚 Beredskap (Contingency) ↗» åpner i ny
 navigerer IKKE spillfanen bort (url blir på `/game`). Full tabell i
 `docs/rapporter/spilltest-siste.md`.
 
+## 31. TEMA 2 BUDSJETT + TEMA 3 NØKKELTALL (bølge 1)
+
+> **Status: bygget. `tsc -b` + `vite build` grønn etter HVER del. `npm run
+> spilltest` (5176): 11/11 PASS.** Gren `spor-a/tema-budsjett` (main urørt) —
+> IKKE merget, venter Espens validering. Base: main @ c46a910. Nullpunkt før
+> jobb: 10/10 PASS. 7 commits (DEL 1–7).
+
+To temaer i én jobb. **Nivåregler (LK20) styrer:** VG1 ser ALDRI nøkkeltall/
+prosent — bare «tjente du penger, traff du planen?». Avvik vises ALLTID med
+fortegn + tekst (aldri farge alene — Espen er fargesvak). Konsekvens er svaret;
+spillet retter ALDRI elevens tall (brannalarm-modellen).
+
+**Delt datalag (`data/budsjett.ts`)** — DEL 3d: avvik/nøkkeltall regnes ETT sted,
+testbart: `BUDSJETT_LINJER` (6 faste), `maanedNokkel` («aar1-mnd2»),
+`faktiskeLinjer(settlement)`, `linjeAvvik`, `avvikTekst`, `planlagtResultat`,
+`erStortAvvik`, `bokfortNokkeltall`, hub-lenker. `MonthSettlement` fikk
+`salgInntektBrutto` + `varekjop`. State: `budsjett` + `nokkeltall`, persistert
+(`budsjett_state_v1`) + bevart gjennom START_GAME.
+
+- **DEL 1** — `temaer.ts`: `budsjett` (vg1+vg2) + `nokkeltall` (KUN vg2).
+  `TemaAktiveringPanel` mapper over `TEMAER` → begge vises automatisk på
+  lærersiden (ingen ekstra kode). Commit `bff9fc9`.
+- **DEL 2** — Budsjettseksjon øverst i Økonomi-fanen (Tema 2 aktivt): 6 faste
+  linjer, «Sist måned: X»-referanse per felt (faktisk fra forrige oppgjør; for
+  de faste linjene også uten historikk), lån forhåndsutfylt (terminbeløp),
+  3-stegs guidet intro (localStorage `budsjett_intro_v1`, kan hoppes over),
+  «Lagre budsjett» → `SET_BUDSJETT`. Låses ved oppgjør. Commit `30b5c4f`.
+- **DEL 3** — Månedsoppgjøret får `Budsjett | Faktisk | Avvik` (fortegn + tekst,
+  nøytral farge) + «Planlagt vs Faktisk resultat» + én setning uten dom. VG2:
+  «Hva tror du skjedde?»-fritekst på linjer over `BUDSJETT_AVVIK_TERSKEL`
+  (25 % + 1 000 kr) → `SET_AVVIK_NOTAT`. Ingen budsjett → vennlig hint (aldri
+  straff). Commit `2c51113`.
+- **DEL 4** — Tema 3 Nøkkeltall (KUN VG2): elevoppgave (bruttofortjeneste/
+  dekningsgrad/resultatgrad), eleven ser formelen med månedens egne tall og
+  regner selv (`SET_NOKKELTALL_SVAR`). Ved oppgjøret: «ditt tall» vs «bokført»
+  ETTERPÅ (fortegn/prosentpoeng) + refleksjon om HVILKE tall. Commit `ef50fd2`.
+- **DEL 5** — Mentor-triggere (dynamiske, én gang): `budsjett_avvik_storst`
+  (leser linja med størst avvik, elevens tall) og `nokkeltall_dekningsgrad_avvik`
+  (VG2, >5 prosentpoeng sprik → spør om HVILKE tall). Transient
+  `budsjettOppgjorHint` settes ved rull (settlement-tallene er borte etter
+  dismiss). Budsjett-introen har egen flagg → dobbeltfyrer ikke. Commit `3bcdd55`.
+- **DEL 6** — Hub-lenker (landet i DEL 2/4-seksjonene, ny fane) + dev-knapper
+  (`?dev=1`): «⏩ Fyll budsjett …» + «⏩ Simuler månedsslutt med tydelige avvik»
+  (`DEV_SIMULER_OPPGJOR` — ≥2 linjer over terskel). Commit `ac13e5f`.
+- **DEL 7** — Spilltest steg 11: aktiver Tema 2, sett budsjett, rull måned,
+  verifiser avvik == delt hjelpefunksjon (husleie-avvik = 5 000 kr, 6 linjer) +
+  oppsummeringslinja. **11/11 PASS.** Commit `33fdce0`.
+
+### ⚠️ Glossary-flagg (IKKE oppdiktet)
+Fagord-tokens bruker eksisterende ID-er: `budsjett`=ECO_008, `dekningsgrad`=
+ECO_002, `bruttofortjeneste`=ECO_022, `omsetning`=ECO_009. **Mangler i
+`glossary.json`: «avvik» og «resultatgrad»** — vist som REN TEKST (ingen token,
+ingen oppdiktet definisjon). Bør legges til i glossaryet (Espen/fagperson
+godkjenner definisjonene) før de brukes som klikkbare fagord.
+
+### Designvalg å merke seg
+- **«Neste måned» tolket som inneværende måned som skal gjøres opp:**
+  budsjettseksjonen sikter på `currentMonth` (den kommende oppgjørs-måneden),
+  låses ved dens oppgjør. Nøkkeltall-svar gjelder samme måned.
+- **Nøkkeltall regnes fra tallene SÅ LANGT i måneden** (de vokser) — sprik mot
+  bokført er tilsiktet læring (refleksjonen spør om HVILKE tall). Seksjonen sier
+  eksplisitt «regn på nytt mot slutten for best treff».
+
+### Espens Chrome-sjekkliste (visuell validering per del)
+Aktiver tema i lærerdashbordet (eller `localStorage['tema-aktivering-dev'] =
+{"budsjett":{"aktiv":true,"nivaa":"vg1"}}`), åpne spillet med `?dev=1`:
+- **DEL 1:** Lærerdashbord → Spillet-fanen: «Budsjett og avvik» (vg1/vg2) +
+  «Nøkkeltall og lønnsomhet» (kun vg2) i tema-lista.
+- **DEL 2:** Økonomi-fanen → «Budsjett for [måned]» øverst: 3-stegs intro
+  (hopp over/neste), 6 linjer, «Sist måned»-tall, lån forhåndsutfylt, Lagre.
+- **DEL 3:** `?dev=1` → budsjettseksjon → «⏩ Simuler månedsslutt …»: oppgjøret
+  viser Budsjett|Faktisk|Avvik (fortegn+tekst), «Du planla … det ble …».
+  Bytt nivå til vg2 → «Hva tror du skjedde?»-felt på store avvik. VG1: ikke.
+- **DEL 4 (vg2):** aktiver `nokkeltall` (vg2) → Økonomi-fanen «🔢 Nøkkeltall»:
+  formler + input; lagre; kjør «⏩ Simuler …» → oppgjøret viser ditt vs bokført.
+- **DEL 5:** etter et simulert oppgjør → lukk oppgjøret → mentoren peker/boble
+  med linja som bommet mest (dine tall). VG2 + nøkkeltall-svar med >5 pp sprik
+  → dekningsgrad-refleksjon.
+- **DEL 6:** 📚-lenker i begge seksjoner åpner i NY fane (spillet står urørt).
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
