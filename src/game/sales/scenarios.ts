@@ -15,6 +15,7 @@ const BAKEVARE_TAGS = ['bakevarer', 'pastry', 'croissant', 'bolle', 'muffin', 's
 
 export const MORGENKUNDEN: SalesScenario = {
   id: 'morgenkunden',
+  spriteCal: { scale: 1.15, centerX: 32, waistY: 78.5 },   // Espen-validert (?dev=1)
   customerName: 'Morgenkunden',
   personaTag: 'Karriereorienterte',
   sprite: '/assets/raw/customers/kari.png',
@@ -103,6 +104,7 @@ export const REKLAMASJON_OMLEVERING_KOST = 250
 
 export const REKLAMASJONEN: SalesScenario = {
   id: 'reklamasjonen',
+  spriteCal: { scale: 1.3, centerX: 36.5, waistY: 78.5 },   // Espen-validert (?dev=1)
   customerName: 'Tom',
   personaTag: 'Familieorienterte',
   sprite: '/assets/raw/customers/tom.png',
@@ -187,6 +189,7 @@ export const REKLAMASJONEN: SalesScenario = {
 
 export const ALLERGIKEREN: SalesScenario = {
   id: 'allergikeren',
+  spriteCal: { scale: 1.2, centerX: 41.5, waistY: 84 },   // Espen-validert (?dev=1)
   customerName: 'Sunniva',
   personaTag: 'Helsebevisste',
   sprite: '/assets/raw/customers/allergikeren.png',
@@ -266,6 +269,7 @@ const KAFFETILBEHOR_TAGS = ['kaffe', 'coffee', 'espresso', 'cappuccino', 'latte'
 
 export const PRUTEKUNDEN: SalesScenario = {
   id: 'prutekunden',
+  spriteCal: { scale: 1.3, centerX: 40, waistY: 82 },   // Espen-validert (?dev=1)
   customerName: 'Roger',
   personaTag: 'Prisbevisste',
   sprite: '/assets/raw/customers/prutekunden.png',
@@ -347,6 +351,7 @@ const KAKE_BOLLE_TAGS = ['kake', 'bolle', 'muffin', 'skolebrod', 'kanelbolle', '
 
 export const DEN_USIKRE: SalesScenario = {
   id: 'den-usikre',
+  spriteCal: { scale: 1.2, centerX: 32.5, waistY: 84.5 },   // Espen-validert (?dev=1)
   customerName: 'Maren',
   personaTag: 'Familieorienterte',
   sprite: '/assets/raw/customers/usikre.png',
@@ -435,6 +440,7 @@ const RUNDSTYKKE_TAGS = ['rundstykke']
 
 export const STORBESTILLINGEN: SalesScenario = {
   id: 'storbestillingen',
+  spriteCal: { scale: 1.15, centerX: 31, waistY: 78.5 },   // Espen-validert (?dev=1)
   customerName: 'Fredrik',
   personaTag: 'Karriereorienterte',
   sprite: '/assets/raw/customers/storbestiller.png',
@@ -518,6 +524,7 @@ const VARM_DRIKKE_TAGS = ['kaffe', 'coffee', 'cappuccino', 'latte', 'espresso', 
 // steg der du enten redder stemningen eller graver dypere.
 export const KRYSSALGET: SalesScenario = {
   id: 'kryssalget',
+  spriteCal: { scale: 1.2, centerX: 40, waistY: 82.5 },   // Espen-validert (?dev=1)
   customerName: 'Amira',
   personaTag: 'Karriereorienterte',
   sprite: '/assets/raw/customers/amira.png',
@@ -597,6 +604,7 @@ export const KRYSSALGET: SalesScenario = {
 // ikke finnes. Ender i et kulanse-bytte (recommend av erstatningsvare).
 export const ANGRERETTEN: SalesScenario = {
   id: 'angreretten',
+  spriteCal: { scale: 1.25, centerX: 35.5, waistY: 78.5 },   // Espen-validert (?dev=1)
   customerName: 'Bjørn',
   personaTag: 'Familieorienterte',
   sprite: '/assets/raw/customers/bjorn.png',
@@ -672,6 +680,7 @@ export const ANGRERETTEN: SalesScenario = {
 // Forgrening: et mersalgsforsøk sender samtalen til et irritasjons-steg.
 export const HASTVERKSKUNDEN: SalesScenario = {
   id: 'hastverkskunden',
+  spriteCal: { scale: 1.2, centerX: 37, waistY: 78.5 },   // Espen-validert (?dev=1)
   customerName: 'Camilla',
   personaTag: 'Karriereorienterte',
   sprite: '/assets/raw/customers/camilla.png',
@@ -838,6 +847,7 @@ export const GAVEKJOPET: SalesScenario = {
 // (aggressiv pruting): dette er et rimelig spørsmål, ikke et press.
 export const STUDENTRABATTEN: SalesScenario = {
   id: 'studentrabatten',
+  spriteCal: { scale: 1.2, centerX: 37, waistY: 78.5 },   // Espen-validert (?dev=1)
   customerName: 'Emil',
   personaTag: 'Prisbevisste',
   sprite: '/assets/raw/customers/emil.png',
@@ -913,6 +923,7 @@ export const STUDENTRABATTEN: SalesScenario = {
 // Førerhund har adgang også der dyr ellers ikke slippes inn. RYKTE er metrikken.
 export const LIKEVERD: SalesScenario = {
   id: 'likeverd',
+  spriteCal: { scale: 1.25, centerX: 40, waistY: 80.5 },   // Espen-validert (?dev=1)
   customerName: 'Live',
   personaTag: 'Familieorienterte',
   sprite: '/assets/raw/customers/live.png',
@@ -1059,6 +1070,7 @@ export const VENTETIDEN: SalesScenario = {
 // SPRÅKLIG/terskel-basert, ikke anledning-basert (som Marens selskap).
 export const FORSTEGANGSKUNDEN: SalesScenario = {
   id: 'forstegangskunden',
+  spriteCal: { scale: 1.15, centerX: 40, waistY: 82 },   // Espen-validert (?dev=1)
   customerName: 'Oda',
   personaTag: 'Helsebevisste',
   sprite: '/assets/raw/customers/oda.png',
