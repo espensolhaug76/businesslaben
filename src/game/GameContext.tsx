@@ -20,6 +20,7 @@ import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
 import { manedligeFasteKostnader, amortiserLaan } from './data/economy'
 import { maanedNokkel, TOM_BUDSJETT, BUDSJETT_LINJER, faktiskeLinjer, bokfortNokkeltall, type BudsjettLinjeKey, type BudsjettTall, type NokkeltallSvar } from './data/budsjett'
+import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinntekt, kampanjeRoi, MARKEDSFORINGSLOVEN_RUTE, type KampanjeAktiv, type KampanjeResultat, type KampanjeSalgsvare, type KampanjeKanalValg } from './data/kampanje'
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
@@ -232,6 +233,8 @@ const initialState: GameState = {
   budsjett: { maaneder: {} },
   nokkeltall: {},
   budsjettOppgjorHint: null,
+  kampanje: { aktiv: null, historikk: [], visRapportFor: null },
+  prisendretDag: {},
 }
 
 // ─── Actions ────────────────────────────────────────────────────────────────
@@ -308,6 +311,15 @@ type Action =
   | { type: 'SET_AVVIK_NOTAT'; maaned: string; linje: string; tekst: string }
   | { type: 'SET_NOKKELTALL_SVAR'; maaned: string; svar: NokkeltallSvar }
   | { type: 'DEV_SIMULER_OPPGJOR' }   // ?dev=1: fabrikker et oppgjør med tydelige avvik
+  // ── TEMA 8 Kampanje ──
+  | { type: 'START_KAMPANJE'; kampanje: {
+      maalType: 'kunder' | 'salg'; maalProsent: number; segmenter: string[];
+      kanaler: KampanjeKanalValg[]; varighet: number; situasjon: string;
+      salgsvarer: { productId: string; nyPris: number }[]
+    } }
+  | { type: 'DISMISS_KAMPANJE_RAPPORT' }
+  | { type: 'SET_KAMPANJE_ROI_SVAR'; id: string; svar: number }
+  | { type: 'DEV_SPOL_KAMPANJE' }   // ?dev=1: spol aktiv kampanje til slutt
   // Økonomi-samling (DEL 2): lukk månedsoppgjør-overlayet.
   | { type: 'DISMISS_MONTH_SETTLEMENT' }
   | { type: 'RESET' }
@@ -345,6 +357,48 @@ function calcPlanQuality(state: GameState): number {
   return Math.min(5, score)
 }
 
+// ─── TEMA 8 KAMPANJE — reducer-hjelpere ──────────────────────────────────────
+/** Monoton absolutt spilldag (dayNumber nullstilles hver måned). */
+function absDag(year: number, month: number, dayNumber: number): number {
+  return ((year - 1) * 12 + (month - 1)) * DAY_CONFIG.daysPerMonth + dayNumber
+}
+
+/** Fullfør en kampanje som har kjørt ferdig: bygg effektrapport, restaurer
+ *  ordinære priser på salgsvarene, og lag tilsynsbrev + bot ved førpris-brudd.
+ *  Ren funksjon. */
+function fullforKampanje(k: KampanjeAktiv, produkter: Product[], ctx: { aar: number; maaned: number; dag: number }): {
+  resultat: KampanjeResultat; produkter: Product[]; tilsyn: InboxMessage | null; bot: number
+} {
+  const kostnad = kampanjeKostnad(k.kanaler, k.varighet)
+  const merinntekt = kampanjeMerinntekt(k.akkBakgrunnKr, k.faktor)
+  const forprisBrudd = k.salgsvarer.some(v => v.forprisBrudd)
+  const resultat: KampanjeResultat = {
+    id: k.id, maalType: k.maalType, maalProsent: k.maalProsent,
+    faktiskProsent: kampanjeFaktiskProsent(k.faktor), faktor: k.faktor,
+    kostnad, merinntekt, roi: kampanjeRoi(merinntekt, kostnad),
+    kanaler: k.kanaler, segmenter: k.segmenter, varighet: k.varighet,
+    akkBakgrunnKr: k.akkBakgrunnKr, forprisBrudd, aar: ctx.aar, maaned: ctx.maaned, dag: ctx.dag,
+  }
+  // Restaurer ordinære priser på salgsvarene.
+  const restaurer = new Map(k.salgsvarer.map(v => [v.productId, v.ordinaerPris]))
+  const nyeProdukter = produkter.map(p => restaurer.has(p.id) ? { ...p, retailPrice: restaurer.get(p.id)! } : p)
+  // Førpris-brudd → tilsynsbrev + moderat bot.
+  let tilsyn: InboxMessage | null = null
+  let bot = 0
+  if (forprisBrudd) {
+    bot = BALANCE.kampanje.forprisBot
+    const varer = k.salgsvarer.filter(v => v.forprisBrudd).map(v => v.navn).join(', ')
+    tilsyn = {
+      id: `tilsyn_${k.id}`, type: 'kampanje', title: '⚖️ Brev fra Forbrukertilsynet',
+      body: `Salgskampanjen din satte ned prisen på ${varer} uten at varen(e) hadde hatt ordinær pris lenge nok på forhånd. Førpris-regelen i markedsføringsloven krever en ekte, tidligere pris før du kan reklamere med et tilbud. Gebyr: ${bot.toLocaleString('nb-NO')} kr. Ingen game over — men les reglene før neste salg.`,
+      date: `Dag ${ctx.dag} · Måned ${ctx.maaned}`, read: false,
+      competenceGoal: 'Regelverk for markedsføring (førpris) — VG1',
+      hubRute: MARKEDSFORINGSLOVEN_RUTE, hubNavn: 'Markedsføringsloven',
+    }
+  }
+  return { resultat, produkter: nyeProdukter, tilsyn, bot }
+}
+
 // ─── Reducer ────────────────────────────────────────────────────────────────
 
 function reducer(state: GameState, action: Action): GameState {
@@ -363,6 +417,8 @@ function reducer(state: GameState, action: Action): GameState {
         // TEMA 2/3: budsjett + nøkkeltall persisteres på samme vis — bevar dem.
         budsjett: state.budsjett,
         nokkeltall: state.nokkeltall,
+        kampanje: state.kampanje,
+        prisendretDag: state.prisendretDag,
         companyName: action.companyName,
         industry: action.industry,
         money: STARTING_MONEY[action.industry],
@@ -407,12 +463,22 @@ function reducer(state: GameState, action: Action): GameState {
       }
     }
 
-    case 'SET_PRODUCTS':
+    case 'SET_PRODUCTS': {
+      // TEMA 8 (førpris): logg absolutt spilldag når eleven AKTIVT endrer en
+      // retailPrice — brukes til førpris-sjekken ved salgskampanje.
+      const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      const prisendretDag = { ...state.prisendretDag }
+      for (const np of action.products) {
+        const gammel = state.products.find(o => o.id === np.id)
+        if (gammel && gammel.retailPrice !== np.retailPrice && np.retailPrice > 0) prisendretDag[np.id] = naa
+      }
       return {
         ...state,
         products: action.products,
         p1_complete: action.products.length > 0,
+        prisendretDag,
       }
+    }
 
     case 'SET_MAIN_PRODUCT':
       // VINDUSLOGIKK TILLEGG: hovedprodukt for vindu/kampanjer. Klikk paa
@@ -812,6 +878,53 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, budsjett, lastMonthSettlement: settlement, budsjettOppgjorHint: { storstAvvik, dekningsgradAvvik } }
     }
 
+    // ── TEMA 8 KAMPANJE ───────────────────────────────────────────────────────
+    case 'START_KAMPANJE': {
+      if (state.kampanje.aktiv) return state                       // én aktiv om gangen
+      const p = action.kampanje
+      const kostnad = kampanjeKostnad(p.kanaler, p.varighet)
+      if (state.money < kostnad) return state                      // ikke råd → no-op (UI gater også)
+      const faktor = kampanjefaktor(p.kanaler, p.segmenter)
+      const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      // Salgsvarer: ordinær pris + FØRPRIS-sjekk (prisen endret siste 14 dager?).
+      const salgsvarer: KampanjeSalgsvare[] = p.salgsvarer.map(sv => {
+        const prod = state.products.find(x => x.id === sv.productId)
+        const endret = state.prisendretDag[sv.productId]
+        const forprisBrudd = endret !== undefined && (naa - endret) < BALANCE.kampanje.forprisDager
+        return { productId: sv.productId, navn: prod?.name ?? sv.productId, ordinaerPris: prod?.retailPrice ?? 0, nyPris: sv.nyPris, forprisBrudd }
+      })
+      // Anvend rabatt (midlertidig — restaureres ved slutt; logges IKKE som prisendring).
+      const rabatt = new Map(salgsvarer.map(v => [v.productId, v.nyPris]))
+      const products = state.products.map(pr => rabatt.has(pr.id) ? { ...pr, retailPrice: rabatt.get(pr.id)! } : pr)
+      const aktiv: KampanjeAktiv = {
+        id: `kamp_${state.currentYear}-${state.currentMonth}-${state.dayNumber}-${state.kampanje.historikk.length}`,
+        maalType: p.maalType, maalProsent: p.maalProsent, segmenter: p.segmenter, kanaler: p.kanaler,
+        varighet: p.varighet, situasjon: p.situasjon, faktor, salgsvarer,
+        startAar: state.currentYear, startMaaned: state.currentMonth, startDag: state.dayNumber,
+        dagerKjort: 0, akkBakgrunnKr: 0, akkBakgrunnKunder: 0,
+      }
+      return { ...state, money: state.money - kostnad, products, kampanje: { ...state.kampanje, aktiv } }
+    }
+
+    case 'DISMISS_KAMPANJE_RAPPORT':
+      return { ...state, kampanje: { ...state.kampanje, visRapportFor: null } }
+
+    case 'SET_KAMPANJE_ROI_SVAR':
+      return { ...state, kampanje: { ...state.kampanje, historikk: state.kampanje.historikk.map(r => r.id === action.id ? { ...r, roiElevSvar: action.svar } : r) } }
+
+    // DEV (?dev=1): spol aktiv kampanje til slutt (samme finalisering som CLOSE_DAY).
+    case 'DEV_SPOL_KAMPANJE': {
+      if (!state.kampanje.aktiv) return state
+      const k: KampanjeAktiv = { ...state.kampanje.aktiv, dagerKjort: state.kampanje.aktiv.varighet }
+      const f = fullforKampanje(k, state.products, { aar: state.currentYear, maaned: state.currentMonth, dag: state.dayNumber })
+      const messages = f.tilsyn ? [...state.messages, f.tilsyn] : state.messages
+      return {
+        ...state, products: f.produkter, money: state.money - f.bot,
+        messages, unreadCount: messages.filter(m => !m.read).length,
+        kampanje: { aktiv: null, historikk: [...state.kampanje.historikk, f.resultat], visRapportFor: f.resultat.id },
+      }
+    }
+
     case 'BUY_MARKET_RESEARCH': {
       if (state.money < 10_000) return state
       const bp = { ...state.businessPlan, marketResearchDone: true }
@@ -1090,7 +1203,7 @@ function reducer(state: GameState, action: Action): GameState {
       // BAKGRUNNSSALG (snapshot ved OPEN_DAY): dagens passive kundestrøm
       // beregnes NÅ og DRYPPES løpende per klokke-tick (se TICK).
       const seed = dagSeed(state.dayNumber, state.currentMonth, state.currentYear)
-      const kunder = beregnBakgrunnskunder({
+      const baseKunder = beregnBakgrunnskunder({
         lokaleId: state.rentedLocationId,
         rykte: state.reputation,
         products,
@@ -1098,6 +1211,9 @@ function reducer(state: GameState, action: Action): GameState {
         windowDisplayLayout: state.windowDisplayLayout,
         markedsforingBudsjett: Object.values(state.marketingBudget).reduce((s, v) => s + v, 0),
       })
+      // TEMA 8: aktiv kampanje løfter trafikken med sin (låste) faktor.
+      const kampAktiv = state.kampanje.aktiv && state.kampanje.aktiv.dagerKjort < state.kampanje.aktiv.varighet
+      const kunder = kampAktiv ? Math.round(baseKunder * state.kampanje.aktiv!.faktor) : baseKunder
       const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed, kapasitetRest: 0 }
 
       // SPILLKLOKKE: planlegg dagens kundemøter på klokkeslett (avtagende antall
@@ -1282,9 +1398,36 @@ function reducer(state: GameState, action: Action): GameState {
         refleksjon,
       }
 
+      // TEMA 8: akkumuler kampanjedagen; fullfør ved siste dag (effektrapport +
+      // restaurer priser + ev. tilsynsbrev/bot).
+      let kampanje = state.kampanje
+      let kampProdukter = products
+      let kampMoney = state.money
+      let kampMessages = state.messages
+      if (state.kampanje.aktiv && state.kampanje.aktiv.dagerKjort < state.kampanje.aktiv.varighet) {
+        const k = state.kampanje.aktiv
+        const oppdatert: KampanjeAktiv = {
+          ...k, dagerKjort: k.dagerKjort + 1,
+          akkBakgrunnKr: k.akkBakgrunnKr + bakgrunnKr,
+          akkBakgrunnKunder: k.akkBakgrunnKunder + state.dayStats.bakgrunnKunder,
+        }
+        if (oppdatert.dagerKjort >= oppdatert.varighet) {
+          const f = fullforKampanje(oppdatert, products, { aar: state.currentYear, maaned: state.currentMonth, dag: state.dayNumber })
+          kampProdukter = f.produkter
+          kampMoney = state.money - f.bot
+          if (f.tilsyn) kampMessages = [...state.messages, f.tilsyn]
+          kampanje = { aktiv: null, historikk: [...state.kampanje.historikk, f.resultat], visRapportFor: f.resultat.id }
+        } else {
+          kampanje = { ...state.kampanje, aktiv: oppdatert }
+        }
+      }
+
       return {
         ...state,
-        products,
+        products: kampProdukter,
+        money: kampMoney,
+        messages: kampMessages,
+        unreadCount: kampMessages.filter(m => !m.read).length,
         dayProductStats: dps,
         shopOpen: false,
         dayPhase: 'oppgjør',
@@ -1292,6 +1435,7 @@ function reducer(state: GameState, action: Action): GameState {
         dayHistory: [...state.dayHistory, result],
         dayBackground: null,
         activeMeetingScenarioId: null,
+        kampanje,
       }
     }
 
@@ -1491,7 +1635,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     } catch { /* korrupt/utilgjengelig */ }
     try {
       const raw = localStorage.getItem(BUDSJETT_KEY)
-      if (raw) { const v = JSON.parse(raw); s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall } }
+      if (raw) {
+        const v = JSON.parse(raw)
+        s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall,
+          kampanje: v.kampanje ?? s.kampanje, prisendretDag: v.prisendretDag ?? s.prisendretDag }
+      }
     } catch { /* korrupt/utilgjengelig */ }
     return s
   })
@@ -1499,8 +1647,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
   useEffect(() => {
-    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall })) } catch { /* ignore */ }
-  }, [state.budsjett, state.nokkeltall])
+    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag })) } catch { /* ignore */ }
+  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag])
 
   // TEST-BRO (KUN DEV): speil hele spilltilstanden + dispatch på window, så det
   // automatiserte spilltest-løpet (Playwright — se docs/SPILLTESTER.md) kan LESE

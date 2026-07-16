@@ -18,6 +18,10 @@ import {
   BUDSJETT_LINJER, TOM_BUDSJETT, maanedNokkel, faktiskeLinjer, planlagtResultat,
   BUDSJETT_HUB, NOKKELTALL_HUB, type BudsjettTall, type BudsjettLinjeKey, type NokkeltallSvar,
 } from '../data/budsjett'
+import {
+  KANALER, kanalDagspris, kanalById, kampanjeKostnad, KAMPANJE_HUB, KOMMUNIKASJONSKANALER_RUTE,
+  type KampanjeKanalValg,
+} from '../data/kampanje'
 import { aktiveFunksjoner, evaluerRefleksjon, oppgaveRefleksjoner } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
 import type { Loan } from '../types'
@@ -2096,11 +2100,214 @@ const CHANNEL_INFO: Record<DistributionChannel, { label: string; emoji: string; 
   wholesale:      { label: 'Engros / B2B',      emoji: '📦', cost: 500,   desc: '×1.6 rekkevidde. 40% lavere margin. Krever Nivå 9.', requiresLevel: 9 },
 }
 
+// ── TEMA 8: KAMPANJEPLANLEGGER (Marked-fanen, når temaet er aktivt) ───────────
+// Én skjerm, fire valg (mål/målgruppe/kanal+budsjett/varighet) + VG1 markedsplan
+// (situasjon) + valgfri salgskampanje. Kanal×segment-TREFFET vises ALDRI her —
+// eleven må resonnere fra hub-tabellen (📚-lenke). Én aktiv kampanje om gangen.
+const kampFelt: React.CSSProperties = {
+  boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: 8, padding: '0.35rem 0.5rem', color: '#f1f5f9', fontSize: 13, fontFamily: 'inherit',
+}
+
+function KampanjeSeksjon() {
+  const { state, dispatch } = useGame()
+  const nivaa = useTemaNivaa('kampanje') ?? 'vg1'
+  const aktiv = state.kampanje.aktiv
+
+  const [maalType, setMaalType] = useState<'kunder' | 'salg'>('kunder')
+  const [maalProsent, setMaalProsent] = useState(20)
+  const [segmenter, setSegmenter] = useState<string[]>(() => [...state.targetAudience.ageGroups])
+  const [kanaler, setKanaler] = useState<KampanjeKanalValg[]>([])
+  const [varighet, setVarighet] = useState(5)
+  const [situasjon, setSituasjon] = useState('')
+  const [salgOn, setSalgOn] = useState(false)
+  const [salgsvarer, setSalgsvarer] = useState<{ productId: string; nyPris: number }[]>([])
+
+  const kostnad = kampanjeKostnad(kanaler, varighet)
+  const prisedeVarer = state.products.filter(p => p.retailPrice > 0)
+
+  function toggleSegment(a: string) { setSegmenter(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]) }
+  function toggleKanal(id: string) {
+    setKanaler(prev => prev.some(k => k.kanalId === id) ? prev.filter(k => k.kanalId !== id)
+      : prev.length >= 2 ? prev : [...prev, { kanalId: id, krPerDag: kanalDagspris(id) }])
+  }
+  function setKr(id: string, kr: number) { setKanaler(prev => prev.map(k => k.kanalId === id ? { ...k, krPerDag: Math.max(kanalDagspris(id), Math.round(kr)) } : k)) }
+  function toggleSalgsvare(id: string, ordinaer: number) {
+    setSalgsvarer(prev => prev.some(v => v.productId === id) ? prev.filter(v => v.productId !== id)
+      : prev.length >= 3 ? prev : [...prev, { productId: id, nyPris: Math.round(ordinaer * 0.8) }])
+  }
+  function setNyPris(id: string, pris: number) { setSalgsvarer(prev => prev.map(v => v.productId === id ? { ...v, nyPris: Math.max(0, Math.round(pris)) } : v)) }
+
+  const kanStarte = kanaler.length >= 1 && maalProsent > 0 && varighet >= 3 && varighet <= 7 && state.money >= kostnad
+  function start() {
+    if (!kanStarte) return
+    dispatch({ type: 'START_KAMPANJE', kampanje: {
+      maalType, maalProsent, segmenter, kanaler, varighet, situasjon,
+      salgsvarer: salgOn ? salgsvarer.filter(v => v.nyPris > 0) : [],
+    } })
+  }
+
+  const kort: React.CSSProperties = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '0.7rem 0.85rem', marginBottom: '0.7rem' }
+
+  // ── Aktiv kampanje: status (ingen ny planlegging før den er ferdig) ──
+  if (aktiv) {
+    const igjen = aktiv.varighet - aktiv.dagerKjort
+    return (
+      <div style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>📣 Kampanje pågår</div>
+        <p style={{ color: '#cbd5e1', fontSize: 13, margin: '0 0 0.6rem' }}>
+          Dag {aktiv.dagerKjort} av {aktiv.varighet} — {igjen} {igjen === 1 ? 'dag' : 'dager'} igjen. Steng dagene for å fullføre; da kommer effektrapporten.
+        </p>
+        <div style={{ fontSize: 12.5, color: '#94a3b8' }}>
+          Mål: øke {aktiv.maalType === 'kunder' ? 'antall kunder' : 'salget'} med {aktiv.maalProsent} % ·
+          Kanaler: {aktiv.kanaler.map(k => kanalById(k.kanalId)?.navn ?? k.kanalId).join(', ')} ·
+          Budsjett: {formatKr(aktiv.kanaler.reduce((s, k) => s + k.krPerDag, 0))}/dag
+          {aktiv.salgsvarer.length > 0 && ` · Salgskampanje på ${aktiv.salgsvarer.length} vare(r)`}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Planlegger ──
+  return (
+    <div style={{ background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.28)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
+      <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>📣 Kampanje — planlegg</div>
+      <p style={{ color: '#94a3b8', fontSize: 12.5, margin: '0 0 0.9rem' }}>
+        Sett et mål, velg målgruppe, kanal og periode. Effekten avhenger av om kanalen når målgruppa di — sjekk kildene før du velger.
+      </p>
+
+      {/* a) MÅL (SMART-light) */}
+      <div style={kort}>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc', marginBottom: 6 }}>1 · MÅL</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 13, color: '#cbd5e1' }}>
+          <span>Jeg vil øke</span>
+          <select value={maalType} onChange={e => setMaalType(e.target.value as 'kunder' | 'salg')} style={{ ...kampFelt, cursor: 'pointer' }}>
+            <option value="kunder" style={{ background: '#0c111d' }}>antall kunder</option>
+            <option value="salg" style={{ background: '#0c111d' }}>salget</option>
+          </select>
+          <span>med</span>
+          <input type="number" min={1} max={200} value={maalProsent} onChange={e => setMaalProsent(Math.max(0, Math.round(parseFloat(e.target.value) || 0)))} style={{ ...kampFelt, width: 64, textAlign: 'right' }} />
+          <span>% i løpet av kampanjen.</span>
+        </div>
+      </div>
+
+      {/* b) MÅLGRUPPE */}
+      <div style={kort}>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc', marginBottom: 6 }}>2 · MÅLGRUPPE (aldersgrupper)</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {AGE_GROUPS.map(a => {
+            const på = segmenter.includes(a)
+            return (
+              <button key={a} onClick={() => toggleSegment(a)} style={{
+                background: på ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${på ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: 99, padding: '0.3rem 0.9rem', color: på ? '#00d4aa' : '#94a3b8', fontSize: 12.5, fontWeight: på ? 700 : 400, cursor: 'pointer', fontFamily: 'inherit',
+              }}>{a}</button>
+            )
+          })}
+        </div>
+        <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 5 }}>Forhåndsvalgt fra Målgruppe-fanen — juster om kampanjen retter seg mot en annen gruppe.</div>
+      </div>
+
+      {/* c) KANAL + DAGSBUDSJETT */}
+      <div style={kort}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc' }}>3 · KANAL + DAGSBUDSJETT (velg 1–2)</div>
+          <a href={KOMMUNIKASJONSKANALER_RUTE} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#c084fc', fontWeight: 700, textDecoration: 'none' }}>📚 Hvem bruker hvilke medier? ↗</a>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {KANALER.map(k => {
+            const valgt = kanaler.find(v => v.kanalId === k.id)
+            const disabled = !valgt && kanaler.length >= 2
+            return (
+              <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={() => toggleKanal(k.id)} disabled={disabled} style={{
+                  flex: 1, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                  background: valgt ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${valgt ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 8, padding: '0.4rem 0.6rem', opacity: disabled ? 0.4 : 1,
+                }}>
+                  <span style={{ fontSize: 16 }}>{k.emoji}</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{k.navn}</span>
+                  {!k.ekte && <span style={{ fontSize: 9.5, color: '#f59e0b', fontStyle: 'italic' }}>fiktivt medium</span>}
+                  <span style={{ fontSize: 11, color: '#64748b' }}>fra {formatKr(kanalDagspris(k.id))}/dag</span>
+                </button>
+                {valgt && (
+                  <input type="number" min={kanalDagspris(k.id)} step={100} value={valgt.krPerDag} onChange={e => setKr(k.id, parseFloat(e.target.value) || 0)}
+                    title="kr/dag" style={{ ...kampFelt, width: 90, textAlign: 'right' }} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* d) VARIGHET */}
+      <div style={kort}>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc', marginBottom: 6 }}>4 · VARIGHET</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input type="range" min={3} max={7} step={1} value={varighet} onChange={e => setVarighet(parseInt(e.target.value))} style={{ flex: 1, accentColor: '#a855f7' }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', width: 60 }}>{varighet} dager</span>
+        </div>
+      </div>
+
+      {/* VG1 markedsplan: situasjonen nå */}
+      <div style={kort}>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc', marginBottom: 6 }}>MARKEDSPLAN · Situasjonen nå</div>
+        <textarea rows={2} value={situasjon} onChange={e => setSituasjon(e.target.value)}
+          placeholder="Beskriv kort situasjonen (2–3 setninger): hva vil du oppnå, og hvorfor akkurat nå?"
+          style={{ ...kampFelt, width: '100%', resize: 'vertical' }} />
+      </div>
+
+      {/* Salgskampanje (valgfri) */}
+      <div style={kort}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 800, color: '#c084fc' }}>
+          <input type="checkbox" checked={salgOn} onChange={e => setSalgOn(e.target.checked)} />
+          SALGSKAMPANJE — sett ned prisen på inntil 3 varer
+        </label>
+        {salgOn && (
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {prisedeVarer.length === 0 && <div style={{ fontSize: 12, color: '#64748b' }}>Ingen prisede varer ennå.</div>}
+            {prisedeVarer.map(p => {
+              const valgt = salgsvarer.find(v => v.productId === p.id)
+              return (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button onClick={() => toggleSalgsvare(p.id, p.retailPrice)} style={{ flex: 1, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', background: valgt ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${valgt ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, padding: '0.35rem 0.6rem', color: '#f1f5f9', fontSize: 12.5 }}>
+                    {p.icon} {p.name} <span style={{ color: '#64748b' }}>· ord. {formatKr(p.retailPrice)}</span>
+                  </button>
+                  {valgt && <input type="number" min={0} value={valgt.nyPris} onChange={e => setNyPris(p.id, parseFloat(e.target.value) || 0)} title="ny pris" style={{ ...kampFelt, width: 90, textAlign: 'right' }} />}
+                </div>
+              )
+            })}
+            <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2 }}>⚖️ Førpris-regelen: en vare må ha hatt ordinær pris i minst 2 uker før du kan sette den ned. Brudd gir tilsynsbrev etter kampanjen.</div>
+          </div>
+        )}
+      </div>
+
+      {/* Total + start */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+        <div style={{ fontSize: 13 }}>Total kampanjekostnad: <strong style={{ color: '#f97316' }}>{formatKr(kostnad)}</strong> <span style={{ color: '#64748b', fontSize: 11 }}>({formatKr(kanaler.reduce((s, k) => s + k.krPerDag, 0))}/dag × {varighet})</span></div>
+        <button onClick={start} disabled={!kanStarte}
+          style={{ background: kanStarte ? 'linear-gradient(135deg,#a855f7,#7c3aed)' : 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 99, padding: '0.65rem 1.6rem', color: kanStarte ? '#fff' : '#475569', fontWeight: 800, fontSize: 14, cursor: kanStarte ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
+          Start kampanje
+        </button>
+      </div>
+      {!kanStarte && kanaler.length >= 1 && state.money < kostnad && <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'right', marginTop: 4 }}>Ikke råd ({formatKr(kostnad)} &gt; {formatKr(state.money)})</div>}
+
+      {/* 📚 hub-lenker */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: '0.9rem' }}>
+        {KAMPANJE_HUB[nivaa].map(h => (
+          <a key={h.rute} href={h.rute} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 8, padding: '0.35rem 0.8rem', color: '#c084fc', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>📚 {h.navn} ↗</a>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function MarkedsforingTab() {
   const { state, dispatch } = useGame()
   const [budget, setBudget] = useState({ ...state.marketingBudget })
   const [appeal, setAppeal] = useState(state.appealType)
   const [channels, setChannels] = useState<DistributionChannel[]>(state.channels)
+  const kampanjeAktiv = useErTemaAktivt('kampanje')   // TEMA 8
 
   const total = Object.values(budget).reduce((s, v) => s + v, 0)
 
@@ -2119,6 +2326,9 @@ function MarkedsforingTab() {
 
   return (
     <div>
+      {/* TEMA 8 Kampanje — øverst, kun når temaet er aktivt. */}
+      {kampanjeAktiv && <KampanjeSeksjon />}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <div>
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Markedsføring & Distribusjon</h3>

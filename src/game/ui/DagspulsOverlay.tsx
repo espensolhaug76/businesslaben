@@ -77,6 +77,15 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
       </div>
 
       <div style={{ width: '100%', maxWidth: 760, display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+        {/* TEMA 8: kampanje pågår-indikator */}
+        {state.kampanje.aktiv && state.kampanje.aktiv.dagerKjort < state.kampanje.aktiv.varighet && (
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ display: 'inline-block', background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 99, padding: '3px 12px', fontSize: 12, fontWeight: 800, color: '#c084fc' }}>
+              📣 Kampanje pågår (dag {state.kampanje.aktiv.dagerKjort + 1} av {state.kampanje.aktiv.varighet})
+            </span>
+          </div>
+        )}
+
         {/* Klokke + fremdrift */}
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: '#64748b', letterSpacing: '0.15em' }}>ÅPEN DAG · DAG {state.dayNumber}</div>

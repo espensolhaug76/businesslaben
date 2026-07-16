@@ -132,6 +132,8 @@ export interface KampanjeResultat {
   akkBakgrunnKr: number
   forprisBrudd: boolean
   aar: number; maaned: number; dag: number
+  /** VG2: elevens egne ROI-svar (elevoppgave — sammenlignes med `roi` etterpå). */
+  roiElevSvar?: number
 }
 
 export interface KampanjeState {

@@ -2,6 +2,7 @@
 
 import type { RisikoRad, BrannalarmKvalitet, BrannovelseForsok } from './data/beredskap'
 import type { BudsjettState, NokkeltallSvar } from './data/budsjett'
+import type { KampanjeState } from './data/kampanje'
 
 export type Industry = 'cafe' | 'fashion' | 'tech' | 'sports'
 export type LocationZone = 'utkant' | 'hovedgata' | 'gagata'
@@ -264,13 +265,17 @@ export interface PestEvent {
 
 export interface InboxMessage {
   id: string
-  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event' | 'beredskap'
+  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event' | 'beredskap' | 'kampanje'
   title: string
   body: string
   date: string
   read: boolean
   competenceGoal?: string
   choices?: { text: string; effect: string; eventId?: string; choiceId?: string }[]
+  /** Valgfri 📚-hublenke (åpnes i ny fane) — f.eks. tilsynsbrevets lenke til
+   *  Markedsføringsloven-modulen. */
+  hubRute?: string
+  hubNavn?: string
 }
 
 // ── Business Model Canvas ─────────────────────────────────────────────────────
@@ -652,6 +657,13 @@ export interface GameState {
     storstAvvik: { navn: string; budsjett: number; faktisk: number } | null
     dekningsgradAvvik: { ditt: number; bok: number } | null
   } | null
+
+  // ── TEMA 8 Kampanje og markedsplan (kun i bruk når temaet er aktivt) ──
+  /** Aktiv kampanje + effektrapport-historikk. Persistert. */
+  kampanje: KampanjeState
+  /** Absolutt spilldag da produktets retailPrice sist ble AKTIVT endret av eleven
+   *  (førpris-regelen). Mangler = etablert pris (aldri endret). Persistert. */
+  prisendretDag: Record<string, number>
 }
 
 /** All spilltilstand for tema Beredskap (HMS-fanen + brannalarm-hendelsen).
