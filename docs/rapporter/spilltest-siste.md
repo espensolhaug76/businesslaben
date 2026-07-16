@@ -1,23 +1,24 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-07-16T10:59:32.465Z
+> Startet: 2026-07-16T11:38:54.038Z
 
-**Resultat: ✅ GRØNT** — 11 PASS · 0 FAIL · 0 KJENT FEIL (11 steg)
+**Resultat: ✅ GRØNT** — 12 PASS · 0 FAIL · 0 KJENT FEIL (12 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 194 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 6995 |
-| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 528 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 191 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 9898 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5921 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 2084 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 12963 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 3677 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 4940 |
-| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 9639 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 88 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 4821 |
+| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 333 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 159 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 6698 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 4460 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 1408 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 12001 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 2201 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 3188 |
+| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 7757 |
+| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 1740 |
 
 ## Detaljer per steg
 
@@ -94,6 +95,13 @@ Verifiserte tall/tilstander:
 Verifiserte tall/tilstander:
 - husleie-avvik = 5000 kr (fasit), 6 linjer verifisert mot delt hjelpefunksjon
 - oppgjøret viser budsjett-kolonner + oppsummeringslinja «Du planla …»
+
+### ✅ Steg 12 — Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev
+
+Verifiserte tall/tilstander:
+- multiplikator 1.156 == kampanjefaktor(kanal×segment) [Instagram × 21-30]
+- effektrapport: kostnad 1500 kr, faktisk +16 %, ROI -100 % == delte hjelpefunksjoner
+- førpris-brudd genererte tilsynsbrev fra Forbrukertilsynet
 
 ## Notater
 

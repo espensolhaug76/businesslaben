@@ -2171,6 +2171,12 @@ function KampanjeSeksjon() {
           Budsjett: {formatKr(aktiv.kanaler.reduce((s, k) => s + k.krPerDag, 0))}/dag
           {aktiv.salgsvarer.length > 0 && ` · Salgskampanje på ${aktiv.salgsvarer.length} vare(r)`}
         </div>
+        {IS_DEV_COORDS && (
+          <button onClick={() => dispatch({ type: 'DEV_SPOL_KAMPANJE' })}
+            style={{ marginTop: 10, background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 8, padding: '0.4rem 0.8rem', color: '#c084fc', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ⏩ Spol til kampanjeslutt
+          </button>
+        )}
       </div>
     )
   }
@@ -2323,6 +2329,20 @@ function KampanjeSeksjon() {
           <a key={h.rute} href={h.rute} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 8, padding: '0.35rem 0.8rem', color: '#c084fc', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>📚 {h.navn} ↗</a>
         ))}
       </div>
+
+      {/* DEV (?dev=1): fyll planleggeren med en eksempelkampanje. */}
+      {IS_DEV_COORDS && (
+        <div style={{ marginTop: '0.8rem', paddingTop: '0.6rem', borderTop: '1px dashed rgba(168,85,247,0.35)' }}>
+          <button onClick={() => {
+            setMaalType('kunder'); setMaalProsent(20)
+            setSegmenter(prev => prev.length ? prev : ['21-30'])
+            setKanaler([{ kanalId: 'instagram', krPerDag: 500 }])
+            setVarighet(5); setSituasjon('Eksempelkampanje for testing.')
+          }} style={{ background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 8, padding: '0.4rem 0.8rem', color: '#c084fc', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ⏩ Fyll planlegger med eksempelkampanje
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -3159,7 +3179,7 @@ function InnboksTab() {
   }
   const TYPE_ICON: Record<string, string> = {
     mentor: '🧑‍🏫', pest_event: '📰', game_event: '🚀', beredskap: '🦺',
-    customer_complaint: '😤', supplier: '📦', teacher_task: '📚',
+    customer_complaint: '😤', supplier: '📦', teacher_task: '📚', kampanje: '⚖️',
   }
 
   if (msgs.length === 0) {
@@ -3228,6 +3248,14 @@ function InnboksTab() {
                     <div style={{ fontSize: 11, color: '#64748b', marginBottom: '0.75rem' }}>
                       📚 {msg.competenceGoal}
                     </div>
+                  )}
+
+                  {/* Valgfri hub-lenke (åpnes i ny fane — navigasjonsvakten). */}
+                  {msg.hubRute && (
+                    <a href={msg.hubRute} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'inline-block', marginBottom: '0.75rem', background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 8, padding: '0.35rem 0.8rem', color: '#c084fc', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                      📚 {msg.hubNavn ?? 'Lær mer'} ↗
+                    </a>
                   )}
 
                   {/* Choices (for game events) */}

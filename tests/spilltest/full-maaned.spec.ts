@@ -8,6 +8,7 @@ import {
 // erases, så dette drar ingen React-/spill-runtime inn i testen.
 import { amortiserLaan, manedligeFasteKostnader } from '../../src/game/data/economy'
 import { BUDSJETT_LINJER, maanedNokkel, faktiskeLinjer, linjeAvvik, type BudsjettTall } from '../../src/game/data/budsjett'
+import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinntekt, kampanjeRoi } from '../../src/game/data/kampanje'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
 // Spiller byspillet (/game) ende til ende og asserter på state + DOM ved hvert
@@ -440,6 +441,48 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // Oppsummeringslinja i månedsoppgjøret («Du planla … det ble …»).
     await expect(page.locator('body')).toContainText('Du planla')
     ctx.ok('oppgjøret viser budsjett-kolonner + oppsummeringslinja «Du planla …»')
+  })
+
+  // ── STEG 12 — TEMA 8 Kampanje: multiplikator + effektrapport == fasit + førpris ──
+  await steg(page, rapport, 12, 'Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev', async ctx => {
+    // Aktiver Tema 8 (VG2 for ROI) + reload → fersk måned 1.
+    await page.evaluate(() => localStorage.setItem('tema-aktivering-dev', JSON.stringify({ kampanje: { aktiv: true, nivaa: 'vg2' } })))
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot med kampanje-tema')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [] })
+    // Produkt m/pris, så ENDRE prisen (logges) → utløser førpris-brudd ved salgskampanje.
+    await dispatch(page, { type: 'SET_PRODUCTS', products: [{ id: 'coffee', name: 'Kaffe', retailPrice: 50, costPrice: 20, stock: 500 }] })
+    await dispatch(page, { type: 'SET_PRODUCTS', products: [{ id: 'coffee', name: 'Kaffe', retailPrice: 45, costPrice: 20, stock: 500 }] })
+
+    const kanaler = [{ kanalId: 'instagram', krPerDag: 500 }]
+    const segmenter = ['21-30']
+    const varighet = 3
+    await dispatch(page, { type: 'START_KAMPANJE', kampanje: { maalType: 'kunder', maalProsent: 20, segmenter, kanaler, varighet, situasjon: 'test', salgsvarer: [{ productId: 'coffee', nyPris: 40 }] } })
+    await ventState(page, s => s.kampanje.aktiv !== null, 'kampanje startet')
+
+    // Multiplikatoren == delt hjelpefunksjon (kampanjefaktor).
+    const s0 = await lesState(page)
+    const forventetFaktor = kampanjefaktor(kanaler, segmenter)
+    expect(s0.kampanje.aktiv!.faktor, 'multiplikator == kampanjefaktor-fasit').toBeCloseTo(forventetFaktor, 6)
+    expect(forventetFaktor, 'godt kanalvalg → merkbart løft (>1)').toBeGreaterThan(1)
+    ctx.ok(`multiplikator ${forventetFaktor.toFixed(3)} == kampanjefaktor(kanal×segment) [Instagram × 21-30]`)
+
+    // Spol til slutt → effektrapport.
+    await dispatch(page, { type: 'DEV_SPOL_KAMPANJE' })
+    await ventState(page, s => s.kampanje.historikk.length > 0, 'kampanje fullført')
+    const s1 = await lesState(page)
+    const r = s1.kampanje.historikk[s1.kampanje.historikk.length - 1]!
+    expect(r.kostnad, 'kostnad == kampanjeKostnad').toBe(kampanjeKostnad(kanaler, varighet))
+    expect(r.faktiskProsent, 'faktisk % == kampanjeFaktiskProsent(faktor)').toBe(kampanjeFaktiskProsent(r.faktor))
+    expect(r.merinntekt, 'merinntekt == kampanjeMerinntekt(akk, faktor)').toBe(kampanjeMerinntekt(r.akkBakgrunnKr, r.faktor))
+    expect(r.roi, 'ROI == kampanjeRoi(merinntekt, kostnad)').toBeCloseTo(kampanjeRoi(r.merinntekt, r.kostnad), 6)
+    ctx.ok(`effektrapport: kostnad ${r.kostnad} kr, faktisk +${r.faktiskProsent} %, ROI ${Math.round(r.roi)} % == delte hjelpefunksjoner`)
+
+    // Førpris-brudd (nylig prisendret vare) → tilsynsbrev i innboksen.
+    expect(r.forprisBrudd, 'salgskampanje på nylig prisendret vare → førpris-brudd').toBe(true)
+    expect(s1.messages.some(m => m.type === 'kampanje'), 'tilsynsbrev (type=kampanje) i innboksen').toBe(true)
+    ctx.ok('førpris-brudd genererte tilsynsbrev fra Forbrukertilsynet')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

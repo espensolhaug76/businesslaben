@@ -11,6 +11,7 @@
 import { type Page, expect } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
+import type { KampanjeResultat } from '../../src/game/data/kampanje'
 
 // ── Minimal speil av GameState (kun feltene testen bruker) ───────────────────
 export interface Loan {
@@ -63,6 +64,9 @@ export interface SpillState {
   // TEMA 2/3 — budsjett + nøkkeltall
   budsjett: { maaneder: Record<string, { budsjett: Record<string, number>; laastVedOppgjor: boolean; avvikNotater: Record<string, string> }> }
   nokkeltall: Record<string, { bruttofortjeneste: number; dekningsgrad: number; resultatgrad: number }>
+  // TEMA 8 — kampanje
+  kampanje: { aktiv: { faktor: number; dagerKjort: number; varighet: number } | null; historikk: KampanjeResultat[]; visRapportFor: string | null }
+  messages: { id: string; type: string; read: boolean }[]
   phase: string
 }
 
