@@ -4,6 +4,7 @@ import { useGame } from '../GameContext'
 import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, MENTOR_INTRO } from '../data/mentorTriggers'
 import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
+import { kanalById, kanalTreffISegmenter } from '../data/kampanje'
 import type { GameState } from '../types'
 
 // ─── LÆRINGSLAGET — mentoren (Espen) ──────────────────────────────────────────
@@ -92,6 +93,9 @@ function oppfylt(id: string, s: GameState): boolean {
       const d = s.budsjettOppgjorHint?.dekningsgradAvvik
       return !!d && Math.abs(d.ditt - d.bok) > 5
     }
+    // TEMA 8: leser siste fullførte kampanje (effektrapport + førpris-brudd).
+    case 'kampanje_effekt': return s.kampanje.historikk.length > 0
+    case 'kampanje_forpris_brudd': return s.kampanje.historikk[s.kampanje.historikk.length - 1]?.forprisBrudd === true
     default: return false
   }
 }
@@ -139,6 +143,20 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
     const d = s.budsjettOppgjorHint?.dekningsgradAvvik
     if (!d) return undefined
     return `Du regnet ut en [[ECO_002|dekningsgrad]] på ${d.ditt.toFixed(1)} %, men bokført ble ${d.bok.toFixed(1)} %. Hvilke tall brukte du i regnestykket — hele månedens omsetning, eller bare noen dager?`
+  }
+  // TEMA 8: effektrapport — leser mål, faktisk og kanal×målgruppe-treff. Aldri fasit.
+  if (id === 'kampanje_effekt') {
+    const r = s.kampanje.historikk[s.kampanje.historikk.length - 1]
+    if (!r) return undefined
+    const kanal = kanalById(r.kanaler[0]?.kanalId ?? '')
+    const treff = kanal ? Math.round(kanalTreffISegmenter(kanal, r.segmenter)) : 0
+    const maalOrd = r.maalType === 'kunder' ? 'flere kunder' : 'mer salg'
+    const kanalHint = kanal ? ` ${kanal.navn} når rundt ${treff} av 100 i [[MKT_021|målgruppa]] di daglig.` : ''
+    return `Du satte mål om +${r.maalProsent} % ${maalOrd} — du fikk +${r.faktiskProsent} %.${kanalHint} Ser du sammenhengen mellom kanalvalg og målgruppe?`
+  }
+  // TEMA 8: førpris-brudd — refleksjon om HVORFOR regelen finnes, ikke moralisering.
+  if (id === 'kampanje_forpris_brudd') {
+    return 'Salgskampanjen din brøt førpris-regelen — en vare ble satt ned uten å ha hatt ordinær pris lenge nok. Hvorfor tror du loven krever en ekte førpris før et tilbud? Hva lover egentlig ordet «tilbud» kunden?'
   }
   return mentorMelding(id)
 }

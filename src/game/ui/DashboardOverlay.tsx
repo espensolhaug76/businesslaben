@@ -2122,6 +2122,13 @@ function KampanjeSeksjon() {
   const [situasjon, setSituasjon] = useState('')
   const [salgOn, setSalgOn] = useState(false)
   const [salgsvarer, setSalgsvarer] = useState<{ productId: string; nyPris: number }[]>([])
+  const [introStep, setIntroStep] = useState<number | null>(() => { try { return localStorage.getItem('kampanje_intro_v1') === '1' ? null : 0 } catch { return 0 } })
+  function ferdigIntro() { try { localStorage.setItem('kampanje_intro_v1', '1') } catch { /* ignore */ } setIntroStep(null) }
+  const KAMP_INTRO: React.ReactNode[] = [
+    <>En kampanje er et tidsavgrenset markedsstøt mot et mål. Start med å tallfeste målet ditt — hvor mye vil du øke kundene eller salget?</>,
+    <>Velg kanal etter hvor målgruppa di faktisk er. Bruk 📚 «Hvem bruker hvilke medier?» før du velger — en kanal «alle snakker om» kan likevel bomme på DIN gruppe.</>,
+    <>Sett budsjett og varighet, og start. Når kampanjen er ferdig får du en effektrapport — vi evaluerer ETTERPÅ, aldri underveis.</>,
+  ]
 
   const kostnad = kampanjeKostnad(kanaler, varighet)
   const prisedeVarer = state.products.filter(p => p.retailPrice > 0)
@@ -2175,6 +2182,24 @@ function KampanjeSeksjon() {
       <p style={{ color: '#94a3b8', fontSize: 12.5, margin: '0 0 0.9rem' }}>
         Sett et mål, velg målgruppe, kanal og periode. Effekten avhenger av om kanalen når målgruppa di — sjekk kildene før du velger.
       </p>
+
+      {/* 3-stegs guidet intro (intro-modellen) — første gang, kan hoppes over. */}
+      {introStep !== null && (
+        <div style={{ background: 'rgba(12,17,29,0.7)', border: '1px solid rgba(0,212,170,0.4)', borderRadius: 12, padding: '0.85rem 1rem', marginBottom: '1rem' }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: '#00d4aa', letterSpacing: '0.09em', marginBottom: 6 }}>ESPEN</div>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#e2e8f0', minHeight: 44 }}>{KAMP_INTRO[introStep]}</div>
+          <div style={{ display: 'flex', gap: 5, margin: '10px 0 2px' }}>
+            {KAMP_INTRO.map((_, i) => <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: i === introStep ? '#00d4aa' : 'rgba(255,255,255,0.22)' }} />)}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <button onClick={ferdigIntro} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Hopp over</button>
+            <button onClick={() => introStep < KAMP_INTRO.length - 1 ? setIntroStep(introStep + 1) : ferdigIntro()}
+              style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.45rem 1.2rem', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {introStep < KAMP_INTRO.length - 1 ? 'Neste →' : 'Kom i gang!'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* a) MÅL (SMART-light) */}
       <div style={kort}>
