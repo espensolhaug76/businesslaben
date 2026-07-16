@@ -1,22 +1,22 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-07-16T07:55:53.144Z
+> Startet: 2026-07-16T09:21:24.046Z
 
 **Resultat: ✅ GRØNT** — 10 PASS · 0 FAIL · 0 KJENT FEIL (10 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 142 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 7541 |
-| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 639 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 270 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 10925 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5893 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 2463 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 16025 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 4323 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 4844 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 157 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 6527 |
+| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 545 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 194 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 8988 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5413 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 2227 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 12685 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 4590 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 4888 |
 
 ## Detaljer per steg
 

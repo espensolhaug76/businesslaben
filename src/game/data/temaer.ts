@@ -46,6 +46,31 @@ export const TEMAER: TemaDef[] = [
     beskrivelse: 'Kriseberedskap og beredskapsplaner — håndtering av uventede ' +
       'hendelser i bedriften. Innhold bygges i egen jobb; her kun definisjon.',
   },
+  {
+    id: 'budsjett',
+    navn: 'Budsjett og avvik',
+    nivaaer: ['vg1', 'vg2'],
+    // VG1: enkelt budsjett + «traff du planen?». VG2: i tillegg avvikskommentar.
+    // Hub: VG1 Budsjettering · VG2 Regnskapsanalyse (se HUB_LENKER i data/budsjett.ts).
+    hubModulRefs: [
+      '/learning/forretningsdrift/budgeting',
+      '/learning/vg2/okonomi/regnskapsanalyse',
+    ],
+    beskrivelse: 'Sett opp et enkelt budsjett for neste måned og sammenlign med ' +
+      'de faktiske tallene i månedsoppgjøret. VG2 kommenterer avvikene.',
+  },
+  {
+    id: 'nokkeltall',
+    navn: 'Nøkkeltall og lønnsomhet',
+    nivaaer: ['vg2'],   // KUN VG2 — VG1 skal aldri se nøkkeltall (LK20-nivåregel)
+    // Hub: VG2 Nøkkeltall/lønnsomhet · Pris og kalkulasjon.
+    hubModulRefs: [
+      '/learning/vg2/okonomi/nokkeltall-lonnsomhet',
+      '/learning/vg2/okonomi/pris-og-kalkulasjon',
+    ],
+    beskrivelse: 'Eleven regner selv ut bruttofortjeneste, dekningsgrad og ' +
+      'resultatgrad og sammenligner med de bokførte tallene. Kun VG2.',
+  },
 ]
 
 const TEMA_BY_ID: Record<string, TemaDef> = Object.fromEntries(TEMAER.map(t => [t.id, t]))

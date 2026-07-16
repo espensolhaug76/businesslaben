@@ -19,6 +19,7 @@ import { DAY_CONFIG } from './data/dayConfig'
 import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
 import { manedligeFasteKostnader, amortiserLaan } from './data/economy'
+import { maanedNokkel, TOM_BUDSJETT, type BudsjettLinjeKey, type NokkeltallSvar } from './data/budsjett'
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
@@ -228,6 +229,8 @@ const initialState: GameState = {
     brannovelseEval: null,
     brannovelser: [],
   },
+  budsjett: { maaneder: {} },
+  nokkeltall: {},
 }
 
 // ─── Actions ────────────────────────────────────────────────────────────────
@@ -298,6 +301,10 @@ type Action =
   | { type: 'SKIP_MEETING' }
   // Innkjøp/levering (docs/INNKJOP_LEVERING.md): lukk «Varer ankommet»-pilla.
   | { type: 'CLEAR_DELIVERY' }
+  // ── TEMA 2 Budsjett + TEMA 3 Nøkkeltall ──
+  | { type: 'SET_BUDSJETT_LINJE'; maaned: string; linje: BudsjettLinjeKey; belop: number }
+  | { type: 'SET_AVVIK_NOTAT'; maaned: string; linje: string; tekst: string }
+  | { type: 'SET_NOKKELTALL_SVAR'; maaned: string; svar: NokkeltallSvar }
   // Økonomi-samling (DEL 2): lukk månedsoppgjør-overlayet.
   | { type: 'DISMISS_MONTH_SETTLEMENT' }
   | { type: 'RESET' }
@@ -350,6 +357,9 @@ function reducer(state: GameState, action: Action): GameState {
         // gjennom START_GAME (samme «overlever alt»-oppførsel som mentor-
         // triggernes fired-set), slik at temaarbeid ikke nullstilles ved reload.
         beredskap: state.beredskap,
+        // TEMA 2/3: budsjett + nøkkeltall persisteres på samme vis — bevar dem.
+        budsjett: state.budsjett,
+        nokkeltall: state.nokkeltall,
         companyName: action.companyName,
         industry: action.industry,
         money: STARTING_MONEY[action.industry],
@@ -735,6 +745,24 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'SET_BRANNOVELSE_EVAL':
       return { ...state, beredskap: { ...state.beredskap, brannovelseEval: { q0: action.q0, q1: action.q1 } } }
+
+    // ── TEMA 2 BUDSJETT ──────────────────────────────────────────────────────
+    case 'SET_BUDSJETT_LINJE': {
+      const m = state.budsjett.maaneder[action.maaned]
+      if (m?.laastVedOppgjor) return state   // låst etter oppgjør — ikke redigerbar
+      const cur = m ?? { budsjett: { ...TOM_BUDSJETT }, laastVedOppgjor: false, avvikNotater: {} }
+      return { ...state, budsjett: { maaneder: { ...state.budsjett.maaneder,
+        [action.maaned]: { ...cur, budsjett: { ...cur.budsjett, [action.linje]: action.belop } } } } }
+    }
+    case 'SET_AVVIK_NOTAT': {
+      const m = state.budsjett.maaneder[action.maaned]
+      if (!m) return state
+      return { ...state, budsjett: { maaneder: { ...state.budsjett.maaneder,
+        [action.maaned]: { ...m, avvikNotater: { ...m.avvikNotater, [action.linje]: action.tekst } } } } }
+    }
+    // ── TEMA 3 NØKKELTALL (VG2) ──
+    case 'SET_NOKKELTALL_SVAR':
+      return { ...state, nokkeltall: { ...state.nokkeltall, [action.maaned]: action.svar } }
 
     case 'BUY_MARKET_RESEARCH': {
       if (state.money < 10_000) return state
@@ -1267,9 +1295,14 @@ function reducer(state: GameState, action: Action): GameState {
       let loans = state.loans
       let monthlyLoanPayment = state.monthlyLoanPayment
       let totalDebt = state.totalDebt
+      let budsjett = state.budsjett
       if (rollsMonth) {
         const mdays = state.dayHistory.filter(d => d.month === state.currentMonth && d.year === state.currentYear)
         const inntekt = mdays.reduce((s, d) => s + d.resultat, 0)
+        // TEMA 2/3: brutto salg + varekjøp for måneden (til budsjettsammenligning
+        // + nøkkeltall) — samme dagsdata som `inntekt`, men usammenslått.
+        const salgInntektBrutto = mdays.reduce((s, d) => s + d.soldKr + d.bakgrunnKr, 0)
+        const varekjop = mdays.reduce((s, d) => s + d.varekostKr, 0)
         const { linjer: kostnadslinjer, sum: fasteKostnader } = manedligeFasteKostnader(state)
         const amort = amortiserLaan(state.loans)
         loans = amort.loans
@@ -1281,6 +1314,13 @@ function reducer(state: GameState, action: Action): GameState {
           inntekt, kostnadslinjer, fasteKostnader,
           laanRenter: amort.renteSum, laanAvdrag: amort.avdragSum,
           resultat: inntekt - fasteKostnader - amort.betaling, antallDager: mdays.length,
+          salgInntektBrutto, varekjop,
+        }
+        // TEMA 2: lås budsjettet for måneden som nettopp ble gjort opp (kan ikke
+        // endres etter oppgjøret). Finnes ikke budsjett → hint i oppgjøret (DEL 2e).
+        const bkey = maanedNokkel(state.currentYear, state.currentMonth)
+        if (state.budsjett.maaneder[bkey] && !state.budsjett.maaneder[bkey].laastVedOppgjor) {
+          budsjett = { maaneder: { ...state.budsjett.maaneder, [bkey]: { ...state.budsjett.maaneder[bkey], laastVedOppgjor: true } } }
         }
       }
 
@@ -1302,6 +1342,7 @@ function reducer(state: GameState, action: Action): GameState {
         meetingsToday: 0,
         lastDayResult: null,
         lastMonthSettlement: settlement,
+        budsjett,   // TEMA 2: låst budsjett for måneden som ble gjort opp
         // Nullstill klokke/møter/ticker/produkt-stats for neste dag.
         dayMinute: 0,
         dayMeetings: [],
@@ -1372,21 +1413,29 @@ function lesTemaFallback(): Record<string, TemaAktivering> {
 }
 
 const BEREDSKAP_KEY = 'beredskap_state_v1'
+const BUDSJETT_KEY = 'budsjett_state_v1'   // TEMA 2/3: budsjett + nøkkeltall
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  // Persister hele state.beredskap (bekreftelse, tillegg, risikorader, refleksjon,
-  // øvelses-resultat) i localStorage — overlever reload (samme mønster som
-  // mentor-triggernes sett-liste).
+  // Persister state.beredskap OG state.budsjett/nokkeltall (TEMA 2/3) i
+  // localStorage — overlever reload (samme mønster som mentor-triggernes sett).
   const [state, dispatch] = useReducer(reducer, initialState, init => {
+    let s = init
     try {
       const raw = localStorage.getItem(BEREDSKAP_KEY)
-      if (raw) return { ...init, beredskap: { ...init.beredskap, ...JSON.parse(raw) } }
+      if (raw) s = { ...s, beredskap: { ...s.beredskap, ...JSON.parse(raw) } }
     } catch { /* korrupt/utilgjengelig */ }
-    return init
+    try {
+      const raw = localStorage.getItem(BUDSJETT_KEY)
+      if (raw) { const v = JSON.parse(raw); s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall } }
+    } catch { /* korrupt/utilgjengelig */ }
+    return s
   })
   useEffect(() => {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
+  useEffect(() => {
+    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall })) } catch { /* ignore */ }
+  }, [state.budsjett, state.nokkeltall])
 
   // TEST-BRO (KUN DEV): speil hele spilltilstanden + dispatch på window, så det
   // automatiserte spilltest-løpet (Playwright — se docs/SPILLTESTER.md) kan LESE

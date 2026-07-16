@@ -1,6 +1,7 @@
 // ─── AdVenture 3.0 — Core Types ───────────────────────────────────────────
 
 import type { RisikoRad, BrannalarmKvalitet, BrannovelseForsok } from './data/beredskap'
+import type { BudsjettState, NokkeltallSvar } from './data/budsjett'
 
 export type Industry = 'cafe' | 'fashion' | 'tech' | 'sports'
 export type LocationZone = 'utkant' | 'hovedgata' | 'gagata'
@@ -428,6 +429,11 @@ export interface MonthSettlement {
   resultat: number
   /** Antall stengte handledager måneden faktisk fikk. */
   antallDager: number
+  /** TEMA 2/3: brutto salgsinntekt (møter + bakgrunn, FØR varekost/svinn) for
+   *  måneden — «Salgsinntekter»-linja i budsjettsammenligningen + nøkkeltall. */
+  salgInntektBrutto: number
+  /** TEMA 2/3: månedens varekjøp (COGS, sum varekostKr) — «Varekjøp»-linja. */
+  varekjop: number
 }
 
 // ── Game state ───────────────────────────────────────────────────────────────
@@ -633,6 +639,12 @@ export interface GameState {
 
   // ── TEMA 1: Beredskap og risiko (kun i bruk når temaet er aktivt) ──────────
   beredskap: BeredskapState
+
+  // ── TEMA 2 Budsjett + TEMA 3 Nøkkeltall (kun i bruk når temaet er aktivt) ──
+  /** Elevens budsjett per måned (nøkkel: maanedNokkel). Persistert. */
+  budsjett: BudsjettState
+  /** VG2: elevens egne nøkkeltall-svar per måned (nøkkel: maanedNokkel). Persistert. */
+  nokkeltall: Record<string, NokkeltallSvar>
 }
 
 /** All spilltilstand for tema Beredskap (HMS-fanen + brannalarm-hendelsen).

@@ -51,6 +51,11 @@ export const BALANCE = {
    *  norsk bedrift (regnskapsfører ~3 000–6 000 kr/mnd). Tunbar. */
   regnskapOutsourcingMnd: 4000,
 
+  /** TEMA 2 BUDSJETT (VG2): en budsjettlinje regnes som «stort avvik» (utløser
+   *  avviks-notatfeltet + mentor-spørsmålet) når faktisk avviker fra budsjett med
+   *  MINST `prosent` % OG minst `minKr` kroner. Tunbar. */
+  budsjettAvvikTerskel: { prosent: 25, minKr: 1000 },
+
   /** SPILLKLOKKE — klokka eier den åpne dagen (09:00–17:00). Tempo: tickMs
    *  sanntid per tikk, minutterPerTick spillminutter per tikk. Default:
    *  480 spillminutter / (1 min pr 0,75 s) = 360 s ≈ 6 min åpen dag
