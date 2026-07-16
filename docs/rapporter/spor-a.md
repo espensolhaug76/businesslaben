@@ -1174,6 +1174,19 @@ sortert så hvert fag ligger samlet. Diskret: 3 px fag-stripe under hver fane
 
 Commit `311123a`.
 
+**DEL 3-tillegg — fargesvak-tilgjengelighet (fiksrunde-2-slutt).** Farge bærer
+ALDRI info alene (Espen + ~8 % av gutter er fargesvake):
+- a) Hver fane har nå et lite BOKSTAVMERKE ved navnet (`kort` i `FAG_FARGER`):
+  FD (Forretningsdrift), M (Markedsføring og innovasjon), KS (Kultur og
+  samhandling), HMS, V (Verktøy) — fag-farget tekst på svak tint med ramme.
+- b) Faglegenden viser nå **bokstavmerke + stripe-prøve + fullt fagnavn** sammen,
+  så koblingen merke↔farge↔fag er eksplisitt.
+- c) Stripefargene er justert til en LYSHETS-stige (perseptuell luminans mot mørk
+  bakgrunn): Verktøy 114 < Markedsføring 128 < Forretningsdrift 156 < Kultur 180
+  (lysnet #f472b6→#f78fc8) < HMS 208 (rav→gul #f59e0b→#fcd34d). Hver fag-overgang
+  i fanelinja har ≥28 i luminans-sprik, så gruppene skilles i gråtone alene.
+  Blå/lilla uendret. Alt tunbart i `FAG_FARGER`.
+
 **DEL 4 — Brannøvelse: «prøv igjen» som øvelsesmodus.**
 - a) «🎯 Kjør ny brannøvelse» i HMS-fanen, tilgjengelig når temaet er aktivt og
   planen bekreftet. Samme rekkefølge-øvelse med friske, stokkede kort (remount

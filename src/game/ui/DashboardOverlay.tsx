@@ -22,19 +22,28 @@ function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
 type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'hms' | 'rapporter' | 'innboks'
 
-// ── FAGKODING (DEL 3, fiksrunde 2) ────────────────────────────────────────────
+// ── FAGKODING (DEL 3 + fiksrunde-2-slutt) ─────────────────────────────────────
 // Fanene grupperes etter PROGRAMFAG (fasit: docs/TEMAER_OG_KOMPETANSEMAL.md,
 // SSR01-01 VG1 + SSR02-01 VG2). Diskret koding: en tynn fargestripe under hver
-// fane + en liten faglegende — IKKE full omfarging (dagens tema-look beholdes).
-// Faner som dekker flere fag får PRIMÆRfagets farge (se rapport for mappingen).
-// Alle farger er tunbare og defineres KUN her.
+// fane + et lite BOKSTAVMERKE (kort) ved fanenavnet + en faglegende — IKKE full
+// omfarging (dagens tema-look beholdes). Faner som dekker flere fag får
+// PRIMÆRfagets farge (se rapport for mappingen).
+//
+// FARGESVAK-TILGJENGELIGHET: farge bærer ALDRI info alene (Espen + ~8 % av
+// gutter er fargesvake). Derfor (a) bokstavmerket «kort» på hver fane, og (c)
+// stripefargene skilles på LYSHET, ikke bare kulør. Perseptuell luminans
+// (0.299R+0.587G+0.114B) danner en stige mot den mørke dashbord-bakgrunnen:
+//   Verktøy 114  <  Markedsføring 128  <  Forretningsdrift 156  <  Kultur 180
+//   <  HMS 208
+// — hver overgang MELLOM fag i fanelinja har ≥28 i luminans-sprik, så gruppene
+// skilles i gråtone alene. Alt tunbart, defineres KUN her.
 type FagId = 'forretningsdrift' | 'markedsforing' | 'kultur' | 'hms' | 'verktoy'
-const FAG_FARGER: Record<FagId, { navn: string; farge: string }> = {
-  forretningsdrift: { navn: 'Forretningsdrift',            farge: '#38bdf8' }, // VG2: Økonomi og administrasjon
-  markedsforing:    { navn: 'Markedsføring og innovasjon', farge: '#a855f7' }, // VG2: Kommunikasjon og markedsføring
-  kultur:           { navn: 'Kultur og samhandling',       farge: '#f472b6' },
-  hms:              { navn: 'HMS',                          farge: '#f59e0b' }, // VG2 eget programfag
-  verktoy:          { navn: 'Verktøy',                      farge: '#64748b' }, // tverrgående, ikke ett fag
+const FAG_FARGER: Record<FagId, { navn: string; kort: string; farge: string }> = {
+  forretningsdrift: { navn: 'Forretningsdrift',            kort: 'FD',  farge: '#38bdf8' }, // L≈156 · VG2: Økonomi og administrasjon
+  markedsforing:    { navn: 'Markedsføring og innovasjon', kort: 'M',   farge: '#a855f7' }, // L≈128 · VG2: Kommunikasjon og markedsføring
+  kultur:           { navn: 'Kultur og samhandling',       kort: 'KS',  farge: '#f78fc8' }, // L≈180 (lysnet fra #f472b6 for lyshets-stigen)
+  hms:              { navn: 'HMS',                          kort: 'HMS', farge: '#fcd34d' }, // L≈208 (rav→gul, lysnet fra #f59e0b) · VG2 eget fag
+  verktoy:          { navn: 'Verktøy',                      kort: 'V',   farge: '#64748b' }, // L≈114 · tverrgående, ikke ett fag
 }
 
 // Rekkefølgen her ER visningsrekkefølgen — sortert så hvert fag ligger samlet.
@@ -79,7 +88,7 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
       }}>
         {synligeTabs.map(t => {
           const aktiv = activeTab === t.id
-          const fagFarge = FAG_FARGER[t.fag].farge
+          const { farge: fagFarge, kort: fagKort } = FAG_FARGER[t.fag]
           return (
             <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
               background: aktiv ? 'rgba(0,212,170,0.12)' : 'transparent',
@@ -92,6 +101,8 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
               flexShrink: 0, position: 'relative',
             }}>
               {t.emoji} {t.label}
+              {/* Fag-bokstavmerke (bærer fag-info UTEN farge — fargesvak-vennlig). */}
+              <span style={fagBadgeStil(fagFarge)} title={FAG_FARGER[t.fag].navn}>{fagKort}</span>
               {t.id === 'innboks' && state.unreadCount > 0 && (
                 <span style={{
                   position: 'absolute', top: 4, right: 4,
@@ -111,21 +122,34 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
           )
         })}
       </div>
-      {/* Faglegende — hvilket programfag hver farge står for. */}
+      {/* Faglegende — kobler bokstavmerke ↔ stripe ↔ fagnavn eksplisitt, så
+          fargen aldri er den eneste bæreren av koblingen. */}
       <div style={{
         display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem', alignItems: 'center',
         padding: '0.5rem 2rem 0', flexShrink: 0, fontSize: 10.5, color: '#64748b',
       }}>
         <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>PROGRAMFAG:</span>
         {synligeFag.map(f => (
-          <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 9, height: 9, borderRadius: 2, background: FAG_FARGER[f].farge, display: 'inline-block' }} />
+          <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={fagBadgeStil(FAG_FARGER[f].farge)}>{FAG_FARGER[f].kort}</span>
+            <span style={{ width: 14, height: 3, borderRadius: 2, background: FAG_FARGER[f].farge, display: 'inline-block' }} />
             {FAG_FARGER[f].navn}
           </span>
         ))}
       </div>
     </>
   )
+}
+
+/** Lite fag-bokstavmerke: fag-farget tekst + hårfin ramme på svak tint. Diskret,
+ *  men bærer fag-info uten å være avhengig av fargesyn (fargesvak-tilgjengelighet). */
+function fagBadgeStil(farge: string): React.CSSProperties {
+  return {
+    marginLeft: 6, display: 'inline-block', verticalAlign: 'middle',
+    fontSize: 9, fontWeight: 800, letterSpacing: '0.03em', lineHeight: '14px',
+    color: farge, background: `${farge}22`, border: `1px solid ${farge}77`,
+    borderRadius: 4, padding: '0 4px',
+  }
 }
 
 interface DashboardOverlayProps {
