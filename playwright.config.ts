@@ -10,6 +10,11 @@ import { defineConfig, devices } from '@playwright/test'
 // starter sin EGEN dev-server på 5176 (strictPort).
 export default defineConfig({
   testDir: './tests/spilltest',
+  // MERK: balansespiller.spec.ts er et MÅLEVERKTØY (økonomisk analyseløp, ~6–9 min),
+  // IKKE en regresjonstest. Det holdes utenfor det raske `npm run spilltest`-løpet
+  // via en filterparameter i npm-scriptet (playwright test full-maaned) — filen er
+  // fortsatt kjørbar eksplisitt:
+  //   npx playwright test tests/spilltest/balansespiller.spec.ts
   // Determinisme: ett løp om gangen, ingen retry-maskering av flaky feil.
   fullyParallel: false,
   workers: 1,
