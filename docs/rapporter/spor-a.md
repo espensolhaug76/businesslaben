@@ -1478,6 +1478,48 @@ Aktiver `kampanje` (lærerdashbord eller `localStorage['tema-aktivering-dev'] =
 - **DEL 7:** ved effektrapport → mentoren peker med dine tall + kanal-treff.
   Salgskampanje på nylig prisendret vare → tilsynsbrev + førpris-refleksjon.
 
+### 33b. Fiksrunde Tema 8 — Espens valideringsfunn (6 deler)
+
+> **Status: bygget. `tsc -b` + `vite build` per del + `npm run spilltest`
+> (5176): 12/12 PASS.** Gren `spor-a/tema-kampanje` — IKKE merget. 6 commits.
+
+- **DEL A** — mentor/tema-tekst «Marked-fanen» → «Markedsføring-fanen» (fanens
+  faktiske navn). Commit `9685c8a`.
+- **DEL B** — kanaler 1–6 (fjernet 1-2-taket, fri kr/dag ≥ minstepris); «🧠 Hvem
+  bruker hvilke medier?» som tydelig callout-knapp i kanal-steget; hub-tabellen
+  fikk ekstern rapportlenke «Les hele rapporten hos Ipsos» →
+  ipsos.com/nb-no/ipsos-some-tracker. Commit `4434a18`.
+- **DEL C** — «SITUASJONSANALYSE (kort)» + auto «📄 Din markedsplan»-oppsummering
+  (situasjon→mål→målgruppe→virkemidler→periode→evaluering), synlig etter start og
+  i effektrapporten; rapporten refererer planen. Commit `70d3164`.
+- **DEL D** — Markedsføring-fanen i to seksjoner (Kampanje / Løpende synlighet);
+  løpende budsjett harmonisert til de 6 kanalene + kanaldata-effekt
+  (`lopendeMarkedsforingsfaktor`, svakere/jevn). Commit `cf24785`.
+- **DEL E** — egen «🚚 Distribusjon»-fane (M-merke) + Horisont-notat (Tema 4).
+  Commit `cf24785`.
+- **DEL F** — glossary MKT_051 Kampanje / MKT_052 Rekkevidde / MKT_053 Markedsplan
+  / MKT_054 Foerpris (VG1) + ECO_034 ROI (VG2), Espen-godkjente definisjoner.
+  Fagord-tokens aktivert i planlegger/rapport/mentor. Glossary-flagget fra pkt.
+  33 lukket. Commit `9685c8a`.
+
+**Løpende markedsføring — kanal-mapping (gammel → ny).** `marketingBudget` er nå
+`Record<kanal-id, kr/mnd>` med de 6 navngitte kanalene. Budsjettet persisteres
+ikke (re-seedes ved reload), så ingen runtime-migrering trengs; konseptuell
+mapping for referanse:
+
+| Gammel kategori | Ny kanal |
+|---|---|
+| Sosiale medier | Instagram |
+| Google | Facebook |
+| Influencer | TikTok |
+| Trykt reklame | Byposten (lokalavis) |
+| TV / Radio | Radio Innlandet |
+
+Effekt: `lopendeMarkedsforingsfaktor(budsjettPerKanal, segmenter)` — samme
+kanaldata som kampanjen, men lavere tak (`BALANCE.kampanje.lopende`: metning
+8000, maksLoft 0.15/kanal, maksFaktor 1.3). Default (0 budsjett) = 1.0 → ingen
+regresjon i kjerneløkka (spilltest steg 5 uendret).
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
