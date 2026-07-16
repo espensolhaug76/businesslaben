@@ -175,6 +175,11 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const ordbokOpenRef = useRef(ordbokOpen); ordbokOpenRef.current = ordbokOpen
   const blockedRef = useRef(blocked); blockedRef.current = blocked
   const activeFaneRef = useRef(activeFane)
+  // TEMA-aktivering (budsjett/nokkeltall): var temaet aktivt alt ved mount, og
+  // har eleven åpnet dashbordet? Styrer om «læreren åpnet temaet» fyrer straks
+  // (aktivert under spilling) eller ved første dashbord-åpning (aktivt fra start).
+  const temaVedStart = useRef<Record<string, boolean> | null>(null)
+  const [dashApnet, setDashApnet] = useState(false)
 
   /** Marker en trigger som fyrt (persistert sett), UTEN å kø. Returnerer false
    *  hvis den alt var fyrt. */
@@ -202,6 +207,21 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     if (aktiveTemaer['beredskap']?.aktiv) fire('tema_beredskap_aktivert')
   }, [aktiveTemaer, fire])
 
+  // TEMA 2/3: «Læreren har åpnet [tema] — du finner det i Økonomi-fanen.»
+  // Aktivert UNDER spilling (flippet av→på denne økta) → fyr straks. Aktivt
+  // allerede ved spillstart → fyr først når eleven åpner dashbordet. Fyres én
+  // gang (persistert fired-sett, som alle mentor-triggere).
+  useEffect(() => {
+    if (temaVedStart.current === null) {
+      temaVedStart.current = { budsjett: !!aktiveTemaer['budsjett']?.aktiv, nokkeltall: !!aktiveTemaer['nokkeltall']?.aktiv }
+    }
+    for (const tema of ['budsjett', 'nokkeltall'] as const) {
+      if (!aktiveTemaer[tema]?.aktiv) continue
+      const varAktivVedStart = temaVedStart.current[tema]
+      if (!varAktivVedStart || dashApnet) fire(`tema_${tema}_aktivert`)
+    }
+  }, [aktiveTemaer, dashApnet, fire])
+
   // Scene-signaler (disk_stell/vindu/bykart) → hendelses-kø.
   useEffect(() => {
     const h = (e: Event) => fire((e as CustomEvent).detail?.id)
@@ -218,6 +238,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const handleFane = useCallback((fane: string | null) => {
     if (fane === activeFaneRef.current) return          // ingen reell endring
     activeFaneRef.current = fane
+    if (fane) setDashApnet(true)                         // dashbordet er åpnet (TEMA 2/3-trigger)
     setActiveFane(fane)
     setFaneMsg(null)                                     // forlot forrige fane ⇒ dropp meldingen
     if (!fane) return                                    // dashbordet lukket

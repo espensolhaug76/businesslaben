@@ -121,7 +121,17 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Fint at du øver videre — den første alarmen gikk ikke helt på skinner, og det er helt greit. Hva ville du gjort først neste gang?',
   },
 
-  // ── TEMA 2 Budsjett + TEMA 3 Nøkkeltall (dynamiske, én gang) ─────────────────
+  // ── TEMA 2 Budsjett + TEMA 3 Nøkkeltall ─────────────────────────────────────
+  {
+    id: 'tema_budsjett_aktivert',
+    betingelse: 'Temaet Budsjett slås på (via lærerens Spillet-fane) — fyres straks ved aktivering under spilling, ellers ved første dashbord-åpning',
+    melding: 'Læreren har åpnet [[ECO_008|budsjett]]-temaet — du finner det øverst i Økonomi-fanen. Sett opp et budsjett for måneden, så sammenligner vi med de faktiske tallene.',
+  },
+  {
+    id: 'tema_nokkeltall_aktivert',
+    betingelse: 'Temaet Nøkkeltall slås på (VG2) — samme timing som budsjett-temaet',
+    melding: 'Læreren har åpnet nøkkeltall-temaet — du finner det i Økonomi-fanen. Der regner du ut bruttofortjeneste, [[ECO_002|dekningsgrad]] og resultatgrad selv.',
+  },
   {
     id: 'budsjett_avvik_storst',
     betingelse: 'Etter et månedsoppgjør der eleven hadde satt budsjett — dynamisk melding leser linja med STØRST absolutt avvik',
