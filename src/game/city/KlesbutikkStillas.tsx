@@ -962,21 +962,31 @@ function FloorLayer({ interactive, showSlots }: { interactive: boolean; showSlot
           <div style={{ fontSize: 9, color: '#64748b', marginBottom: 8, lineHeight: 1.4 }}>
             Dra: heng→stativ, brett→hylle/bord, påkledd dukke→matchende naken dukke.
           </div>
-          {/* DEL 3: dev «vis alle»-bryter (kalibrering uten føring). */}
+          {/* STANDARD = KUN FØRTE (både dev og produksjon). Dev-bryteren er et
+              KALIBRERINGS-override (vis også uførte plagg) — tydelig DEV-merket,
+              ALLTID AV ved oppstart (useState(false), og FloorLayer remountes ved
+              fane-/modusbytte så den nullstilles). Når PÅ vises et banner så
+              paletten aldri forveksles med en brutt føring-kobling. */}
           {IS_DEV_COORDS && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#94a3b8', marginBottom: 8, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#ffd24a', marginBottom: visAllePlagg ? 4 : 8, cursor: 'pointer', border: '1px solid #ffd24a55', borderRadius: 6, padding: '4px 6px' }}>
               <input type="checkbox" checked={visAllePlagg} onChange={e => setVisAllePlagg(e.target.checked)} />
-              vis alle (ignorer føring)
+              <span><b>DEV:</b> vis uførte (kalibrering)</span>
             </label>
           )}
-          {/* Tom føring → tom palett med hint (med mindre «vis alle» er på). */}
+          {IS_DEV_COORDS && visAllePlagg && (
+            <div style={{ fontSize: 9, color: '#ffd24a', background: 'rgba(255,210,74,0.1)', border: '1px solid #ffd24a44', borderRadius: 6, padding: '5px 6px', marginBottom: 8, lineHeight: 1.35 }}>
+              ⚠ Viser ALLE plagg (også uførte) — kun for kalibrering. Skru av for å
+              se det faktiske sortimentet fra 🏷 Innkjøp.
+            </div>
+          )}
+          {/* Tom føring → tom palett med hint (med mindre dev-override er på). */}
           {!visAllePlagg && fortePlagg.size === 0 && (
             <div style={{ fontSize: 11, color: '#fca5a5', background: 'rgba(239,68,68,0.1)', border: '1px solid #ef444455', borderRadius: 8, padding: '8px', marginBottom: 8, lineHeight: 1.4 }}>
               Ingen varer ført. Gå til <b>🏷 Innkjøp</b> og velg sortiment — plaggene dukker opp her.
             </div>
           )}
-          {/* Heng (front) · Heng — PROFIL · Brett. Viser KUN FØRTE plagg (DEL 3);
-              dev «vis alle» un-gater. forceVariant låser drag-varianten. */}
+          {/* Heng (front) · Heng — PROFIL · Brett. Viser KUN FØRTE plagg som standard;
+              DEV-override «vis uførte» un-gater (kalibrering). forceVariant låser drag-varianten. */}
           {([
             { key: 'front', tittel: 'Hengende', col: SLOT_COLOR.heng, variant: 'front' as HengVariant | undefined, sprite: (p: Plagg) => p.spriteHengFront },
             { key: 'profil', tittel: 'Hengende — profil', col: PROFIL_COLOR, variant: 'profil' as HengVariant | undefined, sprite: (p: Plagg) => p.spriteHengProfil },

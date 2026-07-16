@@ -882,6 +882,46 @@ oppdragets øyemål-tall): **Dame 86 · Herre 96 · Barn 20 · Unisex 54** (tota
 katalogvarer). Oppdragets parentes-tall (85/97/…/56) var estimater; de faktiske
 katalogtallene vises. `tsc -b` grønt.
 
+### DEL 2 — føring→palett-kobling: ROTÅRSAK + dev-bryter
+
+**Funn (Espen):** «ser ALLE plagg i interiør-paletten til tross for kun 7 førte
+varer.»
+
+**ROTÅRSAK — REPRODUSERT headless, ikke gjettet.** Verken (a) «default på» eller
+(b) «koblingen er brutt» stemmer for en ren økt:
+- **Ren last (`?dev=1`, tom føring):** paletten er TOM + hint «Ingen varer ført».
+  Bryteren `visAllePlagg` er `false` (`useState(false)`).
+- **Etter å ha ført 3 varer → tilbake til Interiør:** paletten viser KUN de førte
+  (målt: «Hengende (2)»), IKKE alle 72. **Koblingen `forteplaggIds(sortiment)`
+  → palett virker.**
+- **Etter å skru PÅ dev-bryteren:** paletten viser alle (40 + 16 + 16).
+- **Etter modus-/fanebytte (📌 Vareplass → 🛍 Scene):** bryteren **nullstilles til
+  `false`** (FloorLayer remountes; `topView='innkjop'` og dev-modusene rendrer
+  scenen betinget, så komponenten forlater DOM og `useState` reinitialiseres).
+
+**Konklusjon:** koblingen er intakt og standarden er allerede KUN FØRTE i både dev
+og produksjon. Espen så alle plagg fordi **`?dev=1`-bryteren var PÅ** i økten hans —
+og den gamle etiketten «vis alle (ignorer føring)» leste ikke som et DEV-override,
+så resultatet ble forvekslet med en brutt kobling.
+
+**Fiks (`KlesbutikkStillas.tsx`, klespaletten):**
+1. **Relabel + DEV-merking:** «vis alle (ignorer føring)» → **«DEV: vis uførte
+   (kalibrering)»**, i en gul (`#ffd24a`) dev-innramming lik de andre
+   dev-verktøyene. Umulig å forveksle med en produksjons-kontroll.
+2. **Advarsel-banner når PÅ:** «⚠ Viser ALLE plagg (også uførte) — kun for
+   kalibrering. Skru av for å se det faktiske sortimentet fra 🏷 Innkjøp.» → man vet
+   alltid at paletten ikke speiler føringen når overriden er aktiv.
+3. **Alltid av ved oppstart:** `useState(false)` beholdt; bekreftet at
+   fane-/modusbytte nullstiller den (remount). Ingen persistering.
+4. **Standard = KUN FØRTE** (uendret, nå bekreftet): tom føring → tom palett +
+   hint til 🏷 Innkjøp. **Dukker vises ALLTID** (styling-primitiv, ikke
+   katalogvare — etablert regel), upåvirket av føring/override.
+
+**Verifisert (headless):** ren last → etikett «DEV: vis uførte (kalibrering)»,
+checkbox `false`, tom-føring-hint synlig, banner skjult. PÅ → checkbox `true`,
+banner synlig, hint skjult. Modus-roundtrip → checkbox tilbake til `false`, banner
+borte, hint tilbake. `tsc -b` grønt.
+
 ---
 
 ## Verifisering
