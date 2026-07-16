@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useGame, useTemaNivaa } from '../GameContext'
 import Fagord from './Fagord'
+import MarkedsplanOppsummering from './MarkedsplanOppsummering'
 import { kanalById } from '../data/kampanje'
 
 // ─── TEMA 8 · EFFEKTRAPPORT (vises ved kampanjeslutt) ────────────────────────
@@ -48,8 +49,16 @@ export default function KampanjeRapportOverlay() {
             <span style={{ fontWeight: 800, color: '#f1f5f9' }}>{pst(r.faktiskProsent)} flere kunder</span>
           </div>
           <div style={{ fontSize: 12.5, color: '#cbd5e1', marginTop: 8, lineHeight: 1.5 }}>
-            Du satte mål om +{r.maalProsent} %, kampanjen ga {pst(r.faktiskProsent)}.
+            Planen din sa +{r.maalProsent} %; kampanjen ga {pst(r.faktiskProsent)}.
           </div>
+        </div>
+
+        {/* 📄 Din markedsplan — oppsummering med evaluering fylt inn. */}
+        <div style={{ marginBottom: '0.9rem' }}>
+          <MarkedsplanOppsummering
+            situasjon={r.situasjon} maalType={r.maalType} maalProsent={r.maalProsent}
+            segmenter={r.segmenter} kanaler={r.kanaler} varighet={r.varighet}
+            evaluering={<span>Fullført — se mål vs. faktisk over. Kostnad {kr(r.kostnad)}, merinntekt {kr(r.merinntekt)}.</span>} />
         </div>
 
         {/* b) Kostnad vs merinntekt (uten dom) */}

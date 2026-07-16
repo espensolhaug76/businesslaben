@@ -376,7 +376,7 @@ function fullforKampanje(k: KampanjeAktiv, produkter: Product[], ctx: { aar: num
     id: k.id, maalType: k.maalType, maalProsent: k.maalProsent,
     faktiskProsent: kampanjeFaktiskProsent(k.faktor), faktor: k.faktor,
     kostnad, merinntekt, roi: kampanjeRoi(merinntekt, kostnad),
-    kanaler: k.kanaler, segmenter: k.segmenter, varighet: k.varighet,
+    kanaler: k.kanaler, segmenter: k.segmenter, varighet: k.varighet, situasjon: k.situasjon,
     akkBakgrunnKr: k.akkBakgrunnKr, forprisBrudd, aar: ctx.aar, maaned: ctx.maaned, dag: ctx.dag,
   }
   // Restaurer ordinære priser på salgsvarene.

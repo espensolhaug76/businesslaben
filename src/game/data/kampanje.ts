@@ -129,6 +129,7 @@ export interface KampanjeResultat {
   kanaler: KampanjeKanalValg[]
   segmenter: string[]
   varighet: number
+  situasjon: string            // markedsplanens situasjonsanalyse (elevens tekst)
   akkBakgrunnKr: number
   forprisBrudd: boolean
   aar: number; maaned: number; dag: number

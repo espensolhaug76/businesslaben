@@ -22,6 +22,7 @@ import {
   KANALER, kanalDagspris, kanalById, kampanjeKostnad, KAMPANJE_HUB, KOMMUNIKASJONSKANALER_RUTE,
   type KampanjeKanalValg,
 } from '../data/kampanje'
+import MarkedsplanOppsummering from './MarkedsplanOppsummering'
 import { aktiveFunksjoner, evaluerRefleksjon, oppgaveRefleksjoner } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
 import type { Loan } from '../types'
@@ -2171,6 +2172,13 @@ function KampanjeSeksjon() {
           Budsjett: {formatKr(aktiv.kanaler.reduce((s, k) => s + k.krPerDag, 0))}/dag
           {aktiv.salgsvarer.length > 0 && ` · Salgskampanje på ${aktiv.salgsvarer.length} vare(r)`}
         </div>
+        {/* 📄 Din markedsplan — auto-oppsummering (synlig etter kampanjestart). */}
+        <div style={{ marginTop: '0.9rem' }}>
+          <MarkedsplanOppsummering
+            situasjon={aktiv.situasjon} maalType={aktiv.maalType} maalProsent={aktiv.maalProsent}
+            segmenter={aktiv.segmenter} kanaler={aktiv.kanaler} varighet={aktiv.varighet}
+            evaluering={<span style={{ color: '#94a3b8' }}>Kommer i effektrapporten når kampanjen er ferdig.</span>} />
+        </div>
         {IS_DEV_COORDS && (
           <button onClick={() => dispatch({ type: 'DEV_SPOL_KAMPANJE' })}
             style={{ marginTop: 10, background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 8, padding: '0.4rem 0.8rem', color: '#c084fc', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -2285,7 +2293,7 @@ function KampanjeSeksjon() {
 
       {/* VG1 markedsplan: situasjonen nå */}
       <div style={kort}>
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc', marginBottom: 6 }}>MARKEDSPLAN · Situasjonen nå</div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc', marginBottom: 6 }}>SITUASJONSANALYSE (kort)</div>
         <textarea rows={2} value={situasjon} onChange={e => setSituasjon(e.target.value)}
           placeholder="Beskriv kort situasjonen (2–3 setninger): hva vil du oppnå, og hvorfor akkurat nå?"
           style={{ ...kampFelt, width: '100%', resize: 'vertical' }} />
