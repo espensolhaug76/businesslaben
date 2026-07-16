@@ -131,8 +131,8 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
   cafe: [
     // Eksisterende generiske varer (beholdt), nå tagget med gruppe/trau-flagg.
     { id: 'coffee',    name: 'Kaffe',       icon: '☕', maxDemandPerMonth: 600, quality: 8, sustainability: 7, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 15, recommendedPrice: 39,
-      tiers: { premium: { costPrice: 25, recommendedPrice: 59 }, standard: { costPrice: 15, recommendedPrice: 39 }, budget: { costPrice: 8, recommendedPrice: 25 } } /* PARKET */ },
+      costPrice: 14, recommendedPrice: 50,
+      tiers: { premium: { costPrice: 22, recommendedPrice: 65 }, standard: { costPrice: 14, recommendedPrice: 50 }, budget: { costPrice: 9, recommendedPrice: 35 } } /* PARKET */ },
     { id: 'smoothie',  name: 'Smoothie',    icon: '🥤', maxDemandPerMonth: 200, quality: 9, sustainability: 8, windowDisplay: false, category: 'drikke', trauVare: false,
       costPrice: 18, recommendedPrice: 45,
       tiers: { premium: { costPrice: 30, recommendedPrice: 75 }, standard: { costPrice: 18, recommendedPrice: 45 }, budget: { costPrice: 10, recommendedPrice: 29 } } /* PARKET */ },
@@ -163,10 +163,10 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
     // Spesifikke trau-bakevarer (sprite-utklipp fra split-product-sheet).
     // display: { scale, rotation } — startverdier, Espen finpusser visuelt.
     // Ark 1
-    catalogItem('croissant',       'Croissant',        '🥐', 'frokost', 220, 9,  35, { scale: 0.55 }),
-    catalogItem('muffin-blabaer',  'Blåbærmuffins',    '🧁', 'kaker',   180, 8,  32, { scale: 0.55 }),
-    catalogItem('kanelbolle',      'Kanelbolle',       '🥮', 'frokost', 260, 7,  29, { scale: 0.65 }),
-    catalogItem('skolebrod',       'Skolebrød',        '🍩', 'frokost', 200, 8,  32, { scale: 0.65 }),
+    catalogItem('croissant',       'Croissant',        '🥐', 'frokost', 220, 19, 57, { scale: 0.55 }),
+    catalogItem('muffin-blabaer',  'Blåbærmuffins',    '🧁', 'kaker',   180, 19, 57, { scale: 0.55 }),
+    catalogItem('kanelbolle',      'Kanelbolle',       '🥮', 'frokost', 260, 18, 54, { scale: 0.65 }),
+    catalogItem('skolebrod',       'Skolebrød',        '🍩', 'frokost', 200, 17, 50, { scale: 0.65 }),
     catalogItem('rundstykke-grovt','Grovt rundstykke', '🥖', 'brod',    300, 5,  19, { scale: 0.55 }),
     catalogItem('gulrotkake',      'Gulrotkake',       '🍰', 'kaker',   120, 14, 49, { scale: 0.65 }),
     // Ark 2
@@ -200,7 +200,7 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
 }
 
 export const INDUSTRY_META: Record<Industry, { name: string; emoji: string; description: string; startingMoney: number }> = {
-  cafe:    { name: 'Kafé & Bakeri',    emoji: '☕', description: 'Start din egen kafé. Selg kaffe, bakst og lunsj til sultne kunder.', startingMoney: 150_000 },
+  cafe:    { name: 'Kafé & Bakeri',    emoji: '☕', description: 'Start din egen kafé. Selg kaffe, bakst og lunsj til sultne kunder.', startingMoney: 200_000 },
   fashion: { name: 'Klesbutikk',       emoji: '👗', description: 'Åpne en trendy klesbutikk. Velg produkter, sett priser og tiltrekk motebevisste kunder.', startingMoney: 250_000 },
   tech:    { name: 'Tech & Gadgets',   emoji: '💻', description: 'Selg elektronikk og teknologiprodukter. Høye marginer, men krevende kunder.', startingMoney: 300_000 },
   sports:  { name: 'Sports & Fritid',  emoji: '⚽', description: 'Utstyr for sport og friluftsliv. Sterk sesongvariasjon, men trofaste kunder.', startingMoney: 200_000 },

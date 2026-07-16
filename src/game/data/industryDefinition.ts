@@ -160,7 +160,7 @@ export const CAFE: IndustryDefinition = {
   // rundstykke — svinner ved stenging), så både salg, svinn og etterfylling
   // kan øves fra dag 1. Grovt rundstykke bevisst < 40 så Storbestillingen
   // (Fredrik, 40 stk) demonstrerer ærlig delleveranse mot faktisk lager. Total
-  // ~1 100 kr av 150 000 startkapital.
+  // ~1 100 kr av 200 000 startkapital (REKALIBRERING pkt. 35).
   oppstartssortiment: [
     { catalogId: 'coffee', qty: 40 },
     { catalogId: 'croissant', qty: 20 },

@@ -9,21 +9,26 @@ export const BALANCE = {
   /** Global skala for HELE bakgrunnstrafikken — skru volumet opp/ned samlet. */
   baseMultiplier: 1.0,
 
-  /** Bakgrunnstrafikk (kunder/dag) per lokale FØR faktorer. Sentral/dyr
-   *  beliggenhet = høyere; sentrum-l2 (midt i gågata) høyest. Ukjent lokale
-   *  faller til basetrafikkDefault. Nøklet på lokale-id (se districts.ts). */
+  /** Bakgrunnstrafikk (kunder/dag) per lokale FØR faktorer. REKALIBRERING
+   *  (pkt. 35): skalert til VERDENSMODELL-målbildet (fornuftig solo på sentrum-l2
+   *  ~150–165 demand → ~150 servert = 12 000–14 000 kr/dag). LOKAL-STIGEN
+   *  (DEL 5): basetrafikk stiger SAMMEN med husleie (rentFactor i districts.ts),
+   *  så dyrere lokale = mer trafikk. Sentrum-stigen (rentFactor → basetrafikk):
+   *  l4 0.8→115, l3 0.9→130, l2 1.0→145, l1 1.2→175, l5 1.25→195. Se
+   *  docs/VERDENSMODELL.md §3. Ukjent lokale → basetrafikkDefault. */
   basetrafikk: {
-    'sentrum-l2': 110, // Gågata 12 — mest gjennomgangstrafikk
-    'sentrum-l5': 100, // Torggata 1 (premium hjørne)
-    'sentrum-l1': 95,  // Hjørnelokalet ved torget
-    'sentrum-l6': 78,  // Torggata 3
-    'sentrum-l3': 72,  // Gågata 14
-    'sentrum-l7': 58,  // Torggata 5
-    'sentrum-l4': 52,  // Gågata 16
-    'stasjon-l1': 72, 'stasjon-l5': 70, 'stasjon-l2': 60, 'stasjon-l6': 56,
-    'stasjon-l3': 52, 'stasjon-l7': 48, 'stasjon-l4': 44, 'stasjon-l8': 42,
+    // Sentrum — MONOTON med rentFactor (districts.ts): dyrere = mer trafikk.
+    'sentrum-l5': 195, // Torggata 1 (rentFactor 1.25) — premium, krever bemanning
+    'sentrum-l1': 175, // Hjørnelokalet ved torget (1.2) — krever bemanning
+    'sentrum-l2': 150, // Gågata 12 (1.0) — REFERANSE; solo på taket
+    'sentrum-l6': 140, // Torggata 3 (0.95)
+    'sentrum-l3': 132, // Gågata 14 (0.9) — solo-viable
+    'sentrum-l7': 125, // Torggata 5 (0.85)
+    'sentrum-l4': 118, // Gågata 16 (0.8) — billigst, solo-viable under taket
+    'stasjon-l5': 118, 'stasjon-l1': 112, 'stasjon-l2': 100, 'stasjon-l6': 92,
+    'stasjon-l3': 85, 'stasjon-l7': 80, 'stasjon-l4': 74, 'stasjon-l8': 70,
   } as Record<string, number>,
-  basetrafikkDefault: 50,
+  basetrafikkDefault: 85,
 
   /** Prisfaktor = klem(snitt recommended / snitt retail, min, max). Priser LIK
    *  anbefalt ⇒ 1,0; dyrere ⇒ færre kunder; billigere ⇒ flere. */
@@ -42,7 +47,9 @@ export const BALANCE = {
   // erstattet den gamle flate skala-faktoren (se backgroundSales.ts). De gamle
   // feltene hadde da null lesere.
 
-  /** Hver bakgrunnskunde kjøper 1–2 varer: P(2 varer), ellers 1. */
+  /** Hver bakgrunnskunde kjøper 1–2 varer: P(2 varer), ellers 1. Ved 0,5 er
+   *  snitt 1,5 varer/kunde → snittkjøp = 1,5 × snittpris (~52 kr) ≈ 78 kr, jf.
+   *  VERDENSMODELL-målbildet (70–85 kr). Tunbar. */
   sannsynlighetToVarer: 0.5,
 
   /** EIERLØNN (REKALIBRERING, pkt. 35) — eierens egen lønn som FAST månedskostnad,
@@ -79,10 +86,14 @@ export const BALANCE = {
     forprisBot: 3000,
     /** LØPENDE synlighet (DEL D): svakere, jevn effekt av det MÅNEDLIGE
      *  markedsbudsjettet (vs. kampanjens kortvarige støt). Lavere tak/løft. */
+    // REKALIBRERING (pkt. 35): satt bevisst så MODERAT løpende markedsføring gir
+    // et merkbart, men avtagende løft — nok til at mkf + en godt målrettet
+    // kampanje kan gi positiv netto NÅR kapasiteten er bemannet for kundene.
+    // Tunbart mot balansespilleren (godt-drevet-strategien).
     lopende: {
-      metning: 8000,          // kr/mnd der budsjett-effekten begynner å mette
-      maksLoftPerKanal: 0.15,  // maks jevnt løft-bidrag per kanal
-      maksFaktor: 1.3,         // tak på den løpende multiplikatoren
+      metning: 5000,          // kr/mnd der budsjett-effekten begynner å mette
+      maksLoftPerKanal: 0.25,  // maks jevnt løft-bidrag per kanal
+      maksFaktor: 1.45,        // tak på den løpende multiplikatoren
     },
   },
 
@@ -116,5 +127,9 @@ export const BALANCE = {
    *  på ~15–20 kunder/time, så én Junior holder en rolig dag alene, men en
    *  travel dag (høyt rykte + markedsføring) krever flere/bedre folk på gulvet.
    *  Espen finpusser etter spilltest — ALT her, ikke i motoren. */
-  kapasitetPerTime: { junior: 15, senior: 22, ekspert: 30 } as Record<string, number>,
+  // REKALIBRERING (pkt. 35): solo-kapasitetstaket = junior × 8 timer ≈ 160
+  // kunder/dag, så en fornuftig solo-drift (sentrum-l2) ligger PÅ taket og
+  // «godt drevet» (250–300 kunder) er UMULIG uten ansatte — man driver ikke en
+  // kafé alene. Se docs/VERDENSMODELL.md §2.
+  kapasitetPerTime: { junior: 20, senior: 28, ekspert: 38 } as Record<string, number>,
 }

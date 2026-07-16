@@ -63,7 +63,12 @@ function xpForLevel(level: number): number {
 // ─── Starting money per industry ────────────────────────────────────────────
 
 const STARTING_MONEY: Record<Industry, number> = {
-  cafe:    150_000,
+  // REKALIBRERING (pkt. 35): kafé 150 000 → 200 000. Ny skala har ~87 000 kr
+  // faste kostnader/mnd (inkl. eierlønn) mot ~47 000 før, så 150 000 var kun ~1,7
+  // mnd runway. 200 000 ≈ 2,3 mnd — nok til å etablere seg og hente seg inn etter
+  // tidlige feil, men PASSIV går fortsatt konkurs (~mnd 3). Realistisk
+  // arbeidskapital for en liten kafé. Se docs/VERDENSMODELL.md §4.
+  cafe:    200_000,
   fashion: 250_000,
   tech:    300_000,
   sports:  200_000,
