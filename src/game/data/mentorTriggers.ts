@@ -50,6 +50,11 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Første måned i boks! Månedsresultatet er alt du tjente minus de faste kostnadene. Røde tall betyr at noe må endres — pris, kostnader eller volum.',
   },
   {
+    id: 'forste_eierlonn',
+    betingelse: 'Første månedsoppgjør som viser «Eierlønn»-linja (REKALIBRERING pkt. 35)',
+    melding: 'La du merke til «Eierlønn» blant de faste kostnadene? Din egen arbeidstid er en ekte kostnad — kaféen må tjene nok til å lønne deg, ikke bare dekke husleie og varer. Et «overskudd» som ikke betaler eieren, er ikke et ekte overskudd. Hva må til for at kaféen bærer lønna di?',
+  },
+  {
     id: 'forste_laan',
     betingelse: 'Første lån godtatt',
     melding: 'Du tok opp et lån — brukt smart kan det gi butikken fart. Men renter og avdrag skal betales hver måned uansett hvordan det går, så hold øye med kontantstrømmen.',

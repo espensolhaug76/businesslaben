@@ -45,6 +45,12 @@ export const BALANCE = {
   /** Hver bakgrunnskunde kjøper 1–2 varer: P(2 varer), ellers 1. */
   sannsynlighetToVarer: 0.5,
 
+  /** EIERLØNN (REKALIBRERING, pkt. 35) — eierens egen lønn som FAST månedskostnad,
+   *  trukket hver måned som husleie. Pedagogisk kjerne: eierens arbeid er aldri
+   *  gratis, så «overskudd» måles ETTER eierlønn. VG1-forenkling: ETT tall, ingen
+   *  arbeidsgiveravgift/feriepenger (se docs/VERDENSMODELL.md §4). Tunbar. */
+  eierlonnMnd: 40000,
+
   /** PERSONALE / DEL 5 (fiksrunde 2): fast månedskostnad når regnskapet er satt
    *  ut til en regnskapsfører («Outsourcet»-boksen i «Hvem gjør hva?»). Trekkes
    *  i månedsoppgjøret som egen linje. Realistisk størrelsesorden for en liten

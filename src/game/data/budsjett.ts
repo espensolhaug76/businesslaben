@@ -7,11 +7,14 @@
 
 import type { MonthSettlement } from '../types'
 
-// ── De SEKS faste budsjettlinjene (ingen frie linjer på VG1). Rekkefølge = visning.
+// ── De SYV faste budsjettlinjene (ingen frie linjer på VG1). Rekkefølge = visning.
+// «Eierlønn» (REKALIBRERING pkt. 35) er lagt til som fast linje etter «Lønn» —
+// eierens egen lønn er aldri gratis. Forhåndsutfylt + redigerbar i UI-et.
 export const BUDSJETT_LINJER = [
   { key: 'salgsinntekter', navn: 'Salgsinntekter', slag: 'inntekt' as const },
   { key: 'varekjop',       navn: 'Varekjøp',       slag: 'kostnad' as const },
   { key: 'lonn',           navn: 'Lønn',           slag: 'kostnad' as const },
+  { key: 'eierlonn',       navn: 'Eierlønn',       slag: 'kostnad' as const },
   { key: 'husleie',        navn: 'Husleie',        slag: 'kostnad' as const },
   { key: 'markedsforing',  navn: 'Markedsføring',  slag: 'kostnad' as const },
   { key: 'laan',           navn: 'Lån',            slag: 'kostnad' as const },
@@ -20,7 +23,7 @@ export const BUDSJETT_LINJER = [
 export type BudsjettLinjeKey = typeof BUDSJETT_LINJER[number]['key']
 export type BudsjettTall = Record<BudsjettLinjeKey, number>
 
-export const TOM_BUDSJETT: BudsjettTall = { salgsinntekter: 0, varekjop: 0, lonn: 0, husleie: 0, markedsforing: 0, laan: 0 }
+export const TOM_BUDSJETT: BudsjettTall = { salgsinntekter: 0, varekjop: 0, lonn: 0, eierlonn: 0, husleie: 0, markedsforing: 0, laan: 0 }
 
 /** Ett måneds-budsjett i state.budsjett.maaneder (nøkkel: maanedNokkel). */
 export interface BudsjettMaaned {
@@ -51,6 +54,7 @@ export function faktiskeLinjer(s: MonthSettlement): BudsjettTall {
     salgsinntekter: s.salgInntektBrutto,
     varekjop:       s.varekjop,
     lonn:           kl('Lønn'),
+    eierlonn:       kl('Eierlønn (din lønn)'),
     husleie:        kl('Husleie'),
     markedsforing:  kl('Markedsføring'),
     laan:           s.laanRenter + s.laanAvdrag,
@@ -69,7 +73,7 @@ export function avvikTekst(avvik: number): string {
 
 /** Planlagt resultat fra elevens budsjett (inntekt − alle kostnadslinjer). */
 export function planlagtResultat(b: BudsjettTall): number {
-  return b.salgsinntekter - (b.varekjop + b.lonn + b.husleie + b.markedsforing + b.laan)
+  return b.salgsinntekter - (b.varekjop + b.lonn + b.eierlonn + b.husleie + b.markedsforing + b.laan)
 }
 
 /** Er linjas avvik «stort» (VG2 avviks-notat + mentor)? Terskel tunbar i balance.ts. */

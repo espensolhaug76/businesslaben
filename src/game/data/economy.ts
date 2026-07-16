@@ -72,6 +72,10 @@ export function manedligeFasteKostnader(
   const linjer = [
     { navn: 'Husleie', belop: state.monthlyRent },
     { navn: 'Lønn', belop: state.monthlyPayroll },
+    // EIERLØNN (REKALIBRERING, pkt. 35): eierens egen lønn, alltid en fast linje
+    // (aldri gratis). Tunbar i balance.ts. Egen navn så budsjett/oppgjør skiller
+    // den fra ansattes «Lønn».
+    { navn: 'Eierlønn (din lønn)', belop: BALANCE.eierlonnMnd },
     { navn: 'Forsikring/div.', belop: FORSIKRING_MND },
     { navn: 'Markedsføring', belop: markedsforing },
   ]

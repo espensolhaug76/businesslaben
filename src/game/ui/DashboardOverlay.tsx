@@ -271,7 +271,7 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
 
   const totalProfit = monthlyResults.reduce((s, r) => s + r.profit, 0)
   const maxRev      = Math.max(...monthlyResults.map(r => r.revenue), 1)
-  const monthlyCosts = monthlyRent + state.monthlyPayroll + state.monthlyLoanPayment + Object.values(state.marketingBudget).reduce((s, v) => s + v, 0) + 2000
+  const monthlyCosts = monthlyRent + state.monthlyPayroll + BALANCE.eierlonnMnd + state.monthlyLoanPayment + Object.values(state.marketingBudget).reduce((s, v) => s + v, 0) + 2000
   const estRevenue = state.products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
   const netFlow = estRevenue - monthlyCosts
   const runway = netFlow < 0 && money > 0 ? Math.max(0, Math.floor(money / Math.abs(netFlow))) : null
@@ -512,7 +512,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const [description, setDescription] = useState(businessPlan.description)
   const [canvas, setCanvas] = useState({ ...(businessPlan.canvas ?? {}) })
 
-  const monthlyCosts = monthlyRent + monthlyPayroll + monthlyLoanPayment + Object.values(marketingBudget).reduce((s, v) => s + v, 0)
+  const monthlyCosts = monthlyRent + monthlyPayroll + BALANCE.eierlonnMnd + monthlyLoanPayment + Object.values(marketingBudget).reduce((s, v) => s + v, 0)
   const estRevenue = products.reduce((s, p) => s + p.retailPrice * Math.min(p.maxDemandPerMonth * 0.5, p.stock), 0)
   const breakEvenMonth = monthlyCosts > 0 && estRevenue > 0
     ? Math.ceil(monthlyCosts / Math.max(1, estRevenue - monthlyCosts))
@@ -1448,16 +1448,21 @@ function BudsjettSeksjon() {
   function sistFor(k: BudsjettLinjeKey): number | null {
     if (sist) return Math.round(sist[k])
     if (k === 'lonn') return state.monthlyPayroll
+    if (k === 'eierlonn') return BALANCE.eierlonnMnd
     if (k === 'husleie') return state.monthlyRent
     if (k === 'markedsforing') return Object.values(state.marketingBudget).reduce((s, v) => s + v, 0)
     if (k === 'laan') return terminbelop
     return null   // salgsinntekter/varekjøp har ingen historikk før første oppgjør
   }
 
-  const [utkast, setUtkast] = useState<BudsjettTall>(() => lagret?.budsjett ?? { ...TOM_BUDSJETT, laan: terminbelop })
-  // Re-seed når måneden ruller (ny key) — les fersk lagret/forhåndsutfylt lån.
+  // Forhåndsutfylte faste linjer eleven ikke skal måtte gjette: lån (terminbeløp)
+  // og eierlønn (REKALIBRERING pkt. 35 — ny linje, forhåndsutfylt så den ikke
+  // glemmes; redigerbar). Resten fylles av eleven, guidet av «Sist måned».
+  const forhandsutfylt = { ...TOM_BUDSJETT, laan: terminbelop, eierlonn: BALANCE.eierlonnMnd }
+  const [utkast, setUtkast] = useState<BudsjettTall>(() => lagret?.budsjett ?? forhandsutfylt)
+  // Re-seed når måneden ruller (ny key) — les fersk lagret/forhåndsutfylt.
   useEffect(() => {
-    setUtkast(state.budsjett.maaneder[key]?.budsjett ?? { ...TOM_BUDSJETT, laan: terminbelop })
+    setUtkast(state.budsjett.maaneder[key]?.budsjett ?? { ...TOM_BUDSJETT, laan: terminbelop, eierlonn: BALANCE.eierlonnMnd })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
@@ -1558,7 +1563,7 @@ function BudsjettSeksjon() {
       {IS_DEV_COORDS && !laast && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: '0.9rem', paddingTop: '0.7rem', borderTop: '1px dashed rgba(168,85,247,0.35)' }}>
           <button onClick={() => {
-            const fyll: BudsjettTall = { salgsinntekter: 60_000, varekjop: 22_000, lonn: state.monthlyPayroll || 15_000, husleie: state.monthlyRent || 45_000, markedsforing: Object.values(state.marketingBudget).reduce((s, v) => s + v, 0) || 5_000, laan: terminbelop }
+            const fyll: BudsjettTall = { salgsinntekter: 156_000, varekjop: 55_000, lonn: state.monthlyPayroll || 0, eierlonn: BALANCE.eierlonnMnd, husleie: state.monthlyRent || 45_000, markedsforing: Object.values(state.marketingBudget).reduce((s, v) => s + v, 0) || 5_000, laan: terminbelop }
             setUtkast(fyll); dispatch({ type: 'SET_BUDSJETT', maaned: key, budsjett: fyll })
           }} style={{ background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 8, padding: '0.4rem 0.8rem', color: '#c084fc', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
             ⏩ Fyll budsjett med fornuftige tall

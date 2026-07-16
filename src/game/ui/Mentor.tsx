@@ -73,6 +73,7 @@ function oppfylt(id: string, s: GameState): boolean {
     case 'forste_bestilling_levert': return s.lastDelivery != null
     case 'forste_laan': return s.loans.length > 0
     case 'forste_manedsoppgjor': return s.lastMonthSettlement != null
+    case 'forste_eierlonn': return s.lastMonthSettlement != null
     case 'forste_svinn': return (s.lastDayResult?.svinnStk ?? 0) > 0
     case 'forste_tomt_trau': return (s.lastDayResult?.tomtProdukter.length ?? 0) > 0
     case 'forste_ko': return (s.lastDayResult?.koKunder ?? 0) > 0
