@@ -7,6 +7,7 @@ import {
 // ikke les den fra UI-et; ikke hardkod en kopi). Type-only importer i economy.ts
 // erases, så dette drar ingen React-/spill-runtime inn i testen.
 import { amortiserLaan, manedligeFasteKostnader } from '../../src/game/data/economy'
+import { BUDSJETT_LINJER, maanedNokkel, faktiskeLinjer, linjeAvvik, type BudsjettTall } from '../../src/game/data/budsjett'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
 // Spiller byspillet (/game) ende til ende og asserter på state + DOM ved hvert
@@ -388,6 +389,57 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     const urlEtter = page.url()
     expect(urlEtter, `spillfanen skal bli på /game etter klikk på «${navnLenke}» (fiksrunde 2: target=_blank)`).toContain('/game')
     ctx.ok(`hub-lenke «${navnLenke}» navigerte IKKE spillfanen bort (url: ${urlEtter})`)
+  })
+
+  // ── STEG 11 — TEMA 2 Budsjett: avvik == delt fasit + oppsummeringslinje ──────
+  await steg(page, rapport, 11, 'Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje', async ctx => {
+    // Aktiver Tema 2 (localStorage-fallback) + reload → fersk måned 1.
+    await page.evaluate(() => localStorage.setItem('tema-aktivering-dev', JSON.stringify({ budsjett: { aktiv: true, nivaa: 'vg1' } })))
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot med budsjett-tema')
+    // Lei lokale (husleie = 45 000) + tom åpningsbestilling, via test-broen.
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [] })
+    await ventState(page, s => s.rentedLocationId === 'sentrum-l2', 'lokale leid')
+
+    // Sett budsjett programmatisk for inneværende måned (husleie AVVIKER bevisst
+    // fra faktisk 45 000 → et konkret avvik å verifisere mot fasit).
+    const s0 = await lesState(page)
+    const key = maanedNokkel(s0.currentYear, s0.currentMonth)
+    const budsjett: BudsjettTall = { salgsinntekter: 50000, varekjop: 15000, lonn: 0, husleie: 40000, markedsforing: 0, laan: 0 }
+    await dispatch(page, { type: 'SET_BUDSJETT', maaned: key, budsjett })
+    await ventState(page, s => !!s.budsjett.maaneder[key], 'budsjett satt')
+
+    // Rull en HEL måned (OPEN/CLOSE/START_NEW_DAY) til månedsoppgjøret bygges.
+    for (let d = 0; d < 20 && !(await lesState(page)).lastMonthSettlement; d++) {
+      await dispatch(page, { type: 'OPEN_DAY' })
+      await ventState(page, s => s.dayPhase === 'åpen', 'dag åpen')
+      await dispatch(page, { type: 'CLOSE_DAY' })
+      await ventState(page, s => s.dayPhase === 'oppgjør', 'dag stengt')
+      await dispatch(page, { type: 'START_NEW_DAY' })
+      await ventState(page, s => s.dayPhase === 'stengt', 'ny dag')
+    }
+
+    const s1 = await lesState(page)
+    const oppgjor = s1.lastMonthSettlement
+    expect(oppgjor, 'månedsoppgjør bygget').toBeTruthy()
+    expect(s1.budsjett.maaneder[key]?.laastVedOppgjor, 'budsjett låst ved oppgjør').toBe(true)
+
+    // Avvik == delt hjelpefunksjon (faktiskeLinjer/linjeAvvik) — regn fasit i testen.
+    const faktisk = faktiskeLinjer(oppgjor!)
+    expect(faktisk.husleie, 'faktisk husleie fra oppgjøret').toBe(45000)
+    const husleieAvvik = linjeAvvik(budsjett.husleie, faktisk.husleie)
+    expect(husleieAvvik, 'husleie-avvik = faktisk − budsjett = 45000 − 40000').toBe(5000)
+    // Salgsinntekter: faktisk == oppgjørets brutto salg; avvik == fasit.
+    expect(faktisk.salgsinntekter, 'faktisk salg == settlement.salgInntektBrutto').toBe(oppgjor!.salgInntektBrutto)
+    for (const l of BUDSJETT_LINJER) {
+      expect(linjeAvvik(budsjett[l.key], faktisk[l.key]), `avvik ${l.key} == faktisk − budsjett`).toBe(faktisk[l.key] - budsjett[l.key])
+    }
+    ctx.ok(`husleie-avvik = ${husleieAvvik} kr (fasit), 6 linjer verifisert mot delt hjelpefunksjon`)
+
+    // Oppsummeringslinja i månedsoppgjøret («Du planla … det ble …»).
+    await expect(page.locator('body')).toContainText('Du planla')
+    ctx.ok('oppgjøret viser budsjett-kolonner + oppsummeringslinja «Du planla …»')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

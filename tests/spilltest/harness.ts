@@ -27,6 +27,9 @@ export interface MonthSettlement {
   month: number; year: number; inntekt: number
   fasteKostnader: number; laanRenter: number; laanAvdrag: number
   resultat: number; antallDager: number
+  // TEMA 2/3 (budsjettsammenligning + nøkkeltall)
+  kostnadslinjer: { navn: string; belop: number }[]
+  salgInntektBrutto: number; varekjop: number
 }
 export interface SpillProduct {
   id: string; name: string; stock: number; retailPrice: number; costPrice: number
@@ -57,6 +60,9 @@ export interface SpillState {
   lastDayResult: unknown | null
   lastMonthSettlement: MonthSettlement | null
   beredskap: { planBekreftet: boolean }
+  // TEMA 2/3 — budsjett + nøkkeltall
+  budsjett: { maaneder: Record<string, { budsjett: Record<string, number>; laastVedOppgjor: boolean; avvikNotater: Record<string, string> }> }
+  nokkeltall: Record<string, { bruttofortjeneste: number; dekningsgrad: number; resultatgrad: number }>
   phase: string
 }
 

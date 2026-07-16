@@ -1,22 +1,23 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-07-16T09:21:24.046Z
+> Startet: 2026-07-16T10:08:15.613Z
 
-**Resultat: ✅ GRØNT** — 10 PASS · 0 FAIL · 0 KJENT FEIL (10 steg)
+**Resultat: ✅ GRØNT** — 11 PASS · 0 FAIL · 0 KJENT FEIL (11 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 157 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 6527 |
-| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 545 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 194 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 8988 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5413 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 2227 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 12685 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 4590 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 4888 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 180 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 6738 |
+| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 571 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 202 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 10335 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5754 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 2379 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 15266 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 4126 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 5277 |
+| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 11121 |
 
 ## Detaljer per steg
 
@@ -87,6 +88,12 @@ Verifiserte tall/tilstander:
 
 Verifiserte tall/tilstander:
 - hub-lenke «📚 Beredskap (Contingency) ↗» navigerte IKKE spillfanen bort (url: http://localhost:5176/game?skip=1)
+
+### ✅ Steg 11 — Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje
+
+Verifiserte tall/tilstander:
+- husleie-avvik = 5000 kr (fasit), 6 linjer verifisert mot delt hjelpefunksjon
+- oppgjøret viser budsjett-kolonner + oppsummeringslinja «Du planla …»
 
 ## Notater
 
