@@ -9,7 +9,8 @@ import { getActiveIndustryDefinition } from '../data/industryDefinition'
 // gates internt. «Start ny dag» dispatcher START_NEW_DAY (dagteller + evt.
 // månedsrull). «Bestill til i morgen» (onOpenProducts) åpner dashbordet på
 // Produkter-fanen UTEN å avansere dagen — dayPhase forblir 'oppgjør', og
-// bestillinger lagt nå får ankomstDag = dayNumber+1 («ferskt neste dag»).
+// bestillinger lagt nå får ankomstDag = dayNumber+1 («ferskt neste dag»), eller
+// dag 1 i ny måned hvis de legges siste handledag (wrappet over månedsskiftet).
 // Mens dashbordet ligger over (dashboardOpen), skjules oppgjøret så det ikke
 // dekker dashbordet (oppgjøret har høyere z-index); det kommer tilbake når
 // dashbordet lukkes (dayPhase er fortsatt 'oppgjør').

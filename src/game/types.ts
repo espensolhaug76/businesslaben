@@ -107,8 +107,11 @@ export interface Bestilling {
   qty: number
   /** Handledag bestillingen ble lagt inn (state.dayNumber der og da). */
   bestiltDag: number
-  /** Handledag varene ankommer = bestiltDag + DAY_CONFIG.leadTimeDays. Ordrer
-   *  med ankomstDag <= dayNumber legges på lager ved neste OPEN_DAY. */
+  /** Handledag-i-måneden (1..daysPerMonth) varene ankommer. Normalt bestiltDag
+   *  + DAY_CONFIG.leadTimeDays, men WRAPPET over månedsskiftet: en ordre lagt
+   *  siste handledag ankommer dag 1 i ny måned (ikke en ikke-eksisterende «dag
+   *  13»). Ordrer med ankomstDag <= den nye dagen legges på lager ved
+   *  START_NEW_DAY (dagstart), før åpning. */
   ankomstDag: number
   /** Total innkjøpskostnad (costPrice × qty) — trukket ved bestilling. */
   costKr: number

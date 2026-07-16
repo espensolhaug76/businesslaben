@@ -9,6 +9,7 @@ import {
 import { amortiserLaan, manedligeFasteKostnader } from '../../src/game/data/economy'
 import { BUDSJETT_LINJER, maanedNokkel, faktiskeLinjer, linjeAvvik, type BudsjettTall } from '../../src/game/data/budsjett'
 import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinntekt, kampanjeRoi } from '../../src/game/data/kampanje'
+import { DAY_CONFIG } from '../../src/game/data/dayConfig'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
 // Spiller byspillet (/game) ende til ende og asserter på state + DOM ved hvert
@@ -483,6 +484,80 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(r.forprisBrudd, 'salgskampanje på nylig prisendret vare → førpris-brudd').toBe(true)
     expect(s1.messages.some(m => m.type === 'kampanje'), 'tilsynsbrev (type=kampanje) i innboksen').toBe(true)
     ctx.ok('førpris-brudd genererte tilsynsbrev fra Forbrukertilsynet')
+  })
+
+  // ── STEG 13 — Månedsskifte-levering (bestilling siste handledag) ─────────────
+  // REGRESJON for balansefiks DEL 1: en ordre lagt siste handledag skal ankomme
+  // dag 1 i ny måned (ikke strande på en «dag 13» som aldri kommer), og beløpet
+  // skal trekkes ÉN gang (ved bestilling — leveringen re-debiterer ikke).
+  await steg(page, rapport, 13, 'Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang', async ctx => {
+    // Hermetisk steg: frisk boot + eget oppsett (uavhengig av forrige stegs
+    // tilstand — steg 9 reloadet og re-seedet et friskt spill uten varer/lokale).
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'frisk boot for steg 12')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 100 }, { productId: 'croissant', qty: 40 }] })
+    await ventState(page, s => s.rentedLocationId === 'sentrum-l2' && s.openingOrderPlaced && s.products.length > 0, 'lokale leid + åpningslager på plass')
+
+    // Kjør fram til siste handledag i inneværende måned, stopp i oppgjør (så
+    // neste START_NEW_DAY ruller måneden). Ingen ticks ⇒ ingen salg (rask rull).
+    let s = await lesState(page)
+    for (let i = 0; i < 200; i++) {
+      s = await lesState(page)
+      if (s.dayNumber === DAY_CONFIG.daysPerMonth && s.dayPhase === 'oppgjør') break
+      if (s.dayPhase === 'stengt') await dispatch(page, { type: 'OPEN_DAY' })
+      else if (s.dayPhase === 'åpen') await dispatch(page, { type: 'CLOSE_DAY' })
+      else await dispatch(page, { type: 'START_NEW_DAY' })
+    }
+    expect(s.dayNumber, 'på siste handledag').toBe(DAY_CONFIG.daysPerMonth)
+    expect(s.dayPhase, 'i dagsoppgjør (kan bestille «til i morgen»)').toBe('oppgjør')
+
+    // Bestill en allerede-ført vare på siste handledag. Pengene trekkes NÅ.
+    const vare = s.products.find(p => p.costPrice > 0) ?? s.products[0]
+    const qMove = 10
+    const kost = vare.costPrice * qMove
+    const pengerFør = s.money
+    const monthFør = s.currentMonth
+
+    await dispatch(page, { type: 'ORDER_PRODUCT', product: vare, quantity: qMove })
+    await ventState(page, st => st.incomingOrders.some(o => o.productId === vare.id && o.ankomstDag === 1), 'bestilling registrert (ankomstDag 1)')
+    const s2 = await lesState(page)
+
+    // (a) Beløpet trukket ÉN gang, ved bestilling.
+    expect(s2.money, 'kassa − innkjøpskost ved bestilling (trukket én gang)').toBe(pengerFør - kost)
+    // (b) Ordren har ankomstDag = 1 (WRAPPET over månedsskiftet — kjernen i fiksen).
+    const nyOrdre = s2.incomingOrders.find(o => o.productId === vare.id && o.ankomstDag === 1)
+    expect(nyOrdre, 'bestillingen fikk ankomstDag = 1 (dag 1 i ny måned)').toBeTruthy()
+    expect(nyOrdre!.qty, 'riktig antall underveis').toBe(qMove)
+    ctx.ok(`bestilte ${qMove} × ${vare.name} siste handledag → ankomstDag = 1; kassa ${pengerFør} → ${s2.money} (−${kost})`)
+
+    // Fasit for kassa-trekket ved rullen (faste + lånebetaling) — samme rene
+    // funksjoner som reduceren. Skal IKKE inneholde en ny innkjøpsdebet.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const amort = amortiserLaan(s2.loans as any)
+    const faste = manedligeFasteKostnader(s2)
+    const m1 = s2.money
+    const lagerFør = s2.products.find(p => p.id === vare.id)!.stock
+    const ankommerQty = s2.incomingOrders.filter(o => o.productId === vare.id && o.ankomstDag <= 1).reduce((a, o) => a + o.qty, 0)
+
+    // Rull måneden.
+    await dispatch(page, { type: 'START_NEW_DAY' })
+    await ventState(page, st => st.dayPhase === 'stengt', 'ny måned startet')
+    const s3 = await lesState(page)
+
+    // (c) Månedsrull skjedde, ny dag er dag 1.
+    expect(s3.dayNumber, 'ny måned starter på dag 1').toBe(1)
+    expect(s3.currentMonth !== monthFør, 'måneden rullet').toBe(true)
+    // (d) Varene ligger på lager dag 1 (levert ved dagstart, FØR åpning).
+    expect(s3.products.find(p => p.id === vare.id)!.stock, 'levert dag 1: lager + underveis-antall').toBe(lagerFør + ankommerQty)
+    expect(ankommerQty, 'bestillingen fra siste handledag ankom').toBeGreaterThanOrEqual(qMove)
+    // (e) Ordren er levert (ute av incomingOrders), IKKE strandet.
+    expect(s3.incomingOrders.some(o => o.productId === vare.id && o.ankomstDag === 1), 'ordren strandet ikke').toBe(false)
+    // (f) Beløpet ble IKKE trukket på nytt ved levering: kassa-deltaet ved rullen
+    // == kun faste + lånebetaling (ingen andre innkjøpsdebet).
+    const lån = amort.renteSum + amort.avdragSum
+    expect(s3.money, 'kassa ved rull = m1 − faste − lån (leveringen re-debiterer ikke)').toBe(m1 - faste.sum - lån)
+    ctx.ok(`ny måned dag 1: ${lagerFør} → ${s3.products.find(p => p.id === vare.id)!.stock} på lager (levert), kassa kun trukket faste ${faste.sum} + lån ${lån} (ingen dobbel innkjøpsdebet)`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

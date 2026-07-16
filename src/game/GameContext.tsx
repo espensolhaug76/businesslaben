@@ -608,11 +608,22 @@ function reducer(state: GameState, action: Action): GameState {
         ? state.products
         : [...state.products, { ...action.product, stock: 0 }]
 
+      // MÅNEDSSKIFTE: ankomstDag er en handledag-i-måneden (1..daysPerMonth), og
+      // leveringen skjer ved START_NEW_DAY når `ankomstDag <= den nye dagen`. En
+      // bestilling lagt siste handledag (dag N + leadTime > daysPerMonth) ville
+      // med rå addisjon fått ankomstDag = 13 — en dag som ALDRI inntreffer siden
+      // dayNumber resettes til 1 ved månedsrull ⇒ ordren strandet (betalt, aldri
+      // levert) og ny måned startet med tom disk. Vi WRAPPER derfor over
+      // månedsskiftet: ankomst i ny måned regnes fra dag 1 (leadTime < daysPerMonth,
+      // så maks én måned over). Dagstart-leverings-prinsippet består — varene ligger
+      // på lager før åpning dag 1 i ny måned.
+      const raaAnkomst = state.dayNumber + DAY_CONFIG.leadTimeDays
+      const ankomstDag = ((raaAnkomst - 1) % DAY_CONFIG.daysPerMonth) + 1
       const order: Bestilling = {
         productId: action.product.id,
         qty: action.quantity,
         bestiltDag: state.dayNumber,
-        ankomstDag: state.dayNumber + DAY_CONFIG.leadTimeDays,
+        ankomstDag,
         costKr: totalCost,
       }
 
@@ -1452,6 +1463,10 @@ function reducer(state: GameState, action: Action): GameState {
       // ankomstDag <= den nye dagen legges på lager NÅ — FØR åpning — så eleven
       // kan stelle disken med de nye varene og så åpne. deliveryLines driver
       // «Ferske varer klare»-banneret (lastDelivery) i interiørscenen.
+      // MÅNEDSSKIFTE: en ordre lagt siste handledag har ankomstDag = 1 (wrappet i
+      // ORDER_PRODUCT), så den leveres nettopp ved rullen til ny måned (newDayNumber
+      // = 1) — ikke strandet på en «dag 13» som aldri kom. Med leadTime 1 er dag 12
+      // eneste grensedag, og neste START_NEW_DAY er alltid selve månedsrullen.
       const arrived = state.incomingOrders.filter(o => o.ankomstDag <= newDayNumber)
       const stillPending = state.incomingOrders.filter(o => o.ankomstDag > newDayNumber)
       let deliveredProducts = state.products
