@@ -1,6 +1,12 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { useGame } from '../GameContext'
+import { useGame, useErTemaAktivt, useTemaNivaa } from '../GameContext'
 import Fagord from './Fagord'
+import { BALANCE } from '../data/balance'
+import {
+  BUDSJETT_LINJER, maanedNokkel, faktiskeLinjer, linjeAvvik, avvikTekst,
+  planlagtResultat, erStortAvvik,
+} from '../data/budsjett'
 
 // ─── MÅNEDSOPPGJØR (ØKONOMI-SAMLING DEL 2) ────────────────────────────────────
 // Vises når state.lastMonthSettlement er satt (bygget ved månedsrull i
@@ -16,6 +22,9 @@ function formatKr(n: number) { return `${Math.round(n).toLocaleString('nb-NO')} 
 
 export default function MonthResultOverlay() {
   const { state, dispatch } = useGame()
+  const budsjettAktiv = useErTemaAktivt('budsjett')       // TEMA 2
+  const nivaa = useTemaNivaa('budsjett') ?? 'vg1'
+  const [notater, setNotater] = useState<Record<string, string>>({})   // VG2 avviks-notat (utkast)
   const s = state.lastMonthSettlement
   if (!s) return null
 
@@ -117,6 +126,67 @@ export default function MonthResultOverlay() {
             {s.resultat >= 0 ? '+' : ''}{formatKr(s.resultat)}
           </div>
         </div>
+
+        {/* ── TEMA 2: Budsjett vs. faktisk (når temaet er aktivt) ── */}
+        {budsjettAktiv && (() => {
+          const bmnd = state.budsjett.maaneder[maanedNokkel(s.year, s.month)]
+          if (!bmnd) {
+            // DEL 2e: ingen budsjett satt → vennlig hint, aldri straff.
+            return (
+              <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: '1rem', padding: '0.9rem 1.1rem', marginBottom: '1.5rem', fontSize: 12.5, color: '#7dd3fc', lineHeight: 1.5 }}>
+                📊 Ingen budsjett satt for denne måneden ennå — sett opp neste måneds budsjett i Økonomi-fanen, så sammenligner vi når måneden er omme.
+              </div>
+            )
+          }
+          const faktisk = faktiskeLinjer(s)
+          const planRes = planlagtResultat(bmnd.budsjett)
+          const fortegnKr = (n: number) => `${n >= 0 ? '+' : '−'}${formatKr(Math.abs(n))}`
+          return (
+            <div style={{ background: 'rgba(56,189,248,0.05)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: '1rem', padding: '1rem 1.1rem', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#7dd3fc', letterSpacing: '0.04em', marginBottom: '0.7rem' }}>📊 <Fagord id="ECO_008">BUDSJETT</Fagord> VS. FAKTISK</div>
+              {/* Kolonneoverskrifter */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.9fr', gap: 6, fontSize: 10.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, paddingBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <span>Linje</span><span style={{ textAlign: 'right' }}>Budsjett</span><span style={{ textAlign: 'right' }}>Faktisk</span>
+              </div>
+              {BUDSJETT_LINJER.map(l => {
+                const b = bmnd.budsjett[l.key]
+                const f = faktisk[l.key]
+                const av = linjeAvvik(b, f)
+                const stort = nivaa === 'vg2' && erStortAvvik(b, f, BALANCE.budsjettAvvikTerskel)
+                const notatVerdi = notater[l.key] ?? bmnd.avvikNotater[l.key] ?? ''
+                return (
+                  <div key={l.key} style={{ paddingTop: 5 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.9fr', gap: 6, fontSize: 12.5, alignItems: 'baseline' }}>
+                      <span style={{ color: '#cbd5e1' }}>{l.navn}</span>
+                      <span style={{ textAlign: 'right', color: '#94a3b8' }}>{formatKr(b)}</span>
+                      <span style={{ textAlign: 'right', color: '#f1f5f9', fontWeight: 700 }}>{formatKr(f)}</span>
+                    </div>
+                    {/* Avvik: ALLTID fortegn + tekst (aldri farge alene — Espen er fargesvak). */}
+                    <div style={{ fontSize: 11, color: av === 0 ? '#64748b' : '#e2c290', marginTop: 1 }}>
+                      Avvik: {avvikTekst(av)}
+                    </div>
+                    {/* VG2: stort avvik → «Hva tror du skjedde?» (vurderingsspor). */}
+                    {stort && (
+                      <input
+                        value={notatVerdi}
+                        onChange={e => { setNotater(n => ({ ...n, [l.key]: e.target.value })); dispatch({ type: 'SET_AVVIK_NOTAT', maaned: maanedNokkel(s.year, s.month), linje: l.key, tekst: e.target.value }) }}
+                        placeholder={`Hva tror du skjedde med ${l.navn.toLowerCase()}?`}
+                        style={{ width: '100%', boxSizing: 'border-box', marginTop: 4, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(226,194,144,0.4)', borderRadius: 6, padding: '0.35rem 0.5rem', color: '#f1f5f9', fontSize: 11.5, fontFamily: 'inherit' }} />
+                    )}
+                  </div>
+                )
+              })}
+              {/* Planlagt vs. faktisk resultat + én setning uten dom (DEL 3b). */}
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '0.7rem', paddingTop: '0.6rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12.5 }}>
+                <div><div style={{ color: '#64748b', fontSize: 11 }}>Planlagt resultat</div><div style={{ fontWeight: 800, color: '#94a3b8' }}>{fortegnKr(planRes)}</div></div>
+                <div style={{ textAlign: 'right' }}><div style={{ color: '#64748b', fontSize: 11 }}>Faktisk resultat</div><div style={{ fontWeight: 800, color: '#f1f5f9' }}>{fortegnKr(s.resultat)}</div></div>
+              </div>
+              <div style={{ fontSize: 12.5, color: '#cbd5e1', marginTop: '0.6rem', lineHeight: 1.5 }}>
+                Du planla {fortegnKr(planRes)}, det ble {fortegnKr(s.resultat)}.
+              </div>
+            </div>
+          )
+        })()}
 
         <div style={{ textAlign: 'center' }}>
           <button
