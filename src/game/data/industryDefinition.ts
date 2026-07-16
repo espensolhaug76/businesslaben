@@ -26,6 +26,11 @@ import {
 } from '../../data/districts'
 import { CAFE_SCENARIO_IDS } from '../sales/scenarios'
 import { CAFE_SPEND, FASHION_BUDGETS, type PersonaBudsjett } from './personas'
+// Portabel scene-geometri (delt med eksperiment/autonom-sport, se
+// docs/AUTONOM_PIPELINE.md §7). Re-eksporteres så bransje-kode kan importere
+// `Hyllelinje` herfra på lik linje med de øvrige geometri-typene.
+import type { Hyllelinje } from '../geometry/hyllelinje'
+export type { Hyllelinje }
 
 /** Lager-flaten (disk-monter): trau-geometri + hvilket bilde de er kalibrert
  *  mot, pluss speil-sonene som viser SAMME lager i interiør-scenen
@@ -187,6 +192,12 @@ export interface IndustryDefinition {
   /** Faste, kalibrerte vareplasser i det bakte interiøret (heng/brett/dukke) der
    *  elevene styler — kun klesbutikk. Kalibreres med ?dev=1-vareplass-traceren. */
   vareplasser?: Vareplass[]
+  /** Valgfrie hyllelinjer (perspektiv-interpolert skala langs en hyllekant) fra
+   *  den portable `geometry/hyllelinje.ts`-modulen (docs/AUTONOM_PIPELINE.md §6–7).
+   *  Klesbutikken bruker i dag DISKRETE `vareplasser` (+ DOM-anker-snap), ikke
+   *  linjer — feltet er del av modul-adopsjonen og står klart for evt. senere
+   *  linje-basert kalibrering. */
+  hyllelinjer?: Hyllelinje[]
 }
 
 export const CAFE: IndustryDefinition = {

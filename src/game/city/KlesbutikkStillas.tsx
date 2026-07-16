@@ -8,6 +8,7 @@ import { KLESBUTIKK_FIXTURES, fixtureDef, vareplasser, kapasitet, type Vareplass
 import { KLESBUTIKK_PLAGG, plaggById, spriteFor, baseFit, NULL_FIT, plaggStøtterHengVariant, type Plagg, type DukkeType } from '../data/klesbutikkPlagg'
 import { KLESBUTIKK_DUKKER, dukkeById, FIXTURE_FOR_DUKKETYPE, type Dukketype } from '../data/klesbutikkDukker'
 import type { KlesbutikkFixtureId, Fotpunkt, KlesbutikkPlaggItem, ElevFit } from '../types'
+import { plassTransform as hyllelinjeTransform } from '../geometry/hyllelinje'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Target, type DrawZone, type Rect } from './ZoneTracer'
 import InnkjopKatalog from './InnkjopKatalog'
@@ -43,13 +44,16 @@ const PROFIL_COLOR = '#c084fc'   // lilla: profil-heng-plasser (egen merking i t
 
 /** Anker + valgfri rot/skew for et snappet element på en vareplass. Bunn-ankret
  *  (brett/dukke) pivoterer i bunn; heng pivoterer i senter. ÉN kodevei brukt av
- *  både scene-render og tracer-preview. */
+ *  både scene-render og tracer-preview.
+ *
+ *  Geometrien bor nå i den PORTABLE modulen `geometry/hyllelinje.ts` (delt med
+ *  eksperiment/autonom-sport, se docs/AUTONOM_PIPELINE.md §7). Denne funksjonen er
+ *  en tynn bransje-ADAPTER: den oversetter klesbutikkens `Vareplass.type` til
+ *  modulens EKSPLISITTE `bottomAnchored` (heng = topp-ankret, brett/dukke = bunn).
+ *  Ren refaktor — modulens utdata er byte-identisk med den tidligere lokale
+ *  koden (`type !== 'heng'` ↔ `bottomAnchored`), verifisert med pikseldiff. */
 function plassTransform(vp: { type: PlassType; rot?: number; skewX?: number; skewY?: number }): { transform: string; transformOrigin: string } {
-  const bunn = vp.type !== 'heng'
-  const anchor = bunn ? 'translate(-50%, -100%)' : 'translate(-50%, -6%)'
-  const rot = vp.rot ?? 0, sx = vp.skewX ?? 0, sy = vp.skewY ?? 0
-  const t = `${anchor}${rot ? ` rotate(${rot}deg)` : ''}${sx ? ` skewX(${sx}deg)` : ''}${sy ? ` skewY(${sy}deg)` : ''}`
-  return { transform: t, transformOrigin: bunn ? '50% 100%' : '50% 50%' }
+  return hyllelinjeTransform({ bottomAnchored: vp.type !== 'heng', rot: vp.rot, skewX: vp.skewX, skewY: vp.skewY })
 }
 
 // Antrekk-passform: skulder-ankret over dukka.

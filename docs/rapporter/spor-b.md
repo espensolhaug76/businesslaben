@@ -922,6 +922,51 @@ checkbox `false`, tom-føring-hint synlig, banner skjult. PÅ → checkbox `true
 banner synlig, hint skjult. Modus-roundtrip → checkbox tilbake til `false`, banner
 borte, hint tilbake. `tsc -b` grønt.
 
+### DEL 3 — hyllelinje-modulen portert fra C (piksel-identisk)
+
+**Mål:** ta i bruk den delte, portable geometri-modulen
+`src/game/geometry/hyllelinje.ts` fra `eksperiment/autonom-sport` (se
+`docs/AUTONOM_PIPELINE.md` §6–7) UTEN adferdsendring.
+
+**Portering:**
+1. **Kopiert modulen verbatim** (`git show origin/eksperiment/autonom-sport:…`) →
+   `src/game/geometry/hyllelinje.ts` (86 linjer, ingen bransje-avhengigheter).
+   Eksporterer `Hyllelinje`, `PlassTransformOpts`, `plassTransform`, `pointAlong`,
+   `projOnLine`, `snapToLine`.
+2. **`KlesbutikkStillas.tsx`:** den lokale `plassTransform` er nå en tynn
+   bransje-**adapter** som delegerer til modulen
+   (`import { plassTransform as hyllelinjeTransform }`). Adapteren oversetter
+   klesbutikkens `Vareplass.type` til modulens eksplisitte `bottomAnchored`
+   (`bottomAnchored: vp.type !== 'heng'`). **Begge kallstedene** (scene-render +
+   tracer-preview) står UENDRET (`plassTransform(vp)`) — minimal diff.
+3. **`industryDefinition.ts`:** `import type { Hyllelinje }` fra modulen +
+   `export type { Hyllelinje }` (re-eksport, så bransje-kode kan importere den her
+   som de øvrige geometri-typene) + nytt valgfritt felt
+   `IndustryDefinition.hyllelinjer?: Hyllelinje[]` (del av adopsjonen; klesbutikken
+   bruker DISKRETE `vareplasser` + DOM-anker-snap, ikke linjer, så feltet står tomt
+   og klart for evt. senere linje-kalibrering).
+
+**Hvorfor piksel-identisk:** modulens `plassTransform` er byte-ekvivalent med den
+gamle lokale koden — `type !== 'heng'` ↔ `bottomAnchored`, samme anker
+(`translate(-50%,-100%)` / `translate(-50%,-6%)`), samme rot/skew-konkatenering,
+samme `transformOrigin`. Ingen rekalibrering; de 42 Espen-låste vareplassene
+(`KLESBUTIKK.vareplasser`) er urørt.
+
+**PIKSELDIFF (C-metoden, headless):** rendret 📌 Vareplass-traceren med previews på
+alle **42 plasser** (heng/brett/dukke, inkl. brett-plasser med rot/skew) i EN ren
+context (tom localStorage → låste defaults). Skjermbilde FØR porteringen og ETTER,
+diffet via canvas `getImageData` (1400×820):
+- **non-identical pixels: 0 · max channel delta: 0.**
+Beviselig ingen adferdsendring — akkurat som sport-porteringen (§7: «max 0, 0
+avvikende piksler»).
+
+**Merk:** klesbutikken har ingen EGEN hyllelinje-/shelf-line-geometri å migrere ut
+over `plassTransform` — snappingen bruker DOM-anker (`nearestSlot`, `data-plass`),
+ikke `snapToLine`, og plasseringen er diskrete `vareplasser`, ikke linjer. Modulen
+er derfor ADOPTERT (geometri-transformen bor nå i den delte modulen, typen
+re-eksporteres, feltet finnes) uten at snap-/linje-funksjonene tas i bruk ennå.
+`tsc -b` + `vite build` grønt.
+
 ---
 
 ## Verifisering
