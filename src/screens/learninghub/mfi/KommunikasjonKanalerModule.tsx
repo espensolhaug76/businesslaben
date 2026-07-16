@@ -372,7 +372,7 @@ export const PHASES: DrawerPhase[] = [
         ['Radio Innlandet (fiktivt medium)', '11', '23', '36', '43', '44'],
       ],
       source: 'Ipsos SoMe-tracker Q4 2023, 18 år+, daglig bruk (kun de fire øverste plattformene)',
-      sourceLink: 'https://www.ipsos.com/nb-no',
+      reportLink: { text: 'Les hele rapporten hos Ipsos', url: 'https://www.ipsos.com/nb-no/ipsos-some-tracker' },
       note: 'Byposten og Radio Innlandet er fiktive medier laget for spillet — realistiske, men ikke målte tall. · Tallene gjelder 18 år og eldre — hva betyr det når målgruppa di er under 18?',
     },
     exercises: [

@@ -2136,7 +2136,7 @@ function KampanjeSeksjon() {
   function toggleSegment(a: string) { setSegmenter(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]) }
   function toggleKanal(id: string) {
     setKanaler(prev => prev.some(k => k.kanalId === id) ? prev.filter(k => k.kanalId !== id)
-      : prev.length >= 2 ? prev : [...prev, { kanalId: id, krPerDag: kanalDagspris(id) }])
+      : [...prev, { kanalId: id, krPerDag: kanalDagspris(id) }])   // 1–6 kanaler, ingen tak
   }
   function setKr(id: string, kr: number) { setKanaler(prev => prev.map(k => k.kanalId === id ? { ...k, krPerDag: Math.max(kanalDagspris(id), Math.round(kr)) } : k)) }
   function toggleSalgsvare(id: string, ordinaer: number) {
@@ -2241,20 +2241,23 @@ function KampanjeSeksjon() {
 
       {/* c) KANAL + DAGSBUDSJETT */}
       <div style={kort}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc' }}>3 · KANAL + DAGSBUDSJETT (velg 1–2)</div>
-          <a href={KOMMUNIKASJONSKANALER_RUTE} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#c084fc', fontWeight: 700, textDecoration: 'none' }}>📚 Hvem bruker hvilke medier? ↗</a>
-        </div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc', marginBottom: 6 }}>3 · KANAL + DAGSBUDSJETT (velg 1–6)</div>
+        {/* Kilde-callout — tydelig knapp (ikke liten lenketekst). */}
+        <a href={KOMMUNIKASJONSKANALER_RUTE} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.55)', borderRadius: 10, padding: '0.55rem 0.8rem', color: '#c084fc', fontSize: 12.5, fontWeight: 800, textDecoration: 'none' }}>
+          <span style={{ fontSize: 16 }}>🧠</span>
+          <span style={{ flex: 1 }}>Hvem bruker hvilke medier? <span style={{ fontWeight: 400, color: '#94a3b8' }}>— sjekk før du velger kanal</span></span>
+          <span>↗</span>
+        </a>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {KANALER.map(k => {
             const valgt = kanaler.find(v => v.kanalId === k.id)
-            const disabled = !valgt && kanaler.length >= 2
             return (
               <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={() => toggleKanal(k.id)} disabled={disabled} style={{
-                  flex: 1, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                <button onClick={() => toggleKanal(k.id)} style={{
+                  flex: 1, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'inherit',
                   background: valgt ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${valgt ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
-                  borderRadius: 8, padding: '0.4rem 0.6rem', opacity: disabled ? 0.4 : 1,
+                  borderRadius: 8, padding: '0.4rem 0.6rem',
                 }}>
                   <span style={{ fontSize: 16 }}>{k.emoji}</span>
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{k.navn}</span>

@@ -62,7 +62,7 @@ export interface DrawerPhase {
   glossaryTerm?: string
   /** Valgfri faktatabell (kun tall/fakta i tabellform — aldri gjengivelse av en
    *  ekstern rapports grafikk/tekst/sideoppsett). */
-  table?: { caption?: string; headers: string[]; rows: string[][]; source?: string; sourceLink?: string; note?: string }
+  table?: { caption?: string; headers: string[]; rows: string[][]; source?: string; sourceLink?: string; note?: string; reportLink?: { text: string; url: string } }
   exercises: DrawerExercise[]
 }
 
@@ -198,6 +198,13 @@ function DrawerContent({
                   Kilde: {phase.table.sourceLink
                     ? <a href={phase.table.sourceLink} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">{phase.table.source}</a>
                     : phase.table.source}
+                </div>
+              )}
+              {phase.table.reportLink && (
+                <div className="mt-1.5">
+                  <a href={phase.table.reportLink.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-purple-600 underline hover:text-purple-700">
+                    🔗 {phase.table.reportLink.text} ↗
+                  </a>
                 </div>
               )}
               {phase.table.note && <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">{phase.table.note}</div>}
