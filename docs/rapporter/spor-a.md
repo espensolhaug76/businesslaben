@@ -1368,9 +1368,11 @@ Aktiver tema i lærerdashbordet (eller `localStorage['tema-aktivering-dev'] =
 
 ## 32. Fiksjobb tema-budsjett (mentor-trigger + glossary)
 
-> **Status: bygget. `tsc -b` + `vite build` + `npm run spilltest` (11/11) grønn.**
-> Gren `spor-a/tema-budsjett` (main urørt) — venter validering. 2 commits (del 1
-> `6e9e8f5`, del 2 dette punktet).
+> **Status: MERGET TIL MAIN etter Espen-validering.** Hele `spor-a/tema-budsjett`
+> (Tema 2/3 DEL 1–7 + fiksjobb del 1–2) `--ff-only`-merget til main (lineær
+> historikk) og pushet. main @ `c667ad9`. `npm run spilltest` på main: **11/11
+> PASS**. Grenen slettet (lokalt + origin). Del-commits: `6e9e8f5`
+> (mentor-trigger), `c667ad9` (glossary).
 
 **Del 1 — mentor-trigger ved tema-aktivering.** Når læreren slår på `budsjett`/
 `nokkeltall` mens eleven spiller, fyrer `tema_budsjett_aktivert`/
