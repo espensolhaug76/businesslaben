@@ -15,7 +15,7 @@ import { BRANNALARM } from '../data/beredskap'
 import { BALANCE } from '../data/balance'
 import {
   BUDSJETT_LINJER, TOM_BUDSJETT, maanedNokkel, faktiskeLinjer, planlagtResultat,
-  BUDSJETT_HUB, type BudsjettTall, type BudsjettLinjeKey,
+  BUDSJETT_HUB, NOKKELTALL_HUB, type BudsjettTall, type BudsjettLinjeKey, type NokkeltallSvar,
 } from '../data/budsjett'
 import { aktiveFunksjoner, evaluerRefleksjon, oppgaveRefleksjoner } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
@@ -1094,7 +1094,8 @@ function OkonomiTab() {
   const [showBank, setShowBank] = useState(false)
   const [loanAmount, setLoanAmount] = useState(250_000)
   const [loanMonths, setLoanMonths] = useState(24)
-  const budsjettAktiv = useErTemaAktivt('budsjett')       // TEMA 2
+  const budsjettAktiv = useErTemaAktivt('budsjett')        // TEMA 2
+  const nokkeltallAktiv = useErTemaAktivt('nokkeltall')    // TEMA 3 (kun VG2)
 
   const { money, loans, totalDebt, businessPlan } = state
 
@@ -1165,8 +1166,9 @@ function OkonomiTab() {
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Økonomi & Finansiering</h3>
       </div>
 
-      {/* TEMA 2 Budsjett — øverst, kun når temaet er aktivt. */}
+      {/* TEMA 2 Budsjett + TEMA 3 Nøkkeltall (kun VG2) — øverst, kun når aktivt. */}
       {budsjettAktiv && <BudsjettSeksjon />}
+      {nokkeltallAktiv && <NokkeltallSeksjon />}
 
       {/* Runway / Burn rate — varsling øverst */}
       {runway !== null && (
@@ -1537,6 +1539,96 @@ function BudsjettSeksjon() {
       {/* 📚 Lær mer — hub-moduler (ny fane, aldri navigere spillet bort). */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: '1rem' }}>
         {BUDSJETT_HUB[nivaa].map(h => (
+          <a key={h.rute} href={h.rute} target="_blank" rel="noopener noreferrer"
+            style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 8, padding: '0.35rem 0.8rem', color: '#c084fc', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+            📚 {h.navn} ↗
+          </a>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── TEMA 3: NØKKELTALL (KUN VG2) — elevoppgave i Økonomi-fanen ────────────────
+// Tre nøkkeltall som eleven regner SELV (spillet retter aldri underveis). Ved
+// månedsoppgjøret vises «ditt tall» vs «bokført» (grønn/rød-modellen ETTERPÅ,
+// med fortegn/tekst). Tallene så langt i måneden vokser — regn på nytt mot
+// slutten for best treff (poenget er HVILKE tall som går inn i regnestykket).
+function nfmt(n: number) { return Math.round(n).toLocaleString('nb-NO') }
+
+function NokkeltallSeksjon() {
+  const { state, dispatch } = useGame()
+  const aar = state.currentYear, mnd = state.currentMonth
+  const key = maanedNokkel(aar, mnd)
+  const mdays = state.dayHistory.filter(d => d.month === mnd && d.year === aar)
+  const omsetning = Math.round(mdays.reduce((s, d) => s + d.soldKr + d.bakgrunnKr, 0))
+  const varekjop = Math.round(mdays.reduce((s, d) => s + d.varekostKr, 0))
+  const lagret = state.nokkeltall[key]
+
+  const [utkast, setUtkast] = useState<{ bruttofortjeneste: string; dekningsgrad: string; resultatgrad: string }>(() => ({
+    bruttofortjeneste: lagret ? String(lagret.bruttofortjeneste) : '',
+    dekningsgrad: lagret ? String(lagret.dekningsgrad) : '',
+    resultatgrad: lagret ? String(lagret.resultatgrad) : '',
+  }))
+  useEffect(() => {
+    const l = state.nokkeltall[key]
+    setUtkast({ bruttofortjeneste: l ? String(l.bruttofortjeneste) : '', dekningsgrad: l ? String(l.dekningsgrad) : '', resultatgrad: l ? String(l.resultatgrad) : '' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  function lagre() {
+    const svar: NokkeltallSvar = {
+      bruttofortjeneste: parseFloat(utkast.bruttofortjeneste) || 0,
+      dekningsgrad: parseFloat(utkast.dekningsgrad) || 0,
+      resultatgrad: parseFloat(utkast.resultatgrad) || 0,
+    }
+    dispatch({ type: 'SET_NOKKELTALL_SVAR', maaned: key, svar })
+  }
+  const kanLagre = utkast.bruttofortjeneste !== '' || utkast.dekningsgrad !== '' || utkast.resultatgrad !== ''
+
+  const felt: React.CSSProperties = { width: 110, boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '0.4rem 0.55rem', color: '#f1f5f9', fontSize: 13, fontFamily: 'inherit', textAlign: 'right' }
+  const rader: { label: React.ReactNode; formel: React.ReactNode; key: 'bruttofortjeneste' | 'dekningsgrad' | 'resultatgrad'; enhet: string }[] = [
+    { key: 'bruttofortjeneste', enhet: 'kr', label: <Fagord id="ECO_022">Bruttofortjeneste</Fagord>,
+      formel: <>Omsetning − Varekjøp = {nfmt(omsetning)} − {nfmt(varekjop)} = ?</> },
+    { key: 'dekningsgrad', enhet: '%', label: <Fagord id="ECO_002">Dekningsgrad</Fagord>,
+      formel: <>Bruttofortjeneste / Omsetning × 100 (bruk ditt svar over / {nfmt(omsetning)} × 100)</> },
+    { key: 'resultatgrad', enhet: '%', label: <>Resultatgrad</>,
+      formel: <>Månedsresultat / Omsetning × 100</> },
+  ]
+
+  return (
+    <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
+      <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>🔢 Nøkkeltall — regn selv <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700 }}>VG2</span></div>
+      <p style={{ color: '#94a3b8', fontSize: 12.5, margin: '0 0 0.4rem' }}>
+        Regn ut nøkkeltallene fra tallene så langt i {MND_FULL[mnd - 1]}, og tast svaret ditt. Spillet retter ikke — ved månedsoppgjøret sammenligner vi ditt tall med det bokførte.
+      </p>
+      <div style={{ fontSize: 11.5, color: '#cbd5e1', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.45rem 0.7rem', marginBottom: '0.9rem' }}>
+        Så langt denne måneden: <strong>Omsetning {nfmt(omsetning)} kr</strong> · <strong>Varekjøp {nfmt(varekjop)} kr</strong> · <strong>Resultat {nfmt(mdays.reduce((s, d) => s + d.resultat, 0))} kr</strong> <span style={{ color: '#64748b' }}>(vokser utover måneden)</span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+        {rader.map(r => (
+          <div key={r.key}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{r.label} <span style={{ color: '#64748b', fontWeight: 400 }}>({r.enhet})</span></span>
+              <input type="number" inputMode="decimal" value={utkast[r.key]} placeholder="?"
+                onChange={e => setUtkast(u => ({ ...u, [r.key]: e.target.value }))} style={felt} />
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, fontFamily: 'monospace' }}>{r.formel}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: '0.9rem' }}>
+        <button onClick={lagre} disabled={!kanLagre}
+          style={{ background: kanLagre ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 99, padding: '0.55rem 1.4rem', color: kanLagre ? '#fff' : '#475569', fontWeight: 800, fontSize: 13.5, cursor: kanLagre ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+          Lagre svar
+        </button>
+        {lagret && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#22c55e' }}>✓ Lagret — sammenlignes ved oppgjøret</span>}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: '1rem' }}>
+        {NOKKELTALL_HUB.map(h => (
           <a key={h.rute} href={h.rute} target="_blank" rel="noopener noreferrer"
             style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 8, padding: '0.35rem 0.8rem', color: '#c084fc', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
             📚 {h.navn} ↗

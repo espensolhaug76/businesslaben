@@ -5,7 +5,7 @@ import Fagord from './Fagord'
 import { BALANCE } from '../data/balance'
 import {
   BUDSJETT_LINJER, maanedNokkel, faktiskeLinjer, linjeAvvik, avvikTekst,
-  planlagtResultat, erStortAvvik,
+  planlagtResultat, erStortAvvik, bokfortNokkeltall,
 } from '../data/budsjett'
 
 // ─── MÅNEDSOPPGJØR (ØKONOMI-SAMLING DEL 2) ────────────────────────────────────
@@ -23,6 +23,7 @@ function formatKr(n: number) { return `${Math.round(n).toLocaleString('nb-NO')} 
 export default function MonthResultOverlay() {
   const { state, dispatch } = useGame()
   const budsjettAktiv = useErTemaAktivt('budsjett')       // TEMA 2
+  const nokkeltallAktiv = useErTemaAktivt('nokkeltall')   // TEMA 3 (kun VG2)
   const nivaa = useTemaNivaa('budsjett') ?? 'vg1'
   const [notater, setNotater] = useState<Record<string, string>>({})   // VG2 avviks-notat (utkast)
   const s = state.lastMonthSettlement
@@ -183,6 +184,48 @@ export default function MonthResultOverlay() {
               </div>
               <div style={{ fontSize: 12.5, color: '#cbd5e1', marginTop: '0.6rem', lineHeight: 1.5 }}>
                 Du planla {fortegnKr(planRes)}, det ble {fortegnKr(s.resultat)}.
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* ── TEMA 3 (VG2): dine nøkkeltall vs. bokført (grønn/rød ETTERPÅ) ── */}
+        {nokkeltallAktiv && (() => {
+          const ditt = state.nokkeltall[maanedNokkel(s.year, s.month)]
+          if (!ditt) return null   // ikke besvart denne måneden → ingen sammenligning, ingen straff
+          const bok = bokfortNokkeltall(s)
+          const rader = [
+            { navn: 'Bruttofortjeneste', ditt: ditt.bruttofortjeneste, bok: bok.bruttofortjeneste, enhet: 'kr' as const },
+            { navn: 'Dekningsgrad', ditt: ditt.dekningsgrad, bok: bok.dekningsgrad, enhet: '%' as const },
+            { navn: 'Resultatgrad', ditt: ditt.resultatgrad, bok: bok.resultatgrad, enhet: '%' as const },
+          ]
+          const visTall = (n: number, enhet: 'kr' | '%') => enhet === 'kr' ? formatKr(n) : `${n.toFixed(1)} %`
+          const visAvvik = (a: number, enhet: 'kr' | '%') => {
+            if (Math.abs(a) < (enhet === 'kr' ? 1 : 0.05)) return 'likt bokført'
+            const teg = a > 0 ? '+' : '−'
+            return enhet === 'kr' ? `${teg}${formatKr(Math.abs(a))} vs. bokført` : `${teg}${Math.abs(a).toFixed(1)} prosentpoeng vs. bokført`
+          }
+          return (
+            <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '1rem', padding: '1rem 1.1rem', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fbbf24', letterSpacing: '0.04em', marginBottom: '0.6rem' }}>🔢 DINE NØKKELTALL VS. BOKFØRT</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.9fr', gap: 6, fontSize: 10.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, paddingBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <span>Nøkkeltall</span><span style={{ textAlign: 'right' }}>Ditt tall</span><span style={{ textAlign: 'right' }}>Bokført</span>
+              </div>
+              {rader.map(r => (
+                <div key={r.navn} style={{ paddingTop: 5 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.9fr', gap: 6, fontSize: 12.5, alignItems: 'baseline' }}>
+                    <span style={{ color: '#cbd5e1' }}>{r.navn}</span>
+                    <span style={{ textAlign: 'right', color: '#f1f5f9', fontWeight: 700 }}>{visTall(r.ditt, r.enhet)}</span>
+                    <span style={{ textAlign: 'right', color: '#94a3b8' }}>{visTall(r.bok, r.enhet)}</span>
+                  </div>
+                  {/* Avvik med fortegn + tekst, aldri farge alene. */}
+                  <div style={{ fontSize: 11, color: Math.abs(r.ditt - r.bok) < (r.enhet === 'kr' ? 1 : 0.05) ? '#64748b' : '#e2c290', marginTop: 1 }}>
+                    {visAvvik(r.ditt - r.bok, r.enhet)}
+                  </div>
+                </div>
+              ))}
+              <div style={{ fontSize: 12, color: '#cbd5e1', marginTop: '0.7rem', lineHeight: 1.5 }}>
+                Er det sprik? Da er spørsmålet HVILKE tall du regnet med — brukte du hele månedens omsetning, eller bare de første dagene?
               </div>
             </div>
           )
