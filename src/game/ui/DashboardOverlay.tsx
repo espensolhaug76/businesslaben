@@ -2100,7 +2100,7 @@ const CHANNEL_INFO: Record<DistributionChannel, { label: string; emoji: string; 
   wholesale:      { label: 'Engros / B2B',      emoji: '📦', cost: 500,   desc: '×1.6 rekkevidde. 40% lavere margin. Krever Nivå 9.', requiresLevel: 9 },
 }
 
-// ── TEMA 8: KAMPANJEPLANLEGGER (Marked-fanen, når temaet er aktivt) ───────────
+// ── TEMA 8: KAMPANJEPLANLEGGER (Markedsføring-fanen, når temaet er aktivt) ────
 // Én skjerm, fire valg (mål/målgruppe/kanal+budsjett/varighet) + VG1 markedsplan
 // (situasjon) + valgfri salgskampanje. Kanal×segment-TREFFET vises ALDRI her —
 // eleven må resonnere fra hub-tabellen (📚-lenke). Én aktiv kampanje om gangen.
@@ -2125,8 +2125,8 @@ function KampanjeSeksjon() {
   const [introStep, setIntroStep] = useState<number | null>(() => { try { return localStorage.getItem('kampanje_intro_v1') === '1' ? null : 0 } catch { return 0 } })
   function ferdigIntro() { try { localStorage.setItem('kampanje_intro_v1', '1') } catch { /* ignore */ } setIntroStep(null) }
   const KAMP_INTRO: React.ReactNode[] = [
-    <>En kampanje er et tidsavgrenset markedsstøt mot et mål. Start med å tallfeste målet ditt — hvor mye vil du øke kundene eller salget?</>,
-    <>Velg kanal etter hvor målgruppa di faktisk er. Bruk 📚 «Hvem bruker hvilke medier?» før du velger — en kanal «alle snakker om» kan likevel bomme på DIN gruppe.</>,
+    <>En <Fagord id="MKT_051">kampanje</Fagord> er et tidsavgrenset markedsstøt mot et mål. Start med å tallfeste målet ditt — hvor mye vil du øke kundene eller salget?</>,
+    <>Velg kanal etter hvor <Fagord id="MKT_021">målgruppa</Fagord> di faktisk er. Bruk 📚 «Hvem bruker hvilke medier?» før du velger — en kanal med stor <Fagord id="MKT_052">rekkevidde</Fagord> totalt kan likevel bomme på DIN gruppe.</>,
     <>Sett budsjett og varighet, og start. Når kampanjen er ferdig får du en effektrapport — vi evaluerer ETTERPÅ, aldri underveis.</>,
   ]
 
@@ -2308,7 +2308,7 @@ function KampanjeSeksjon() {
                 </div>
               )
             })}
-            <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2 }}>⚖️ Førpris-regelen: en vare må ha hatt ordinær pris i minst 2 uker før du kan sette den ned. Brudd gir tilsynsbrev etter kampanjen.</div>
+            <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2 }}>⚖️ <Fagord id="MKT_054">Førpris</Fagord>-regelen: en vare må ha hatt ordinær pris i minst 2 uker før du kan sette den ned. Brudd gir tilsynsbrev etter kampanjen.</div>
           </div>
         )}
       </div>

@@ -156,7 +156,7 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
   }
   // TEMA 8: førpris-brudd — refleksjon om HVORFOR regelen finnes, ikke moralisering.
   if (id === 'kampanje_forpris_brudd') {
-    return 'Salgskampanjen din brøt førpris-regelen — en vare ble satt ned uten å ha hatt ordinær pris lenge nok. Hvorfor tror du loven krever en ekte førpris før et tilbud? Hva lover egentlig ordet «tilbud» kunden?'
+    return 'Salgskampanjen din brøt [[MKT_054|førpris]]-regelen — en vare ble satt ned uten å ha hatt ordinær pris lenge nok. Hvorfor tror du loven krever en ekte førpris før et tilbud? Hva lover egentlig ordet «tilbud» kunden?'
   }
   return mentorMelding(id)
 }

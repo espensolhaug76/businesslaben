@@ -85,7 +85,7 @@ export const TEMAER: TemaDef[] = [
       '/learning/vg2/kommunikasjon/markedsforingskampanjer',
     ],
     beskrivelse: 'Eleven planlegger en markedsføringskampanje (mål, målgruppe, ' +
-      'kanal, budsjett, periode) i Marked-fanen og evaluerer effekten etterpå. ' +
+      'kanal, budsjett, periode) i Markedsføring-fanen og evaluerer effekten etterpå. ' +
       'Salgskampanje-varianten håndhever førpris-regelen.',
   },
 ]

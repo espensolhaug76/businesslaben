@@ -287,6 +287,50 @@
       "common_mistake": "Aa ha kampanjepris for ofte, slik at kundene aldri kjoeper til vanlig pris."
     },
     {
+      "id": "MKT_051",
+      "term": "Kampanje",
+      "category": "Markedsfoering",
+      "level": "VG1",
+      "definition": "Tidsavgrenset markedsfoeringsinnsats med et tydelig maal - start, slutt og noe aa maale mot.",
+      "example": "Fem dager med annonser i lokalavisa for aa oeke antall kunder med 20 %.",
+      "formula": null,
+      "related_terms": ["Markedsplan", "Kampanjepris"],
+      "common_mistake": "Aa kalle all markedsfoering kampanje - uten maal og sluttdato er det loepende markedsfoering, ikke en kampanje."
+    },
+    {
+      "id": "MKT_052",
+      "term": "Rekkevidde",
+      "category": "Markedsfoering",
+      "level": "VG1",
+      "definition": "Hvor mange i maalgruppen som faktisk ser budskapet ditt.",
+      "example": "Naar 50 av 100 unge bruker TikTok daglig, har TikTok stor rekkevidde hos unge.",
+      "formula": null,
+      "related_terms": ["Maalgruppe", "Kanal"],
+      "common_mistake": "Aa tro at stor rekkevidde totalt er nok - naar kanalen ikke treffer DIN maalgruppe, hjelper det lite."
+    },
+    {
+      "id": "MKT_053",
+      "term": "Markedsplan",
+      "category": "Markedsfoering",
+      "level": "VG1",
+      "definition": "En enkel plan for aa naa et maal: situasjon, maal, maalgruppe, virkemidler og evaluering.",
+      "example": "Faerre kunder paa hverdager (situasjon), 20 % flere kunder (maal), unge voksne (maalgruppe), Snapchat-annonser (virkemiddel), effektrapport (evaluering).",
+      "formula": null,
+      "related_terms": ["Kampanje", "Maalgruppe"],
+      "common_mistake": "Aa hoppe rett til virkemidlene uten maal - da kan du aldri vite om planen virket."
+    },
+    {
+      "id": "MKT_054",
+      "term": "Foerpris",
+      "category": "Markedsfoering",
+      "level": "VG1",
+      "definition": "Prisen varen reelt har hatt foer et tilbud - loven krever at varen faktisk er solgt til denne prisen en periode foer du kan reklamere med salg.",
+      "example": "Genseren har kostet 399 kr i seks uker - da kan du annonsere 'naa 299 kr'.",
+      "formula": null,
+      "related_terms": ["Kampanjepris", "Markedsfoeringsloven"],
+      "common_mistake": "Aa sette opp prisen rett foer salget saa rabatten ser stoerre ut - det er villedende og ulovlig."
+    },
+    {
       "id": "MKT_027",
       "term": "Kundelojalitet",
       "category": "Markedsfoering",
@@ -505,6 +549,17 @@
       "formula": "Resultatgrad = Resultat / Omsetning * 100",
       "related_terms": ["Dekningsgrad", "Resultat", "Loennsomhet"],
       "common_mistake": "Aa blande med dekningsgrad - dekningsgraden trekker bare fra varekostnaden, resultatgraden trekker fra alle kostnadene."
+    },
+    {
+      "id": "ECO_034",
+      "term": "ROI (Return on investment)",
+      "category": "Okonomi",
+      "level": "VG2",
+      "definition": "Hvor mye du faar igjen per krone investert - et maal paa loennsomheten i en investering eller kampanje.",
+      "example": "Kampanjen kostet 4 000 kr og ga 6 000 kr i mersalg: ROI = (6 000 - 4 000) / 4 000 * 100 = 50 %.",
+      "formula": "ROI = (Merinntekt - Kostnad) / Kostnad * 100",
+      "related_terms": ["Loennsomhet", "Dekningsgrad"],
+      "common_mistake": "Aa glemme aa trekke fra kostnaden foer man deler - da ser alt loennsomt ut."
     },
     {
       "id": "ECO_009",

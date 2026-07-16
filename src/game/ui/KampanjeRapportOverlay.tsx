@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useGame, useTemaNivaa } from '../GameContext'
+import Fagord from './Fagord'
 import { kanalById } from '../data/kampanje'
 
 // ─── TEMA 8 · EFFEKTRAPPORT (vises ved kampanjeslutt) ────────────────────────
@@ -64,7 +65,7 @@ export default function KampanjeRapportOverlay() {
         {/* c) VG2: ROI som elevoppgave */}
         {nivaa === 'vg2' && (
           <div style={{ ...kort, borderColor: 'rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.06)' }}>
-            <div style={{ fontSize: 12.5, fontWeight: 800, color: '#fbbf24', marginBottom: 6 }}>🔢 REGN UT ROI SELV (VG2)</div>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: '#fbbf24', marginBottom: 6 }}>🔢 REGN UT <Fagord id="ECO_034">ROI</Fagord> SELV (VG2)</div>
             <div style={{ fontSize: 11.5, color: '#94a3b8', fontFamily: 'monospace', marginBottom: 8 }}>
               ROI = (Merinntekt − Kostnad) / Kostnad × 100 = ({kr(r.merinntekt)} − {kr(r.kostnad)}) / {kr(r.kostnad)} × 100
             </div>

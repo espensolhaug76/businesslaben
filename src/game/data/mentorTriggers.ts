@@ -147,7 +147,7 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
   {
     id: 'tema_kampanje_aktivert',
     betingelse: 'Temaet Kampanje slås på (via lærerens Spillet-fane) — samme timing som budsjett-temaet',
-    melding: 'Læreren har åpnet Kampanje — du finner den i 📢 Marked-fanen. Planlegg en kampanje: sett et mål, velg kanal og målgruppe, så evaluerer vi effekten etterpå.',
+    melding: 'Læreren har åpnet [[MKT_051|Kampanje]] — du finner den i 📢 Markedsføring-fanen. Planlegg en kampanje: sett et mål, velg kanal og [[MKT_021|målgruppe]], så evaluerer vi effekten etterpå.',
   },
   {
     id: 'kampanje_effekt',
