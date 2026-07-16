@@ -5,6 +5,7 @@ import { getScenario, SCENARIOS, FASHION_SCENARIOS } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
+import DevPanel from './DevPanel'
 import { tileCount, trauCols } from './MonterScene'
 import { useGame } from '../GameContext'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
@@ -200,9 +201,6 @@ export default function InteriorView({ districtId, lokaleId }: {
   // Er de tre dev-panelene åpne/felt sammen (accordion) — dekket scenen bak
   // (glassmonteret, tavla) i utfoldet tilstand, så Espen ba om å kunne
   // lukke dem. Default åpen (samme oppførsel som før denne endringen).
-  const [kundeOpen, setKundeOpen] = useState(true)
-  const [speilOpen, setSpeilOpen] = useState(true)
-  const [tavleOpen, setTavleOpen] = useState(true)
 
   // Fade kunden inn når klokka spawner et møte (activeMeetingScenarioId settes),
   // og la den bare forsvinne (gate under) når møtet nulles. Ingen bevegelse.
@@ -727,8 +725,8 @@ export default function InteriorView({ districtId, lokaleId }: {
           ikke øverst til venstre lenger, det lå rett oppå glassmonteret med
           varene panelet skal kalibrere mot). */}
       {IS_DEV_COORDS && (
-        <div style={{ position: 'fixed', top: 320, right: 16, zIndex: 90, width: 224 }}>
-          <CalPanel title="🎚️ Kunde-kalibrering" color="#7dd3fc" open={kundeOpen} onToggle={() => setKundeOpen(o => !o)}>
+        <DevPanel id="kunde-kalibrering" tittel="🎚️ Kunde-kalibrering" farge="#7dd3fc"
+          standardPos={{ x: Math.max(8, window.innerWidth - 240), y: 60 }}>
             {/* SCALE/CENTER_X/WAIST_Y gjelder DEN VISTE kunden: vises en kunde
                 (møte/preview) kalibreres KUN henne (spriteCal), ellers den delte
                 basen. OCCLUDE er disken (alltid delt). */}
@@ -753,22 +751,19 @@ export default function InteriorView({ districtId, lokaleId }: {
               Verdiene logges i konsollen ved hver endring. For en enkeltkunde logges en
               ferdig <code>spriteCal: {'{…}'}</code>-linje — meld den tilbake, så låser jeg den i scenariet.
             </div>
-          </CalPanel>
-        </div>
+        </DevPanel>
       )}
 
       {/* SPEIL-KALIBRERING (kun ?dev=1) — VELG én speil-sone, juster
           størrelse/vinkel for DEN sonen. Hver sone sitter et annet sted i
           fotoet (annen skala/perspektiv) — samme mutér-og-logg-mønster som
-          resten av dev-verktøyene. Plassert VED SIDEN AV kunde-panelet
-          (samme top, right forskjøvet) i stedet for stablet under — unngår
-          at panelenes (varierende) høyde kolliderer med hverandre, og holder
-          begge unna glassmonteret med varene til venstre. */}
+          resten av dev-verktøyene. DevPanel: drabart + kollapsbart, så det
+          kan flyttes vekk fra glassmonteret det kalibrerer mot. */}
       {IS_DEV_COORDS && (() => {
         const m = mirrorTrau.find(x => x.id === calMirrorId)
         return (
-          <div style={{ position: 'fixed', top: 320, right: 256, zIndex: 90, width: 224 }}>
-            <CalPanel title="🪞 Speil-kalibrering" color="#c084fc" open={speilOpen} onToggle={() => setSpeilOpen(o => !o)}>
+          <DevPanel id="speil-kalibrering" tittel="🪞 Speil-kalibrering" farge="#c084fc"
+            standardPos={{ x: Math.max(8, window.innerWidth - 240), y: 100 }}>
               <select
                 value={calMirrorId}
                 onChange={e => setCalMirrorId(e.target.value)}
@@ -795,17 +790,15 @@ export default function InteriorView({ districtId, lokaleId }: {
               <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>
                 Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
               </div>
-            </CalPanel>
-          </div>
+          </DevPanel>
         )
       })()}
 
       {/* TAVLE-KALIBRERING (kun ?dev=1) — vinkling/skala for drikkemeny-
-          teksten på tavla. Plassert ved siden av speil-panelet (samme top,
-          right forskjøvet enda et hakk), samme mutér-og-logg-mønster. */}
+          teksten på tavla. DevPanel: drabart + kollapsbart. */}
       {IS_DEV_COORDS && (
-        <div style={{ position: 'fixed', top: 320, right: 496, zIndex: 90, width: 224 }}>
-          <CalPanel title="📋 Tavle-kalibrering" color="#fbbf24" open={tavleOpen} onToggle={() => setTavleOpen(o => !o)}>
+        <DevPanel id="tavle-kalibrering" tittel="📋 Tavle-kalibrering" farge="#fbbf24"
+          standardPos={{ x: Math.max(8, window.innerWidth - 240), y: 140 }}>
             <CalSlider label="menuTiltY (sidelengs)" value={menuTiltY} min={-60} max={60} step={1}
               onChange={v => updateMenu('MENU_TILT_Y', v, setMenuTiltY)} fmt={v => `${v.toFixed(0)}°`} />
             <CalSlider label="menuTiltX (forover)" value={menuTiltX} min={-60} max={60} step={1}
@@ -817,8 +810,7 @@ export default function InteriorView({ districtId, lokaleId }: {
             <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>
               Verdiene logges i konsollen ved hver endring — meld dem tilbake for permanent lagring.
             </div>
-          </CalPanel>
-        </div>
+        </DevPanel>
       )}
 
       {/* Stillas-etikett nederst */}
@@ -835,37 +827,8 @@ export default function InteriorView({ districtId, lokaleId }: {
   )
 }
 
-// ── Sammenleggbart kalibreringspanel (accordion) ─────────────────────────────
-// De faste dev-panelene dekket scenen bak (glassmonteret, tavla) — klikk
-// tittelen for å felle sammen til KUN header-linja, så innholdet bak blir
-// synlig igjen uten å måtte skru av ?dev=1 helt.
-function CalPanel({ title, color, open, onToggle, children }: {
-  title: string
-  color: string
-  open: boolean
-  onToggle: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <div style={{
-      background: 'rgba(10,14,26,0.94)', border: `1px solid ${color}55`,
-      borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
-    }}>
-      <div
-        onClick={onToggle}
-        title={open ? 'Klikk for å felle sammen' : 'Klikk for å åpne'}
-        style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          cursor: 'pointer', marginBottom: open ? 6 : 0, userSelect: 'none',
-        }}
-      >
-        <span style={{ color, fontSize: 12, fontWeight: 800 }}>{title}</span>
-        <span style={{ color, fontSize: 11 }}>{open ? '▾' : '▸'}</span>
-      </div>
-      {open && children}
-    </div>
-  )
-}
+// (Kollaps/dra/persistens for dev-panelene ligger nå i den delte DevPanel-
+// komponenten — CalPanel er erstattet.)
 
 // ── Slider-rad i kalibreringspanelet ─────────────────────────────────────────
 function CalSlider({ label, value, min, max, step, onChange, fmt }: {
@@ -910,7 +873,6 @@ function prettyTittel(id: string): string {
 }
 
 function DevScenarioPicker({ onPreview, previewId }: { onPreview: (id: string | null) => void; previewId: string | null }) {
-  const [open, setOpen] = useState(false)
   const [played, setPlayed] = useState<Set<string>>(() => new Set())
   const [previewMode, setPreviewMode] = useState(false)
 
@@ -929,26 +891,9 @@ function DevScenarioPicker({ onPreview, previewId }: { onPreview: (id: string | 
   ]
 
   return (
-    <div style={{ position: 'fixed', top: 64, left: 16, zIndex: 160, width: 252, fontFamily: "'Outfit', sans-serif" }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
-          background: 'rgba(10,14,26,0.94)', border: '1px solid rgba(192,132,252,0.5)',
-          borderRadius: 10, padding: '7px 11px', color: '#c084fc', fontSize: 12, fontWeight: 800,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}
-      >
-        <span>🎭 Scenariovelger (dev)</span>
-        <span style={{ fontSize: 11 }}>{open ? '▾' : '▸'}</span>
-      </button>
-
-      {open && (
-        <div style={{
-          marginTop: 6, background: 'rgba(10,14,26,0.96)', border: '1px solid rgba(192,132,252,0.3)',
-          borderRadius: 12, padding: '8px 9px', maxHeight: 'calc(100vh - 130px)', overflowY: 'auto',
-        }}>
-          {/* 👤 Forhåndsvis-modus: valg rendrer spriten i scenen uten å starte møte. */}
+    <DevPanel id="scenariovelger" tittel="🎭 Scenariovelger (dev)" farge="#c084fc" bredde={252}
+      standardPos={{ x: 16, y: 60 }}>
+      {/* 👤 Forhåndsvis-modus: valg rendrer spriten i scenen uten å starte møte. */}
           <button
             onClick={() => { setPreviewMode(m => !m); if (previewMode) onPreview(null) }}
             style={{
@@ -998,8 +943,6 @@ function DevScenarioPicker({ onPreview, previewId }: { onPreview: (id: string | 
           <div style={{ fontSize: 9.5, color: '#475569', lineHeight: 1.4, marginTop: 2 }}>
             Starter i ekte overlay-flyt (scoring/lager/resultat identisk). ✓ = spilt i denne økta.
           </div>
-        </div>
-      )}
-    </div>
+    </DevPanel>
   )
 }

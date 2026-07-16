@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { STOREFRONT_DISPLAY_ZONES, STOREFRONT_HOTSPOTS, STOREFRONT_KAMPANJE } from '../../data/districts'
+import DevPanel from './DevPanel'
 
 // ── ZoneTracer (SONE-TRACING, ?dev=1 på storefront) ──────────────────────────
 // Klikk-og-dra tegner et rektangel over fasaden (live preview, fasade-%).
@@ -142,44 +143,39 @@ export default function ZoneTracer({ onApply, targets, drawZones }: {
         </div>
       )}
 
-      {/* Kontrollpanel (portal — viewport-fast, upåvirket av stage) */}
+      {/* Kontrollpanel (portal — viewport-fast, upåvirket av stage; drabart +
+          kollapsbart via DevPanel) */}
       {createPortal(
-        <div
-          onClick={e => e.stopPropagation()}
-          onPointerDown={e => e.stopPropagation()}
-          style={{
-            position: 'fixed', top: 64, right: 16, zIndex: 300, width: 200,
-            display: 'flex', flexDirection: 'column', gap: 5,
-            background: 'rgba(10,14,26,0.94)', border: '1px solid #ffd24a55',
-            borderRadius: 12, padding: '10px 12px',
-            fontFamily: "'Outfit', sans-serif",
-          }}
+        <DevPanel
+          id="sone-tracer" tittel="🧭 Sone-tracer" farge="#ffd24a" bredde={200}
+          standardPos={{ x: Math.max(8, window.innerWidth - 216), y: 64 }}
         >
-          <div style={{ color: '#ffd24a', fontSize: 12, fontWeight: 800 }}>🧭 Sone-tracer</div>
-          <div style={{ color: '#94a3b8', fontSize: 10, lineHeight: 1.4 }}>
-            Dra et rektangel over fasaden. «Bruk» skriver det inn i sonen live
-            (verdien logges for districts.ts).
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ color: '#94a3b8', fontSize: 10, lineHeight: 1.4 }}>
+              Dra et rektangel over fasaden. «Bruk» skriver det inn i sonen live
+              (verdien logges for districts.ts).
+            </div>
+            <div style={{ color: '#cbd5e1', fontSize: 11, fontFamily: 'monospace' }}>
+              Siste: {last ? fmt(last) : '—'}
+            </div>
+            <button
+              style={btnStyle}
+              onClick={() => {
+                if (!last) return
+                navigator.clipboard?.writeText(fmt(last)).catch(() => {})
+                console.log(`[ZoneTracer] kopiert: ${fmt(last)}`)
+              }}
+            >Kopier sone</button>
+            <div style={{ color: '#94a3b8', fontSize: 10, marginTop: 2 }}>Bruk siste på:</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {tgts.map(t => (
+                <button key={t.id} style={{ ...btnStyle, padding: '2px 7px', fontSize: 10 }} onClick={() => apply(t)}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div style={{ color: '#cbd5e1', fontSize: 11, fontFamily: 'monospace' }}>
-            Siste: {last ? fmt(last) : '—'}
-          </div>
-          <button
-            style={btnStyle}
-            onClick={() => {
-              if (!last) return
-              navigator.clipboard?.writeText(fmt(last)).catch(() => {})
-              console.log(`[ZoneTracer] kopiert: ${fmt(last)}`)
-            }}
-          >Kopier sone</button>
-          <div style={{ color: '#94a3b8', fontSize: 10, marginTop: 2 }}>Bruk siste på:</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {tgts.map(t => (
-              <button key={t.id} style={{ ...btnStyle, padding: '2px 7px', fontSize: 10 }} onClick={() => apply(t)}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>,
+        </DevPanel>,
         document.body,
       )}
     </div>

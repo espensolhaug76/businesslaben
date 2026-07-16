@@ -4,6 +4,7 @@ import { useGame } from '../GameContext'
 import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, MENTOR_INTRO } from '../data/mentorTriggers'
 import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
+import { IS_DEV_COORDS } from '../city/DevCoordHelper'
 import type { GameState } from '../types'
 
 // ─── LÆRINGSLAGET — mentoren (Espen) ──────────────────────────────────────────
@@ -145,6 +146,14 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const [activeFane, setActiveFane] = useState<string | null>(null)
   const [failedImg, setFailedImg] = useState(false)
   const [ordbokOpen, setOrdbokOpen] = useState(false)
+  // DEV-UX (?dev=1): «🫥 Skjul mentor»-toggle i dev-verktøylinja kan skjule
+  // figuren + boka så Espen når sliderne bak. Utkast i localStorage; kun dev.
+  const [devSkjult, setDevSkjult] = useState(() => { try { return localStorage.getItem('dev_skjul_mentor') === '1' } catch { return false } })
+  useEffect(() => {
+    const h = (e: Event) => setDevSkjult(!!(e as CustomEvent).detail?.skjult)
+    window.addEventListener('dev:skjul-mentor', h)
+    return () => window.removeEventListener('dev:skjul-mentor', h)
+  }, [])
   const [forceShow, setForceShow] = useState(false)   // bruker klikket peker-figuren
   const [paused, setPaused] = useState(false)         // melding lukket, neste venter bak peker
   // INTRO ved spillstart (null = ferdig/skjult, 0..2 = steg). Vises én gang.
@@ -255,6 +264,10 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     if (melding) return                                            // aktiv melding vises alt
     setOrdbokOpen(true)                                            // i ro → åpne ordboka
   }
+
+  // DEV: skjul hele mentoren (figur + boble + bok) når toggelen er på. Alle
+  // hooks over har kjørt, så tidlig retur er trygt. Kun i ?dev=1.
+  if (IS_DEV_COORDS && devSkjult) return null
 
   return (
     <>

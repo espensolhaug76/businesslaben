@@ -305,7 +305,47 @@ function GameContent() {
         blocked={simOpen || salesOpen || !!vacantInfo
           || state.dayPhase === 'oppgjør' || !!state.lastMonthSettlement || state.phase === 'year_end'}
       />
+
+      {/* DEV-VERKTØYLINJE (?dev=1) — toppstripe med dev-brytere. «🫥 Skjul
+          mentor» rydder figuren vekk så dev-panelenes slidere blir klikkbare. */}
+      {IS_DEV_COORDS && <DevVerktoylinje />}
     </>
+  )
+}
+
+// ── DEV-verktøylinje (?dev=1) ────────────────────────────────────────────────
+// Liten toppstripe med dev-brytere. Foreløpig kun mentor-skjul (utkast i
+// localStorage, meldes til Mentor via 'dev:skjul-mentor'-event). Ingen effekt
+// utenfor ?dev=1 (rendres ikke der).
+function DevVerktoylinje() {
+  const [skjult, setSkjult] = useState(() => { try { return localStorage.getItem('dev_skjul_mentor') === '1' } catch { return false } })
+  function toggleMentor() {
+    const n = !skjult
+    setSkjult(n)
+    try { localStorage.setItem('dev_skjul_mentor', n ? '1' : '0') } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('dev:skjul-mentor', { detail: { skjult: n } }))
+  }
+  return (
+    <div style={{
+      position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 600,
+      display: 'flex', gap: 8, alignItems: 'center', fontFamily: "'Outfit', sans-serif",
+      background: 'rgba(10,14,26,0.94)', border: '1px solid rgba(255,210,74,0.45)',
+      borderRadius: 99, padding: '4px 6px 4px 12px',
+    }}>
+      <span style={{ color: '#ffd24a', fontSize: 10, fontWeight: 800, letterSpacing: '0.05em' }}>DEV</span>
+      <button
+        onClick={toggleMentor}
+        title={skjult ? 'Vis mentor-figuren igjen' : 'Skjul mentor-figuren så du når sliderne bak'}
+        style={{
+          background: skjult ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${skjult ? '#38bdf8' : 'rgba(255,255,255,0.18)'}`,
+          borderRadius: 99, padding: '4px 12px', cursor: 'pointer', fontFamily: 'inherit',
+          color: skjult ? '#38bdf8' : '#cbd5e1', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+        }}
+      >
+        {skjult ? '🙂 Vis mentor' : '🫥 Skjul mentor'}
+      </button>
+    </div>
   )
 }
 
