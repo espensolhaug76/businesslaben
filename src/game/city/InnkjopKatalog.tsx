@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useGame } from '../GameContext'
-import { KLESBUTIKK_KATALOG } from '../data/klesbutikkKatalog'
+import { KLESBUTIKK_KATALOG, forteplaggIds } from '../data/klesbutikkKatalog'
 import { brandById } from '../data/klesbutikkBrands'
 import type { Gender } from '../data/klesbutikkPlagg'
 import type { IndustryCatalogItem } from '../data/industries'
@@ -46,14 +46,34 @@ export default function InnkjopKatalog() {
   const kategorier = useMemo(() => [...new Set(grupper.map(g => g.kategori))].sort(), [grupper])
   // Kjønnsfilter INKLUDERER unisex for dame/herre (unisex-plagg passer begge).
   // Barn = kun barn (barnestørrelser er egne varer). Unisex = kun unisex.
-  const matchGender = (g: Gruppe): boolean => {
-    if (genderF === 'alle') return true
-    if (genderF === 'dame') return g.gender === 'dame' || g.gender === 'unisex'
-    if (genderF === 'herre') return g.gender === 'herre' || g.gender === 'unisex'
-    if (genderF === 'barn') return g.gender === 'barn'
+  const matchGenderVal = (g: Gruppe, gv: 'alle' | Gender): boolean => {
+    if (gv === 'alle') return true
+    if (gv === 'dame') return g.gender === 'dame' || g.gender === 'unisex'
+    if (gv === 'herre') return g.gender === 'herre' || g.gender === 'unisex'
+    if (gv === 'barn') return g.gender === 'barn'
     return g.gender === 'unisex'   // 'unisex'-knappen
   }
+  const matchGender = (g: Gruppe): boolean => matchGenderVal(g, genderF)
   const filtrert = grupper.filter(g => matchGender(g) && (katF === 'alle' || g.kategori === katF))
+
+  // ── TELLERE (DEL 1) ────────────────────────────────────────────────────────
+  // Katalogspesifikasjonen taler i PLAGGTYPER (grupper), ikke merkevarianter.
+  // Alle filter-tellere viser derfor plaggtyper som HOVEDTALL + varianter (plagg
+  // × merke) i parentes. Faset telling: hver knapps tall = treff hvis DEN verdien
+  // velges sammen med det ANDRE aktive filteret (kjønn respekterer valgt kategori
+  // og omvendt), så tallene stemmer med det man faktisk får ved klikk.
+  const varianter = (gs: Gruppe[]) => gs.reduce((n, g) => n + g.variants.length, 0)
+  const genderCount = (gv: 'alle' | Gender): number =>
+    grupper.filter(g => matchGenderVal(g, gv) && (katF === 'alle' || g.kategori === katF)).length
+  const katCount = (k: 'alle' | string): number =>
+    grupper.filter(g => matchGender(g) && (k === 'alle' || g.kategori === k)).length
+  const visPlagg = filtrert.length
+  const visVar = varianter(filtrert)
+  // «X varer ført»: sortiment er katalogvare-id-er = VARIANTER (plagg × merke). En
+  // ført plaggtype kan ha flere førte varianter, så vi viser BEGGE — plaggtyper
+  // (= det paletten styler etter) som hovedtall, varianter i parentes.
+  const førteVarianter = sortiment.length
+  const førtePlaggtyper = forteplaggIds(sortiment).size
 
   const toggle = (vareId: string) => {
     const next = fortSet.has(vareId) ? sortiment.filter(x => x !== vareId) : [...sortiment, vareId]
@@ -75,18 +95,28 @@ export default function InnkjopKatalog() {
       <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'rgba(16,20,26,0.96)', padding: '10px 0', marginBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 8 }}>
           <span style={{ fontSize: 11, color: '#94a3b8', marginRight: 2 }}>Kjønn:</span>
-          <button style={chip(genderF === 'alle', '#7dd3fc')} onClick={() => setGenderF('alle')}>Alle</button>
-          {(['dame', 'herre', 'barn', 'unisex'] as Gender[]).map(g => (
-            <button key={g} style={chip(genderF === g, '#7dd3fc')} onClick={() => setGenderF(g)}>{GENDER_LABEL[g]}</button>
-          ))}
+          <button style={chip(genderF === 'alle', '#7dd3fc')} onClick={() => setGenderF('alle')} title={`${genderCount('alle')} plaggtyper (${varianter(grupper.filter(g => katF === 'alle' || g.kategori === katF))} varianter)`}>Alle <span style={{ opacity: 0.65, fontWeight: 400 }}>({genderCount('alle')})</span></button>
+          {(['dame', 'herre', 'barn', 'unisex'] as Gender[]).map(g => {
+            const gruppene = grupper.filter(x => matchGenderVal(x, g) && (katF === 'alle' || x.kategori === katF))
+            return (
+              <button key={g} style={chip(genderF === g, '#7dd3fc')} onClick={() => setGenderF(g)} title={`${GENDER_LABEL[g]}: ${gruppene.length} plaggtyper (${varianter(gruppene)} varianter)`}>
+                {GENDER_LABEL[g]} <span style={{ opacity: 0.65, fontWeight: 400 }}>({gruppene.length})</span>
+              </button>
+            )
+          })}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: '#94a3b8', marginRight: 2 }}>Kategori:</span>
-          <button style={chip(katF === 'alle', '#fbbf24')} onClick={() => setKatF('alle')}>Alle</button>
+          <button style={chip(katF === 'alle', '#fbbf24')} onClick={() => setKatF('alle')}>Alle <span style={{ opacity: 0.65, fontWeight: 400 }}>({katCount('alle')})</span></button>
           {kategorier.map(k => (
-            <button key={k} style={{ ...chip(katF === k, '#fbbf24'), textTransform: 'capitalize' }} onClick={() => setKatF(k)}>{k}</button>
+            <button key={k} style={{ ...chip(katF === k, '#fbbf24'), textTransform: 'capitalize' }} onClick={() => setKatF(k)}>{k} <span style={{ opacity: 0.65, fontWeight: 400 }}>({katCount(k)})</span></button>
           ))}
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#22e6a4', fontWeight: 700 }}>{sortiment.length} varer ført</span>
+        </div>
+        {/* Resultat-teller for aktivt filter + føring — plaggtyper (hovedtall) +
+            varianter (parentes). Konsekvent enhet med filter-knappene. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginTop: 8, fontSize: 12 }}>
+          <span style={{ color: '#7dd3fc', fontWeight: 700 }}>Viser: {visPlagg} plaggtyper <span style={{ opacity: 0.7, fontWeight: 400 }}>({visVar} varianter)</span></span>
+          <span style={{ marginLeft: 'auto', color: '#22e6a4', fontWeight: 700 }}>Ført: {førtePlaggtyper} plaggtyper <span style={{ opacity: 0.7, fontWeight: 400 }}>({førteVarianter} varianter)</span></span>
         </div>
       </div>
 

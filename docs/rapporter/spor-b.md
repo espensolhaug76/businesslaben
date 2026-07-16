@@ -839,10 +839,57 @@ uten sprite (ingen brutt plaggId). Ingen konsollfeil. `tsc -b` + `vite build` gr
 
 ---
 
+## B-RUNDE — Espens valideringsfunn + hyllelinje-portering
+
+> 3 deler: (1) teller-enhet i innkjøpsfilteret, (2) føring→palett-kobling +
+> dev-bryter, (3) portering av den delte `hyllelinje.ts`-modulen fra
+> `eksperiment/autonom-sport`. **Headless-verktøy er nå tilgjengelig** i denne
+> worktreen (Playwright fra hovedtreets `node_modules`) — brukt til å REPRODUSERE
+> funn og pikseldiffe refaktor. Erstatter fortsatt ikke Espens visuelle godkjenning
+> (CLAUDE.md); kun diagnostikk.
+
+### DEL 1 — teller-enhet: plaggtyper (hovedtall) + varianter (parentes)
+
+**Problem (Espen):** filter-tellerne var utydelige på ENHET. Katalogen har to
+nivåer — **plaggtype** (f.eks. «Tskjorte») og **variant** (plaggtype × merke,
+f.eks. Tskjorte @ Basiq / @ Strøm & Berg / @ Nordheim). Innkjøpskatalogen grupperer
+på plaggtype (ett kort per type, merke-variantene side om side), så tellingen bør
+tale i **plaggtyper** — men det var ikke merket, og «X varer ført» talte varianter
+uten å si det.
+
+**Fix (`InnkjopKatalog.tsx`):** alle tellere viser nå **plaggtyper som hovedtall +
+varianter i parentes**, konsekvent:
+- **Kjønns-knappene:** `Dame (42)` osv. — plaggtyper. Full form i `title`-tooltip:
+  «Dame: 42 plaggtyper (86 varianter)».
+- **Kategori-knappene:** `overdel (n)` osv. — plaggtyper.
+- **Faset telling:** hver knapps tall = treff hvis DEN verdien velges sammen med
+  det ANDRE aktive filteret (kjønn respekterer valgt kategori og omvendt), så
+  tallet stemmer med det man faktisk får ved klikk.
+- **Resultat-teller** (ny linje): «Viser: X plaggtyper (Y varianter)» for det
+  aktive filteret.
+- **Føring-teller (semantikk avklart + dokumentert):** `state.klesbutikkSortiment`
+  lagrer **katalogvare-id-er = VARIANTER** (plagg × merke). En ført plaggtype kan
+  ha flere førte varianter. «X varer ført» → **«Ført: N plaggtyper (M varianter)»**.
+  **Valg:** plaggtyper er hovedtallet fordi det er DET styling-paletten styler etter
+  (paletten viser plaggtyper, se DEL 2) — så føring-telleren og palett-innholdet
+  taler nå samme enhet. Varianter beholdes i parentes (det er den faktiske
+  innkjøps-/økonomi-enheten: hver variant har egen innkjøpspris/margin).
+
+**Verifisert (headless, `?dev=1` → 🏷 Innkjøp):** plaggtyper per kjønnsfilter
+**Alle 72 · Dame 42 · Herre 46 · Barn 10 · Unisex 26** — matcher
+katalogspesifikasjonen eksakt. Varianter (LIVE fra `KLESBUTIKK_KATALOG`, ikke
+oppdragets øyemål-tall): **Dame 86 · Herre 96 · Barn 20 · Unisex 54** (totalt 148
+katalogvarer). Oppdragets parentes-tall (85/97/…/56) var estimater; de faktiske
+katalogtallene vises. `tsc -b` grønt.
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.
-- Ingen headless-nettleser i miljøet → visuell render bekreftes av Espen i Chrome.
+- **Headless nå tilgjengelig** (Playwright fra `/home/espen/adventure-web/
+  node_modules`, port 5174 låst) — brukt til reproduksjon + pikseldiff. Visuell
+  KVALITET bekreftes fortsatt av Espen i Chrome.
 
 ## Nøkkelfiler (dette sporet)
 - `src/data/districts.ts` — `KLESBUTIKK_VINDU`/`KLESBUTIKK_BUTIKKVEGG` (låst),
