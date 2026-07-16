@@ -1,6 +1,6 @@
 // ─── AdVenture 3.0 — Industry Catalog ────────────────────────────────────
 // Product templates (before ordering) per industry.
-// Én vare = ETT costPrice + ETT recommendedPrice (se Prisflyt-opprydding
+// Én vare = ETT costPrice + ETT markedsPris (se Prisflyt-opprydding
 // 2026-07-06: tier-per-vare er PARKET, ikke slettet — se `tiers` under).
 
 import type { Industry, Product, ProductCategory } from '../types'
@@ -35,10 +35,10 @@ export interface IndustryCatalogItem {
   costPrice: number
   /** Anbefalt utsalgspris (kr) — startverdi for elevens `retailPrice`
    *  (Product), IKKE en fast pris. Elevens Priser-fane skriver over denne. */
-  recommendedPrice: number
+  markedsPris: number
   /** PARKET (Prisflyt-opprydding 2026-07-06) — prisnivå-varianter
    *  (Premium/Standard/Budget) PER VARE kolliderte med resten av spillet,
-   *  som modellerer én vare som ETT costPrice/recommendedPrice/retailPrice
+   *  som modellerer én vare som ETT costPrice/markedsPris/retailPrice
    *  (trau-prislapper, tavlemeny, salgsmotor). IKKE slettet: gjenbrukes i en
    *  kommende designrunde som LEVERANDØR-/MERKEKATALOG — fiktive
    *  merker/leverandører med ulik markedsposisjon, der INNKJØPSPRISEN
@@ -46,9 +46,9 @@ export interface IndustryCatalogItem {
    *  Bærende mekanikk for bransje 2 (klesbutikk). Leses IKKE lenger av
    *  catalogToProduct() eller noe UI — kun historiske tall bevart her. */
   tiers?: {
-    premium:  { costPrice: number; recommendedPrice: number }
-    standard: { costPrice: number; recommendedPrice: number }
-    budget:   { costPrice: number; recommendedPrice: number }
+    premium:  { costPrice: number; markedsPris: number }
+    standard: { costPrice: number; markedsPris: number }
+    budget:   { costPrice: number; markedsPris: number }
   }
   /** DAGSSYKLUS (DEL 3, Svinn) — true = ferskvare (bakevarer, salat, wrap,
    *  sandwich). Usolgt lager av ferskvare kastes ved stenging (CLOSE_DAY).
@@ -78,11 +78,11 @@ function catalogItem(
     maxDemandPerMonth: maxDemand, quality: 7, sustainability: 6,
     displayScale: display?.scale ?? 1.0,
     displayRotation: display?.rotation ?? 0,
-    costPrice: costStd, recommendedPrice: priceStd,
+    costPrice: costStd, markedsPris: priceStd,
     tiers: {
-      premium:  { costPrice: Math.round(costStd * 1.5), recommendedPrice: Math.round(priceStd * 1.4) },
-      standard: { costPrice: costStd, recommendedPrice: priceStd },
-      budget:   { costPrice: Math.round(costStd * 0.7), recommendedPrice: Math.round(priceStd * 0.7) },
+      premium:  { costPrice: Math.round(costStd * 1.5), markedsPris: Math.round(priceStd * 1.4) },
+      standard: { costPrice: costStd, markedsPris: priceStd },
+      budget:   { costPrice: Math.round(costStd * 0.7), markedsPris: Math.round(priceStd * 0.7) },
     },
   }
 }
@@ -90,55 +90,55 @@ function catalogItem(
 export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
   tech: [
     { id: 'earbuds',   name: 'Trådløse ørepropper', icon: '🎧', maxDemandPerMonth: 90,  quality: 9, sustainability: 5,
-      costPrice: 220, recommendedPrice: 549,
-      tiers: { premium: { costPrice: 380, recommendedPrice: 999 }, standard: { costPrice: 220, recommendedPrice: 549 }, budget: { costPrice: 90, recommendedPrice: 249 } } /* PARKET */ },
+      costPrice: 220, markedsPris: 549,
+      tiers: { premium: { costPrice: 380, markedsPris: 999 }, standard: { costPrice: 220, markedsPris: 549 }, budget: { costPrice: 90, markedsPris: 249 } } /* PARKET */ },
     { id: 'smartwatch',name: 'Smartklokke',          icon: '⌚', maxDemandPerMonth: 50,  quality: 9, sustainability: 5,
-      costPrice: 500, recommendedPrice: 1299,
-      tiers: { premium: { costPrice: 850, recommendedPrice: 2299 }, standard: { costPrice: 500, recommendedPrice: 1299 }, budget: { costPrice: 200, recommendedPrice: 549 } } /* PARKET */ },
+      costPrice: 500, markedsPris: 1299,
+      tiers: { premium: { costPrice: 850, markedsPris: 2299 }, standard: { costPrice: 500, markedsPris: 1299 }, budget: { costPrice: 200, markedsPris: 549 } } /* PARKET */ },
     { id: 'powerbank', name: 'Powerbank',             icon: '🔋', maxDemandPerMonth: 120, quality: 7, sustainability: 6,
-      costPrice: 100, recommendedPrice: 279,
-      tiers: { premium: { costPrice: 180, recommendedPrice: 499 }, standard: { costPrice: 100, recommendedPrice: 279 }, budget: { costPrice: 45, recommendedPrice: 129 } } /* PARKET */ },
+      costPrice: 100, markedsPris: 279,
+      tiers: { premium: { costPrice: 180, markedsPris: 499 }, standard: { costPrice: 100, markedsPris: 279 }, budget: { costPrice: 45, markedsPris: 129 } } /* PARKET */ },
     { id: 'charger',   name: 'Hurtiglader / Kabel',  icon: '🔌', maxDemandPerMonth: 200, quality: 7, sustainability: 5,
-      costPrice: 55, recommendedPrice: 149,
-      tiers: { premium: { costPrice: 90, recommendedPrice: 299 }, standard: { costPrice: 55, recommendedPrice: 149 }, budget: { costPrice: 25, recommendedPrice: 69 } } /* PARKET */ },
+      costPrice: 55, markedsPris: 149,
+      tiers: { premium: { costPrice: 90, markedsPris: 299 }, standard: { costPrice: 55, markedsPris: 149 }, budget: { costPrice: 25, markedsPris: 69 } } /* PARKET */ },
     { id: 'speaker',   name: 'Bluetooth-høyttaler',  icon: '🔊', maxDemandPerMonth: 70,  quality: 8, sustainability: 6,
-      costPrice: 250, recommendedPrice: 599,
-      tiers: { premium: { costPrice: 420, recommendedPrice: 999 }, standard: { costPrice: 250, recommendedPrice: 599 }, budget: { costPrice: 110, recommendedPrice: 299 } } /* PARKET */ },
+      costPrice: 250, markedsPris: 599,
+      tiers: { premium: { costPrice: 420, markedsPris: 999 }, standard: { costPrice: 250, markedsPris: 599 }, budget: { costPrice: 110, markedsPris: 299 } } /* PARKET */ },
     { id: 'accessory', name: 'Mobiltilbehør',        icon: '📱', maxDemandPerMonth: 250, quality: 6, sustainability: 4,
-      costPrice: 35, recommendedPrice: 99,
-      tiers: { premium: { costPrice: 55, recommendedPrice: 199 }, standard: { costPrice: 35, recommendedPrice: 99 }, budget: { costPrice: 15, recommendedPrice: 49 } } /* PARKET */ },
+      costPrice: 35, markedsPris: 99,
+      tiers: { premium: { costPrice: 55, markedsPris: 199 }, standard: { costPrice: 35, markedsPris: 99 }, budget: { costPrice: 15, markedsPris: 49 } } /* PARKET */ },
   ],
   fashion: [
     { id: 'hoodie',    name: 'Hettegenser', icon: '👕', maxDemandPerMonth: 80,  quality: 8, sustainability: 7,
-      costPrice: 250, recommendedPrice: 649,
-      tiers: { premium: { costPrice: 450, recommendedPrice: 1199 }, standard: { costPrice: 250, recommendedPrice: 649 }, budget: { costPrice: 120, recommendedPrice: 299 } } /* PARKET */ },
+      costPrice: 250, markedsPris: 649,
+      tiers: { premium: { costPrice: 450, markedsPris: 1199 }, standard: { costPrice: 250, markedsPris: 649 }, budget: { costPrice: 120, markedsPris: 299 } } /* PARKET */ },
     { id: 'tshirt',    name: 'T-skjorte',   icon: '👚', maxDemandPerMonth: 150, quality: 7, sustainability: 6,
-      costPrice: 150, recommendedPrice: 399,
-      tiers: { premium: { costPrice: 280, recommendedPrice: 699 }, standard: { costPrice: 150, recommendedPrice: 399 }, budget: { costPrice: 60, recommendedPrice: 169 } } /* PARKET */ },
+      costPrice: 150, markedsPris: 399,
+      tiers: { premium: { costPrice: 280, markedsPris: 699 }, standard: { costPrice: 150, markedsPris: 399 }, budget: { costPrice: 60, markedsPris: 169 } } /* PARKET */ },
     { id: 'jeans',     name: 'Jeans',       icon: '👖', maxDemandPerMonth: 60,  quality: 8, sustainability: 6,
-      costPrice: 300, recommendedPrice: 799,
-      tiers: { premium: { costPrice: 500, recommendedPrice: 1299 }, standard: { costPrice: 300, recommendedPrice: 799 }, budget: { costPrice: 140, recommendedPrice: 399 } } /* PARKET */ },
+      costPrice: 300, markedsPris: 799,
+      tiers: { premium: { costPrice: 500, markedsPris: 1299 }, standard: { costPrice: 300, markedsPris: 799 }, budget: { costPrice: 140, markedsPris: 399 } } /* PARKET */ },
     { id: 'sneakers',  name: 'Sneakers',    icon: '👟', maxDemandPerMonth: 50,  quality: 9, sustainability: 5,
-      costPrice: 350, recommendedPrice: 899,
-      tiers: { premium: { costPrice: 600, recommendedPrice: 1599 }, standard: { costPrice: 350, recommendedPrice: 899 }, budget: { costPrice: 150, recommendedPrice: 449 } } /* PARKET */ },
+      costPrice: 350, markedsPris: 899,
+      tiers: { premium: { costPrice: 600, markedsPris: 1599 }, standard: { costPrice: 350, markedsPris: 899 }, budget: { costPrice: 150, markedsPris: 449 } } /* PARKET */ },
     { id: 'cap',       name: 'Caps',        icon: '🧢', maxDemandPerMonth: 100, quality: 7, sustainability: 6,
-      costPrice: 100, recommendedPrice: 249,
-      tiers: { premium: { costPrice: 180, recommendedPrice: 449 }, standard: { costPrice: 100, recommendedPrice: 249 }, budget: { costPrice: 40, recommendedPrice: 119 } } /* PARKET */ },
+      costPrice: 100, markedsPris: 249,
+      tiers: { premium: { costPrice: 180, markedsPris: 449 }, standard: { costPrice: 100, markedsPris: 249 }, budget: { costPrice: 40, markedsPris: 119 } } /* PARKET */ },
     { id: 'bag',       name: 'Veske',       icon: '👜', maxDemandPerMonth: 40,  quality: 8, sustainability: 7,
-      costPrice: 400, recommendedPrice: 999,
-      tiers: { premium: { costPrice: 700, recommendedPrice: 1899 }, standard: { costPrice: 400, recommendedPrice: 999 }, budget: { costPrice: 180, recommendedPrice: 499 } } /* PARKET */ },
+      costPrice: 400, markedsPris: 999,
+      tiers: { premium: { costPrice: 700, markedsPris: 1899 }, standard: { costPrice: 400, markedsPris: 999 }, budget: { costPrice: 180, markedsPris: 499 } } /* PARKET */ },
   ],
   cafe: [
     // Eksisterende generiske varer (beholdt), nå tagget med gruppe/trau-flagg.
     { id: 'coffee',    name: 'Kaffe',       icon: '☕', maxDemandPerMonth: 600, quality: 8, sustainability: 7, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 14, recommendedPrice: 50,
-      tiers: { premium: { costPrice: 22, recommendedPrice: 65 }, standard: { costPrice: 14, recommendedPrice: 50 }, budget: { costPrice: 9, recommendedPrice: 35 } } /* PARKET */ },
+      costPrice: 14, markedsPris: 50,
+      tiers: { premium: { costPrice: 22, markedsPris: 65 }, standard: { costPrice: 14, markedsPris: 50 }, budget: { costPrice: 9, markedsPris: 35 } } /* PARKET */ },
     { id: 'smoothie',  name: 'Smoothie',    icon: '🥤', maxDemandPerMonth: 200, quality: 9, sustainability: 8, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 18, recommendedPrice: 45,
-      tiers: { premium: { costPrice: 30, recommendedPrice: 75 }, standard: { costPrice: 18, recommendedPrice: 45 }, budget: { costPrice: 10, recommendedPrice: 29 } } /* PARKET */ },
+      costPrice: 18, markedsPris: 45,
+      tiers: { premium: { costPrice: 30, markedsPris: 75 }, standard: { costPrice: 18, markedsPris: 45 }, budget: { costPrice: 10, markedsPris: 29 } } /* PARKET */ },
     { id: 'tea',       name: 'Te / Spesial',icon: '🍵', maxDemandPerMonth: 180, quality: 8, sustainability: 8, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 12, recommendedPrice: 29,
-      tiers: { premium: { costPrice: 20, recommendedPrice: 49 }, standard: { costPrice: 12, recommendedPrice: 29 }, budget: { costPrice: 6, recommendedPrice: 19 } } /* PARKET */ },
+      costPrice: 12, markedsPris: 29,
+      tiers: { premium: { costPrice: 20, markedsPris: 49 }, standard: { costPrice: 12, markedsPris: 29 }, budget: { costPrice: 6, markedsPris: 19 } } /* PARKET */ },
 
     // Utvidet drikkesortiment (standard cafe/bakeri-meny) — samme mønster
     // som over: windowDisplay:false, category:'drikke', trauVare:false (vises
@@ -146,19 +146,19 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
     // PARKET (se IndustryCatalogItem.tiers), ikke nødvendig å fylle ut på nye
     // varer.
     { id: 'cappuccino',    name: 'Cappuccino',      icon: '☕', maxDemandPerMonth: 250, quality: 8, sustainability: 6, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 18, recommendedPrice: 45 },
+      costPrice: 18, markedsPris: 45 },
     { id: 'latte',         name: 'Café Latte',      icon: '☕', maxDemandPerMonth: 220, quality: 8, sustainability: 6, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 18, recommendedPrice: 45 },
+      costPrice: 18, markedsPris: 45 },
     { id: 'espresso',      name: 'Espresso',        icon: '☕', maxDemandPerMonth: 150, quality: 8, sustainability: 7, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 12, recommendedPrice: 32 },
+      costPrice: 12, markedsPris: 32 },
     { id: 'hot-chocolate', name: 'Varm sjokolade',  icon: '🍫', maxDemandPerMonth: 140, quality: 7, sustainability: 6, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 15, recommendedPrice: 39 },
+      costPrice: 15, markedsPris: 39 },
     { id: 'iste',          name: 'Iste',            icon: '🧊', maxDemandPerMonth: 120, quality: 7, sustainability: 7, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 12, recommendedPrice: 35 },
+      costPrice: 12, markedsPris: 35 },
     { id: 'juice',         name: 'Juice',           icon: '🧃', maxDemandPerMonth: 150, quality: 8, sustainability: 7, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 14, recommendedPrice: 39 },
+      costPrice: 14, markedsPris: 39 },
     { id: 'mineralvann',   name: 'Mineralvann',     icon: '🥤', maxDemandPerMonth: 180, quality: 6, sustainability: 7, windowDisplay: false, category: 'drikke', trauVare: false,
-      costPrice: 10, recommendedPrice: 29 },
+      costPrice: 10, markedsPris: 29 },
 
     // Spesifikke trau-bakevarer (sprite-utklipp fra split-product-sheet).
     // display: { scale, rotation } — startverdier, Espen finpusser visuelt.
@@ -179,23 +179,23 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
   ],
   sports: [
     { id: 'shoes',     name: 'Løpesko',          icon: '👟', maxDemandPerMonth: 40,  quality: 9, sustainability: 6,
-      costPrice: 400, recommendedPrice: 999,
-      tiers: { premium: { costPrice: 700, recommendedPrice: 1799 }, standard: { costPrice: 400, recommendedPrice: 999 }, budget: { costPrice: 180, recommendedPrice: 449 } } /* PARKET */ },
+      costPrice: 400, markedsPris: 999,
+      tiers: { premium: { costPrice: 700, markedsPris: 1799 }, standard: { costPrice: 400, markedsPris: 999 }, budget: { costPrice: 180, markedsPris: 449 } } /* PARKET */ },
     { id: 'outfit',    name: 'Treningsklær sett', icon: '🩱', maxDemandPerMonth: 60,  quality: 8, sustainability: 7,
-      costPrice: 280, recommendedPrice: 699,
-      tiers: { premium: { costPrice: 500, recommendedPrice: 1299 }, standard: { costPrice: 280, recommendedPrice: 699 }, budget: { costPrice: 130, recommendedPrice: 349 } } /* PARKET */ },
+      costPrice: 280, markedsPris: 699,
+      tiers: { premium: { costPrice: 500, markedsPris: 1299 }, standard: { costPrice: 280, markedsPris: 699 }, budget: { costPrice: 130, markedsPris: 349 } } /* PARKET */ },
     { id: 'yoga_mat',  name: 'Yogamatte',         icon: '🧘', maxDemandPerMonth: 80,  quality: 7, sustainability: 8,
-      costPrice: 130, recommendedPrice: 329,
-      tiers: { premium: { costPrice: 250, recommendedPrice: 599 }, standard: { costPrice: 130, recommendedPrice: 329 }, budget: { costPrice: 50, recommendedPrice: 149 } } /* PARKET */ },
+      costPrice: 130, markedsPris: 329,
+      tiers: { premium: { costPrice: 250, markedsPris: 599 }, standard: { costPrice: 130, markedsPris: 329 }, budget: { costPrice: 50, markedsPris: 149 } } /* PARKET */ },
     { id: 'bottle',    name: 'Vannflaske',         icon: '💧', maxDemandPerMonth: 150, quality: 7, sustainability: 9,
-      costPrice: 90, recommendedPrice: 229,
-      tiers: { premium: { costPrice: 180, recommendedPrice: 399 }, standard: { costPrice: 90, recommendedPrice: 229 }, budget: { costPrice: 30, recommendedPrice: 89 } } /* PARKET */ },
+      costPrice: 90, markedsPris: 229,
+      tiers: { premium: { costPrice: 180, markedsPris: 399 }, standard: { costPrice: 90, markedsPris: 229 }, budget: { costPrice: 30, markedsPris: 89 } } /* PARKET */ },
     { id: 'bag',       name: 'Treningsbag',        icon: '🎒', maxDemandPerMonth: 50,  quality: 8, sustainability: 7,
-      costPrice: 220, recommendedPrice: 549,
-      tiers: { premium: { costPrice: 400, recommendedPrice: 999 }, standard: { costPrice: 220, recommendedPrice: 549 }, budget: { costPrice: 100, recommendedPrice: 279 } } /* PARKET */ },
+      costPrice: 220, markedsPris: 549,
+      tiers: { premium: { costPrice: 400, markedsPris: 999 }, standard: { costPrice: 220, markedsPris: 549 }, budget: { costPrice: 100, markedsPris: 279 } } /* PARKET */ },
     { id: 'weights',   name: 'Håndvekter',         icon: '🏋️', maxDemandPerMonth: 70,  quality: 8, sustainability: 8,
-      costPrice: 200, recommendedPrice: 499,
-      tiers: { premium: { costPrice: 350, recommendedPrice: 799 }, standard: { costPrice: 200, recommendedPrice: 499 }, budget: { costPrice: 80, recommendedPrice: 229 } } /* PARKET */ },
+      costPrice: 200, markedsPris: 499,
+      tiers: { premium: { costPrice: 350, markedsPris: 799 }, standard: { costPrice: 200, markedsPris: 499 }, budget: { costPrice: 80, markedsPris: 229 } } /* PARKET */ },
   ],
 }
 
@@ -215,7 +215,7 @@ export function isIndustryActive(id: Industry): boolean {
 }
 
 /** Build a Product from a catalog item (initial stock = 0, retailPrice =
- *  recommendedPrice — eleven endrer den videre i Priser-fanen). Tier-valg er
+ *  markedsPris — eleven endrer den videre i Priser-fanen). Tier-valg er
  *  PARKET (se IndustryCatalogItem.tiers) — én katalogvare gir nå ETT
  *  Product, ikke ett per tier; `Product.tier` er derfor alltid 'standard'
  *  (feltet beholdes for typekompatibilitet med personas.ts sin
@@ -227,8 +227,10 @@ export function catalogToProduct(item: IndustryCatalogItem): Product {
     icon: item.icon,
     tier: 'standard',
     costPrice: item.costPrice,
-    retailPrice: item.recommendedPrice,
-    recommendedPrice: item.recommendedPrice,
+    // UPRISET ved oppstart (DEL 7): eleven setter utsalgspris selv fra blankt
+    // felt. markedsPris beholdes som markedsanker (elastisitet + konkurrentpris).
+    retailPrice: 0,
+    markedsPris: item.markedsPris,
     stock: 0,
     quality: item.quality,
     sustainability: item.sustainability,

@@ -66,8 +66,14 @@ export interface Product {
    *  inntil en ny mekanikk (leverandør-/merkekatalog) erstatter tier. */
   tier: 'premium' | 'standard' | 'budget'
   costPrice: number
+  /** Elevens utsalgspris. Starter 0 (UPRISET) — eleven setter den selv fra blankt
+   *  felt (REKALIBRERING DEL 7: prising er elevens jobb). 0 ⇒ ikke i salg. */
   retailPrice: number
-  recommendedPrice: number
+  /** MARKEDSPRIS (tidl. `recommendedPrice`) — markedets prisnivå for varen, brukt
+   *  som ANKER for priselastisiteten (backgroundSales) og konkurrentpris-
+   *  intervallet. Vises ALDRI som «veiledende pris» i elevens prisings-UI
+   *  (DEL 7f-a) — det er markedsinfo, ikke en anbefaling. */
+  markedsPris: number
   stock: number
   quality: number
   sustainability: number
@@ -365,6 +371,16 @@ export interface DayResult {
   /** Tapte salg: bakgrunnskunder som ikke fikk kjøpt (tomt lager) + estimert kr. */
   tapteSalgStk: number
   tapteSalgKr: number
+  /** DEL 7b — tapt salg fordi varen MANGLER PRIS (upriset) + antall uprisede
+   *  varer i sortimentet, og navnene (for mentor/oppgjør). */
+  manglerPrisStk: number
+  manglerPrisKr: number
+  uprisedeVarer: string[]
+  /** DEL 7f — tapt salg fordi prisen var FOR HØY (priselastisitet). Per-vare-liste
+   *  (mest tapt først) for oppgjør + mentor: navn, tapte stk, elevens pris, markedspris. */
+  overprisStk: number
+  overprisKr: number
+  overprisProdukter: { navn: string; tapte: number; pris: number; marked: number }[]
   /** BEMANNING: bakgrunnskunder tapt til KØ (for lite kapasitet på vakt). */
   koKunder: number
   /** salg (møter + bakgrunn) − varekost − svinn. */
@@ -498,6 +514,12 @@ export interface GameState {
     /** Tapte bakgrunnssalg pga tomt lager (stk + estimert kr). */
     tapteSalgStk: number
     tapteSalgKr: number
+    /** DEL 7b/7f — tapt salg pga manglende pris / for høy pris (adskilt fra
+     *  tomt-lager i oppgjøret). */
+    manglerPrisStk: number
+    manglerPrisKr: number
+    overprisStk: number
+    overprisKr: number
     /** BEMANNING: bakgrunnskunder som gikk fordi køen var full (kapasitet
      *  på vakt < kundestrøm). Adskilt fra tomt-lager-tap i dagsoppgjøret. */
     koKunder: number
@@ -519,7 +541,7 @@ export interface GameState {
   /** Dagspulsens live-ticker: siste bakgrunnssalg (nyeste først, kappet). */
   dayTicker: TickerLinje[]
   /** Per-produkt dagstall (DEL 4): solgt (møter + bakgrunn), svinn, tapte salg. */
-  dayProductStats: Record<string, { navn: string; soldStk: number; svinnStk: number; tapteSalgStk: number }>
+  dayProductStats: Record<string, { navn: string; soldStk: number; svinnStk: number; tapteSalgStk: number; manglerPrisStk: number; overprisStk: number }>
   /** Siste fullførte dags oppgjørstall — DayResultOverlay vises når denne er
    *  satt (dayPhase === 'oppgjør'). Nullstilles av START_NEW_DAY. */
   lastDayResult: DayResult | null

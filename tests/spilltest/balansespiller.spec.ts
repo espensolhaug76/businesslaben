@@ -79,6 +79,9 @@ interface Strategi {
   kampanje?: { kanaler: { kanalId: string; krPerDag: number }[]; varighet: number }
   /** Hvilke lokaler strategien kjøres på (default: kun sentrum-l2). */
   lokaler?: string[]
+  /** Prising = markedsPris × denne (DEL 7d/7f-e). Default 1,0 (markedspris);
+   *  GRÅDIG = 2,0 (dobbel pris → priselastisiteten skal straffe salget). */
+  prisMultiplikator?: number
 }
 
 // ── Strategier (REKALIBRERING pkt. 35 — mot VERDENSMODELL-målbildet) ───────────
@@ -116,6 +119,15 @@ const STRATEGIER: Strategi[] = [
     opening: FORNUFTIG_OPENING, restock: FORNUFTIG_RESTOCK,
     trau: BAKERI, vindu: [], markedsforingMnd: 0, ansett: [], spillerVakt: true,
     lokaler: ['sentrum-l2', 'sentrum-l4'],
+  },
+  {
+    navn: 'G · GRÅDIG (alle priser 2× marked)',
+    // KONTROLL (DEL 7f-e): som FORNUFTIG, men alle priser = DOBBEL markedspris.
+    // Priselastisiteten skal straffe salget hardt (HØY-varer selger ~0) → klart
+    // dårligere månedsresultat enn FORNUFTIG. Asserteres i testen.
+    opening: FORNUFTIG_OPENING, restock: FORNUFTIG_RESTOCK,
+    trau: BAKERI, vindu: [], markedsforingMnd: 0, ansett: [], spillerVakt: true,
+    prisMultiplikator: 2, lokaler: ['sentrum-l2'],
   },
   {
     navn: '3 · FORNUFTIG + DELTID',
@@ -204,6 +216,17 @@ async function kjørStrategi(page: import('@playwright/test').Page, strat: Strat
   await dispatch(page, { type: 'RENT_LOCATION', ...lokale })
   await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: strat.opening })
   await ventState(page, s => s.rentedLocationId === lokale.id && s.openingOrderPlaced, 'leid + åpningsordre')
+
+  // PRISING (DEL 7d): spillets UI har ikke lenger «veiledende pris» — varene
+  // starter UPRISET. Testlaget priser selv via en INTERN referanseprisfunksjon
+  // (= markedsPris × strategiens prisMultiplikator; 1,0 = markedspris, GRÅDIG =
+  // 2,0). Kjøres i nettleseren så FULLE Product-objekter bevares.
+  await page.evaluate((mult) => {
+    const st = window.__GAME_STATE__ as unknown as { products: { markedsPris: number }[] }
+    const priset = st.products.map(p => ({ ...p, retailPrice: Math.round(p.markedsPris * mult) }))
+    window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products: priset } as never)
+  }, strat.prisMultiplikator ?? 1)
+  await ventState(page, st => st.products.length > 0 && st.products.every(p => p.retailPrice > 0), 'varer priset (referansepris)')
 
   // Eksponering (trau + vindu) — persisterer, telles ved hver OPEN_DAY.
   if (strat.trau.length) await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: strat.trau.map((productId, i) => ({ trauId: `trau-${i + 1}`, productId })) })
@@ -362,4 +385,10 @@ test('Balansespiller — strategier × lokaler × 3 måneder', async ({ page }) 
   const { expect } = await import('@playwright/test')
   const forn = res.find(r => r.navn === det2.navn && r.lokaleId === 'sentrum-l2')!
   expect(JSON.stringify(forn.maaneder), 'FORNUFTIG @ sentrum-l2 deterministisk (to like løp)').toBe(JSON.stringify(det2.maaneder))
+
+  // DEL 7f-e: GRÅDIG (alle priser 2× marked) skal gi KLART dårligere
+  // månedsresultat enn FORNUFTIG — priselastisiteten straffer overpris.
+  const gradig = res.find(r => r.navn.startsWith('G ·') && r.lokaleId === 'sentrum-l2')!
+  process.stdout.write(`\n▶ Priskontroll: FORNUFTIG ${kr(snitt(forn))}/mnd vs GRÅDIG ${kr(snitt(gradig))}/mnd\n`)
+  expect(snitt(gradig), 'GRÅDIG (2× pris) klart dårligere enn FORNUFTIG').toBeLessThan(snitt(forn) - 10_000)
 })

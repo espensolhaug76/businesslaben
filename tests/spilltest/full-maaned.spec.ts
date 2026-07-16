@@ -170,6 +170,17 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`counterLayout: ${s.counterLayout.map(i => `${i.trauId}=${i.productId}`).join(', ')}`)
   })
 
+  // OPPSETT (DEL 7): varene starter UPRISET (prising er elevens jobb) — sett
+  // markedspris på alle så bakgrunnssalget (steg 5) kan skje. Egen upriset/
+  // overpris-test i steg 14. Kjøres i nettleseren så fulle Product-objekter bevares.
+  await page.evaluate(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const st = window.__GAME_STATE__ as any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products: st.products.map((p: any) => ({ ...p, retailPrice: p.markedsPris })) })
+  })
+  await ventState(page, s => s.products.length > 0 && s.products.every(p => p.retailPrice > 0), 'varer priset til markedspris')
+
   // ── STEG 5 — Åpen dag: bakgrunnssalg, kundemøte, dagsoppgjør ─────────────────
   await steg(page, rapport, 5, 'Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer', async ctx => {
     // Deterministiske salgstall: hold dashbordet ÅPENT (auto-klokka pauser), og
@@ -568,6 +579,61 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     const lån = amort.renteSum + amort.avdragSum
     expect(s3.money, 'kassa ved rull = m1 − faste − lån (leveringen re-debiterer ikke)').toBe(m1 - faste.sum - lån)
     ctx.ok(`ny måned dag 1: ${lagerFør} → ${s3.products.find(p => p.id === vare.id)!.stock} på lager (levert), kassa kun trukket faste ${faste.sum} + lån ${lån} (ingen dobbel innkjøpsdebet)`)
+  })
+
+  // ── STEG 14 — DEL 7: upriset vare selges ikke + overpriset HØY-vare selger ~0 ─
+  await steg(page, rapport, 14, 'Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap', async ctx => {
+    // Hermetisk: frisk boot + lokale + kaffe (HØY) + croissant i trau.
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'frisk boot for steg 14')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 120 }, { productId: 'croissant', qty: 80 }] })
+    await ventState(page, s => s.openingOrderPlaced && s.products.length >= 2, 'åpningslager på plass')
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'coffee' }, { trauId: 'trau-2', productId: 'croissant' }] })
+
+    // Priser: KAFFE (HØY-profil) til 2× markedspris (overpris); CROISSANT UPRISET (0).
+    const marked = (await lesState(page)).products.find(p => p.id === 'coffee')!.markedsPris
+    await page.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const st = window.__GAME_STATE__ as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const priset = st.products.map((p: any) =>
+        p.id === 'coffee' ? { ...p, retailPrice: p.markedsPris * 2 } : { ...p, retailPrice: 0 })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products: priset })
+    })
+    await ventState(page, s => (s.products.find(p => p.id === 'coffee')?.retailPrice ?? 0) === marked * 2, 'kaffe = 2× marked, croissant upriset')
+    const kaffeFør = (await lesState(page)).products.find(p => p.id === 'coffee')!.stock
+
+    // Spill en hel åpen dag (skip kundemøter) så bakgrunnssalget kjører.
+    await dispatch(page, { type: 'OPEN_DAY' })
+    await ventState(page, s => s.dayPhase === 'åpen', 'dag åpen')
+    for (let i = 0; i < 60; i++) {
+      const s = await lesState(page)
+      if (s.dayPhase !== 'åpen') break
+      if (s.activeMeetingScenarioId) { await dispatch(page, { type: 'SKIP_MEETING' }); continue }
+      if (s.dayMinute >= 480) break
+      await dispatchN(page, { type: 'TICK' }, 120)
+    }
+    if ((await lesState(page)).dayPhase === 'åpen') await dispatch(page, { type: 'CLOSE_DAY' })
+    await ventState(page, s => s.dayPhase === 'oppgjør' && !!s.lastDayResult, 'dagsoppgjør')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = (await lesState(page)).lastDayResult as any
+    const s2 = await lesState(page)
+
+    // (a) UPRISET croissant → «mangler pris»-tap + navnet i uprisedeVarer.
+    expect(r.manglerPrisStk, 'tapt salg pga mangler pris > 0').toBeGreaterThan(0)
+    expect((r.uprisedeVarer as string[]).some(n => /Croissant/i.test(n)), 'croissant listet som upriset').toBe(true)
+    // (b) OVERPRISET HØY-vare (kaffe 2×) → «for høy pris»-tap + kaffe i lista.
+    expect(r.overprisStk, 'tapt salg pga for høy pris > 0').toBeGreaterThan(0)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const kaffeOverpris = (r.overprisProdukter as any[]).find(o => /Kaffe/i.test(o.navn))
+    expect(kaffeOverpris, 'kaffe (HØY, 2×) tapte salg på for høy pris').toBeTruthy()
+    expect(kaffeOverpris.pris, 'elevens kaffepris = 2× markedspris').toBe(marked * 2)
+    // (c) Kaffe (HØY @ 2×) selger ~0: lageret nesten urørt (HØY-elastisitet → 0).
+    const kaffeSolgt = kaffeFør - s2.products.find(p => p.id === 'coffee')!.stock
+    expect(kaffeSolgt, 'overpriset HØY-vare (2×) selger ~0').toBeLessThanOrEqual(2)
+    ctx.ok(`upriset croissant: ${r.manglerPrisStk} tapt (mangler pris); kaffe 2× (${marked * 2} kr): ${kaffeSolgt} solgt, ${kaffeOverpris.tapte} tapt (for høy pris)`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

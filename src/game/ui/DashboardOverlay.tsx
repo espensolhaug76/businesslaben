@@ -1944,14 +1944,14 @@ function ProdukterTab() {
 // ── Priser ────────────────────────────────────────────────────────────────────
 
 /** Konkurrentpris-intervall for markedsundersøkelsen (DEL 3) — avledet av
- *  recommendedPrice ± 15 %, en REN funksjon (ikke Math.random) så den er
- *  stabil per vare og ved hver re-render. recommendedPrice vises ALDRI
- *  direkte til eleven (ingen fasit) — kun dette avledede intervallet, og
+ *  markedsPris ± 15 %, en REN funksjon (ikke Math.random) så den er stabil per
+ *  vare og ved hver re-render. markedsPris vises ALDRI som «veiledende pris»
+ *  (ingen fasit for egen pris) — kun dette avledede konkurrentintervallet, og
  *  kun etter kjøpt undersøkelse. */
-function competitorRange(recommendedPrice: number): { low: number; high: number } {
+function competitorRange(markedsPris: number): { low: number; high: number } {
   return {
-    low: Math.round(recommendedPrice * 0.85),
-    high: Math.round(recommendedPrice * 1.15),
+    low: Math.round(markedsPris * 0.85),
+    high: Math.round(markedsPris * 1.15),
   }
 }
 
@@ -2037,7 +2037,7 @@ function PriserTab() {
           const mgColor = mg >= 50 ? '#22c55e' : mg >= 20 ? '#facc15' : '#ef4444'
           const underCost = p.retailPrice > 0 && p.retailPrice < p.costPrice
           const researched = researchedIds.has(p.id)
-          const range = competitorRange(p.recommendedPrice)
+          const range = competitorRange(p.markedsPris)
           return (
             <div key={p.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
@@ -2048,11 +2048,11 @@ function PriserTab() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <input
-                    type="number" min={0} step={1} value={p.retailPrice}
+                    type="number" min={0} step={1} value={p.retailPrice || ''} placeholder="sett pris"
                     onChange={e => setPrice(p.id, parseInt(e.target.value) || 0)}
                     style={{
                       width: 100, textAlign: 'right', background: 'rgba(255,255,255,0.08)',
-                      border: '1px solid rgba(255,255,255,0.18)', borderRadius: 6,
+                      border: `1px solid ${p.retailPrice > 0 ? 'rgba(255,255,255,0.18)' : 'rgba(245,158,11,0.6)'}`, borderRadius: 6,
                       padding: '4px 8px', color: '#38bdf8', fontSize: 18, fontWeight: 800, fontFamily: 'inherit',
                     }}
                   /> <span style={{ fontSize: 13, color: '#64748b' }}>kr</span>
@@ -2060,6 +2060,11 @@ function PriserTab() {
                 </div>
               </div>
 
+              {p.retailPrice <= 0 && (
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: '0.5rem' }}>
+                  ⚠ Mangler pris — varen selges ikke før du har satt en utsalgspris.
+                </div>
+              )}
               {underCost && (
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', marginBottom: '0.5rem' }}>
                   ⚠ Under innkjøpspris — du taper penger på hvert salg.

@@ -26,14 +26,53 @@ export function dagSeed(dayNumber: number, month: number, year: number): number 
 
 export function ryktefaktor(rykte: number): number { return 0.5 + rykte / 100 }
 
-/** Priser LIK anbefalt ⇒ 1,0; dyrere ⇒ < 1 (færre kunder); billigere ⇒ > 1. */
-export function prisfaktor(products: { retailPrice: number; recommendedPrice: number }[]): number {
-  const priced = products.filter(p => p.retailPrice > 0 && p.recommendedPrice > 0)
+/** DEMPET samlet priskomponent på KUNDESTRØMMEN (snitt over PRISEDE varer, mot
+ *  markedsPris). DEL 7f-c: per-vare-elastisiteten (simulerBakgrunnsbolk) bærer nå
+ *  hovedeffekten av pris — denne er kun et mildt nivå-dytt (halvt utslag,
+ *  `prisfaktorDemping`) så prisrespons ikke dobbelt-telles. Klemt som før. */
+export function prisfaktor(products: { retailPrice: number; markedsPris: number }[]): number {
+  const priced = products.filter(p => p.retailPrice > 0 && p.markedsPris > 0)
   if (priced.length === 0) return 1
   const avgRetail = priced.reduce((a, p) => a + p.retailPrice, 0) / priced.length
-  const avgRec = priced.reduce((a, p) => a + p.recommendedPrice, 0) / priced.length
+  const avgMarked = priced.reduce((a, p) => a + p.markedsPris, 0) / priced.length
   if (avgRetail <= 0) return 1
-  return clamp(avgRec / avgRetail, BALANCE.prisMin, BALANCE.prisMax)
+  const raw = clamp(avgMarked / avgRetail, BALANCE.prisMin, BALANCE.prisMax)
+  return 1 + (raw - 1) * BALANCE.prisfaktorDemping
+}
+
+/** PRISELASTISITET per vare (DEL 7f-b). ratio = utsalgspris / markedsPris.
+ *  - ratio ≤ 1 (på/under marked): billigsalg gir avtagende gevinst, tak
+ *    `billigTak` (1,15) — som før.
+ *  - ratio > 1 (over marked): følger varens profil-kurve (HØY/MIDDELS/LAV) med
+ *    lineær interpolasjon mellom punktene; ≥ siste punkt = siste verdi; gulv 0.
+ *  Returnerer en multiplikator på VARENS solgte volum (1,0 = full etterspørsel). */
+export function priselastisitetsfaktor(profil: 'hoy' | 'middels' | 'lav', ratio: number): number {
+  const E = BALANCE.priselastisitet
+  if (ratio <= 1) return clamp(1 + (1 - ratio) * E.billigStigning, 1, E.billigTak)
+  const kurve = E[profil]
+  // Over siste punkt (typisk ratio 2,0) → hold siste verdi.
+  const siste = kurve[kurve.length - 1]!
+  if (ratio >= siste[0]) return Math.max(0, siste[1])
+  // Finn segmentet ratio faller i, lineær interpolasjon.
+  for (let i = 1; i < kurve.length; i++) {
+    const [x0, y0] = kurve[i - 1]!, [x1, y1] = kurve[i]!
+    if (ratio <= x1) {
+      const t = (ratio - x0) / Math.max(1e-9, x1 - x0)
+      return Math.max(0, y0 + (y1 - y0) * t)
+    }
+  }
+  return Math.max(0, siste[1])
+}
+
+/** Elastisitetsprofil per varekategori (DEL 7f-b). Nye varer/ukjent kategori →
+ *  MIDDELS. Mapping dokumentert i docs/rapporter/spor-a.md (pkt. 35 DEL 7f). */
+export function elastisitetsprofil(category: string | undefined): 'hoy' | 'middels' | 'lav' {
+  switch (category) {
+    case 'drikke': return 'hoy'   // kaffe/te o.l. — dagligvare m/alternativer
+    case 'brod':   return 'hoy'   // rundstykke/brød — dagligvare
+    case 'kaker':  return 'lav'   // kaker/signatur — mindre prisfølsom
+    default:       return 'middels' // frokost/lunsj/annet — kos/impuls
+  }
 }
 
 export function eksponeringsfaktor(fylteDisplayPlasser: number): number {
@@ -65,7 +104,7 @@ export function tellFylteDisplayPlasser(
 export function beregnBakgrunnskunder(input: {
   lokaleId: string | null
   rykte: number
-  products: { id: string; stock: number; retailPrice: number; recommendedPrice: number }[]
+  products: { id: string; stock: number; retailPrice: number; markedsPris: number }[]
   counterLayout: { productId: string }[]
   windowDisplayLayout: { productId: string; fixtureId: string }[]
   /** LØPENDE synlighet (DEL D): månedlig markedsbudsjett per kanal + målgruppe. */
@@ -149,16 +188,33 @@ export function kapasitetPaaVakt(employees: Employee[], playerShift: Shift | nul
 
 // ── Salgs-simulering per bolk/tick ────────────────────────────────────────────
 
+export interface PerProduktBolk {
+  navn: string
+  soldStk: number
+  /** Tapt pga TOMT LAGER (priset, elastisitet OK, men utsolgt). */
+  tapteSalgStk: number
+  /** Tapt pga MANGLER PRIS (DEL 7b) — varen er i sortimentet uten utsalgspris. */
+  manglerPrisStk: number
+  /** Tapt pga FOR HØY PRIS (DEL 7f) — priselastisiteten avviste kjøpet. */
+  overprisStk: number
+}
 export interface BolkResultat<P> {
   products: P[]
   bakgrunnKunder: number
   bakgrunnStk: number
   bakgrunnKr: number
   varekostKr: number
+  /** Tapt salg pga TOMT LAGER (priset vare, utsolgt). */
   tapteSalgStk: number
   tapteSalgKr: number
-  /** Per-produkt deltaer (DEL 4) — reduceren akkumulerer i dayProductStats. */
-  perProdukt: Record<string, { navn: string; soldStk: number; tapteSalgStk: number }>
+  /** DEL 7b — tapt salg pga MANGLER PRIS. */
+  manglerPrisStk: number
+  manglerPrisKr: number
+  /** DEL 7f — tapt salg pga FOR HØY PRIS (priselastisitet). */
+  overprisStk: number
+  overprisKr: number
+  /** Per-produkt deltaer — reduceren akkumulerer i dayProductStats. */
+  perProdukt: Record<string, PerProduktBolk>
   /** Aggregerte salg (ticker) — solgt per produkt i denne bolken. */
   ticker: TickerLinje[]
   /** Ny seed etter forbrukte trekk (persisteres til neste tick). */
@@ -166,30 +222,50 @@ export interface BolkResultat<P> {
 }
 
 /** Prosesser ÉN bolk (tick) bakgrunnskunder mot NÅVÆRENDE lager. Hver kunde
- *  kjøper 1–2 varer: den FORETREKKER en tilfeldig priset vare (uniformt); har
- *  den lager ⇒ salg (trekker stock), er den tom ⇒ TAPT SALG for AKKURAT den
- *  varen (så «gikk tomt»-rapporten er per produkt). Generisk så Product-typen
- *  bevares ut. */
-export function simulerBakgrunnsbolk<P extends { id: string; name: string; stock: number; retailPrice: number; costPrice: number }>(
+ *  ønsker 1–2 varer, valgt uniformt fra HELE sortimentet (også uprisede varer —
+ *  de attraherer etterspørsel de ikke kan innfri). Per vare (DEL 7):
+ *   1. UPRISET (retailPrice ≤ 0) ⇒ tapt salg «mangler pris».
+ *   2. PRISET: priselastisitet (retail / markedsPris × varens profil) avgjør om
+ *      kunden faktisk kjøper. Avvist ⇒ tapt salg «for høy pris».
+ *   3. Kjøp bekreftet: har lager ⇒ salg; tomt ⇒ tapt salg «tomt lager».
+ *  Generisk så Product-typen bevares ut. */
+export function simulerBakgrunnsbolk<P extends { id: string; name: string; stock: number; retailPrice: number; costPrice: number; markedsPris: number; category?: string }>(
   products: P[], antallKunder: number, seed: number,
 ): BolkResultat<P> {
   let s = seed >>> 0
   const stock = new Map(products.map(p => [p.id, p.stock]))
-  const priced = products.filter(p => p.retailPrice > 0)
+  const pool = products   // HELE sortimentet — uprisede varer teller (mangler-pris-tap)
 
-  let bakgrunnKunder = 0, bakgrunnStk = 0, bakgrunnKr = 0, varekostKr = 0, tapteSalgStk = 0, tapteSalgKr = 0
-  const perProdukt: Record<string, { navn: string; soldStk: number; tapteSalgStk: number }> = {}
+  let bakgrunnKunder = 0, bakgrunnStk = 0, bakgrunnKr = 0, varekostKr = 0
+  let tapteSalgStk = 0, tapteSalgKr = 0, manglerPrisStk = 0, manglerPrisKr = 0, overprisStk = 0, overprisKr = 0
+  const perProdukt: Record<string, PerProduktBolk> = {}
   const solgtNaa = new Map<string, number>() // for ticker
-  const ensure = (p: P) => (perProdukt[p.id] ??= { navn: p.name, soldStk: 0, tapteSalgStk: 0 })
+  const ensure = (p: P) => (perProdukt[p.id] ??= { navn: p.name, soldStk: 0, tapteSalgStk: 0, manglerPrisStk: 0, overprisStk: 0 })
 
   for (let c = 0; c < antallKunder; c++) {
     bakgrunnKunder++
-    if (priced.length === 0) { s = nextSeed(s); tapteSalgStk++; continue }
+    if (pool.length === 0) { s = nextSeed(s); continue }
     s = nextSeed(s)
     const antallVarer = rand01(s) < BALANCE.sannsynlighetToVarer ? 2 : 1
     for (let i = 0; i < antallVarer; i++) {
       s = nextSeed(s)
-      const pref = priced[Math.floor(rand01(s) * priced.length)]!
+      const pref = pool[Math.floor(rand01(s) * pool.length)]!
+      // 1. UPRISET → mangler pris.
+      if (pref.retailPrice <= 0) {
+        manglerPrisStk++; manglerPrisKr += pref.markedsPris
+        ensure(pref).manglerPrisStk++
+        continue
+      }
+      // 2. Priselastisitet: kjøper kunden til denne prisen?
+      const ratio = pref.markedsPris > 0 ? pref.retailPrice / pref.markedsPris : 1
+      const elast = priselastisitetsfaktor(elastisitetsprofil(pref.category), ratio)
+      s = nextSeed(s)
+      if (rand01(s) >= Math.min(1, elast)) {
+        overprisStk++; overprisKr += pref.retailPrice
+        ensure(pref).overprisStk++
+        continue
+      }
+      // 3. Kjøp bekreftet — har vi lager?
       if ((stock.get(pref.id) ?? 0) > 0) {
         stock.set(pref.id, (stock.get(pref.id) ?? 0) - 1)
         bakgrunnStk++; bakgrunnKr += pref.retailPrice; varekostKr += pref.costPrice
@@ -210,5 +286,5 @@ export function simulerBakgrunnsbolk<P extends { id: string; name: string; stock
     const p = products.find(x => x.id === id)!
     return { navn: p.name, qty, kr: qty * p.retailPrice }
   })
-  return { products: newProducts, bakgrunnKunder, bakgrunnStk, bakgrunnKr, varekostKr, tapteSalgStk, tapteSalgKr, perProdukt, ticker, seed: s }
+  return { products: newProducts, bakgrunnKunder, bakgrunnStk, bakgrunnKr, varekostKr, tapteSalgStk, tapteSalgKr, manglerPrisStk, manglerPrisKr, overprisStk, overprisKr, perProdukt, ticker, seed: s }
 }

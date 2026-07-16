@@ -33,7 +33,7 @@ export interface MonthSettlement {
   salgInntektBrutto: number; varekjop: number
 }
 export interface SpillProduct {
-  id: string; name: string; stock: number; retailPrice: number; costPrice: number
+  id: string; name: string; stock: number; retailPrice: number; costPrice: number; markedsPris: number
 }
 export interface IncomingOrder { productId: string; qty: number; ankomstDag: number }
 export interface SpillState {

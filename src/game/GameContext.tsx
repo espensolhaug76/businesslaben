@@ -31,18 +31,24 @@ import { scenariosForIndustry, scenariosForMix } from './sales/scenarios'
 const EMPTY_DAY_STATS = {
   soldStk: 0, soldKr: 0, varekostKr: 0,
   bakgrunnKunder: 0, bakgrunnStk: 0, bakgrunnKr: 0, tapteSalgStk: 0, tapteSalgKr: 0,
+  manglerPrisStk: 0, manglerPrisKr: 0, overprisStk: 0, overprisKr: 0,
   koKunder: 0,
   reputationDelta: 0, xpEarned: 0, stockoutHappened: false,
 }
 
-type ProductStats = Record<string, { navn: string; soldStk: number; svinnStk: number; tapteSalgStk: number }>
+type ProductStats = Record<string, { navn: string; soldStk: number; svinnStk: number; tapteSalgStk: number; manglerPrisStk: number; overprisStk: number }>
 
 /** Slå per-produkt salgs-/tapt-deltaer inn i dagens per-produkt-statistikk. */
-function mergeProductStats(base: ProductStats, delta: Record<string, { navn: string; soldStk: number; tapteSalgStk: number }>): ProductStats {
+function mergeProductStats(base: ProductStats, delta: Record<string, { navn: string; soldStk: number; tapteSalgStk: number; manglerPrisStk?: number; overprisStk?: number }>): ProductStats {
   const out: ProductStats = { ...base }
   for (const [id, d] of Object.entries(delta)) {
-    const cur = out[id] ?? { navn: d.navn, soldStk: 0, svinnStk: 0, tapteSalgStk: 0 }
-    out[id] = { navn: d.navn, soldStk: cur.soldStk + d.soldStk, svinnStk: cur.svinnStk, tapteSalgStk: cur.tapteSalgStk + d.tapteSalgStk }
+    const cur = out[id] ?? { navn: d.navn, soldStk: 0, svinnStk: 0, tapteSalgStk: 0, manglerPrisStk: 0, overprisStk: 0 }
+    out[id] = {
+      navn: d.navn, soldStk: cur.soldStk + d.soldStk, svinnStk: cur.svinnStk,
+      tapteSalgStk: cur.tapteSalgStk + d.tapteSalgStk,
+      manglerPrisStk: cur.manglerPrisStk + (d.manglerPrisStk ?? 0),
+      overprisStk: cur.overprisStk + (d.overprisStk ?? 0),
+    }
   }
   return out
 }
@@ -1306,6 +1312,10 @@ function reducer(state: GameState, action: Action): GameState {
             bakgrunnKr: dayStats.bakgrunnKr + r.bakgrunnKr,
             tapteSalgStk: dayStats.tapteSalgStk + r.tapteSalgStk,
             tapteSalgKr: dayStats.tapteSalgKr + r.tapteSalgKr,
+            manglerPrisStk: dayStats.manglerPrisStk + r.manglerPrisStk,
+            manglerPrisKr: dayStats.manglerPrisKr + r.manglerPrisKr,
+            overprisStk: dayStats.overprisStk + r.overprisStk,
+            overprisKr: dayStats.overprisKr + r.overprisKr,
             stockoutHappened: dayStats.stockoutHappened || r.tapteSalgStk > 0,
           }
           dayProductStats = mergeProductStats(dayProductStats, r.perProdukt)
@@ -1354,7 +1364,7 @@ function reducer(state: GameState, action: Action): GameState {
             if (!p.ferskvare || p.stock <= 0) return p
             svinnStk += p.stock
             svinnKr += p.stock * p.costPrice
-            const cur = dps[p.id] ?? { navn: p.name, soldStk: 0, svinnStk: 0, tapteSalgStk: 0 }
+            const cur = dps[p.id] ?? { navn: p.name, soldStk: 0, svinnStk: 0, tapteSalgStk: 0, manglerPrisStk: 0, overprisStk: 0 }
             dps[p.id] = { ...cur, navn: p.name, svinnStk: cur.svinnStk + p.stock }
             return { ...p, stock: 0 }
           })
@@ -1373,6 +1383,16 @@ function reducer(state: GameState, action: Action): GameState {
       const svinnProdukter = Object.values(dps)
         .filter(p => p.svinnStk > 0).sort((a, b) => b.svinnStk - a.svinnStk)
         .slice(0, 3).map(p => ({ navn: p.navn, stk: p.svinnStk }))
+
+      // DEL 7b/7f — uprisede varer (mangler pris) + varer som tapte salg på for høy
+      // pris (per vare, med elevens pris vs. markedspris for mentor/oppgjør).
+      const uprisedeVarer = state.products.filter(p => p.retailPrice <= 0).map(p => p.name)
+      const overprisProdukter = Object.entries(dps)
+        .filter(([, p]) => p.overprisStk > 0).sort(([, a], [, b]) => b.overprisStk - a.overprisStk)
+        .slice(0, 3).map(([id, p]) => {
+          const vare = state.products.find(v => v.id === id)
+          return { navn: p.navn, tapte: p.overprisStk, pris: vare?.retailPrice ?? 0, marked: vare?.markedsPris ?? 0 }
+        })
 
       // ORGANISASJONSDESIGN — ÉN diskret refleksjonslinje hvis en org-regel slår
       // ut (spørsmål, aldri fasit). Omsetning denne måneden = dagshistorikk +
@@ -1403,6 +1423,12 @@ function reducer(state: GameState, action: Action): GameState {
         svinnKr,
         tapteSalgStk,
         tapteSalgKr,
+        manglerPrisStk: state.dayStats.manglerPrisStk,
+        manglerPrisKr: state.dayStats.manglerPrisKr,
+        uprisedeVarer,
+        overprisStk: state.dayStats.overprisStk,
+        overprisKr: state.dayStats.overprisKr,
+        overprisProdukter,
         koKunder: state.dayStats.koKunder,
         resultat: soldKr + bakgrunnKr - varekostKr - svinnKr,
         reputationDelta: state.dayStats.reputationDelta,

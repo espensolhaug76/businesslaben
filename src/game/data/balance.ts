@@ -30,10 +30,28 @@ export const BALANCE = {
   } as Record<string, number>,
   basetrafikkDefault: 85,
 
-  /** Prisfaktor = klem(snitt recommended / snitt retail, min, max). Priser LIK
-   *  anbefalt ⇒ 1,0; dyrere ⇒ færre kunder; billigere ⇒ flere. */
+  /** DEMPET samlet prisfaktor på kundestrømmen = klem(snitt markedsPris / snitt
+   *  retail, min, max), deretter halvert utslag (prisfaktorDemping). Hovedeffekten
+   *  av pris ligger nå PER VARE (priselastisitet under). */
   prisMin: 0.7,
   prisMax: 1.15,
+  prisfaktorDemping: 0.5,
+
+  /** PRISELASTISITET per vare (DEL 7f-b). ratio = utsalgspris / markedsPris.
+   *  Kurvepunkter [ratio, faktor] fra 1,0 og opp — lineær interpolasjon mellom,
+   *  ≥ siste = siste, gulv 0. Under 1,0: billigsalg, tak `billigTak` (avtagende).
+   *  Tre profiler mappes fra varekategori (se elastisitetsprofil i
+   *  backgroundSales). ALT tunbart. */
+  priselastisitet: {
+    billigTak: 1.15,      // maks løft under markedspris
+    billigStigning: 0.5,  // hvor bratt gevinsten stiger under marked (klemt mot billigTak)
+    // HØY (dagligvare m/alternativer: kaffe, te, rundstykker, brød)
+    hoy:     [[1.0, 1.00], [1.3, 0.50], [1.6, 0.10], [2.0, 0.00]] as [number, number][],
+    // MIDDELS (kos/impuls: boller, croissant, skolebrød) — default for nye varer
+    middels: [[1.0, 1.00], [1.3, 0.70], [1.6, 0.30], [2.0, 0.05]] as [number, number][],
+    // LAV (signatur/spesial: kaker, gulrotkake, sesongvarer)
+    lav:     [[1.0, 1.00], [1.3, 0.85], [1.6, 0.50], [2.0, 0.20]] as [number, number][],
+  },
 
   /** Eksponeringsfaktor fra andel fylte display-plasser (trau + vindu med
    *  lager). eksponeringReferanse = antall fylte plasser som gir FULL

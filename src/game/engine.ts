@@ -188,7 +188,7 @@ export function simulateMonth(state: GameState): MonthResult {
 
   for (const p of products) {
     if (p.stock <= 0) continue
-    const priceMod = priceModifier(p.retailPrice, p.recommendedPrice)
+    const priceMod = priceModifier(p.retailPrice, p.markedsPris)
     const demand = p.maxDemandPerMonth * priceMod * mktMod * locMod * repMod * reachMod * seasonal * pestDemand * targetMod
     const rawUnits = Math.round(demand * (0.80 + Math.random() * 0.40))
     const unitsSold = Math.max(0, Math.min(rawUnits, p.stock))

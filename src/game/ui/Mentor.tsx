@@ -106,6 +106,23 @@ const RISIKO_RANG: Record<string, number> = { lav: 1, middels: 2, høy: 3 }
 /** Dynamiske mentor-meldinger som leser elevens egne verdier (beredskap).
  *  Faller tilbake på den statiske teksten for andre id-er. */
 function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
+  const kr = (n: number) => `${Math.round(n).toLocaleString('nb-NO')} kr`
+  // DEL 7 — prisingsmentorer (dag-/vare-scopede id-er).
+  if (id.startsWith('mangler_pris_apning|')) {
+    return 'Du har varer i disken uten pris — dem får du ikke solgt før du prissetter dem i Priser-fanen. Bruk [[MKT_048|kalkylen]]: innkjøpspris + [[ECO_011|påslag]].'
+  }
+  if (id.startsWith('mangler_pris_oppgjor|')) {
+    const r = s.lastDayResult
+    if (!r || r.manglerPrisStk <= 0) return undefined
+    const varer = r.uprisedeVarer.slice(0, 2).join(', ')
+    return `Du tapte ${r.manglerPrisStk} salg i dag på varer uten pris${varer ? ` (${varer})` : ''}. En vare uten [[ECO_031|utsalgspris]] får du ikke solgt — sett en pris i Priser-fanen.`
+  }
+  if (id.startsWith('overpris|')) {
+    const navn = id.slice('overpris|'.length)
+    const o = s.lastDayResult?.overprisProdukter.find(x => x.navn === navn)
+    if (!o) return undefined
+    return `${o.navn} koster ${kr(o.pris)} hos deg — nedi gata koster den rundt ${kr(o.marked)}. Hva tror du kundene gjør da? Sjekk [[ECO_011|påslaget]] ditt mot markedet.`
+  }
   if (id === 'beredskap_plan_bekreftet') {
     // Referer elevens eget tillegg når det finnes; pek videre til risikoskjemaet.
     const tillegg = Object.values(s.beredskap.planTillegg).map(t => t.trim()).filter(Boolean)[0]
@@ -247,6 +264,26 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     window.addEventListener('mentor:signal', h)
     return () => window.removeEventListener('mentor:signal', h)
   }, [fire])
+
+  // DEL 7 — PRISINGS-MENTORER. Dag-scopede id-er (|år-mnd-dag) re-armes per dag;
+  // overpris er per VARE-episode (id per varenavn). Meldingene resolves dynamisk.
+  useEffect(() => {
+    const dag = `${state.currentYear}-${state.currentMonth}-${state.dayNumber}`
+    // (1) Åpner butikken med UPRISEDE varer i eksponering — re-armes per dag.
+    if (state.dayPhase === 'åpen') {
+      const iExpo = new Set<string>([
+        ...state.counterLayout.map(t => t.productId),
+        ...state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId),
+      ])
+      if (state.products.some(p => iExpo.has(p.id) && p.retailPrice <= 0)) fire(`mangler_pris_apning|${dag}`)
+    }
+    // (2/7f-d) Dagsoppgjør: tapt salg pga mangler pris (antall) + overpris per vare.
+    const r = state.lastDayResult
+    if (state.dayPhase === 'oppgjør' && r) {
+      if (r.manglerPrisStk > 0) fire(`mangler_pris_oppgjor|${dag}`)
+      for (const o of r.overprisProdukter) fire(`overpris|${o.navn}`)
+    }
+  }, [state, fire])
 
   // KONTEKSTBUNDNE fane-triggere: dashbordet melder aktiv fane (eller null når
   // det lukkes). Fane-meldingen vises KUN mens den fanen er aktiv. Rekker den

@@ -86,6 +86,14 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           {r.koKunder > 0 && (
             <SalgLinje ikon="⏳" tittel={<><Fagord id="SAL_002">Tapte salg</Fagord>: {r.koKunder} (kø — for få på vakt)</>} hoyre="—" color="#f59e0b" />
           )}
+          {/* DEL 7b — varer uten pris selges ikke; etterspørselen deres blir tapt. */}
+          {r.manglerPrisStk > 0 && (
+            <SalgLinje ikon="🏷️" tittel={<><Fagord id="SAL_002">Tapte salg</Fagord>: {r.manglerPrisStk} (mangler pris)</>} hoyre="—" color="#f59e0b" />
+          )}
+          {/* DEL 7f — kunder som gikk fordi prisen var for høy (priselastisitet). */}
+          {r.overprisStk > 0 && (
+            <SalgLinje ikon="💸" tittel={<><Fagord id="SAL_002">Tapte salg</Fagord>: {r.overprisStk} (for høy pris)</>} hoyre="—" color="#f59e0b" />
+          )}
           {/* SPILLKLOKKE: stengte eleven før 17:00, bortfalt de resterende
               bakgrunnskundene — egen linje, adskilt fra tomt-lager-tap. */}
           {r.stengtTidlig && r.bortfallStk > 0 && (
@@ -103,6 +111,18 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
             )}
             {r.svinnProdukter.length > 0 && (
               <DetaljLinje ikon="🗑️" etikett="Svinn" tekst={sammendrag(r.svinnProdukter.map(s => `${s.navn} ${s.stk} stk`))} color="#fca5a5" />
+            )}
+          </div>
+        )}
+
+        {/* DEL 7b/7f — per-vare-detaljer for de nye tap-årsakene. */}
+        {(r.uprisedeVarer.length > 0 || r.overprisProdukter.length > 0) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1rem' }}>
+            {r.uprisedeVarer.length > 0 && (
+              <DetaljLinje ikon="🏷️" etikett="Mangler pris" tekst={sammendrag(r.uprisedeVarer)} color="#fbbf24" />
+            )}
+            {r.overprisProdukter.length > 0 && (
+              <DetaljLinje ikon="💸" etikett="For høy pris" tekst={sammendrag(r.overprisProdukter.map(o => `${o.navn} (din ${formatKr(o.pris)} · marked ~${formatKr(o.marked)})`))} color="#fbbf24" />
             )}
           </div>
         )}

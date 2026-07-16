@@ -1619,6 +1619,36 @@ ingen «gratis vinner». Stige-tabell i VERDENSMODELL §3.
 Lokal-stigen på l4 (billig): fornuftig solo +3k (viable, lavere tak), godt drevet
 −2k (over-bemannet → feil strategi for stedet). Determinisme består.
 
+### DEL 7 + 7f — prising er elevens jobb + priselastisitet
+
+**DEL 7a** — «Veiledende pris» fjernet fra kaféens Priser-UI: varene starter
+UPRISET (`catalogToProduct` retailPrice 0), eleven setter utsalgspris fra BLANKT
+felt. Kalkyle-hjelpen (margin/påslag NÅR pris er tastet) beholdt. Referanseprisen
+beholdt i datalaget, DØPT OM til `markedsPris` (markedsanker). Klesbutikkens
+Innkjøp-katalog urørt.
+
+**DEL 7b** — Upriset vare = ikke i salg: uprisede varer i sortimentet attraherer
+etterspørsel de ikke kan innfri → tapt salg «mangler pris» (egen oppgjørslinje).
+«Mangler prismerking»-badge i disken fantes allerede (prisopplysningsforskriften).
+
+**DEL 7f-b/c** — Per-vare-priselastisitet (`PRISELASTISITET` i balance.ts, tre
+profiler HØY/MIDDELS/LAV, kurve m/interpolasjon, gulv 0). Virker på varens
+volum ALENE; kundestrøm beholder en DEMPET samlet priskomponent. Kategori→profil-
+mapping dokumentert i `BALANSE_ANALYSE.md` §c. Overpris → tapt salg «for høy pris»
+(egen oppgjørslinje, per vare med elevens pris vs. markedspris).
+
+**DEL 7c/7f-d** — Mentor-triggere: (1) åpner butikk med uprisede varer i disken
+(re-armes per dag); (2) oppgjør med mangler-pris-tap (antall); (3) oppgjør der en
+vare tapte salg på overpris (navner varen, «X kr hos deg — nedi gata ~Y»,
+per vare-episode). Fagord: MKT_048 (kalkyle), ECO_011 (påslag), ECO_031 (utsalgspris).
+
+**DEL 7d/e/7f-e** — Balansespilleren priser via intern referanseprisfunksjon
+(`markedsPris × prisMultiplikator`); UI-et har den ikke. GRÅDIG-kontroll (alle
+priser 2× marked): omsetning kollapser ~144k→~22k/mnd → **−107k/mnd** mot
+FORNUFTIGs +7k (assertert klart dårligere). Målbilde-radene STÅR (normalpriser =
+markedspris). Spilltest **steg 14**: upriset croissant → 88 tapt (mangler pris);
+kaffe (HØY) @ 2× → **0 solgt, 92 tapt** (for høy pris). **14/14 PASS.**
+
 ### Chrome-sjekkliste (Espen validerer)
 1. **Eierlønn i månedsoppgjøret:** rull en måned → oppgjøret viser «Eierlønn (din
    lønn) 40 000» blant faste kostnader, og månedsresultatet er ETTER den.
@@ -1626,13 +1656,23 @@ Lokal-stigen på l4 (billig): fornuftig solo +3k (viable, lavere tak), godt drev
    «Eierlønn», forhåndsutfylt 40 000, redigerbar. «Sist måned» viser 40 000.
 3. **Mentor-boble:** første månedsoppgjør → boble om at eierens arbeid ikke er
    gratis (etter «Første måned i boks»-boblen).
-4. **Nye tall / skala:** HUD viser **200 000 kr** startkapital. Priser-fanen viser
-   kafépriser (kaffe 50, bakst 50–57). En fornuftig drevet måned lander i pluss
-   ETTER eierlønn; en passiv går tom for penger.
+4. **Nye tall / skala:** HUD viser **200 000 kr** startkapital. En fornuftig
+   drevet måned lander i pluss ETTER eierlønn; en passiv går tom for penger.
 5. **Lokalvelgerens stige:** dyrere lokale (Torggata 1 / Hjørnelokalet) har høyere
    husleie OG merkbart mer trafikk enn de billige (Gågata 16). Sjekk at et dyrt
    lokale gir kø/tapte salg solo, men lønner seg med en ansatt.
 6. **Fargesvak:** avvik/resultat vises med fortegn + tekst, aldri farge alene.
+7. **Prising er elevens jobb (DEL 7a):** Priser-fanen har BLANKE prisfelt (ingen
+   forhåndsutfylt/veiledende pris) — kun innkjøpspris + margin/påslag når du taster
+   en pris. Kaffe-eksempel: markedet ligger ~50 kr (vises kun via kjøpt
+   markedsundersøkelse, som konkurrentintervall — ikke som «din» pris).
+8. **Upriset vare (DEL 7b):** la en vare stå uten pris, legg den i disken, åpne →
+   «⚠ Mangler prismerking»-badge i trauet; dagsoppgjøret får linje «Tapte salg: N
+   (mangler pris)». Mentor-boble ved åpning + ved oppgjør.
+9. **Overpris (DEL 7f):** sett kaffe til ~100 kr (2× marked), åpne en dag →
+   kaffe selger ~ingenting; dagsoppgjør får linje «Tapte salg: N (for høy pris)»
+   + «For høy pris: Kaffe (din 100 · marked ~50)»; mentor nevner varen. Sett en
+   spesialkake (LAV) dyrt → den tåler mer enn kaffen (selger fortsatt noe).
 
 ### Åpen oppfølging
 - **Glossary «eierlønn»** (DEL 3c) — legg inn Espen-godkjent definisjon, aktiver

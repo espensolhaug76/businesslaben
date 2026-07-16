@@ -74,6 +74,48 @@ Nøkkelgrep (alle i `balance.ts` / katalog / `districts.ts`, motoren urørt):
 
 ---
 
+## c) Prising og priselastisitet (DEL 7 + 7f)
+
+**Prising er elevens jobb.** Varene starter UPRISET (ingen «veiledende pris» i
+UI-et). Referanseprisen beholdes i datalaget som `markedsPris` (markedsanker).
+Balansespilleren priser via en INTERN referanseprisfunksjon (`markedsPris ×
+prisMultiplikator`) — 1,0 = markedspris (normalstrategiene), 2,0 = GRÅDIG.
+
+**Per-vare-elastisitet.** ratio = utsalgspris / markedsPris. Over marked følger
+varen sin PROFIL (kurve, lineær interpolasjon, gulv 0); under marked stiger
+gevinsten mot tak 1,15. Effekten virker på VARENS solgte volum — en overpriset
+vare selger mindre/null ALENE; resten av sortimentet lever. Kundestrøm-nivået
+beholder en DEMPET samlet priskomponent (snitt over prisede varer, halvt utslag)
+så prisrespons ikke dobbelt-telles.
+
+**Profil-kurver** (ratio → volumfaktor):
+
+| Profil | 1,0× | 1,3× | 1,6× | ≥2,0× |
+|---|--:|--:|--:|--:|
+| HØY | 1,00 | 0,50 | 0,10 | 0,00 |
+| MIDDELS | 1,00 | 0,70 | 0,30 | 0,05 |
+| LAV | 1,00 | 0,85 | 0,50 | 0,20 |
+
+**Kategori → profil (café):**
+
+| Kategori | Profil | Begrunnelse | Eksempelvarer |
+|---|---|---|---|
+| `drikke` | **HØY** | dagligvare m/mange alternativer | kaffe, te, cappuccino, latte |
+| `brod` | **HØY** | dagligvare | rundstykker, brød |
+| `frokost` | **MIDDELS** | kos/impuls | croissant, kanelbolle, skolebrød |
+| `lunsj` | **MIDDELS** | kos/impuls | wrap, sandwich |
+| `kaker` | **LAV** | signatur/spesial, mindre prisfølsom | muffins, kaker, sesongvarer |
+| *(nye/ukjent)* | MIDDELS | trygg default | — |
+
+*Merk:* DEL-eksempelet lister «muffins» som MIDDELS og «kaker» som LAV, men
+katalogens `kaker`-kategori dekker begge. Valgt kategori-mapping (`kaker` → LAV)
+representerer LAV-profilen i café-sortimentet; en fremtidig `signatur`-kategori
+eller per-vare-override kan skille muffins (MIDDELS) fra kaker (LAV) om ønskelig.
+
+**GRÅDIG-kontroll** (som FORNUFTIG, men alle priser 2× marked): omsetningen
+kollapser fra ~144 000 til ~22 000 kr/mnd (HØY-varene selger ~0) → netto
+**~−107 000 kr/mnd** mot FORNUFTIGs +7 000. Assertert: GRÅDIG klart dårligere.
+
 ## Determinisme
 
 FORNUFTIG @ sentrum-l2 kjøres to ganger i samme løp — månedstallene er IDENTISKE
