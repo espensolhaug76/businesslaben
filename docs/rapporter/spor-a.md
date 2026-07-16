@@ -1575,16 +1575,82 @@ løpet, kjøres eksplisitt).
 så MAKS/KAMPANJE blir et forsvarlig valg med nok bemanning — bruk balansespilleren
 som måleverktøy. Se TODO-lista under.
 
+## 35. REKALIBRERING — økonomien speiler en ekte norsk småbykafé
+
+> **Status: bygget + verifisert.** Gren `spor-a/rekalibrering` (fra main). `tsc -b`
+> + `vite build` + `npm run spilltest` (**13/13**) grønn. Balansespiller kjørt
+> (6 iterasjoner til konvergens). IKKE merget — Espen validerer.
+>
+> Bakgrunn: inntektssiden var dimensjonert som en KIOSK (~116 kunder, ~5 900
+> kr/dag), kostnadssiden som en BYKAFÉ. «+355 kr/mnd uten eierlønn og uten
+> ansatte» var en usann virkelighet. Motoren er URØRT — alt er `balance.ts` +
+> katalog + `districts.ts` + doc.
+
+**DEL 1+2 — `docs/VERDENSMODELL.md` (fasit for ALL balansering).** By ~30 000
+innb., gangtrafikk 3–5k/hverdag, fangst 4–7 % → 150–300 kunder/dag, snittkjøp
+70–85 kr. Referansebedrifter (Granum/Lillehammer Bakeri) KUN som dok-ankere —
+spillkaféen ligger under. Medierekkevidde (Byposten ~29 %, Radio Innlandet
+~31 %). Spillmåned = 12 handledager. MÅLBILDE-tabell (tuning-fasit).
+
+**DEL 3 — Eierlønn (40 000 kr/mnd) som fast linje.** `balance.ts.eierlonnMnd`;
+egen linje i `manedligeFasteKostnader` (økonomi.ts) → månedsoppgjør + Økonomi-fane;
+SYVENDE budsjettlinje (forhåndsutfylt + redigerbar, VG1-enkelt); mentor-boble
+`forste_eierlonn` (refleksjon: eierens arbeid er aldri gratis). **FLAGG:
+«eierlønn» finnes IKKE i glossary** — IKKE diktet opp; trenger Espen-godkjent
+definisjon før fagord-token aktiveres.
+
+**DEL 4 — inntektssiden skalert.** Basetrafikk (sentrum-l2 110→150), kafépriser
+(kaffe 39→50, bakst ~35→50–57 → snittkjøp ~50→~79), solo-kapasitetstak ~160/dag
+(junior 15→20), `kampanje.lopende` satt bevisst. **Startkapital 150 000 → 200 000**
+(~2,3 mnd runway mot ny ~87k faste; passiv konkurs likevel). `baseMultiplier`
+urørt.
+
+**DEL 5 — lokal-stigen.** rentFactor (husleie) og basetrafikk stiger SAMMEN —
+ingen «gratis vinner». Stige-tabell i VERDENSMODELL §3.
+
+**DEL 6 — verifisering (balansespiller, snitt/mnd, NETTO etter eierlønn):**
+
+| | sentrum-l2 | Målbilde | Treff |
+|---|--:|---|:--:|
+| Passiv | −87 000 (konkurs ~mnd 3) | dypt minus | ✓ |
+| Fornuftig solo | 153 kunder · 12 100 oms · **+8 000** | 150–180 · 12–14k · +5–10k | ✓ |
+| Godt drevet | 279 kunder · 21 300 oms · **+29 000** | 250–300 · 20–24k · +25–40k | ✓ |
+
+Lokal-stigen på l4 (billig): fornuftig solo +3k (viable, lavere tak), godt drevet
+−2k (over-bemannet → feil strategi for stedet). Determinisme består.
+
+### Chrome-sjekkliste (Espen validerer)
+1. **Eierlønn i månedsoppgjøret:** rull en måned → oppgjøret viser «Eierlønn (din
+   lønn) 40 000» blant faste kostnader, og månedsresultatet er ETTER den.
+2. **Eierlønn i budsjettet (Økonomi → Budsjett, Tema 2 aktivt):** SYVENDE linje
+   «Eierlønn», forhåndsutfylt 40 000, redigerbar. «Sist måned» viser 40 000.
+3. **Mentor-boble:** første månedsoppgjør → boble om at eierens arbeid ikke er
+   gratis (etter «Første måned i boks»-boblen).
+4. **Nye tall / skala:** HUD viser **200 000 kr** startkapital. Priser-fanen viser
+   kafépriser (kaffe 50, bakst 50–57). En fornuftig drevet måned lander i pluss
+   ETTER eierlønn; en passiv går tom for penger.
+5. **Lokalvelgerens stige:** dyrere lokale (Torggata 1 / Hjørnelokalet) har høyere
+   husleie OG merkbart mer trafikk enn de billige (Gågata 16). Sjekk at et dyrt
+   lokale gir kø/tapte salg solo, men lønner seg med en ansatt.
+6. **Fargesvak:** avvik/resultat vises med fortegn + tekst, aldri farge alene.
+
+### Åpen oppfølging
+- **Glossary «eierlønn»** (DEL 3c) — legg inn Espen-godkjent definisjon, aktiver
+  så fagord-token i budsjett/oppgjør/mentor.
+- **Kampanjekostnad i månedsresultatet:** i dag trekkes kampanjekostnaden fra
+  KASSA ved start, men ikke fra `settlement.resultat` (accrual). Balansespilleren
+  korrigerer selv (netto). Vurder om oppgjøret bør vise kampanjekostnad som egen
+  linje (konsistens kasse ↔ resultat). Ikke rørt her (motor-endring).
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
-- **Rekalibrer løpende markedsføring (`BALANCE.kampanje.lopende`) — NY (pkt. 34):**
-  etter Tema 8 styrer per-kanal-modellen den løpende markedsføringstrafikken, men
-  verdiene (metning 8000 / maksLoftPerKanal 0,15 / maksFaktor 1,3) er satt for
-  kampanje-mekanikken, ikke finpusset for løpende drift. Balansespilleren (ny
-  modell) viser MAKS −32k/mnd, KAMPANJE −12k/mnd. Mål: markedsføring skal kunne gi
-  > 1 kr tilbake per krone ved moderat bruk + nok bemanning (bemannings-taket §c
-  spak 3 er fortsatt flaskehalsen). Verktøy: `npx playwright test
-  tests/spilltest/balansespiller.spec.ts`.
+- **Løpende markedsføring (`BALANCE.kampanje.lopende`) — SATT (pkt. 34→35):** pkt.
+  34 flagget at verdiene ikke var finpusset for løpende drift; pkt. 35 satte dem
+  (metning 5000 / maksLoftPerKanal 0,25 / maksFaktor 1,45) så «godt drevet»
+  (bemannet + løpende mkf + kampanje) gir +29k/mnd. Finpuss videre ved behov med
+  balansespilleren (`npx playwright test tests/spilltest/balansespiller.spec.ts`).
+- **Glossary «eierlønn» mangler (pkt. 35 DEL 3c):** IKKE diktet opp. Legg inn
+  Espen-godkjent definisjon, aktiver så fagord-token i budsjett/oppgjør/mentor.
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
   ved månedsrull via delt `economy.amortiserLaan`. (Tidligere dempet TODO-linje
   fjernet.)
