@@ -86,6 +86,12 @@ function oppfylt(id: string, s: GameState): boolean {
       return (s.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0
         && s.beredskap.brannalarmUtfall?.kvalitet === 'bad'
         && s.beredskap.brannovelser.length > 0
+    // TEMA 2/3: leser den transiente oppgjørs-payloaden (satt ved månedsrull).
+    case 'budsjett_avvik_storst': return !!s.budsjettOppgjorHint?.storstAvvik
+    case 'nokkeltall_dekningsgrad_avvik': {
+      const d = s.budsjettOppgjorHint?.dekningsgradAvvik
+      return !!d && Math.abs(d.ditt - d.bok) > 5
+    }
     default: return false
   }
 }
@@ -119,6 +125,20 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
     const siste = s.beredskap.brannovelser[s.beredskap.brannovelser.length - 1]
     if (siste?.kvalitet === 'good') return 'Der satt det! Den skarpe alarmen gikk ikke helt som du ville — men nå kjørte du øvelsen med varsling og evakuering først. Akkurat sånn skal det sitte. Hva var det som klaffet denne gangen?'
     return 'Fint at du øver videre — den første alarmen gikk ikke helt på skinner, og det er helt greit. Tenk på hva som MÅ skje aller først når det brenner, og prøv en gang til. Ingenting står på spill her.'
+  }
+  // TEMA 2: leser linja med størst avvik fra oppgjørs-payloaden. Aldri fasit.
+  if (id === 'budsjett_avvik_storst') {
+    const a = s.budsjettOppgjorHint?.storstAvvik
+    if (!a) return undefined
+    const kr = (n: number) => `${Math.round(n).toLocaleString('nb-NO')} kr`
+    const retning = a.faktisk >= a.budsjett ? 'mer' : 'mindre'
+    return `Du budsjetterte ${kr(a.budsjett)} i ${a.navn.toLowerCase()}, men det ble ${kr(a.faktisk)} — ${retning} enn planlagt. Hva skjedde med [[ECO_008|budsjettet]] ditt her?`
+  }
+  // TEMA 3 (VG2): dekningsgrad-sprik → spør om HVILKE tall, ikke riktig svar.
+  if (id === 'nokkeltall_dekningsgrad_avvik') {
+    const d = s.budsjettOppgjorHint?.dekningsgradAvvik
+    if (!d) return undefined
+    return `Du regnet ut en [[ECO_002|dekningsgrad]] på ${d.ditt.toFixed(1)} %, men bokført ble ${d.bok.toFixed(1)} %. Hvilke tall brukte du i regnestykket — hele månedens omsetning, eller bare noen dager?`
   }
   return mentorMelding(id)
 }

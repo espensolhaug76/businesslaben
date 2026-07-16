@@ -645,6 +645,13 @@ export interface GameState {
   budsjett: BudsjettState
   /** VG2: elevens egne nøkkeltall-svar per måned (nøkkel: maanedNokkel). Persistert. */
   nokkeltall: Record<string, NokkeltallSvar>
+  /** TEMA 2/3: transient mentor-payload satt ved månedsrull (leses av de
+   *  dynamiske mentor-triggerne ETTER oppgjøret — settlement-tallene er da borte).
+   *  Ikke persistert; best-effort samme økt. Null når intet budsjett/nøkkeltall. */
+  budsjettOppgjorHint: {
+    storstAvvik: { navn: string; budsjett: number; faktisk: number } | null
+    dekningsgradAvvik: { ditt: number; bok: number } | null
+  } | null
 }
 
 /** All spilltilstand for tema Beredskap (HMS-fanen + brannalarm-hendelsen).

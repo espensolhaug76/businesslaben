@@ -121,6 +121,18 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Fint at du øver videre — den første alarmen gikk ikke helt på skinner, og det er helt greit. Hva ville du gjort først neste gang?',
   },
 
+  // ── TEMA 2 Budsjett + TEMA 3 Nøkkeltall (dynamiske, én gang) ─────────────────
+  {
+    id: 'budsjett_avvik_storst',
+    betingelse: 'Etter et månedsoppgjør der eleven hadde satt budsjett — dynamisk melding leser linja med STØRST absolutt avvik',
+    melding: 'Se budsjettet ditt mot de faktiske tallene — hvilken linje bommet mest, og hva tror du skjedde?',
+  },
+  {
+    id: 'nokkeltall_dekningsgrad_avvik',
+    betingelse: 'VG2: elevens beregnede dekningsgrad avviker >5 prosentpoeng fra bokført (dynamisk) — spør om HVILKE tall, ikke fasit',
+    melding: 'Dekningsgraden du regnet ut ligger et stykke fra den bokførte. Hvilke tall brukte du i regnestykket?',
+  },
+
   // ── FANE-TRIGGERE (kontekstbundne) ──────────────────────────────────────────
   // Én per dashbord-fane (`fane`-feltet), første besøk. Vises KUN mens fanen er
   // aktiv (mentor:fane-kanalen i Mentor.tsx), re-armes hvis de ikke rekker frem.

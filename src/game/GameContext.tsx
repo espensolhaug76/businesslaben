@@ -19,7 +19,7 @@ import { DAY_CONFIG } from './data/dayConfig'
 import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
 import { manedligeFasteKostnader, amortiserLaan } from './data/economy'
-import { maanedNokkel, TOM_BUDSJETT, type BudsjettLinjeKey, type BudsjettTall, type NokkeltallSvar } from './data/budsjett'
+import { maanedNokkel, TOM_BUDSJETT, BUDSJETT_LINJER, faktiskeLinjer, bokfortNokkeltall, type BudsjettLinjeKey, type BudsjettTall, type NokkeltallSvar } from './data/budsjett'
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
@@ -231,6 +231,7 @@ const initialState: GameState = {
   },
   budsjett: { maaneder: {} },
   nokkeltall: {},
+  budsjettOppgjorHint: null,
 }
 
 // ─── Actions ────────────────────────────────────────────────────────────────
@@ -1303,6 +1304,7 @@ function reducer(state: GameState, action: Action): GameState {
       let monthlyLoanPayment = state.monthlyLoanPayment
       let totalDebt = state.totalDebt
       let budsjett = state.budsjett
+      let budsjettOppgjorHint = state.budsjettOppgjorHint
       if (rollsMonth) {
         const mdays = state.dayHistory.filter(d => d.month === state.currentMonth && d.year === state.currentYear)
         const inntekt = mdays.reduce((s, d) => s + d.resultat, 0)
@@ -1329,6 +1331,21 @@ function reducer(state: GameState, action: Action): GameState {
         if (state.budsjett.maaneder[bkey] && !state.budsjett.maaneder[bkey].laastVedOppgjor) {
           budsjett = { maaneder: { ...state.budsjett.maaneder, [bkey]: { ...state.budsjett.maaneder[bkey], laastVedOppgjor: true } } }
         }
+        // TEMA 2/3 mentor-payload (leses av dynamiske triggere etter oppgjøret):
+        // linja med STØRST absolutt avvik + ev. dekningsgrad-sprik.
+        const bm = state.budsjett.maaneder[bkey]
+        let storstAvvik: { navn: string; budsjett: number; faktisk: number } | null = null
+        if (bm) {
+          const fakt = faktiskeLinjer(settlement)
+          let bestAbs = -1
+          for (const l of BUDSJETT_LINJER) {
+            const a = Math.abs(fakt[l.key] - bm.budsjett[l.key])
+            if (a > bestAbs) { bestAbs = a; storstAvvik = { navn: l.navn, budsjett: bm.budsjett[l.key], faktisk: Math.round(fakt[l.key]) } }
+          }
+        }
+        const nk = state.nokkeltall[bkey]
+        const dekningsgradAvvik = nk ? { ditt: nk.dekningsgrad, bok: bokfortNokkeltall(settlement).dekningsgrad } : null
+        budsjettOppgjorHint = (storstAvvik || dekningsgradAvvik) ? { storstAvvik, dekningsgradAvvik } : null
       }
 
       return {
@@ -1350,6 +1367,7 @@ function reducer(state: GameState, action: Action): GameState {
         lastDayResult: null,
         lastMonthSettlement: settlement,
         budsjett,   // TEMA 2: låst budsjett for måneden som ble gjort opp
+        budsjettOppgjorHint,   // TEMA 2/3: mentor-payload for dynamiske triggere
         // Nullstill klokke/møter/ticker/produkt-stats for neste dag.
         dayMinute: 0,
         dayMeetings: [],
