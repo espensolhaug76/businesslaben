@@ -1255,6 +1255,37 @@ Ny state: `oppgaveFordeling: Record<personId, roller>` + `regnskapOutsourcet` p�
   fordelingen; «Bruk fordelingen …» → steg 2 har funksjonene forhåndsopprettet
   og kan endres fritt.
 
+## 30. Fiksrunde 2 → main + spilltest grønn (sluttstatus)
+
+> **Status: MERGET TIL MAIN.** Hele fiksrunde 2 (DEL 1–6 + fargesvak-tillegget)
+> er `--ff-only`-merget til main (lineær historikk), sammen med temakart v4 og
+> spilltester-verktøyet. main @ `4ee75a3`.
+
+**Merge-sekvens (DEL 2 i sluttmandatet):**
+1. `spor-a/fiksrunde-2` → main `--ff-only` (`37b56d8..6ba66b8`).
+2. Temakart v4 committet på main (`b09f153` «docs: temakart v4 — 15 temaer …»).
+3. `verktoy/spilltester` rebaset på main (rent, 0 konflikter) → `--ff-only`
+   (`b09f153..600d02b`).
+
+**Fiks A+B (etter at spilltesten avdekket en regresjon):** den første kjøringen
+på main var RØD — fag-**bokstavmerket** (fiksrunde-2-slutt DEL 1a) la synlig
+tekst inne i fane-knappene, så testens `getByRole('button', {name, exact:true})`
+ikke matchet lenger og fane-navigasjonen (Steg 2 m.fl.) hang. Fikset på gren,
+re-merget:
+- **A (a11y/produkt):** `aria-hidden` på fag-merket (og dekorativ stripe) → ren
+  accessible name («Produkter»). Fargesvake ser fortsatt merket; faglegenden
+  formidler fag-koblingen tekstlig (skjermleser). `data-testid=fane-<id>` lagt til.
+- **B (spilltest):** `gåTilFane`/HMS-navigasjon over på `getByTestId(fane-<id>)`
+  (ingen exact-name-matching). Steg 10: hub-lenkene ble `<a target=_blank>` i
+  fiksrunde 2, så locatoren gikk fra `button`→`link`, og `kjentFeil`-krykka ble
+  fjernet (reell PASS-vakt nå).
+
+**Spilltest på main (`npm run spilltest`, port 5176):**
+**✅ 10 PASS · 0 FAIL · 0 KJENT FEIL.** Navigasjonsvakten (Steg 10) flippet fra
+KJENT FEIL → PASS: hub-lenken «📚 Beredskap (Contingency) ↗» åpner i ny fane og
+navigerer IKKE spillfanen bort (url blir på `/game`). Full tabell i
+`docs/rapporter/spilltest-siste.md`.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
