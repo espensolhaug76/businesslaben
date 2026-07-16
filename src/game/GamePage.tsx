@@ -8,6 +8,7 @@ import SalesScenarioOverlay from './ui/SalesScenarioOverlay'
 import YearEndOverlay from './ui/YearEndOverlay'
 import DayResultOverlay from './ui/DayResultOverlay'
 import MonthResultOverlay from './ui/MonthResultOverlay'
+import KampanjeRapportOverlay from './ui/KampanjeRapportOverlay'
 import DagspulsOverlay from './ui/DagspulsOverlay'
 import OpeningOrderOverlay from './ui/OpeningOrderOverlay'
 import Mentor from './ui/Mentor'
@@ -285,6 +286,8 @@ function GameContent() {
       {/* Månedsoppgjør — vises ved månedsrull (gates internt på
           lastMonthSettlement). Egen flyt fra den gamle «Simuler måneden»/PEST. */}
       <MonthResultOverlay />
+      {/* TEMA 8 — effektrapport ved kampanjeslutt (gates internt på visRapportFor). */}
+      <KampanjeRapportOverlay />
       {/* Åpningsbestilling — vises straks etter leie (gates internt på
           rentedLocationId && !openingOrderPlaced). */}
       <OpeningOrderOverlay />
@@ -303,7 +306,7 @@ function GameContent() {
           Ordboken bor hos mentoren (bok-panel), ikke i en dashbord-fane. */}
       <Mentor
         blocked={simOpen || salesOpen || !!vacantInfo
-          || state.dayPhase === 'oppgjør' || !!state.lastMonthSettlement || state.phase === 'year_end'}
+          || state.dayPhase === 'oppgjør' || !!state.lastMonthSettlement || !!state.kampanje.visRapportFor || state.phase === 'year_end'}
       />
     </>
   )
