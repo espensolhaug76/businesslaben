@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useGame } from '../GameContext'
+import { useGame, useErTemaAktivt, useTemaNivaa } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
 import { getIndustryDefinitionFor, getActiveIndustryDefinition } from '../data/industryDefinition'
 import WindowDisplayEditor from '../city/WindowDisplay'
@@ -13,6 +13,10 @@ import HmsTab from './HmsTab'
 import BrannalarmOvelse, { BrannalarmSammenligning } from './BrannalarmOvelse'
 import { BRANNALARM } from '../data/beredskap'
 import { BALANCE } from '../data/balance'
+import {
+  BUDSJETT_LINJER, TOM_BUDSJETT, maanedNokkel, faktiskeLinjer, planlagtResultat,
+  BUDSJETT_HUB, type BudsjettTall, type BudsjettLinjeKey,
+} from '../data/budsjett'
 import { aktiveFunksjoner, evaluerRefleksjon, oppgaveRefleksjoner } from '../data/orgRefleksjon'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
 import type { Loan } from '../types'
@@ -1090,6 +1094,7 @@ function OkonomiTab() {
   const [showBank, setShowBank] = useState(false)
   const [loanAmount, setLoanAmount] = useState(250_000)
   const [loanMonths, setLoanMonths] = useState(24)
+  const budsjettAktiv = useErTemaAktivt('budsjett')       // TEMA 2
 
   const { money, loans, totalDebt, businessPlan } = state
 
@@ -1159,6 +1164,9 @@ function OkonomiTab() {
       <div style={{ marginBottom: '1.25rem' }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Økonomi & Finansiering</h3>
       </div>
+
+      {/* TEMA 2 Budsjett — øverst, kun når temaet er aktivt. */}
+      {budsjettAktiv && <BudsjettSeksjon />}
 
       {/* Runway / Burn rate — varsling øverst */}
       {runway !== null && (
@@ -1399,6 +1407,142 @@ function OkonomiTab() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── TEMA 2: BUDSJETTSEKSJON (Økonomi-fanen, når temaet er aktivt) ─────────────
+// Seks faste linjer (ingen frie linjer på VG1). Forrige måneds faktiske tall
+// ved siden av hvert felt. Lån forhåndsutfylt (terminbeløp). 3-stegs intro
+// første gang. Budsjett kan endres til månedsslutt; låses ved oppgjøret.
+const MND_FULL = ['Januar', 'Februar', 'Mars', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Desember']
+
+const budsjettFelt: React.CSSProperties = {
+  width: 116, boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)',
+  border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '0.4rem 0.55rem',
+  color: '#f1f5f9', fontSize: 13, fontFamily: 'inherit', textAlign: 'right',
+}
+
+function BudsjettSeksjon() {
+  const { state, dispatch } = useGame()
+  const nivaa = useTemaNivaa('budsjett') ?? 'vg1'
+  const aar = state.currentYear, mnd = state.currentMonth
+  const key = maanedNokkel(aar, mnd)
+  const lagret = state.budsjett.maaneder[key]
+  const laast = !!lagret?.laastVedOppgjor
+  const terminbelop = Math.round(amortiserLaan(state.loans).betaling)
+
+  // «Sist måned»-referanse: faktiske tall fra forrige oppgjør. For de faste
+  // linjene finnes tallet også uten historikk (så eleven aldri budsjetterer blindt).
+  const sist = state.lastMonthSettlement ? faktiskeLinjer(state.lastMonthSettlement) : null
+  function sistFor(k: BudsjettLinjeKey): number | null {
+    if (sist) return Math.round(sist[k])
+    if (k === 'lonn') return state.monthlyPayroll
+    if (k === 'husleie') return state.monthlyRent
+    if (k === 'markedsforing') return Object.values(state.marketingBudget).reduce((s, v) => s + v, 0)
+    if (k === 'laan') return terminbelop
+    return null   // salgsinntekter/varekjøp har ingen historikk før første oppgjør
+  }
+
+  const [utkast, setUtkast] = useState<BudsjettTall>(() => lagret?.budsjett ?? { ...TOM_BUDSJETT, laan: terminbelop })
+  // Re-seed når måneden ruller (ny key) — les fersk lagret/forhåndsutfylt lån.
+  useEffect(() => {
+    setUtkast(state.budsjett.maaneder[key]?.budsjett ?? { ...TOM_BUDSJETT, laan: terminbelop })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  const [introStep, setIntroStep] = useState<number | null>(() => {
+    try { return localStorage.getItem('budsjett_intro_v1') === '1' ? null : 0 } catch { return 0 }
+  })
+  function ferdigIntro() { try { localStorage.setItem('budsjett_intro_v1', '1') } catch { /* ignore */ } setIntroStep(null) }
+
+  const INTRO: React.ReactNode[] = [
+    <>Et <Fagord id="ECO_008">budsjett</Fagord> er en plan for pengene: hva du tror kommer INN og går UT neste måned.</>,
+    <>Se på «Sist måned»-tallene ved siden av hvert felt — hva tror du om {MND_FULL[mnd - 1]}?</>,
+    <>Fyll inn beløpene og trykk «Lagre budsjett». Når måneden er omme sammenligner vi budsjettet ditt med det som faktisk skjedde.</>,
+  ]
+
+  const planResultat = planlagtResultat(utkast)
+  const endret = !lagret || JSON.stringify(lagret.budsjett) !== JSON.stringify(utkast)
+
+  return (
+    <div style={{ background: 'rgba(56,189,248,0.05)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
+      <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>📊 Budsjett for {MND_FULL[mnd - 1]} · År {aar}</div>
+      <p style={{ color: '#94a3b8', fontSize: 12.5, margin: '0 0 0.9rem' }}>
+        Hva tror du kommer inn og går ut denne måneden? Fyll inn beløp — du sammenligner med de faktiske tallene i månedsoppgjøret.
+      </p>
+
+      {/* 3-stegs guidet intro (intro-modellen) — første gang, kan hoppes over. */}
+      {introStep !== null && (
+        <div style={{ background: 'rgba(12,17,29,0.7)', border: '1px solid rgba(0,212,170,0.4)', borderRadius: 12, padding: '0.85rem 1rem', marginBottom: '1rem' }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: '#00d4aa', letterSpacing: '0.09em', marginBottom: 6 }}>ESPEN</div>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#e2e8f0', minHeight: 40 }}>{INTRO[introStep]}</div>
+          <div style={{ display: 'flex', gap: 5, margin: '10px 0 2px' }}>
+            {INTRO.map((_, i) => <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: i === introStep ? '#00d4aa' : 'rgba(255,255,255,0.22)' }} />)}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <button onClick={ferdigIntro} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Hopp over</button>
+            <button onClick={() => introStep < INTRO.length - 1 ? setIntroStep(introStep + 1) : ferdigIntro()}
+              style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.45rem 1.2rem', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {introStep < INTRO.length - 1 ? 'Neste →' : 'Kom i gang!'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {laast && (
+        <div style={{ fontSize: 12.5, color: '#facc15', background: 'rgba(250,204,21,0.08)', border: '1px solid rgba(250,204,21,0.3)', borderRadius: 8, padding: '0.5rem 0.7rem', marginBottom: '0.8rem' }}>
+          🔒 Dette budsjettet er låst — måneden er gjort opp. Se månedsoppgjøret for sammenligningen.
+        </div>
+      )}
+
+      {/* De seks faste linjene */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {BUDSJETT_LINJER.map(l => {
+          const sv = sistFor(l.key)
+          return (
+            <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ flex: 1, fontSize: 13, color: '#cbd5e1' }}>{l.navn}</span>
+              <input
+                type="number" inputMode="numeric" value={utkast[l.key] || ''} disabled={laast}
+                onChange={e => setUtkast(u => ({ ...u, [l.key]: Math.max(0, Math.round(parseFloat(e.target.value) || 0)) }))}
+                placeholder="0" style={{ ...budsjettFelt, opacity: laast ? 0.6 : 1 }} />
+              <span style={{ width: 130, flexShrink: 0, fontSize: 11, color: '#64748b', textAlign: 'right' }}>
+                Sist måned: {sv === null ? 'ingen historikk' : formatKr(sv)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Planlagt resultat (elevens budsjett) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.9rem', paddingTop: '0.7rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#cbd5e1' }}>Planlagt resultat</span>
+        <span style={{ fontSize: 16, fontWeight: 800, color: planResultat >= 0 ? '#22c55e' : '#ef4444' }}>
+          {planResultat >= 0 ? '+' : '−'}{formatKr(Math.abs(planResultat))}
+        </span>
+      </div>
+
+      {!laast && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: '0.9rem' }}>
+          <button onClick={() => dispatch({ type: 'SET_BUDSJETT', maaned: key, budsjett: utkast })}
+            disabled={!endret}
+            style={{ background: endret ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: endret ? '#fff' : '#475569', fontWeight: 800, fontSize: 14, cursor: endret ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+            Lagre budsjett
+          </button>
+          {lagret && !endret && <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>✓ Lagret</span>}
+        </div>
+      )}
+
+      {/* 📚 Lær mer — hub-moduler (ny fane, aldri navigere spillet bort). */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: '1rem' }}>
+        {BUDSJETT_HUB[nivaa].map(h => (
+          <a key={h.rute} href={h.rute} target="_blank" rel="noopener noreferrer"
+            style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 8, padding: '0.35rem 0.8rem', color: '#c084fc', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+            📚 {h.navn} ↗
+          </a>
+        ))}
+      </div>
     </div>
   )
 }

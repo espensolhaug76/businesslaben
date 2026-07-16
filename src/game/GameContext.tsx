@@ -19,7 +19,7 @@ import { DAY_CONFIG } from './data/dayConfig'
 import { getActiveIndustryDefinition } from './data/industryDefinition'
 import { catalogToProduct } from './data/industries'
 import { manedligeFasteKostnader, amortiserLaan } from './data/economy'
-import { maanedNokkel, TOM_BUDSJETT, type BudsjettLinjeKey, type NokkeltallSvar } from './data/budsjett'
+import { maanedNokkel, TOM_BUDSJETT, type BudsjettLinjeKey, type BudsjettTall, type NokkeltallSvar } from './data/budsjett'
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
@@ -302,6 +302,7 @@ type Action =
   // Innkjøp/levering (docs/INNKJOP_LEVERING.md): lukk «Varer ankommet»-pilla.
   | { type: 'CLEAR_DELIVERY' }
   // ── TEMA 2 Budsjett + TEMA 3 Nøkkeltall ──
+  | { type: 'SET_BUDSJETT'; maaned: string; budsjett: BudsjettTall }
   | { type: 'SET_BUDSJETT_LINJE'; maaned: string; linje: BudsjettLinjeKey; belop: number }
   | { type: 'SET_AVVIK_NOTAT'; maaned: string; linje: string; tekst: string }
   | { type: 'SET_NOKKELTALL_SVAR'; maaned: string; svar: NokkeltallSvar }
@@ -747,6 +748,12 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, beredskap: { ...state.beredskap, brannovelseEval: { q0: action.q0, q1: action.q1 } } }
 
     // ── TEMA 2 BUDSJETT ──────────────────────────────────────────────────────
+    case 'SET_BUDSJETT': {
+      const m = state.budsjett.maaneder[action.maaned]
+      if (m?.laastVedOppgjor) return state   // låst etter oppgjør
+      return { ...state, budsjett: { maaneder: { ...state.budsjett.maaneder,
+        [action.maaned]: { budsjett: action.budsjett, laastVedOppgjor: false, avvikNotater: m?.avvikNotater ?? {} } } } }
+    }
     case 'SET_BUDSJETT_LINJE': {
       const m = state.budsjett.maaneder[action.maaned]
       if (m?.laastVedOppgjor) return state   // låst etter oppgjør — ikke redigerbar
