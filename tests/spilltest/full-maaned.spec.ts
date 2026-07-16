@@ -10,6 +10,8 @@ import { amortiserLaan, manedligeFasteKostnader } from '../../src/game/data/econ
 import { BUDSJETT_LINJER, maanedNokkel, faktiskeLinjer, linjeAvvik, type BudsjettTall } from '../../src/game/data/budsjett'
 import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinntekt, kampanjeRoi } from '../../src/game/data/kampanje'
 import { DAY_CONFIG } from '../../src/game/data/dayConfig'
+import { INDUSTRY_META } from '../../src/game/data/industries'
+import { BALANCE } from '../../src/game/data/balance'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
 // Spiller byspillet (/game) ende til ende og asserter på state + DOM ved hvert
@@ -69,13 +71,16 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
   // ── STEG 1 — Oppstart ───────────────────────────────────────────────────────
   await steg(page, rapport, 1, 'Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1', async ctx => {
     const s = await lesState(page)
-    expect(s.money, 'startkapital (cafe = 150 000)').toBe(150_000)
+    // LES startkapitalen fra kilden (INDUSTRY_META) — ikke hardkod (rekalibrering
+    // pkt. 35 hevet kafé til 200 000; testen skal følge kilden automatisk).
+    const startkapital = INDUSTRY_META.cafe.startingMoney
+    expect(s.money, `startkapital (cafe = ${startkapital})`).toBe(startkapital)
     expect(s.currentMonth).toBe(1)
     expect(s.currentYear).toBe(1)
-    await expect(page.locator('body')).toContainText('150 000 kr')
+    await expect(page.locator('body')).toContainText(`${startkapital.toLocaleString('nb-NO')} kr`)
     await expect(page.locator('body')).toContainText('Januar')
     ctx.ok(`state.money = ${s.money} kr, currentMonth=${s.currentMonth}, currentYear=${s.currentYear}`)
-    ctx.ok('HUD viser «150 000 kr» og «Januar · År 1»')
+    ctx.ok(`HUD viser «${startkapital.toLocaleString('nb-NO')} kr» og «Januar · År 1»`)
   })
 
   // Oppsett (ikke et telt steg): lei et lokale + tom åpningsbestilling.
@@ -408,7 +413,10 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // fra faktisk 45 000 → et konkret avvik å verifisere mot fasit).
     const s0 = await lesState(page)
     const key = maanedNokkel(s0.currentYear, s0.currentMonth)
-    const budsjett: BudsjettTall = { salgsinntekter: 50000, varekjop: 15000, lonn: 0, husleie: 40000, markedsforing: 0, laan: 0 }
+    // Eierlønn LESES fra balance-verdien (BALANCE.eierlonnMnd) → avvik 0 mot
+    // faktisk, men linja verifiseres i BUDSJETT_LINJER-løkka. Husleie AVVIKER
+    // bevisst (40 000 vs faktisk 45 000) for et konkret avvik.
+    const budsjett: BudsjettTall = { salgsinntekter: 50000, varekjop: 15000, lonn: 0, eierlonn: BALANCE.eierlonnMnd, husleie: 40000, markedsforing: 0, laan: 0 }
     await dispatch(page, { type: 'SET_BUDSJETT', maaned: key, budsjett })
     await ventState(page, s => !!s.budsjett.maaneder[key], 'budsjett satt')
 
@@ -434,10 +442,12 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(husleieAvvik, 'husleie-avvik = faktisk − budsjett = 45000 − 40000').toBe(5000)
     // Salgsinntekter: faktisk == oppgjørets brutto salg; avvik == fasit.
     expect(faktisk.salgsinntekter, 'faktisk salg == settlement.salgInntektBrutto').toBe(oppgjor!.salgInntektBrutto)
+    // Eierlønn-linja: faktisk == balance-verdien (REKALIBRERING pkt. 35).
+    expect(faktisk.eierlonn, 'faktisk eierlønn == BALANCE.eierlonnMnd').toBe(BALANCE.eierlonnMnd)
     for (const l of BUDSJETT_LINJER) {
       expect(linjeAvvik(budsjett[l.key], faktisk[l.key]), `avvik ${l.key} == faktisk − budsjett`).toBe(faktisk[l.key] - budsjett[l.key])
     }
-    ctx.ok(`husleie-avvik = ${husleieAvvik} kr (fasit), 6 linjer verifisert mot delt hjelpefunksjon`)
+    ctx.ok(`husleie-avvik = ${husleieAvvik} kr (fasit), eierlønn = ${faktisk.eierlonn} kr, ${BUDSJETT_LINJER.length} linjer verifisert mot delt hjelpefunksjon`)
 
     // Oppsummeringslinja i månedsoppgjøret («Du planla … det ble …»).
     await expect(page.locator('body')).toContainText('Du planla')

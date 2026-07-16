@@ -1,38 +1,47 @@
 # Balanseanalyse — «Hvor mye kan kaféen selge for, og kan en elev gå i pluss?»
 
 > Auto-generert av `balansespiller.spec.ts` (`npx playwright test tests/spilltest/balansespiller.spec.ts`).
-> Simulerer 3 spillmåneder (12 handledager/mnd) på **sentrum-l2** (husleie 45 000 kr/mnd)
-> med 4 strategier. Deterministisk (bakgrunnssalget seedes av `dagSeed`). `balance.ts` er IKKE endret.
+> Simulerer 3 spillmåneder (12 handledager/mnd) på flere lokaler (billig + sentrum-l2), etter
+> REKALIBRERINGEN (pkt. 35). Deterministisk (bakgrunnssalget seedes av `dagSeed`).
 
 **Avgrensning:** måler BAKGRUNNSSALGET (volumet strategiene manipulerer). Kundemøtene
-(pedagogikk) skipes, rykte holdes 50. Møtesalg er et lite bonuslag oppå, ikke modellert.
+(pedagogikk) skipes, rykte holdes 50. **Månedsresultat er NETTO etter eierlønn (40 000) og
+etter kampanjekostnad** (som trekkes fra kassa, ikke fra settlement.resultat).
 
-## a) Månedsresultat per strategi + beste dagsomsetning
+## a) Månedsresultat per strategi × lokale
 
-| Strategi | Mnd | Omsetning | Varekost | Svinn | Bruttomargin | Faste (husleie/lønn/mkf/fors.) | **Månedsresultat** | Kasse | Beste dag |
+| Strategi @ lokale | Mnd | Kunder/dag | Omsetning | Varekost | Svinn | Faste (husleie/lønn/mkf/fors.) | Kampanje | **Nettoresultat** | Kasse |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-| 1 · PASSIV (gulvet) | 1 | 3 480 | 1 080 | 0 | 2 400 | 47 000 (45 000/0/0/2 000) | **−44 600** | 105 400 | 2 739 |
-| 1 · PASSIV (gulvet) | 2 | 0 | 0 | 0 | 0 | 47 000 (45 000/0/0/2 000) | **−47 000** | 58 400 | 0 |
-| 1 · PASSIV (gulvet) | 3 | 0 | 0 | 0 | 0 | 47 000 (45 000/0/0/2 000) | **−47 000** | 11 400 | 0 |
-| 2 · FORNUFTIG VG1 | 1 | 71 438 | 20 020 | 3 455 | 47 963 | 47 000 (45 000/0/0/2 000) | **963** | 147 723 | 6 190 |
-| 2 · FORNUFTIG VG1 | 2 | 70 981 | 20 043 | 3 807 | 47 131 | 47 000 (45 000/0/0/2 000) | **131** | 147 974 | 6 093 |
-| 2 · FORNUFTIG VG1 | 3 | 71 075 | 20 151 | 3 954 | 46 970 | 47 000 (45 000/0/0/2 000) | **−30** | 148 049 | 6 227 |
-| 3 · MAKS INNSATS | 1 | 91 806 | 25 802 | 5 398 | 60 606 | 92 000 (45 000/15 000/30 000/2 000) | **−31 394** | 113 491 | 7 971 |
-| 3 · MAKS INNSATS | 2 | 91 008 | 25 636 | 5 654 | 59 718 | 92 000 (45 000/15 000/30 000/2 000) | **−32 282** | 81 314 | 7 779 |
-| 3 · MAKS INNSATS | 3 | 91 332 | 25 850 | 5 815 | 59 667 | 92 000 (45 000/15 000/30 000/2 000) | **−32 333** | 49 116 | 7 989 |
-| 4 · FORNUFTIG + KAMPANJE | 1 | 69 045 | 19 337 | 3 898 | 45 810 | 56 999 (45 000/0/9 999/2 000) | **−11 189** | 135 556 | 5 998 |
-| 4 · FORNUFTIG + KAMPANJE | 2 | 68 624 | 19 400 | 4 300 | 44 924 | 56 999 (45 000/0/9 999/2 000) | **−12 075** | 123 586 | 5 898 |
-| 4 · FORNUFTIG + KAMPANJE | 3 | 68 728 | 19 490 | 4 405 | 44 833 | 56 999 (45 000/0/9 999/2 000) | **−12 166** | 111 555 | 6 073 |
+| 1 · PASSIV (gulvet) @ sentrum-l2 | 1 | 105 | 5 220 | 1 640 | 0 | 87 000 (45 000/0/0/2 000) | 0 | **−83 420** | 66 580 |
+| 1 · PASSIV (gulvet) @ sentrum-l2 | 2 | 105 | 0 | 0 | 0 | 87 000 (45 000/0/0/2 000) | 0 | **−87 000** | −20 420 |
+| 1 · PASSIV (gulvet) @ sentrum-l2 | 3 | 105 | 0 | 0 | 0 | 87 000 (45 000/0/0/2 000) | 0 | **−87 000** | −107 420 |
+| 2 · FORNUFTIG VG1 (solo) @ sentrum-l2 | 1 | 153 | 145 604 | 47 252 | 2 468 | 87 000 (45 000/0/0/2 000) | 0 | **8 884** | 153 518 |
+| 2 · FORNUFTIG VG1 (solo) @ sentrum-l2 | 2 | 153 | 144 651 | 46 908 | 2 966 | 87 000 (45 000/0/0/2 000) | 0 | **7 777** | 161 407 |
+| 2 · FORNUFTIG VG1 (solo) @ sentrum-l2 | 3 | 153 | 144 576 | 46 809 | 3 401 | 87 000 (45 000/0/0/2 000) | 0 | **7 366** | 168 899 |
+| 2 · FORNUFTIG VG1 (solo) @ sentrum-l4 | 1 | 135 | 130 906 | 42 502 | 6 336 | 78 000 (36 000/0/0/2 000) | 0 | **4 068** | 148 646 |
+| 2 · FORNUFTIG VG1 (solo) @ sentrum-l4 | 2 | 135 | 129 822 | 42 145 | 6 721 | 78 000 (36 000/0/0/2 000) | 0 | **2 956** | 151 714 |
+| 2 · FORNUFTIG VG1 (solo) @ sentrum-l4 | 3 | 135 | 129 789 | 42 009 | 7 417 | 78 000 (36 000/0/0/2 000) | 0 | **2 363** | 154 161 |
+| 3 · FORNUFTIG + DELTID @ sentrum-l2 | 1 | 165 | 152 194 | 49 304 | 1 214 | 96 000 (45 000/9 000/0/2 000) | 0 | **5 676** | 150 422 |
+| 3 · FORNUFTIG + DELTID @ sentrum-l2 | 2 | 165 | 151 387 | 49 019 | 1 583 | 96 000 (45 000/9 000/0/2 000) | 0 | **4 785** | 155 291 |
+| 3 · FORNUFTIG + DELTID @ sentrum-l2 | 3 | 165 | 151 866 | 49 161 | 1 511 | 96 000 (45 000/9 000/0/2 000) | 0 | **5 194** | 160 597 |
+| 4 · GODT DREVET (bemannet + mkf + kampanje) @ sentrum-l2 | 1 | 279 | 256 513 | 83 009 | 7 069 | 124 999 (45 000/28 000/9 999/2 000) | 12 000 | **29 436** | 169 378 |
+| 4 · GODT DREVET (bemannet + mkf + kampanje) @ sentrum-l2 | 2 | 279 | 255 148 | 82 637 | 7 035 | 124 999 (45 000/28 000/9 999/2 000) | 12 000 | **28 477** | 197 883 |
+| 4 · GODT DREVET (bemannet + mkf + kampanje) @ sentrum-l2 | 3 | 279 | 255 877 | 82 792 | 7 244 | 124 999 (45 000/28 000/9 999/2 000) | 12 000 | **28 842** | 226 949 |
+| 4 · GODT DREVET (bemannet + mkf + kampanje) @ sentrum-l4 | 1 | 220 | 213 761 | 69 404 | 17 048 | 115 999 (36 000/28 000/9 999/2 000) | 12 000 | **−690** | 139 042 |
+| 4 · GODT DREVET (bemannet + mkf + kampanje) @ sentrum-l4 | 2 | 220 | 212 593 | 68 971 | 17 705 | 115 999 (36 000/28 000/9 999/2 000) | 12 000 | **−2 082** | 137 044 |
+| 4 · GODT DREVET (bemannet + mkf + kampanje) @ sentrum-l4 | 3 | 220 | 211 273 | 68 447 | 18 621 | 115 999 (36 000/28 000/9 999/2 000) | 12 000 | **−3 794** | 133 362 |
 
-**Snitt månedsresultat (mnd 1–3) + beste observerte dagsomsetning per strategi:**
+**Snitt per strategi × lokale (mnd 1–3):**
 
-| Strategi | Snitt månedsresultat | Beste dagsomsetning | Snitt kunder/dag |
+| Strategi @ lokale | Snitt kunder/dag | Beste dagsomsetning | **Snitt nettoresultat/mnd** |
 |---|--:|--:|--:|
-| 1 · PASSIV (gulvet) | −46 200 | 2 739 | 77 |
-| 2 · FORNUFTIG VG1 | 355 | 6 227 | 118 |
-| 3 · MAKS INNSATS | −32 003 | 7 989 | 151 |
-| 4 · FORNUFTIG + KAMPANJE | −11 810 | 6 073 | 114 |
+| 1 · PASSIV (gulvet) @ sentrum-l2 | 105 | 4 970 | **−85 807** |
+| 2 · FORNUFTIG VG1 (solo) @ sentrum-l2 | 153 | 12 731 | **8 009** |
+| 2 · FORNUFTIG VG1 (solo) @ sentrum-l4 | 135 | 11 316 | **3 129** |
+| 3 · FORNUFTIG + DELTID @ sentrum-l2 | 165 | 13 536 | **5 218** |
+| 4 · GODT DREVET (bemannet + mkf + kampanje) @ sentrum-l2 | 279 | 24 634 | **28 918** |
+| 4 · GODT DREVET (bemannet + mkf + kampanje) @ sentrum-l4 | 220 | 20 835 | **−2 189** |
 
 ## Determinisme
 
-Strategi 2 kjørt to ganger: månedstallene er **IDENTISKE** ✅ (bevist ved re-kjøring i samme løp).
+FORNUFTIG @ sentrum-l2 kjørt to ganger: månedstallene er **IDENTISKE** ✅ (bevist ved re-kjøring i samme løp).
