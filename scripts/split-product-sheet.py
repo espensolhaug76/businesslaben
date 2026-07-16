@@ -32,7 +32,10 @@ import sys, os
 from collections import deque
 
 PRODUCTS_DIR  = "/home/espen/adventure-web/public/assets/raw/products"
-CUSTOMERS_DIR = "/home/espen/adventure-web/public/assets/raw/customers"
+# customers-arkene: café-kundene (ark-02) ble historisk splittet i main-worktreen,
+# men FASHION-kundene (ark-03/04, jobb/klesbutikk) bor i DENNE worktreen — les/skriv
+# derfor mot worktree-mappa, ikke main (samme regel som fixtures/klar-familiene).
+CUSTOMERS_DIR = "/home/espen/adventure-web-klesbutikk/public/assets/raw/customers"
 # Fixtures-arkene (klesbutikk-møbler) er BRANSJE-2-arbeid som bor på grenen
 # jobb/klesbutikk — les fra og skriv til DEN worktreen, ikke main-worktreen.
 FIXTURES_DIR  = "/home/espen/adventure-web-klesbutikk/public/assets/raw/fixtures"
@@ -69,6 +72,16 @@ PRODUCTS_NAME_MAPS = {
 # (Storbestillingen).
 CUSTOMERS_NAME_MAPS = {
     "02": ["usikre", "prutekunden", "allergikeren", "storbestiller"],
+    # FASHION-kunder (jobb/klesbutikk, B-runde). Én rad à 4, lese-rekkefølge
+    # (v->h), navngitt etter FAKTISK visuelt innhold (scenarier ikke definert
+    # ennå — navnene er beskrivende, ikke scenario-id-er). ✦-vannmerket ligger
+    # nederst-h. utenfor figurene (egen/ingen blob).
+    #   ark-03: ung dame m/camel-jakke+veske · skjeggete mann m/pakke ·
+    #           forretningsdame som ser på klokka · mann i strikkegenser m/mobil
+    "03": ["dame-camel-veske", "mann-skjegg-pakke", "forretningsdame-klokke", "mann-strikk-mobil"],
+    #   ark-04: ung mann m/denim+sekk · dame m/førerhund (blind, universell
+    #           utforming) · barsk arbeidsmann korslagt/skeptisk · ung dame m/skjerf
+    "04": ["ung-mann-sekk", "dame-forerhund", "arbeidsmann-korslagt", "ung-dame-skjerf"],
 }
 # Klesbutikk-møbler (DEL 1, jobb/klesbutikk). Ark 01 = 2x2, lese-rekkefølge
 # (rad for rad, v->h): rad 1 = klesstativ, dame-dukke; rad 2 = bord, hylle.
