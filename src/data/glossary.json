@@ -485,6 +485,28 @@
       "common_mistake": "Aa lage budsjettet og aldri foelge det opp. Budsjettet maa sammenlignes med faktiske tall regelmessig."
     },
     {
+      "id": "ECO_032",
+      "term": "Avvik",
+      "category": "Okonomi",
+      "level": "VG1",
+      "definition": "Forskjellen mellom det du planla i budsjettet og det som faktisk skjedde.",
+      "example": "Du budsjetterte 12 000 kr i varekjoep og brukte 14 500 kr - avviket er +2 500 kr.",
+      "formula": "Avvik = Faktisk - Budsjett",
+      "related_terms": ["Budsjett", "Resultat"],
+      "common_mistake": "Aa tro at avvik alltid betyr at noe er galt - et avvik er et signal om aa undersoeke hvorfor, ogsaa naar det gikk bedre enn planlagt."
+    },
+    {
+      "id": "ECO_033",
+      "term": "Resultatgrad",
+      "category": "Okonomi",
+      "level": "VG2",
+      "definition": "Hvor stor del av omsetningen som ender som overskudd - et maal paa loennsomhet.",
+      "example": "Omsetning 50 000 kr og resultat 5 000 kr gir resultatgrad 10 %.",
+      "formula": "Resultatgrad = Resultat / Omsetning * 100",
+      "related_terms": ["Dekningsgrad", "Resultat", "Loennsomhet"],
+      "common_mistake": "Aa blande med dekningsgrad - dekningsgraden trekker bare fra varekostnaden, resultatgraden trekker fra alle kostnadene."
+    },
+    {
       "id": "ECO_009",
       "term": "Omsetning",
       "category": "Okonomi",

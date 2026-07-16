@@ -1609,7 +1609,7 @@ function NokkeltallSeksjon() {
       formel: <>Omsetning − Varekjøp = {nfmt(omsetning)} − {nfmt(varekjop)} = ?</> },
     { key: 'dekningsgrad', enhet: '%', label: <Fagord id="ECO_002">Dekningsgrad</Fagord>,
       formel: <>Bruttofortjeneste / Omsetning × 100 (bruk ditt svar over / {nfmt(omsetning)} × 100)</> },
-    { key: 'resultatgrad', enhet: '%', label: <>Resultatgrad</>,
+    { key: 'resultatgrad', enhet: '%', label: <Fagord id="ECO_033">Resultatgrad</Fagord>,
       formel: <>Månedsresultat / Omsetning × 100</> },
   ]
 

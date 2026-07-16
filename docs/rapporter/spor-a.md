@@ -1366,6 +1366,37 @@ Aktiver tema i lærerdashbordet (eller `localStorage['tema-aktivering-dev'] =
   → dekningsgrad-refleksjon.
 - **DEL 6:** 📚-lenker i begge seksjoner åpner i NY fane (spillet står urørt).
 
+## 32. Fiksjobb tema-budsjett (mentor-trigger + glossary)
+
+> **Status: bygget. `tsc -b` + `vite build` + `npm run spilltest` (11/11) grønn.**
+> Gren `spor-a/tema-budsjett` (main urørt) — venter validering. 2 commits (del 1
+> `6e9e8f5`, del 2 dette punktet).
+
+**Del 1 — mentor-trigger ved tema-aktivering.** Når læreren slår på `budsjett`/
+`nokkeltall` mens eleven spiller, fyrer `tema_budsjett_aktivert`/
+`tema_nokkeltall_aktivert` ÉN gang: «Læreren har åpnet [tema] — du finner det i
+Økonomi-fanen.» (fagord [[ECO_008|budsjett]] / [[ECO_002|dekningsgrad]]). Timing
+(`Mentor.tsx`): aktivert UNDER spilling (flippet av→på denne økta, `temaVedStart`-
+snapshot) → fyrer straks; aktivt allerede ved spillstart → fyrer ved FØRSTE
+dashbord-åpning (`dashApnet` fra `mentor:fane`). Persistert fired-sett som alle
+mentor-triggere.
+
+**Del 2 — glossary: «avvik» + «resultatgrad».** Espen-godkjente definisjoner lagt
+til i `glossary.json` (ASCII-translitterasjon som resten av fila):
+- `ECO_032 Avvik` (VG1): «Forskjellen mellom det du planla i budsjettet og det som
+  faktisk skjedde.» Formel `Avvik = Faktisk - Budsjett`.
+- `ECO_033 Resultatgrad` (VG2): «Hvor stor del av omsetningen som ender som
+  overskudd …» Formel `Resultatgrad = Resultat / Omsetning * 100`.
+
+Fagord-tokens aktivert der det var ren tekst: `[[ECO_032|Avvik]]` på avviks-linja
+i månedsoppgjøret; `[[ECO_033|Resultatgrad]]` i nøkkeltall-seksjonen OG i
+oppgjørets nøkkeltall-sammenligning (der tokeniserte jeg også Bruttofortjeneste/
+Dekningsgrad for konsistens). Glossary-flagget fra pkt. 31 er dermed lukket.
+
+**Chrome-sjekk:** (1) aktiver `budsjett` mens du spiller → mentor-boble «Læreren
+har åpnet budsjett …»; aktiver før start → boble ved første dashbord-åpning.
+(2) Klikk «Avvik» i oppgjøret og «Resultatgrad» i nøkkeltall → forklaringskort.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå

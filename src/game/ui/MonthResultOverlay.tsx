@@ -164,7 +164,7 @@ export default function MonthResultOverlay() {
                     </div>
                     {/* Avvik: ALLTID fortegn + tekst (aldri farge alene — Espen er fargesvak). */}
                     <div style={{ fontSize: 11, color: av === 0 ? '#64748b' : '#e2c290', marginTop: 1 }}>
-                      Avvik: {avvikTekst(av)}
+                      <Fagord id="ECO_032">Avvik</Fagord>: {avvikTekst(av)}
                     </div>
                     {/* VG2: stort avvik → «Hva tror du skjedde?» (vurderingsspor). */}
                     {stort && (
@@ -195,9 +195,9 @@ export default function MonthResultOverlay() {
           if (!ditt) return null   // ikke besvart denne måneden → ingen sammenligning, ingen straff
           const bok = bokfortNokkeltall(s)
           const rader = [
-            { navn: 'Bruttofortjeneste', ditt: ditt.bruttofortjeneste, bok: bok.bruttofortjeneste, enhet: 'kr' as const },
-            { navn: 'Dekningsgrad', ditt: ditt.dekningsgrad, bok: bok.dekningsgrad, enhet: '%' as const },
-            { navn: 'Resultatgrad', ditt: ditt.resultatgrad, bok: bok.resultatgrad, enhet: '%' as const },
+            { k: 'bf', navn: <Fagord id="ECO_022">Bruttofortjeneste</Fagord>, ditt: ditt.bruttofortjeneste, bok: bok.bruttofortjeneste, enhet: 'kr' as const },
+            { k: 'dg', navn: <Fagord id="ECO_002">Dekningsgrad</Fagord>, ditt: ditt.dekningsgrad, bok: bok.dekningsgrad, enhet: '%' as const },
+            { k: 'rg', navn: <Fagord id="ECO_033">Resultatgrad</Fagord>, ditt: ditt.resultatgrad, bok: bok.resultatgrad, enhet: '%' as const },
           ]
           const visTall = (n: number, enhet: 'kr' | '%') => enhet === 'kr' ? formatKr(n) : `${n.toFixed(1)} %`
           const visAvvik = (a: number, enhet: 'kr' | '%') => {
@@ -212,7 +212,7 @@ export default function MonthResultOverlay() {
                 <span>Nøkkeltall</span><span style={{ textAlign: 'right' }}>Ditt tall</span><span style={{ textAlign: 'right' }}>Bokført</span>
               </div>
               {rader.map(r => (
-                <div key={r.navn} style={{ paddingTop: 5 }}>
+                <div key={r.k} style={{ paddingTop: 5 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.9fr', gap: 6, fontSize: 12.5, alignItems: 'baseline' }}>
                     <span style={{ color: '#cbd5e1' }}>{r.navn}</span>
                     <span style={{ textAlign: 'right', color: '#f1f5f9', fontWeight: 700 }}>{visTall(r.ditt, r.enhet)}</span>
