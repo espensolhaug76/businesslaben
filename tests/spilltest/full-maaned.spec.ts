@@ -56,9 +56,11 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
       await expect(dashbord).toBeHidden()
     }
   }
-  async function gåTilFane(navn: string) {
+  // Naviger til en fane via data-testid (fane-<id>) — IKKE accessible-name-
+  // matching, som er skjør mot UI-tekst (f.eks. fargesvak-bokstavmerket på fanene).
+  async function gåTilFane(faneId: string) {
     await åpneDashbord()
-    await page.getByRole('button', { name: navn, exact: true }).click()
+    await page.getByTestId(`fane-${faneId}`).click()
   }
 
   // ── STEG 1 — Oppstart ───────────────────────────────────────────────────────
@@ -85,7 +87,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     let forventetKost = 0
     const katalogKost: Record<string, number> = {}
 
-    await gåTilFane('📦 Produkter')
+    await gåTilFane('produkter')
     for (const [id, qty] of bestillinger) {
       const qtyInput = page.getByTestId(`qty-${id}`)
       await qtyInput.fill(String(qty))
@@ -229,7 +231,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
   // ── STEG 6 — Forretningsplan → lån ──────────────────────────────────────────
   await steg(page, rapport, 6, 'Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå', async ctx => {
     // Fyll sammendrag (≥ 20 tegn ⇒ minst 1 stjerne) + et par BMC-ruter.
-    await gåTilFane('📋 Forretningsplan')
+    await gåTilFane('forretningsplan')
     const sammendrag = page.getByPlaceholder(/Beskriv forretningsidéen/)
     await sammendrag.fill('Vi driver en koselig sentrumskafé med ferske bakervarer og god kaffe til folk i gågata, med vekt på kvalitet og lokal tilhørighet.')
     await page.getByRole('button', { name: 'Lagre', exact: true }).click()
@@ -240,7 +242,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`plankvalitet = ${q}/5 stjerner`)
 
     // Ta opp lån (Økonomi → Søk om lån → Godta lån). Default 250 000 / 24 mnd.
-    await gåTilFane('💰 Økonomi')
+    await gåTilFane('okonomi')
     await page.getByRole('button', { name: /Søk om lån/ }).click()
     await page.getByRole('button', { name: /Godta lån/ }).click()
     await ventState(page, s => s.loans.length >= 1, 'lån registrert i state')
@@ -319,7 +321,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
   await steg(page, rapport, 8, 'Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den', async ctx => {
     async function hmsFinnes(): Promise<boolean> {
       await åpneDashbord()
-      return await page.getByRole('button', { name: '🦺 HMS', exact: true }).isVisible().catch(() => false)
+      return await page.getByTestId('fane-hms').isVisible().catch(() => false)
     }
     // Utgangspunkt: HMS skal IKKE finnes (ingen tema aktivert ennå).
     await lukkDashbord()
@@ -367,27 +369,26 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`NB: full spilltilstand persisteres ikke (money re-seedet til ${s.money}) — kun beredskap. Dokumentert begrensning.`)
   })
 
-  // ── STEG 10 — Navigasjonsvakt (KJENT FEIL på main til fiksrunde 2) ───────────
+  // ── STEG 10 — Navigasjonsvakt (fikset i fiksrunde 2 — nå reell PASS-vakt) ─────
   await steg(page, rapport, 10, 'Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort', async ctx => {
     // Hub-lenkene («📚 Lær mer») bor i HMS-fanen. Aktiver beredskap så de vises.
     await page.evaluate(() => localStorage.setItem('tema-aktivering-dev', JSON.stringify({ beredskap: { aktiv: true, nivaa: 'vg1' } })))
     await page.goto('/game?skip=1')
     await ventState(page, s => s.phase !== 'startup', 'boot for nav-test')
     await åpneDashbord()
-    await page.getByRole('button', { name: '🦺 HMS', exact: true }).click()
-    const hubLenke = page.getByRole('button', { name: /📚 / }).first()
+    await page.getByTestId('fane-hms').click()
+    // Fiksrunde 2 (DEL 1) gjorde hub-lenkene til <a target="_blank"> — altså rolle
+    // «link», ikke «button». Klikket åpner ny fane; SPILLfanen blir på /game.
+    const hubLenke = page.getByRole('link', { name: /📚 / }).first()
     await expect(hubLenke).toBeVisible()
     const navnLenke = (await hubLenke.innerText()).trim()
 
-    const urlFør = page.url()
     await hubLenke.click()
-    // Spillfanen skal FORTSATT være på /game (lenken burde åpne target=_blank).
-    // På main navigerer den bort (react-router navigate) → dette FEILER (KJENT FEIL).
     await page.waitForTimeout(400)
     const urlEtter = page.url()
-    expect(urlEtter, `spillfanen skal bli på /game etter klikk på «${navnLenke}» (fikses i fiksrunde 2)`).toContain('/game')
+    expect(urlEtter, `spillfanen skal bli på /game etter klikk på «${navnLenke}» (fiksrunde 2: target=_blank)`).toContain('/game')
     ctx.ok(`hub-lenke «${navnLenke}» navigerte IKKE spillfanen bort (url: ${urlEtter})`)
-  }, { kjentFeil: true })
+  })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
   const { pass, fail, kjent } = skrivRapport(rapport, notater)

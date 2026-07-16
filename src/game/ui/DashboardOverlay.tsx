@@ -90,7 +90,7 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
           const aktiv = activeTab === t.id
           const { farge: fagFarge, kort: fagKort } = FAG_FARGER[t.fag]
           return (
-            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+            <button key={t.id} data-testid={`fane-${t.id}`} onClick={() => setActiveTab(t.id)} style={{
               background: aktiv ? 'rgba(0,212,170,0.12)' : 'transparent',
               border: `1px solid ${aktiv ? '#00d4aa' : 'transparent'}`,
               borderBottom: 'none', borderRadius: '8px 8px 0 0',
@@ -101,8 +101,11 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
               flexShrink: 0, position: 'relative',
             }}>
               {t.emoji} {t.label}
-              {/* Fag-bokstavmerke (bærer fag-info UTEN farge — fargesvak-vennlig). */}
-              <span style={fagBadgeStil(fagFarge)} title={FAG_FARGER[t.fag].navn}>{fagKort}</span>
+              {/* Fag-bokstavmerke (bærer fag-info UTEN farge — fargesvak-vennlig).
+                  aria-hidden: rent VISUELT merke — skjermlesere skal lese fanens
+                  rene navn («Produkter»), ikke «Produkter M». Fag-koblingen
+                  formidles tekstlig av faglegenden under fanelinja. */}
+              <span aria-hidden="true" style={fagBadgeStil(fagFarge)} title={FAG_FARGER[t.fag].navn}>{fagKort}</span>
               {t.id === 'innboks' && state.unreadCount > 0 && (
                 <span style={{
                   position: 'absolute', top: 4, right: 4,
@@ -113,8 +116,9 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
                   {state.unreadCount}
                 </span>
               )}
-              {/* Diskret fag-stripe (venstre-til-høyre under fanen); tydeligere når aktiv. */}
-              <span style={{
+              {/* Diskret fag-stripe (venstre-til-høyre under fanen); tydeligere når aktiv.
+                  aria-hidden: dekorativ (fargen speiler merket over). */}
+              <span aria-hidden="true" style={{
                 position: 'absolute', left: 8, right: 8, bottom: 0, height: 3, borderRadius: 2,
                 background: fagFarge, opacity: aktiv ? 1 : 0.5, pointerEvents: 'none',
               }} />
