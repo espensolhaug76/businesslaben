@@ -25,12 +25,15 @@ VERDENSMODELL §1), med eierlønn som en ekte fast kostnad.
 
 ### sentrum-l2 (referanse, husleie 45 000)
 
+> **Sluttbevis kjørt på main** (etter DEL 7-merge, priselastisitet aktiv). Alle
+> målbilde-rader står; determinisme + GRÅDIG-kontroll assertert grønt.
+
 | Strategi | Kunder/dag | Oms/dag | **Nettoresultat/mnd** | Målbilde | Treff |
 |---|--:|--:|--:|---|:--:|
 | **Passiv** (åpner, ellers ingenting) | ~0 servert* | ~0 | **−87 000** | dypt minus | ✓ |
-| **Fornuftig VG1 (solo)** | 153 | 12 100 | **+7 400 – +8 900** | +5–10k | ✓ |
-| **Fornuftig + deltid** | 165 | 12 660 | **+4 800 – +5 700** | (tåler deltid) | ✓ |
-| **Godt drevet** (ansatt + løpende mkf + kampanje) | 279 | 21 300 | **+28 500 – +29 400** | +25–40k | ✓ |
+| **Fornuftig VG1 (solo)** | 153 | 12 000 | **+6 000 – +7 600** (snitt +7 000) | +5–10k | ✓ |
+| **Fornuftig + deltid** | 165 | 12 550 | **+3 500 – +5 000** | (tåler deltid) | ✓ |
+| **Godt drevet** (ansatt + løpende mkf + kampanje) | 279 | 21 200 | **+27 600 – +29 300** (snitt +28 200) | +25–40k | ✓ |
 
 \* Passiv: ~105 i *etterspørsel* (tom disk → eksponeringsfaktor 0,7), men lageret
 er tomt fra dag 2 → nesten alt tapt salg. Kassa går konkurs ~mnd 3.
@@ -39,8 +42,8 @@ er tomt fra dag 2 → nesten alt tapt salg. Kassa går konkurs ~mnd 3.
 
 | Strategi | Kunder/dag | **Nettoresultat/mnd** | Lesning |
 |---|--:|--:|---|
-| Fornuftig VG1 (solo) | 135 | **+2 400 – +4 100** | billig lokale bæres trygt solo, lavere tak |
-| Godt drevet | 220 | **−700 – −3 800** | over-bemannet for trafikken → tap (feil strategi for stedet) |
+| Fornuftig VG1 (solo) | 135 | **+2 200 – +3 700** | billig lokale bæres trygt solo, lavere tak |
+| Godt drevet | 220 | **−1 200 – −3 500** | over-bemannet for trafikken → tap (feil strategi for stedet) |
 
 **Lærdom:** «godt drevet» lønner seg på et lokale med nok trafikk (l2: +29k), men
 TAPER på et billig lavtrafikk-lokale (l4: −2k) fordi en fast ansatt (28 000) ikke
@@ -113,8 +116,9 @@ representerer LAV-profilen i café-sortimentet; en fremtidig `signatur`-kategori
 eller per-vare-override kan skille muffins (MIDDELS) fra kaker (LAV) om ønskelig.
 
 **GRÅDIG-kontroll** (som FORNUFTIG, men alle priser 2× marked): omsetningen
-kollapser fra ~144 000 til ~22 000 kr/mnd (HØY-varene selger ~0) → netto
-**~−107 000 kr/mnd** mot FORNUFTIGs +7 000. Assertert: GRÅDIG klart dårligere.
+kollapser fra ~144 000 til ~22 000 kr/mnd (HØY-varene selger ~0) → netto snitt
+**−101 225 kr/mnd** mot FORNUFTIGs +6 984 (sluttbevis på main). Assertert: GRÅDIG
+klart dårligere.
 
 ## Determinisme
 

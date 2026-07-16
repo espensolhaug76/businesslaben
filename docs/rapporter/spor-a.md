@@ -1577,14 +1577,20 @@ som måleverktøy. Se TODO-lista under.
 
 ## 35. REKALIBRERING — økonomien speiler en ekte norsk småbykafé
 
-> **Status: bygget + verifisert.** Gren `spor-a/rekalibrering` (fra main). `tsc -b`
-> + `vite build` + `npm run spilltest` (**13/13**) grønn. Balansespiller kjørt
-> (6 iterasjoner til konvergens). IKKE merget — Espen validerer.
+> **Status: PÅ MAIN, grønt.** DEL 0–7f + prisflyt (DEL 7) er ff-merget til main
+> (`bf3bae1`). `tsc -b` + `vite build` + `npm run spilltest` (**14/14** på main)
+> grønn. Balansespiller-**sluttbevis kjørt på main**: alle målbilde-rader står
+> (fornuftig solo +7k/mnd, godt drevet +28k, passiv −87k/konkurs), GRÅDIG-
+> kontroll −101k (klart dårligere), determinisme består. Grenen slettet.
 >
 > Bakgrunn: inntektssiden var dimensjonert som en KIOSK (~116 kunder, ~5 900
 > kr/dag), kostnadssiden som en BYKAFÉ. «+355 kr/mnd uten eierlønn og uten
 > ansatte» var en usann virkelighet. Motoren er URØRT — alt er `balance.ts` +
 > katalog + `districts.ts` + doc.
+>
+> **DEL 0** (Espen-godkjent, etter validering): glossary «Eierlønn» (ECO_035,
+> Økonomi/VG1) lagt inn + fagord-token aktivert i budsjett/oppgjør/mentor. Lukker
+> glossary-flagget fra DEL 3c.
 
 **DEL 1+2 — `docs/VERDENSMODELL.md` (fasit for ALL balansering).** By ~30 000
 innb., gangtrafikk 3–5k/hverdag, fangst 4–7 % → 150–300 kunder/dag, snittkjøp
@@ -1675,8 +1681,8 @@ kaffe (HØY) @ 2× → **0 solgt, 92 tapt** (for høy pris). **14/14 PASS.**
    spesialkake (LAV) dyrt → den tåler mer enn kaffen (selger fortsatt noe).
 
 ### Åpen oppfølging
-- **Glossary «eierlønn»** (DEL 3c) — legg inn Espen-godkjent definisjon, aktiver
-  så fagord-token i budsjett/oppgjør/mentor.
+- **Glossary «eierlønn» — LUKKET (DEL 0):** ECO_035 lagt inn (Espen-godkjent),
+  fagord-token aktivert i budsjett/oppgjør/mentor.
 - **Kampanjekostnad i månedsresultatet:** i dag trekkes kampanjekostnaden fra
   KASSA ved start, men ikke fra `settlement.resultat` (accrual). Balansespilleren
   korrigerer selv (netto). Vurder om oppgjøret bør vise kampanjekostnad som egen
@@ -1689,8 +1695,8 @@ kaffe (HØY) @ 2× → **0 solgt, 92 tapt** (for høy pris). **14/14 PASS.**
   (metning 5000 / maksLoftPerKanal 0,25 / maksFaktor 1,45) så «godt drevet»
   (bemannet + løpende mkf + kampanje) gir +29k/mnd. Finpuss videre ved behov med
   balansespilleren (`npx playwright test tests/spilltest/balansespiller.spec.ts`).
-- **Glossary «eierlønn» mangler (pkt. 35 DEL 3c):** IKKE diktet opp. Legg inn
-  Espen-godkjent definisjon, aktiver så fagord-token i budsjett/oppgjør/mentor.
+- **Glossary «eierlønn» — LØST (pkt. 35 DEL 0):** ECO_035 (Espen-godkjent) lagt
+  inn + fagord-token aktivert i budsjett/oppgjør/mentor.
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
   ved månedsrull via delt `economy.amortiserLaan`. (Tidligere dempet TODO-linje
   fjernet.)
