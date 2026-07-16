@@ -56,6 +56,23 @@ export const BALANCE = {
    *  MINST `prosent` % OG minst `minKr` kroner. Tunbar. */
   budsjettAvvikTerskel: { prosent: 25, minKr: 1000 },
 
+  /** TEMA 8 KAMPANJE: kanaldagspriser (relative nivåer — SoMe lavest, Facebook
+   *  midt, radio høyere, lokalavis høyest) + trafikkmodellens tuning. ALT tunbart. */
+  kampanje: {
+    dagspris: { tiktok: 300, instagram: 300, snapchat: 300, facebook: 500, 'radio-innlandet': 800, byposten: 1200 } as Record<string, number>,
+    dagsprisDefault: 500,
+    /** kr/dag der budsjett-effekten begynner å mette (avtagende avkastning). */
+    budsjettMetning: 800,
+    /** Maks løft-bidrag per kanal ved full treff + mettet budsjett. */
+    maksLoftPerKanal: 0.6,
+    /** Tak på trafikk-multiplikatoren (godt kanalvalg = merkbart, aldri urimelig). */
+    maksFaktor: 2.2,
+    /** Førpris-regelen: ordinær pris må ha stått i minst så mange spilldager før
+     *  en salgskampanje (2 spilluker). Brudd → tilsynsbrev + moderat bot. */
+    forprisDager: 14,
+    forprisBot: 3000,
+  },
+
   /** SPILLKLOKKE — klokka eier den åpne dagen (09:00–17:00). Tempo: tickMs
    *  sanntid per tikk, minutterPerTick spillminutter per tikk. Default:
    *  480 spillminutter / (1 min pr 0,75 s) = 360 s ≈ 6 min åpen dag
