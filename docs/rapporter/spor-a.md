@@ -1520,8 +1520,71 @@ kanaldata som kampanjen, men lavere tak (`BALANCE.kampanje.lopende`: metning
 8000, maksLoft 0.15/kanal, maksFaktor 1.3). Default (0 budsjett) = 1.0 → ingen
 regresjon i kjerneløkka (spilltest steg 5 uendret).
 
+## 34. Balansefiks — månedsskifte-levering + opprydding etter Tema 8 (sluttstatus)
+
+> **Status: PÅ MAIN, grønt.** `tsc -b` + `vite build` + `npm run spilltest`
+> (**13/13**) grønn. Balansespiller kjørt på main. Grenene
+> `spor-a/tema-kampanje` + `spor-a/balansefiks` merget/integrert og slettet.
+
+Rekkefølge (Espens klarsignal): (1) `spor-a/tema-kampanje` ff-merget til main
+(Tema 8, pkt. 33). (2) `spor-a/balansefiks` integrert oppå — men med en
+tilpasning, se under. (3–5) verifisert + dokumentert.
+
+**DEL 1 — månedsskifte-hullet (ekte bug) — LØST.** En bestilling lagt siste
+handledag fikk `ankomstDag = 13`, en dag som aldri kom (dayNumber → 1 ved
+månedsrull) → ordren strandet (betalt, aldri levert), og dag 1 i ny måned startet
+med tom ferskvaredisk. Fiks: `ankomstDag` wrappes over månedsskiftet i
+`ORDER_PRODUCT` → ankomst dag 1 i ny måned. Dagstart-levering består. Regresjon:
+`full-maaned` **steg 13** (steg 12 er Tema 8-kampanjen). Commit `06a54fd`.
+
+**DEL 2 (markedsforingSkala) — DROPPET; erstattet av dødkode-rydding.** Tema 8
+DEL D koblet trafikkmodellen fra den flate `markedsforingsfaktor(markedsforing-
+Skala)` til `lopendeMarkedsforingsfaktor` (per kanal × målgruppe-treff). Etter
+kampanje-merge hadde den gamle funksjonen + `markedsforingMin/Max/Skala` **null
+lesere** — balansefiks-DEL 2s verdiendring (100k→40k) ble en no-op. Isteden
+fjernet jeg død kode (funksjon + tre balance-felt). `baseMultiplier` urørt
+(bevisst — møte-engasjement skal tippe til pluss). Commit `dd057a2`.
+
+**DEL 3 — balansespiller tilpasset ny modell + kjørt på main.** MAKS/KAMPANJE
+fordeler nå månedsbudsjettet på ekte kanal-id-er (Instagram/Snapchat/Facebook) +
+setter målgruppe-segmenter, så effekten måles via `lopendeMarkedsforingsfaktor`
+(samme vei som spillet). `lopende`-verdiene TUNES IKKE (egen rekalibreringsjobb).
+Commits `cda0efa` (verktøy+tilpasning), `7ff99b5` (kjøring+analyse).
+
+Resultat (snitt/mnd, sentrum-l2, rykte 50, møter skipet):
+
+| Strategi | FØR (opprinnelig) | ETTER (på main) |
+|---|--:|--:|
+| PASSIV | −46 200 | −46 200 (uendret) |
+| **FORNUFTIG VG1** | −1 844 | **+355** (≥ 0 fra mnd 2) |
+| MAKS INNSATS | −28 132 | −32 003 (ny modell, før rekalib.) |
+| FORNUFTIG + KAMPANJE | −14 386 | −11 810 (ny modell, før rekalib.) |
+
+FORNUFTIGs pluss-gevinst er **ren DEL 1-effekt** (byte-identisk med/uten den nye
+markedsføringsmodellen — den bruker 0 mkf). MAKS/KAMPANJE er mer negative fordi
+den nye per-kanal-modellen (u-rekalibrert) gir mindre løft per krone enn den
+gamle flate skalaen — signalet til rekalibreringsjobben, ikke en driftsdom. Full
+før/etter i `BALANSE_ANALYSE.md` («Status etter balansefiks»).
+
+**Flagg — spilltest er nå 13 steg, ikke 12.** Tema 8 la til steg 12 (Kampanje);
+månedsskifte-regresjonen ble derfor steg 13. `npm run spilltest` = **13/13**
+(scopet til `full-maaned`; balansespilleren er et MÅLEVERKTØY utenfor det raske
+løpet, kjøres eksplisitt).
+
+**Åpen oppfølging:** rekalibrer `BALANCE.kampanje.lopende` (løpende markedsføring)
+så MAKS/KAMPANJE blir et forsvarlig valg med nok bemanning — bruk balansespilleren
+som måleverktøy. Se TODO-lista under.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
+- **Rekalibrer løpende markedsføring (`BALANCE.kampanje.lopende`) — NY (pkt. 34):**
+  etter Tema 8 styrer per-kanal-modellen den løpende markedsføringstrafikken, men
+  verdiene (metning 8000 / maksLoftPerKanal 0,15 / maksFaktor 1,3) er satt for
+  kampanje-mekanikken, ikke finpusset for løpende drift. Balansespilleren (ny
+  modell) viser MAKS −32k/mnd, KAMPANJE −12k/mnd. Mål: markedsføring skal kunne gi
+  > 1 kr tilbake per krone ved moderat bruk + nok bemanning (bemannings-taket §c
+  spak 3 er fortsatt flaskehalsen). Verktøy: `npx playwright test
+  tests/spilltest/balansespiller.spec.ts`.
 - **Låneavdrag i dagssyklusen — LØST (pkt. 15):** amortisering + trekk skjer nå
   ved månedsrull via delt `economy.amortiserLaan`. (Tidligere dempet TODO-linje
   fjernet.)
