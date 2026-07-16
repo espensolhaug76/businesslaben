@@ -3,8 +3,17 @@
 **Metode:** `tests/spilltest/balansespiller.spec.ts` simulerer **3 spillmåneder
 (12 handledager/mnd)** på **sentrum-l2** (husleie 45 000 kr/mnd) med 4 strategier
 og logger økonomien per dag/måned. Drevet via spilltest-broen (deterministisk —
-bakgrunnssalget seedes av `dagSeed`). **`balance.ts` er IKKE endret** (kun
-analyse). Rådata: `docs/rapporter/BALANSE_DATA.md` + `.json`.
+bakgrunnssalget seedes av `dagSeed`). Rådata: `docs/rapporter/BALANSE_DATA.md` +
+`.json`.
+
+> **OPPDATERT (balansefiks + Tema 8-integrasjon på `main`):** §a–§d er den
+> OPPRINNELIGE analysen (FØR-tilstand, gammel markedsføringsmodell) og beholdes
+> som begrunnelse. Det som faktisk ble gjort står i **«Status etter balansefiks»**
+> rett under. Kort: §d pkt 3 (månedsskifte-hullet) er FIKSET; §d pkt 2
+> (`markedsforingSkala`) er UTGÅTT — Tema 8 DEL D erstattet hele den flate
+> skala-modellen med en per-kanal-modell (`lopendeMarkedsforingsfaktor`), så
+> skala-verdien ble død kode og er fjernet; §d pkt 1 (`baseMultiplier`) ble
+> BEVISST ikke gjort.
 
 **Avgrensning (viktig):** analysen måler **bakgrunnssalget** — volumet de fire
 strategiene faktisk manipulerer (eksponering, pris, bemanning, markedsføring).
@@ -12,6 +21,58 @@ strategiene faktisk manipulerer (eksponering, pris, bemanning, markedsføring).
 1,0). Møtesalg + rykteløft er et lite bonuslag oppå og er *ikke* medregnet — så
 tallene under er en **pessimistisk «fornuftig-uten-møteflaks»-bunn**. Se §3 om
 hva møtene gjør.
+
+---
+
+## Status etter balansefiks (på `main`, etter Tema 8-merge) — før/etter
+
+**Hva som ble gjort:**
+
+- **DEL 1 — månedsskifte-hullet tettet** (kode): en ordre lagt siste handledag
+  fikk `ankomstDag = 13` og strandet (betalt, aldri levert) → dag 1 i ny måned
+  startet med tom ferskvaredisk. Nå WRAPPES `ankomstDag` over månedsskiftet
+  (`ORDER_PRODUCT`) → ankomst dag 1 i ny måned. (§d pkt 3.)
+- **`markedsforingSkala`-forslaget UTGÅTT + død kode fjernet.** Tema 8 DEL D
+  koblet trafikkmodellen fra den flate `markedsforingsfaktor(markedsforingSkala)`
+  til `lopendeMarkedsforingsfaktor` (per kanal × målgruppe-treff, tunet i
+  `BALANCE.kampanje.lopende`). Den gamle funksjonen + `markedsforingMin/Max/Skala`
+  hadde da null lesere og er fjernet. Balansefiks-DEL 2 (skala 100k→40k) ble en
+  no-op og ble droppet. (§d pkt 2 er dermed uaktuell.)
+- **`baseMultiplier` urørt** (1,0) — møte-engasjement (rykte) skal være det som
+  tipper en fornuftig elev til pluss. (§d pkt 1 ikke gjort.)
+
+> **NB — les tallene riktig:** markedsføringsmodellen er NY og **ikke rekalibrert
+> ennå** (`BALANCE.kampanje.lopende` er satt for kampanje-mekanikken, ikke
+> finpusset for løpende drift). MAKS/KAMPANJE-tallene under er derfor
+> **«ny modell, før rekalibrering»** — de skal MÅLES riktig her, ikke tolkes som
+> en endelig balansedom. Rekalibrering er en egen jobb.
+
+**Månedsresultat per strategi — FØR (opprinnelig, §a) vs. ETTER (på main):**
+
+| Strategi | Mnd 1 | Mnd 2 | Mnd 3 | **Snitt FØR** | **Snitt ETTER** |
+|---|--:|--:|--:|--:|--:|
+| **PASSIV** | −44 600 → −44 600 | −47 000 → −47 000 | −47 000 → −47 000 | −46 200 | **−46 200** (uendret) |
+| **FORNUFTIG VG1** | +963 → +963 | −3 393 → **+131** | −3 103 → **−30** | −1 844 | **+355** |
+| **MAKS INNSATS** | −24 302 → −31 394 | −30 155 → −32 282 | −29 939 → −32 333 | −28 132 | −32 003 |
+| **FORNUFTIG + KAMPANJE** | −11 759 → −11 189 | −15 849 → −12 075 | −15 550 → −12 166 | −14 386 | −11 810 |
+
+**Konklusjon:**
+- **FORNUFTIG: fra ~−1 800/mnd til ~+355/mnd — ≥ 0 fra måned 2.** Pedagogikk-målet
+  holder: en fornuftig VG1-elev kan gå i pluss uten møteflaks. Gevinsten kommer
+  **utelukkende fra DEL 1** (fyllere ferskvaredisk dag 1 i nye måneder) — FORNUFTIG
+  bruker 0 markedsføring, og tallene er BYTE-IDENTISKE med og uten den nye
+  markedsføringsmodellen (verifisert). Markedsføringsmodellen påvirker den ikke.
+- **PASSIV: uendret dypt negativ (−46 200/mnd).** Gulvet står — problemet er tomt
+  lager, ikke trafikk.
+- **MAKS/KAMPANJE: mer negative enn den gamle modellen ga.** Ikke en regresjon i
+  drift, men et modellskifte: den nye per-kanal-modellen gir (med dagens
+  u-rekalibrerte `lopende`-verdier + budsjett spredt på 3 kanaler) mindre løft per
+  krone enn den gamle flate skala-faktoren gjorde. Dette er nettopp signalet til
+  rekalibreringsjobben. Markedsføring er fortsatt en netto kostnad her — som før
+  begrenset av bemannings-taket (§c spak 3).
+
+*(Determinisme bekreftet: strategi 2 kjørt to ganger, identiske tall — assertert i
+spec-en. Rådata regenerert i `BALANSE_DATA.md`/`.json`.)*
 
 ---
 
