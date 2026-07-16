@@ -295,6 +295,28 @@ export const KLESBUTIKK_VINDU: [number, number, number, number] = [13, 53.9, 26.
  *  Espen (?dev=1) 2026-07-07. */
 export const KLESBUTIKK_BUTIKKVEGG: [number, number, number, number] = [39.6, 29, 25, 36.5]
 
+// ── KASSEVY (bak-disken-vy, klesbutikk-kassevy.png 1296×832) ──────────────────
+// Samme okklusjons-/kunde-base-modell som kafeen (InteriorView), men med EGNE
+// klesbutikk-konstanter (delt base: src/game/geometry/kassevyBase.ts). Disken i
+// pilot-bildet gir én jevn, rett okklusjonslinje over hele bredden, så
+// venstre/høyre-verdiene er tilnærmet like.
+//
+// ⚠️ FØRSTEPASNING (CC-kalibrert via skjermbilde-løkke, IKKE Espen-låst): Espen
+// finpusser + låser i /dev/klesbutikk?dev=1 → 💰 Kasse (🎚️-panel + 🧭 sone-tracer).
+/** Kundehøyde som andel av scenehøyden. */
+export const KLESBUTIKK_KASSE_SCALE = 1.06
+/** Kundens senter-x (% av scenebredden). */
+export const KLESBUTIKK_KASSE_CENTER_X = 47
+/** Kundens livlinje (% av scenehøyden) — der livet møter disk-kanten. */
+export const KLESBUTIKK_KASSE_WAIST_Y = 67
+/** Disk-kantens y ved venstre/høyre scenekant (% høyde) — rett disk ⇒ nær like
+ *  (disk-toppens BAKKANT ≈ 72 % i pilot-bildet). */
+export const KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT = 72
+export const KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT = 71.5
+/** Kunde-basen — sonen kunden står i (midtfeltet av gulvflaten bak disken).
+ *  [x, y, b, h] i % av scenebildet. FØRSTEPASNING. */
+export const KLESBUTIKK_KUNDE_BASE: [number, number, number, number] = [34, 40, 28, 30]
+
 /** Produkt-sprites (VINDUSHUD) — klippet fra bakery_assets.png
  *  (scripts/cut-pedestrians.py, 3×3 --smart). Matches mot produktNAVN
  *  (lowercase contains) så både demo- og katalogprodukter treffer;

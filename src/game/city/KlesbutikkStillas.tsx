@@ -1,7 +1,13 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
-import { KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG } from '../../data/districts'
+import {
+  KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG, KLESBUTIKK_KUNDE_BASE,
+  KLESBUTIKK_KASSE_SCALE, KLESBUTIKK_KASSE_CENTER_X, KLESBUTIKK_KASSE_WAIST_Y,
+  KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT, KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT,
+} from '../../data/districts'
+import { occlusionClipPath, customerAnchorStyle, type KassevyKonstanter } from '../geometry/kassevyBase'
+import { KLESBUTIKK_KASSE_KUNDER } from '../data/klesbutikkKunder'
 import { GameProvider, useGame } from '../GameContext'
 import { KLESBUTIKK, type Gulvplan, type Vareplass, type PlassType, type PlassDukketype, type HengVariant } from '../data/industryDefinition'
 import { KLESBUTIKK_FIXTURES, fixtureDef, vareplasser, kapasitet, type VareplassType } from '../data/klesbutikkFixtures'
@@ -29,6 +35,10 @@ import { forteplaggIds } from '../data/klesbutikkKatalog'
 // råbildet (…-mobler-raw.png → …-mobler.png).
 const INTERIOR_IMG = '/assets/raw/klesbutikk-interior-mobler.png'
 const FASADE_IMG = '/assets/raw/klesbutikk-fasade.png'
+// KASSEVY (bak-disken-vy) — Espens valgte pilot. Disken går rett over hele
+// bredden (jevn okklusjonslinje). ✦-vannmerket (bunn-h.) er IKKE patchet (se
+// rapporten) — la Espen avgjøre.
+const KASSEVY_IMG = '/assets/raw/klesbutikk-kassevy.png'
 
 // PARKERT: fri møblering (møbel-palett, plantegning, fotavtrykk-kalibrator,
 // speiling, møbel-plassering/-flytting i scenen). Koden beholdes DØD (ikke
@@ -155,7 +165,7 @@ const PLAN_ICON: Record<KlesbutikkFixtureId, { round: boolean; color: string }> 
 type DevMode = 'plan' | 'scene' | 'gulvplan' | 'sone' | 'vareplass'
 
 interface Scene {
-  id: 'fasade' | 'interior'
+  id: 'fasade' | 'interior' | 'kassevy'
   label: string
   img: string
   aspect: number
@@ -176,6 +186,12 @@ const SCENES: Scene[] = [
     hint: 'Dra plagg fra paletten til de faste vareplassene. Høyreklikk = ta av.',
     target: { id: 'butikkvegg', label: 'butikkvegg', get: () => KLESBUTIKK_BUTIKKVEGG, set: r => writeRect(KLESBUTIKK_BUTIKKVEGG, r) },
     drawZone: { rect: KLESBUTIKK_BUTIKKVEGG, color: '#ffa03c', label: 'butikkvegg', surface: true },
+  },
+  {
+    id: 'kassevy', label: '💰 Kasse', img: KASSEVY_IMG, aspect: 1296 / 832,
+    hint: 'Bak-disken-vy. Kunden står i kunde-basen; disken okkluderer underkroppen.',
+    target: { id: 'kunde-base', label: 'kunde-base', get: () => KLESBUTIKK_KUNDE_BASE, set: r => writeRect(KLESBUTIKK_KUNDE_BASE, r) },
+    drawZone: { rect: KLESBUTIKK_KUNDE_BASE, color: '#50e08c', label: 'kunde-base', dashed: true },
   },
 ]
 
@@ -217,9 +233,11 @@ function KlesbutikkStillasInner() {
             tracere bak ?dev=1; 🛍 Scene lar deg gå tilbake fra en tracer. */}
         {IS_DEV_COORDS && topView === 'stillas' && (
           <span style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
+            {(scene.id === 'interior' || scene.id === 'kassevy') && (
+              <button onClick={() => setDevMode('scene')} style={tabStyle(mode === 'scene')}>🛍 Scene</button>
+            )}
             {scene.id === 'interior' && (
               <>
-                <button onClick={() => setDevMode('scene')} style={tabStyle(mode === 'scene')}>🛍 Scene</button>
                 <button onClick={() => setDevMode('gulvplan')} style={tabStyle(mode === 'gulvplan')}>📐 Gulvplan</button>
                 <button onClick={() => setDevMode('vareplass')} style={tabStyle(mode === 'vareplass')}>📌 Vareplass</button>
               </>
@@ -267,6 +285,8 @@ function KlesbutikkStillasInner() {
               {mode === 'gulvplan' && <GulvplanTracer bump={bump} />}
               {mode === 'vareplass' && <VareplassTracer bump={bump} />}
             </>
+          ) : scene.id === 'kassevy' ? (
+            mode !== 'sone' && <KassevyLayer imgSrc={scene.img} />
           ) : (
             mode !== 'sone' && (
               <div style={{
@@ -293,7 +313,9 @@ function KlesbutikkStillasInner() {
           ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
           : scene.id === 'interior' && mode === 'vareplass'
             ? 'Vareplass-tracer: velg type, klikk = ny plass, dra = flytt, ± = scale, «Logg array».'
-            : scene.hint}</div>
+            : scene.id === 'kassevy' && IS_DEV_COORDS && mode === 'scene'
+              ? 'Kassevy: 🎚️-panelet justerer kunde + disk-okklusjon (5 konstanter), 🧭 Soner sporer kunde-basen. «Logg» → districts.ts.'
+              : scene.hint}</div>
     </div>
   )
 }
@@ -1401,4 +1423,103 @@ const miniBtn: React.CSSProperties = {
   background: 'rgba(125,211,252,0.12)', color: '#7dd3fc', border: '1px solid #7dd3fc55', borderRadius: 6,
   width: 24, height: 24, fontSize: 13, fontWeight: 800, cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0,
+}
+
+// ── KASSEVY-lag (bak-disken-vy) — kunde forankret på livlinja + disk-okklusjon ─
+// Bruker den DELTE basen (geometry/kassevyBase.ts) med klesbutikkens EGNE 5
+// konstanter (districts.ts). Kunden rendres z10; et forgrunns-disk-lag (samme
+// scenebilde klippet til båndet under disk-kanten) z20 okkluderer underkroppen.
+// ?dev=1: 🎚️-panel (kunde-velger + 5 slidere) + KUNDE_BASE-omriss. Mutér-og-logg
+// som resten av tracerne; «Logg»/«Kopier» → lim inn i districts.ts. Kunde-basens
+// sone kalibreres i 🧭 Soner (delt sone-tracer, target = KLESBUTIKK_KUNDE_BASE).
+function KassevyLayer({ imgSrc }: { imgSrc: string }) {
+  const [scale, setScale] = useState(KLESBUTIKK_KASSE_SCALE)
+  const [centerX, setCenterX] = useState(KLESBUTIKK_KASSE_CENTER_X)
+  const [waistY, setWaistY] = useState(KLESBUTIKK_KASSE_WAIST_Y)
+  const [occLeft, setOccLeft] = useState(KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT)
+  const [occRight, setOccRight] = useState(KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT)
+  const [kundeIdx, setKundeIdx] = useState(0)
+  const [copied, setCopied] = useState(false)
+  const kunde = KLESBUTIKK_KASSE_KUNDER[kundeIdx]
+  const k: KassevyKonstanter = { SCALE: scale, CENTER_X: centerX, WAIST_Y: waistY, OCCLUDE_Y_LEFT: occLeft, OCCLUDE_Y_RIGHT: occRight }
+
+  const blockText = () =>
+    `export const KLESBUTIKK_KASSE_SCALE = ${scale}\n`
+    + `export const KLESBUTIKK_KASSE_CENTER_X = ${centerX}\n`
+    + `export const KLESBUTIKK_KASSE_WAIST_Y = ${waistY}\n`
+    + `export const KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT = ${occLeft}\n`
+    + `export const KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT = ${occRight}`
+  const logBlock = () => console.log(`[KassevyLayer] lim inn i districts.ts:\n${blockText()}`)
+  const upd = (setter: (n: number) => void, v: number) => { setter(v) }
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(blockText()); setCopied(true); window.setTimeout(() => setCopied(false), 1400) }
+    catch { logBlock() }
+  }
+
+  return (
+    <>
+      {/* KUNDEN (z10) — forankret på livlinja; per-kunde spriteCal fra registeret. */}
+      <img src={kunde.sprite} alt={kunde.navn} draggable={false}
+        style={{ ...customerAnchorStyle(k, kunde.spriteCal), zIndex: 10, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.45))', pointerEvents: 'none', userSelect: 'none' }} />
+      {/* FORGRUNNS-DISK-LAG (z20) — samme scenebilde klippet til båndet UNDER den
+          (evt. skrå) disk-kanten. Okkluderer kundens underkropp. */}
+      <img src={imgSrc} alt="" aria-hidden draggable={false}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', clipPath: occlusionClipPath(occLeft, occRight), zIndex: 20, pointerEvents: 'none', userSelect: 'none' }} />
+      {/* ?dev=1: KUNDE_BASE-sone-omriss (referanse — kalibreres i 🧭 Soner). */}
+      {IS_DEV_COORDS && (
+        <div style={{ position: 'absolute', left: `${KLESBUTIKK_KUNDE_BASE[0]}%`, top: `${KLESBUTIKK_KUNDE_BASE[1]}%`, width: `${KLESBUTIKK_KUNDE_BASE[2]}%`, height: `${KLESBUTIKK_KUNDE_BASE[3]}%`, border: '1px dashed #50e08c88', zIndex: 22, pointerEvents: 'none' }} />
+      )}
+      {/* CAL-PANEL (?dev=1) — kunde-velger + 5 konstanter. */}
+      {IS_DEV_COORDS && createPortal(
+        <div onPointerDown={e => e.stopPropagation()} style={{
+          position: 'fixed', top: 64, right: 16, zIndex: 300, width: 234,
+          background: 'rgba(10,14,26,0.94)', border: '1px solid #7dd3fc55', borderRadius: 12,
+          padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
+        }}>
+          <div style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>🎚️ Kassevy-kalibrering</div>
+          <select value={kundeIdx} onChange={e => setKundeIdx(Number(e.target.value))} style={{
+            width: '100%', marginBottom: 8, background: '#0a0e1a', color: '#f1f5f9',
+            border: '1px solid #7dd3fc44', borderRadius: 6, padding: '3px 6px', fontSize: 11, fontFamily: "'Outfit', sans-serif",
+          }}>
+            {KLESBUTIKK_KASSE_KUNDER.map((kk, i) => (
+              <option key={kk.id} value={i} style={{ background: '#0a0e1a' }}>{kk.navn}</option>
+            ))}
+          </select>
+          <KasseSlider label="KASSE_SCALE"     value={scale}   min={0.5} max={2.2} step={0.02} onChange={v => upd(setScale, v)}   fmt={v => v.toFixed(2)} />
+          <KasseSlider label="KASSE_CENTER_X"  value={centerX} min={0}   max={100} step={0.5}  onChange={v => upd(setCenterX, v)} fmt={v => v.toFixed(1)} />
+          <KasseSlider label="KASSE_WAIST_Y"   value={waistY}  min={0}   max={100} step={0.5}  onChange={v => upd(setWaistY, v)}  fmt={v => v.toFixed(1)} />
+          <KasseSlider label="OCCLUDE_Y_LEFT"  value={occLeft} min={0}   max={100} step={0.5}  onChange={v => upd(setOccLeft, v)} fmt={v => v.toFixed(1)} />
+          <KasseSlider label="OCCLUDE_Y_RIGHT" value={occRight} min={0}  max={100} step={0.5}  onChange={v => upd(setOccRight, v)} fmt={v => v.toFixed(1)} />
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <button onClick={logBlock} style={miniActionBtn}>Logg</button>
+            <button onClick={copy} style={miniActionBtn}>{copied ? '✓ Kopiert' : '📋 Kopier'}</button>
+          </div>
+          <div style={{ fontSize: 10, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
+            FØRSTEPASNING. Dra kunden + disk-kanten på plass, «Kopier» → lim inn i
+            <b> districts.ts</b> (KLESBUTIKK_KASSE_*). Kunde-basen: 🧭 Soner.
+          </div>
+        </div>, document.body)}
+    </>
+  )
+}
+
+function KasseSlider({ label, value, min, max, step, onChange, fmt }: {
+  label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; fmt: (v: number) => string
+}) {
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontFamily: 'monospace', marginBottom: 2 }}>
+        <span style={{ color: '#94a3b8' }}>{label}</span>
+        <span style={{ color: '#7dd3fc', fontWeight: 700 }}>{fmt(value)}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(parseFloat(e.target.value))}
+        style={{ width: '100%', accentColor: '#7dd3fc', cursor: 'pointer' }} />
+    </div>
+  )
+}
+
+const miniActionBtn: React.CSSProperties = {
+  flex: 1, background: 'rgba(125,211,252,0.12)', color: '#7dd3fc', border: '1px solid #7dd3fc55',
+  borderRadius: 7, padding: '4px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
 }

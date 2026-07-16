@@ -969,6 +969,77 @@ re-eksporteres, feltet finnes) uten at snap-/linje-funksjonene tas i bruk ennå.
 
 ---
 
+## KASSEVY + FASHION-KUNDER (originaloppdrag DEL 2/3)
+
+> Espens pilot ENDELIG valgt: `public/assets/raw/klesbutikk-kassevy.png` (1296×832) —
+> bak-disken-vy med disk over hele bredden (jevn okklusjonslinje).
+
+### Pilot-bildet (rename + ✦)
+- Espen la fila som `klesbutikk-kassevy.png.png` (dobbel-endelse fra nedlasting) +
+  Windows `:Zone.Identifier`. Kun ÉN kassevy-fil i treet ⇒ ingen tvil om HVILKEN
+  fil; renamet til **`klesbutikk-kassevy.png`**, Zone.Identifier fjernet.
+- **⚠️ ✦-vannmerke IKKE fjernet (FLAGGET):** det ligger et synlig ✦ nederst-h. på
+  søylen. Jeg forsøkte en canvas-blokkpatch, men den ga en SYNLIG rektangulær
+  skjøt (verre enn ✦-et) — miljøet mangler PIL/imagemagick/inpaint. Jeg vil IKKE
+  hardpatche Espens ENDELIG valgte pilot og risikere et verre artefakt. **Espen:
+  bestem — enten (a) godta ✦ (fjernt hjørne), eller (b) fjern det med ordentlig
+  verktøy / regenerer.** Raw-fila ER pilotbildet (ingen egen `-raw` siden pikslene
+  er urørt).
+
+### DEL 2 — kassevy-rute + okklusjon/kunde-base (delt base)
+
+**Rute/navigasjon:** ny scene-fane **💰 Kasse** i `KlesbutikkStillas` (samme
+tab-mønster som 🏬 Fasade / 🛍 Interiør — `SCENES`-array + `sceneId`-state, ikke en
+egen React-route). Åpnes på **`/dev/klesbutikk`** (💰 Kasse-fanen). `?dev=1` gir
+🛍 Scene (kalibrering) + 🧭 Soner (kunde-base-tracer). Bak-disken-vyen er kafeens
+kassevy-MØNSTER (InteriorView), men som en STILLAS-scene (bransjen er inaktiv).
+
+**Delt base (`src/game/geometry/kassevyBase.ts`, ny):** okklusjons- +
+kunde-plasserings-geometrien er trukket ut til en frittstående modul (ingen
+bransje-import) — samme rolle som `hyllelinje.ts`. Eksporterer:
+- `interface KassevyKonstanter` (de fem: `SCALE/CENTER_X/WAIST_Y/OCCLUDE_Y_LEFT/
+  OCCLUDE_Y_RIGHT`) + `WAIST_FRAC` + `interface SpriteCal` (per-kunde delta).
+- `occlusionClipPath(left,right)` → forgrunns-disk-lagets `polygon(...)`.
+- `customerAnchorStyle(k, cal?)` → kunde-spriten forankret på livlinja (+ spriteCal).
+Klesbutikkens kassevy bruker basen med sine EGNE konstanter; **kafeens InteriorView
+er RØRT IKKE** (motor — CLAUDE.md), men er referanse-mønsteret basen er hentet fra
+og kan adoptere den senere.
+
+**Konstanter (`districts.ts`, ⚠️ FØRSTEPASNING — CC-kalibrert, IKKE Espen-låst):**
+```
+KLESBUTIKK_KASSE_SCALE          = 1.06
+KLESBUTIKK_KASSE_CENTER_X       = 47
+KLESBUTIKK_KASSE_WAIST_Y        = 67
+KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT = 72     (disk-toppens bakkant ≈ 72 %)
+KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT= 71.5   (jevn disk ⇒ nær like)
+KLESBUTIKK_KUNDE_BASE           = [34, 40, 28, 30]   (midtfeltet av gulvflaten)
+```
+
+**Skjermbilde-løkke (AUTONOM_PIPELINE-metoden, 2 runder):** render `?dev=1` →
+💰 Kasse → 🛍 Scene headless (fersk context ⇒ leser gjeldende konstanter; Vite
+Fast-Refresh beholder ellers `useState`, men fersk navigasjon reinitialiserer).
+R1 (grove startverdier): kunden litt for stor + okklusjon 2 % over disk-bakkanten.
+R2: `SCALE 1.12→1.06`, `WAIST_Y 66→67`, `OCCLUDE 70/69→72/71.5`. Verifisert mot TO
+kunder (dame-camel-veske + arbeidsmann-korslagt): begge står bak disken, okkludert
+ved hoften nøyaktig der disk-bakkanten er (bekreftet clipPath `polygon(0% 72%,
+100% 71.5% …)` + kunde `top:67% height:106%`). PROD + DEV: 1 kunde-sprite, 0
+konsollfeil. 🧭 Soner-traceren rendrer for kassevy (target=KUNDE_BASE, gjenbruker
+`ZoneTracer`), kunden skjult i sone-modus. `tsc -b` + `vite build` grønt.
+
+**Kunde-registser (`src/game/data/klesbutikkKunder.ts`, ny):** de 8 fashion-kundene
+(id/navn/sprite + valgfri `spriteCal`), brukt av kassevy-kunde-velgeren (dev) og
+senere scenario-koblingen. `KassevyLayer` (i `KlesbutikkStillas.tsx`) rendrer kunde
+(z10) + forgrunns-disk-lag (z20) + 🎚️-cal-panel (kunde-velger + 5 slidere +
+«Logg»/«Kopier» → districts.ts).
+
+**➡️ Til Espen (finpuss + LÅS i Chrome):** `/dev/klesbutikk?dev=1` → 💰 Kasse.
+🛍 Scene: dra kunden (SCALE/CENTER_X/WAIST_Y) + disk-kanten (OCCLUDE_Y_LEFT/RIGHT)
+med 🎚️-panelet, bla gjennom alle 8 kundene i velgeren så okklusjonen sitter for
+alle, «📋 Kopier» → lim inn i `districts.ts` (KLESBUTIKK_KASSE_*). 🧭 Soner: trace
+KUNDE_BASE (midtfeltet av gulvet). ✦-vannmerket: se bilde-avsnittet over.
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.
