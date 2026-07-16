@@ -562,6 +562,17 @@
       "common_mistake": "Aa glemme aa trekke fra kostnaden foer man deler - da ser alt loennsomt ut."
     },
     {
+      "id": "ECO_035",
+      "term": "Eierlønn",
+      "category": "Okonomi",
+      "level": "VG1",
+      "definition": "Lønnen eieren tar ut for sitt eget arbeid i bedriften — en ekte kostnad selv om du betaler deg selv.",
+      "example": "Kaféen gikk 8 000 kr i pluss ETTER at du tok ut 40 000 kr i egen lønn.",
+      "formula": null,
+      "related_terms": ["Overskudd", "Lønnskostnad"],
+      "common_mistake": "Å kalle det overskudd før eierens arbeid er betalt — da jobber eieren gratis uten å se det."
+    },
+    {
       "id": "ECO_009",
       "term": "Omsetning",
       "category": "Okonomi",

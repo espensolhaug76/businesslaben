@@ -79,7 +79,7 @@ export default function MonthResultOverlay() {
           <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '0.5rem' }}><Fagord id="ECO_007">FASTE KOSTNADER</Fagord> (trukket fra kassa)</div>
           {s.kostnadslinjer.map(k => (
             <div key={k.navn} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.25rem' }}>
-              <span style={{ color: '#94a3b8' }}>{k.navn}</span>
+              <span style={{ color: '#94a3b8' }}>{k.navn === 'Eierlønn (din lønn)' ? <Fagord id="ECO_035">{k.navn}</Fagord> : k.navn}</span>
               <span style={{ color: '#f97316' }}>−{formatKr(k.belop)}</span>
             </div>
           ))}
@@ -158,7 +158,7 @@ export default function MonthResultOverlay() {
                 return (
                   <div key={l.key} style={{ paddingTop: 5 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.9fr', gap: 6, fontSize: 12.5, alignItems: 'baseline' }}>
-                      <span style={{ color: '#cbd5e1' }}>{l.navn}</span>
+                      <span style={{ color: '#cbd5e1' }}>{l.key === 'eierlonn' ? <Fagord id="ECO_035">{l.navn}</Fagord> : l.navn}</span>
                       <span style={{ textAlign: 'right', color: '#94a3b8' }}>{formatKr(b)}</span>
                       <span style={{ textAlign: 'right', color: '#f1f5f9', fontWeight: 700 }}>{formatKr(f)}</span>
                     </div>

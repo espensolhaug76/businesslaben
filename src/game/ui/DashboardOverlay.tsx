@@ -1517,7 +1517,7 @@ function BudsjettSeksjon() {
           const sv = sistFor(l.key)
           return (
             <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ flex: 1, fontSize: 13, color: '#cbd5e1' }}>{l.navn}</span>
+              <span style={{ flex: 1, fontSize: 13, color: '#cbd5e1' }}>{l.key === 'eierlonn' ? <Fagord id="ECO_035">{l.navn}</Fagord> : l.navn}</span>
               <input
                 type="number" inputMode="numeric" value={utkast[l.key] || ''} disabled={laast}
                 onChange={e => setUtkast(u => ({ ...u, [l.key]: Math.max(0, Math.round(parseFloat(e.target.value) || 0)) }))}

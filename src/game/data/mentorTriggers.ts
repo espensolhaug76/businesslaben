@@ -52,7 +52,7 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
   {
     id: 'forste_eierlonn',
     betingelse: 'Første månedsoppgjør som viser «Eierlønn»-linja (REKALIBRERING pkt. 35)',
-    melding: 'La du merke til «Eierlønn» blant de faste kostnadene? Din egen arbeidstid er en ekte kostnad — kaféen må tjene nok til å lønne deg, ikke bare dekke husleie og varer. Et «overskudd» som ikke betaler eieren, er ikke et ekte overskudd. Hva må til for at kaféen bærer lønna di?',
+    melding: 'La du merke til [[ECO_035|Eierlønn]] blant de faste kostnadene? Din egen arbeidstid er en ekte kostnad — kaféen må tjene nok til å lønne deg, ikke bare dekke husleie og varer. Et «overskudd» som ikke betaler eieren, er ikke et ekte overskudd. Hva må til for at kaféen bærer lønna di?',
   },
   {
     id: 'forste_laan',
