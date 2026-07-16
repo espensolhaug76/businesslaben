@@ -1,23 +1,23 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-07-16T10:51:32.417Z
+> Startet: 2026-07-16T10:59:32.465Z
 
 **Resultat: ✅ GRØNT** — 11 PASS · 0 FAIL · 0 KJENT FEIL (11 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 623 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 9130 |
-| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 714 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 247 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 13493 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5894 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 2369 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 13629 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 5447 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 6355 |
-| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 11464 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 194 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 6995 |
+| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 528 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 191 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 9898 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5921 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 2084 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 12963 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 3677 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 4940 |
+| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 9639 |
 
 ## Detaljer per steg
 
@@ -52,7 +52,7 @@ Verifiserte tall/tilstander:
 - bakgrunnssalg etter 150 tikk (dayMinute 122): 972 kr, 25 kunder
 - kundemøte startet: «likeverd»
 - kundemøtet spilt til slutt (meetingsToday=1)
-- auto-klokka tikket (dayMinute 123 → økte av seg selv)
+- auto-klokka tikket (dayMinute 124 → økte av seg selv)
 - dagsoppgjør: omsetning=1011 kr, varekost=311, svinn=0 kr (0 stk), tapt=82 stk
 - resultat=700 kr summerer konsistent (salg+bakgrunn−varekost−svinn)
 

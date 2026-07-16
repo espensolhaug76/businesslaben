@@ -143,6 +143,23 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Dekningsgraden du regnet ut ligger et stykke fra den bokførte. Hvilke tall brukte du i regnestykket?',
   },
 
+  // ── TEMA 8 Kampanje og markedsplan ──────────────────────────────────────────
+  {
+    id: 'tema_kampanje_aktivert',
+    betingelse: 'Temaet Kampanje slås på (via lærerens Spillet-fane) — samme timing som budsjett-temaet',
+    melding: 'Læreren har åpnet Kampanje — du finner den i 📢 Marked-fanen. Planlegg en kampanje: sett et mål, velg kanal og målgruppe, så evaluerer vi effekten etterpå.',
+  },
+  {
+    id: 'kampanje_effekt',
+    betingelse: 'Kampanjen er ferdig og effektrapporten vises — dynamisk melding leser mål, faktisk resultat og kanal×målgruppe-treff',
+    melding: 'Kampanjen er evaluert. Traff kanalen din målgruppa — og hvordan ser du det i tallene?',
+  },
+  {
+    id: 'kampanje_forpris_brudd',
+    betingelse: 'Salgskampanje brøt førpris-regelen (dynamisk) — refleksjon om HVORFOR regelen finnes, ikke moralisering',
+    melding: 'Du satte ned prisen på en vare som ikke hadde hatt ordinær pris lenge nok. Hvorfor tror du loven krever en ekte førpris før et tilbud?',
+  },
+
   // ── FANE-TRIGGERE (kontekstbundne) ──────────────────────────────────────────
   // Én per dashbord-fane (`fane`-feltet), første besøk. Vises KUN mens fanen er
   // aktiv (mentor:fane-kanalen i Mentor.tsx), re-armes hvis de ikke rekker frem.

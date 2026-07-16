@@ -71,6 +71,23 @@ export const TEMAER: TemaDef[] = [
     beskrivelse: 'Eleven regner selv ut bruttofortjeneste, dekningsgrad og ' +
       'resultatgrad og sammenligner med de bokførte tallene. Kun VG2.',
   },
+  {
+    id: 'kampanje',
+    navn: 'Kampanje og markedsplan',
+    nivaaer: ['vg1', 'vg2'],
+    // VG1: enkel markedsplan + kampanje med begrunnelse. VG2: ROI + A/B.
+    // Hub: Markedsplan · Kommunikasjonskanaler · Markedsføringsloven · (VG2)
+    // Markedsføringskampanjer. Kanal×segment-tabellen bor i hub-en, aldri i spillet.
+    hubModulRefs: [
+      '/learning/mfi/markedsplan',
+      '/learning/mfi/kommunikasjon-kanaler',
+      '/learning/mfi/markedsforingsloven',
+      '/learning/vg2/kommunikasjon/markedsforingskampanjer',
+    ],
+    beskrivelse: 'Eleven planlegger en markedsføringskampanje (mål, målgruppe, ' +
+      'kanal, budsjett, periode) i Marked-fanen og evaluerer effekten etterpå. ' +
+      'Salgskampanje-varianten håndhever førpris-regelen.',
+  },
 ]
 
 const TEMA_BY_ID: Record<string, TemaDef> = Object.fromEntries(TEMAER.map(t => [t.id, t]))
