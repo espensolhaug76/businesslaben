@@ -13,6 +13,7 @@ import HmsTab from './HmsTab'
 import BrannalarmOvelse, { BrannalarmSammenligning } from './BrannalarmOvelse'
 import { BRANNALARM } from '../data/beredskap'
 import { BALANCE } from '../data/balance'
+import { IS_DEV_COORDS } from '../city/DevCoordHelper'
 import {
   BUDSJETT_LINJER, TOM_BUDSJETT, maanedNokkel, faktiskeLinjer, planlagtResultat,
   BUDSJETT_HUB, NOKKELTALL_HUB, type BudsjettTall, type BudsjettLinjeKey, type NokkeltallSvar,
@@ -1545,6 +1546,22 @@ function BudsjettSeksjon() {
           </a>
         ))}
       </div>
+
+      {/* DEV (?dev=1): rask utfylling + fabrikkert oppgjør med tydelige avvik. */}
+      {IS_DEV_COORDS && !laast && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: '0.9rem', paddingTop: '0.7rem', borderTop: '1px dashed rgba(168,85,247,0.35)' }}>
+          <button onClick={() => {
+            const fyll: BudsjettTall = { salgsinntekter: 60_000, varekjop: 22_000, lonn: state.monthlyPayroll || 15_000, husleie: state.monthlyRent || 45_000, markedsforing: Object.values(state.marketingBudget).reduce((s, v) => s + v, 0) || 5_000, laan: terminbelop }
+            setUtkast(fyll); dispatch({ type: 'SET_BUDSJETT', maaned: key, budsjett: fyll })
+          }} style={{ background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 8, padding: '0.4rem 0.8rem', color: '#c084fc', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ⏩ Fyll budsjett med fornuftige tall
+          </button>
+          <button onClick={() => dispatch({ type: 'DEV_SIMULER_OPPGJOR' })}
+            style={{ background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 8, padding: '0.4rem 0.8rem', color: '#c084fc', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ⏩ Simuler månedsslutt med tydelige avvik
+          </button>
+        </div>
+      )}
     </div>
   )
 }

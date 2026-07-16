@@ -307,6 +307,7 @@ type Action =
   | { type: 'SET_BUDSJETT_LINJE'; maaned: string; linje: BudsjettLinjeKey; belop: number }
   | { type: 'SET_AVVIK_NOTAT'; maaned: string; linje: string; tekst: string }
   | { type: 'SET_NOKKELTALL_SVAR'; maaned: string; svar: NokkeltallSvar }
+  | { type: 'DEV_SIMULER_OPPGJOR' }   // ?dev=1: fabrikker et oppgjør med tydelige avvik
   // Økonomi-samling (DEL 2): lukk månedsoppgjør-overlayet.
   | { type: 'DISMISS_MONTH_SETTLEMENT' }
   | { type: 'RESET' }
@@ -771,6 +772,45 @@ function reducer(state: GameState, action: Action): GameState {
     // ── TEMA 3 NØKKELTALL (VG2) ──
     case 'SET_NOKKELTALL_SVAR':
       return { ...state, nokkeltall: { ...state.nokkeltall, [action.maaned]: action.svar } }
+
+    // ── DEV (?dev=1): fabrikker et månedsoppgjør der MINST to linjer bryter
+    // avvikterskelen — for å teste budsjett-/nøkkeltall-oppgjøret uten å spille
+    // en hel måned. Bruker elevens budsjett hvis satt, ellers fornuftige tall. ──
+    case 'DEV_SIMULER_OPPGJOR': {
+      const key = maanedNokkel(state.currentYear, state.currentMonth)
+      const b: BudsjettTall = state.budsjett.maaneder[key]?.budsjett ?? {
+        salgsinntekter: 60_000, varekjop: 22_000, lonn: state.monthlyPayroll || 15_000,
+        husleie: state.monthlyRent || 45_000,
+        markedsforing: Object.values(state.marketingBudget).reduce((s, v) => s + v, 0) || 5_000,
+        laan: Math.round(amortiserLaan(state.loans).betaling),
+      }
+      const salg = Math.round(b.salgsinntekter * 0.68)   // ~32 % under budsjett
+      const vare = Math.round(b.varekjop * 1.45)          // ~45 % over budsjett
+      const kostnadslinjer = [
+        { navn: 'Husleie', belop: b.husleie }, { navn: 'Lønn', belop: b.lonn },
+        { navn: 'Forsikring/div.', belop: 2000 }, { navn: 'Markedsføring', belop: b.markedsforing },
+      ]
+      const fasteKostnader = kostnadslinjer.reduce((s, k) => s + k.belop, 0)
+      const laanAvdrag = b.laan, laanRenter = 0
+      const inntekt = salg - vare
+      const settlement: MonthSettlement = {
+        month: state.currentMonth, year: state.currentYear, inntekt, kostnadslinjer, fasteKostnader,
+        laanRenter, laanAvdrag, resultat: inntekt - fasteKostnader - (laanRenter + laanAvdrag),
+        antallDager: DAY_CONFIG.daysPerMonth, salgInntektBrutto: salg, varekjop: vare,
+      }
+      const budsjett = { maaneder: { ...state.budsjett.maaneder,
+        [key]: { budsjett: b, laastVedOppgjor: true, avvikNotater: state.budsjett.maaneder[key]?.avvikNotater ?? {} } } }
+      const fakt = faktiskeLinjer(settlement)
+      let storstAvvik: { navn: string; budsjett: number; faktisk: number } | null = null
+      let bestAbs = -1
+      for (const l of BUDSJETT_LINJER) {
+        const a = Math.abs(fakt[l.key] - b[l.key])
+        if (a > bestAbs) { bestAbs = a; storstAvvik = { navn: l.navn, budsjett: b[l.key], faktisk: Math.round(fakt[l.key]) } }
+      }
+      const nk = state.nokkeltall[key]
+      const dekningsgradAvvik = nk ? { ditt: nk.dekningsgrad, bok: bokfortNokkeltall(settlement).dekningsgrad } : null
+      return { ...state, budsjett, lastMonthSettlement: settlement, budsjettOppgjorHint: { storstAvvik, dekningsgradAvvik } }
+    }
 
     case 'BUY_MARKET_RESEARCH': {
       if (state.money < 10_000) return state
