@@ -353,6 +353,67 @@ export const PHASES: DrawerPhase[] = [
       },
     ],
   },
+  {
+    phaseNumber: 6,
+    icon: '📊',
+    title: 'Hvem bruker hvilke medier?',
+    quote: 'Velg kanal etter hvor målgruppa di faktisk er — ikke etter hva du selv bruker',
+    practical:
+      'Før du velger kanal for en kampanje: sjekk hvilke aldersgrupper som faktisk bruker plattformen daglig. En kanal som «alle snakker om» kan likevel bomme på akkurat din målgruppe. Tabellen under viser daglig dekning per aldersgruppe.',
+    table: {
+      caption: 'Daglig bruk (%) per aldersgruppe',
+      headers: ['Plattform', '18–29', '30–39', '40–49', '50–59', '60+'],
+      rows: [
+        ['TikTok', '50', '26', '17', '9', '3'],
+        ['Instagram', '56', '58', '49', '35', '26'],
+        ['Snapchat', '66', '63', '59', '48', '36'],
+        ['Facebook', '46', '67', '75', '71', '69'],
+        ['Byposten (fiktivt medium)', '7', '14', '26', '39', '54'],
+        ['Radio Innlandet (fiktivt medium)', '11', '23', '36', '43', '44'],
+      ],
+      source: 'Ipsos SoMe-tracker Q4 2023, 18 år+, daglig bruk (kun de fire øverste plattformene)',
+      sourceLink: 'https://www.ipsos.com/nb-no',
+      note: 'Byposten og Radio Innlandet er fiktive medier laget for spillet — realistiske, men ikke målte tall. · Tallene gjelder 18 år og eldre — hva betyr det når målgruppa di er under 18?',
+    },
+    exercises: [
+      {
+        id: 'kk-6-1',
+        question: 'Du vil nå flest mulig i aldersgruppen 60+ hver dag. Hvilken av de ekte plattformene har høyest daglig dekning der?',
+        choices: [
+          { id: 'a', text: 'TikTok' },
+          { id: 'b', text: 'Instagram' },
+          { id: 'c', text: 'Snapchat' },
+          { id: 'd', text: 'Facebook' },
+        ],
+        correctId: 'd',
+        explanation: 'Facebook har 69 % daglig dekning blant 60+ — klart høyest av de fire. TikTok når bare 3 % i samme gruppe.',
+      },
+      {
+        id: 'kk-6-2',
+        question: 'En kampanje retter seg mot 40–49-åringer. Hvilken plattform treffer denne gruppen best daglig?',
+        choices: [
+          { id: 'a', text: 'TikTok (17 %)' },
+          { id: 'b', text: 'Facebook (75 %)' },
+          { id: 'c', text: 'Instagram (49 %)' },
+          { id: 'd', text: 'Snapchat (59 %)' },
+        ],
+        correctId: 'b',
+        explanation: 'Facebook har 75 % daglig dekning i aldersgruppen 40–49 — høyest av alle. Velg kanal etter hvor målgruppa faktisk er.',
+      },
+      {
+        id: 'kk-6-3',
+        question: 'Butikken din selger mest til ungdom under 18. Hvorfor er Ipsos-tabellen bare delvis til hjelp?',
+        choices: [
+          { id: 'a', text: 'Fordi tallene er hemmelige' },
+          { id: 'b', text: 'Fordi undersøkelsen bare dekker personer på 18 år og eldre — de yngste er ikke med' },
+          { id: 'c', text: 'Fordi ungdom ikke bruker sosiale medier' },
+          { id: 'd', text: 'Fordi tallene er fra utlandet' },
+        ],
+        correctId: 'b',
+        explanation: 'Kildekritikk: undersøkelsen måler kun 18 år og eldre. For en målgruppe under 18 må du søke andre kilder eller være forsiktig med å overføre tallene.',
+      },
+    ],
+  },
 ]
 
 export default function KommunikasjonKanalerModule() {

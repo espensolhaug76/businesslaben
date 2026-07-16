@@ -60,6 +60,9 @@ export interface DrawerPhase {
   subpoints?: (string | { label: string; text: string })[]
   practical: string
   glossaryTerm?: string
+  /** Valgfri faktatabell (kun tall/fakta i tabellform — aldri gjengivelse av en
+   *  ekstern rapports grafikk/tekst/sideoppsett). */
+  table?: { caption?: string; headers: string[]; rows: string[][]; source?: string; sourceLink?: string; note?: string }
   exercises: DrawerExercise[]
 }
 
@@ -166,6 +169,39 @@ function DrawerContent({
             <p className="text-gray-500 text-sm leading-relaxed">
               <span className="font-medium text-gray-600">Praktisk: </span>{phase.practical}
             </p>
+          )}
+          {phase.table && (
+            <div className="pt-1">
+              {phase.table.caption && <div className="text-sm font-semibold text-gray-700 mb-1.5">{phase.table.caption}</div>}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-300">
+                      {phase.table.headers.map((h, i) => (
+                        <th key={i} className={`py-1.5 px-2 font-semibold text-gray-600 ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {phase.table.rows.map((row, r) => (
+                      <tr key={r} className="border-b border-gray-100">
+                        {row.map((cell, c) => (
+                          <td key={c} className={`py-1.5 px-2 ${c === 0 ? 'text-left font-medium text-gray-700' : 'text-right text-gray-600'}`}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {phase.table.source && (
+                <div className="text-xs text-gray-400 mt-1.5">
+                  Kilde: {phase.table.sourceLink
+                    ? <a href={phase.table.sourceLink} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">{phase.table.source}</a>
+                    : phase.table.source}
+                </div>
+              )}
+              {phase.table.note && <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">{phase.table.note}</div>}
+            </div>
           )}
           {phase.glossaryTerm && (
             <div className="pt-0.5">
