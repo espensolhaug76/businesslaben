@@ -8,6 +8,7 @@
 // og kundemøtene planlegges på klokkeslett ved OPEN_DAY.
 
 import { BALANCE } from './balance'
+import { lopendeMarkedsforingsfaktor } from './kampanje'
 import type { ScheduledMeeting, TickerLinje, Employee, Shift } from '../types'
 
 function clamp(v: number, lo: number, hi: number): number { return Math.max(lo, Math.min(hi, v)) }
@@ -64,7 +65,9 @@ export function beregnBakgrunnskunder(input: {
   products: { id: string; stock: number; retailPrice: number; recommendedPrice: number }[]
   counterLayout: { productId: string }[]
   windowDisplayLayout: { productId: string; fixtureId: string }[]
-  markedsforingBudsjett: number
+  /** LØPENDE synlighet (DEL D): månedlig markedsbudsjett per kanal + målgruppe. */
+  marketingBudget: Record<string, number>
+  segmenter: string[]
 }): number {
   const base = (input.lokaleId ? BALANCE.basetrafikk[input.lokaleId] : undefined) ?? BALANCE.basetrafikkDefault
   const fylte = tellFylteDisplayPlasser(input.products, input.counterLayout, input.windowDisplayLayout)
@@ -72,7 +75,7 @@ export function beregnBakgrunnskunder(input: {
     ryktefaktor(input.rykte) *
     prisfaktor(input.products) *
     eksponeringsfaktor(fylte) *
-    markedsforingsfaktor(input.markedsforingBudsjett) *
+    lopendeMarkedsforingsfaktor(input.marketingBudget, input.segmenter) *
     BALANCE.baseMultiplier
   return Math.max(0, Math.round(base * faktor))
 }

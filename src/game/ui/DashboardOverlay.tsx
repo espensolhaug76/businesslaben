@@ -30,7 +30,7 @@ import type { Loan } from '../types'
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
-type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'personale' | 'hms' | 'rapporter' | 'innboks'
+type Tab = 'oversikt' | 'forretningsplan' | 'produkter' | 'utstilling' | 'malgruppe' | 'okonomi' | 'lokasjon' | 'priser' | 'markedsforing' | 'distribusjon' | 'personale' | 'hms' | 'rapporter' | 'innboks'
 
 // ── FAGKODING (DEL 3 + fiksrunde-2-slutt) ─────────────────────────────────────
 // Fanene grupperes etter PROGRAMFAG (fasit: docs/TEMAER_OG_KOMPETANSEMAL.md,
@@ -68,6 +68,7 @@ const TABS: { id: Tab; label: string; emoji: string; fag: FagId; tema?: string }
   { id: 'produkter',       label: 'Produkter',         emoji: '📦', fag: 'markedsforing' },
   { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍', fag: 'markedsforing' },
   { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢', fag: 'markedsforing' },
+  { id: 'distribusjon',    label: 'Distribusjon',      emoji: '🚚', fag: 'markedsforing' }, // Plass-P (M-merke)
   { id: 'utstilling',      label: 'Utstilling',        emoji: '🪟', fag: 'markedsforing' },
   // ── Kultur og samhandling ──
   { id: 'personale',       label: 'Personale',         emoji: '👥', fag: 'kultur' },
@@ -247,6 +248,7 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                   {activeTab === 'lokasjon'        && <LokasjonTab />}
                   {activeTab === 'priser'          && <PriserTab />}
                   {activeTab === 'markedsforing'   && <MarkedsforingTab />}
+                  {activeTab === 'distribusjon'    && <DistribusjonTab />}
                   {activeTab === 'personale'       && <PersonaleTab />}
                   {activeTab === 'hms'             && <HmsTab />}
                   {activeTab === 'rapporter'       && <RapporterTab />}
@@ -2082,16 +2084,14 @@ function PriserTab() {
 
 // ── Markedsføring ─────────────────────────────────────────────────────────────
 
-type BudgetKey = keyof GameStateLocal['marketingBudget']
-type GameStateLocal = ReturnType<typeof useGame>['state']
+type BudgetKey = string
 
-const MARKETING_CHANNELS: { key: BudgetKey; label: string; emoji: string }[] = [
-  { key: 'socialMedia', label: 'Sosiale medier', emoji: '📱' },
-  { key: 'google',      label: 'Google',         emoji: '🔍' },
-  { key: 'influencer',  label: 'Influencer',      emoji: '⭐' },
-  { key: 'print',       label: 'Trykt reklame',   emoji: '📰' },
-  { key: 'tv',          label: 'TV / Radio',      emoji: '📺' },
-]
+// DEL D: LØPENDE synlighet bruker de SAMME 6 navngitte kanalene som kampanjen
+// (erstatter Sosiale medier/Google/Influencer/Trykt reklame/TV-Radio). Mapping
+// gammel→ny er dokumentert i rapporten (budsjett persisteres ikke → ingen
+// runtime-migrering nødvendig).
+const MARKETING_CHANNELS: { key: BudgetKey; label: string; emoji: string }[] =
+  KANALER.map(k => ({ key: k.id, label: k.navn, emoji: k.emoji }))
 
 const CHANNEL_INFO: Record<DistributionChannel, { label: string; emoji: string; cost: number; desc: string; requiresLevel?: number }> = {
   physicalStore:  { label: 'Fysisk butikk',    emoji: '🏪', cost: 0,     desc: 'Din faste butikk. Alltid aktiv.' },
@@ -2360,49 +2360,47 @@ function KampanjeSeksjon() {
 
 function MarkedsforingTab() {
   const { state, dispatch } = useGame()
-  const [budget, setBudget] = useState({ ...state.marketingBudget })
+  const [budget, setBudget] = useState<Record<string, number>>({ ...state.marketingBudget })
   const [appeal, setAppeal] = useState(state.appealType)
-  const [channels, setChannels] = useState<DistributionChannel[]>(state.channels)
   const kampanjeAktiv = useErTemaAktivt('kampanje')   // TEMA 8
 
   const total = Object.values(budget).reduce((s, v) => s + v, 0)
 
-  function toggleChannel(ch: DistributionChannel) {
-    if (ch === 'physicalStore') return
-    setChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch])
-  }
-
   function save() {
     dispatch({ type: 'SET_MARKETING', budget })
     if (appeal) dispatch({ type: 'SET_APPEAL', appealType: appeal })
-    dispatch({ type: 'SET_CHANNELS', channels })
   }
-
-  const channelMonthlyCost = channels.reduce((s, ch) => s + (CHANNEL_INFO[ch]?.cost ?? 0), 0)
 
   return (
     <div>
-      {/* TEMA 8 Kampanje — øverst, kun når temaet er aktivt. */}
-      {kampanjeAktiv && <KampanjeSeksjon />}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <div>
-          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Markedsføring & Distribusjon</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Fordel markedsbudsjett, appellform og salgskanaler</p>
+          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Markedsføring</h3>
+          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
+            Kampanje = kort støt mot et mål. Løpende = jevn synlighet.
+          </p>
         </div>
         <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
           Lagre ✓
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+      {/* ── SEKSJON 1: KAMPANJE (tidsavgrenset, kun når temaet er aktivt) ── */}
+      {kampanjeAktiv && <KampanjeSeksjon />}
+
+      {/* ── SEKSJON 2: LØPENDE SYNLIGHET (månedlig budsjett per kanal) ── */}
+      <div style={{ fontSize: 14, fontWeight: 800, color: '#cbd5e1', margin: '0.5rem 0 0.75rem' }}>📻 LØPENDE SYNLIGHET — månedlig</div>
+      <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 0.9rem' }}>
+        Månedlig budsjett per kanal for jevn synlighet. Effekten avhenger — som for kampanjen — av om kanalen når målgruppa di.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
         {MARKETING_CHANNELS.map(ch => (
           <div key={ch.key}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
               <span style={{ fontSize: 14 }}>{ch.emoji} {ch.label}</span>
-              <span style={{ fontWeight: 700, fontSize: 14, color: '#38bdf8' }}>{formatKr(budget[ch.key])}</span>
+              <span style={{ fontWeight: 700, fontSize: 14, color: '#38bdf8' }}>{formatKr(budget[ch.key] ?? 0)}</span>
             </div>
-            <input type="range" min={0} max={50000} step={500} value={budget[ch.key]}
+            <input type="range" min={0} max={50000} step={500} value={budget[ch.key] ?? 0}
               onChange={e => setBudget(prev => ({ ...prev, [ch.key]: parseInt(e.target.value) }))}
               style={{ width: '100%', accentColor: '#00d4aa' }}
             />
@@ -2416,7 +2414,7 @@ function MarkedsforingTab() {
         </div>
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
+      <div>
         <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: '0.75rem' }}>Appellform</h4>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           {[
@@ -2437,44 +2435,63 @@ function MarkedsforingTab() {
           ))}
         </div>
       </div>
+    </div>
+  )
+}
 
-      <div>
-        <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: '0.75rem' }}>Distribusjonskanaler</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
-          {(Object.entries(CHANNEL_INFO) as [DistributionChannel, typeof CHANNEL_INFO[DistributionChannel]][]).map(([ch, info]) => {
-            const active = channels.includes(ch)
-            const locked = info.requiresLevel ? state.level < info.requiresLevel : false
-            return (
-              <div key={ch}
-                onClick={() => !locked && toggleChannel(ch)}
-                style={{
-                  background: active ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${active ? '#00d4aa55' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: '1rem', padding: '1rem',
-                  cursor: ch === 'physicalStore' ? 'default' : locked ? 'not-allowed' : 'pointer',
-                  opacity: locked ? 0.45 : 1,
-                  display: 'flex', alignItems: 'center', gap: '1rem',
-                }}>
-                <span style={{ fontSize: 28 }}>{info.emoji}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{info.label}</div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>{info.desc}</div>
-                  {locked && <div style={{ fontSize: 11, color: '#f97316', marginTop: 2 }}>🔒 Krever Nivå {info.requiresLevel}</div>}
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: info.cost === 0 ? '#22c55e' : '#f97316' }}>
-                    {info.cost === 0 ? 'Gratis' : `${formatKr(info.cost)}/mnd`}
-                  </div>
-                  {active && <div style={{ fontSize: 11, color: '#00d4aa', marginTop: 2 }}>✓ Aktiv</div>}
-                </div>
+// ── Distribusjon (DEL E — egen fane, flyttet ut av Markedsføring) ─────────────
+function DistribusjonTab() {
+  const { state, dispatch } = useGame()
+  const [channels, setChannels] = useState<DistributionChannel[]>(state.channels)
+  function toggleChannel(ch: DistributionChannel) {
+    if (ch === 'physicalStore') return
+    setChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch])
+  }
+  function save() { dispatch({ type: 'SET_CHANNELS', channels }) }
+  const channelMonthlyCost = channels.reduce((s, ch) => s + (CHANNEL_INFO[ch]?.cost ?? 0), 0)
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div>
+          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Distribusjon</h3>
+          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Hvor kundene kan kjøpe av deg — velg salgskanaler.</p>
+        </div>
+        <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Lagre ✓
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+        {(Object.entries(CHANNEL_INFO) as [DistributionChannel, typeof CHANNEL_INFO[DistributionChannel]][]).map(([ch, info]) => {
+          const active = channels.includes(ch)
+          const locked = info.requiresLevel ? state.level < info.requiresLevel : false
+          return (
+            <div key={ch} onClick={() => !locked && toggleChannel(ch)}
+              style={{
+                background: active ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${active ? '#00d4aa55' : 'rgba(255,255,255,0.08)'}`,
+                borderRadius: '1rem', padding: '1rem',
+                cursor: ch === 'physicalStore' ? 'default' : locked ? 'not-allowed' : 'pointer',
+                opacity: locked ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: '1rem',
+              }}>
+              <span style={{ fontSize: 28 }}>{info.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{info.label}</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>{info.desc}</div>
+                {locked && <div style={{ fontSize: 11, color: '#f97316', marginTop: 2 }}>🔒 Krever Nivå {info.requiresLevel}</div>}
               </div>
-            )
-          })}
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.75rem 1rem', fontSize: 14, display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: '#64748b' }}>Total kanalkostand:</span>
-          <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(channelMonthlyCost)}/mnd</span>
-        </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: info.cost === 0 ? '#22c55e' : '#f97316' }}>
+                  {info.cost === 0 ? 'Gratis' : `${formatKr(info.cost)}/mnd`}
+                </div>
+                {active && <div style={{ fontSize: 11, color: '#00d4aa', marginTop: 2 }}>✓ Aktiv</div>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.75rem 1rem', fontSize: 14, display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ color: '#64748b' }}>Total kanalkostnad:</span>
+        <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(channelMonthlyCost)}/mnd</span>
       </div>
     </div>
   )

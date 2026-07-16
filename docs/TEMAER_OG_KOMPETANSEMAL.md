@@ -40,6 +40,12 @@ byggekøen — dette dokumentet er kartet, ikke tegningene.
 - **Mentor dynamisk:** ved tomt trau pga. lang leveringstid («Du valgte leverandøren med 3 dagers levering — bollene tok slutt onsdag»).
 - **Hub:** VG1 Verdikjeden · VG2 Bærekraft i verdikjeden (VG2-nivå).
 - **Innsats:** MIDDELS — katalogmønsteret finnes i gren jobb/klesbutikk.
+- **Horisont (fra Tema 8-fiksrunde):** Distribusjon er nå en egen dashbord-fane
+  (Plass-P: fysisk butikk/nettbutikk/Instagram Shop osv.). I dag er det et
+  av/på-valg med fast kostnad. NATURLIG UTVIDELSE her: gjør distribusjonsstrategi
+  til et reelt strategisk valg med konsekvens (rekkevidde vs. kostnad/gebyr, egen
+  vs. tredjeparts kanal) koblet til verdikjeden — «hvor møter du kunden, og hva
+  koster hvert ledd?».
 
 ## Tema 5: REKRUTTERING 🧑‍💼
 - **Mål:** VG2 rekrutteringsprosesser; arbeidslivets spilleregler (arbeidsavtale).

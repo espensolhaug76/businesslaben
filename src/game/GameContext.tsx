@@ -166,7 +166,7 @@ const initialState: GameState = {
   channels: ['physicalStore'],
   windowDisplayLayout: [],
   counterLayout: [],
-  marketingBudget: { socialMedia: 0, google: 0, influencer: 0, print: 0, tv: 0 },
+  marketingBudget: { tiktok: 0, instagram: 0, snapchat: 0, facebook: 0, byposten: 0, 'radio-innlandet': 0 },
   appealType: null,
 
   employees: [],
@@ -1209,7 +1209,8 @@ function reducer(state: GameState, action: Action): GameState {
         products,
         counterLayout: state.counterLayout,
         windowDisplayLayout: state.windowDisplayLayout,
-        markedsforingBudsjett: Object.values(state.marketingBudget).reduce((s, v) => s + v, 0),
+        marketingBudget: state.marketingBudget,
+        segmenter: state.targetAudience.ageGroups,
       })
       // TEMA 8: aktiv kampanje løfter trafikken med sin (låste) faktor.
       const kampAktiv = state.kampanje.aktiv && state.kampanje.aktiv.dagerKjort < state.kampanje.aktiv.varighet

@@ -561,13 +561,9 @@ export interface GameState {
   /** Disk-monterens trau-oppsett (frontal scene): hvilken vare i hvilket trau.
    *  Tom liste = tomme trau. Se TrauItem. */
   counterLayout: TrauItem[]
-  marketingBudget: {
-    socialMedia: number
-    google: number
-    influencer: number
-    print: number
-    tv: number
-  }
+  /** TEMA 8 (DEL D): LØPENDE synlighet — månedlig budsjett per kanal, harmonisert
+   *  til de samme 6 navngitte kanalene som kampanjen (kanal-id → kr/mnd). */
+  marketingBudget: Record<string, number>
   appealType: 'rational' | 'emotional' | 'combined' | null
 
   // Staff

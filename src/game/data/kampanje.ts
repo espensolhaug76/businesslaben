@@ -83,6 +83,22 @@ export function kampanjefaktor(kanaler: KampanjeKanalValg[], segmenter: string[]
   return clamp(1 + loft, 1, K.maksFaktor)
 }
 
+/** LØPENDE synlighet (DEL D): jevn, SVAKERE trafikkeffekt av det månedlige
+ *  markedsbudsjettet per kanal × målgruppe-treff. Samme kanaldata som kampanjen,
+ *  men lavere tak/løft (jevn synlighet vs. kampanjens støt). Tunbart i balance.ts. */
+export function lopendeMarkedsforingsfaktor(budsjettPerKanal: Record<string, number>, segmenter: string[]): number {
+  const K = BALANCE.kampanje.lopende
+  let loft = 0
+  for (const [kanalId, kr] of Object.entries(budsjettPerKanal)) {
+    if (kr <= 0) continue
+    const kanal = kanalById(kanalId); if (!kanal) continue
+    const treffAndel = kanalTreffISegmenter(kanal, segmenter) / 100
+    const styrke = 1 - Math.exp(-kr / K.metning)
+    loft += K.maksLoftPerKanal * treffAndel * styrke
+  }
+  return clamp(1 + loft, 1, K.maksFaktor)
+}
+
 /** Total kampanjekostnad = sum(dagsbudsjett) × varighet (trekkes ved start). */
 export function kampanjeKostnad(kanaler: KampanjeKanalValg[], varighet: number): number {
   return kanaler.reduce((s, k) => s + Math.max(0, k.krPerDag), 0) * varighet

@@ -71,6 +71,13 @@ export const BALANCE = {
      *  en salgskampanje (2 spilluker). Brudd → tilsynsbrev + moderat bot. */
     forprisDager: 14,
     forprisBot: 3000,
+    /** LØPENDE synlighet (DEL D): svakere, jevn effekt av det MÅNEDLIGE
+     *  markedsbudsjettet (vs. kampanjens kortvarige støt). Lavere tak/løft. */
+    lopende: {
+      metning: 8000,          // kr/mnd der budsjett-effekten begynner å mette
+      maksLoftPerKanal: 0.15,  // maks jevnt løft-bidrag per kanal
+      maksFaktor: 1.3,         // tak på den løpende multiplikatoren
+    },
   },
 
   /** SPILLKLOKKE — klokka eier den åpne dagen (09:00–17:00). Tempo: tickMs
