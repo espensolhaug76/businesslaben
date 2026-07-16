@@ -152,6 +152,10 @@ export const LOKALER: Record<string, Lokale[]> = {
     { id: 'stasjon-l11', navn: 'Torgbygget 2',         rect: [49, 31, 5, 8],  sqm: 42, kapasitet: 80,  rentFactor: 0.85 },
     { id: 'stasjon-l12', navn: 'Torgbygget 3',         rect: [54, 31, 4, 8],  sqm: 38, kapasitet: 70,  rentFactor: 0.8 },
   ],
+  // LOKAL-STIGEN (REKALIBRERING pkt. 35 / DEL 5): rentFactor (→ husleie) og
+  // basetrafikk (balance.ts) stiger SAMMEN — dyrere lokale = mer trafikk, ingen
+  // «gratis vinner». Stige-tabell (rentFactor · husleie · basetrafikk) i
+  // docs/VERDENSMODELL.md §3. Endrer du rentFactor her, oppdater basetrafikk der.
   sentrum: [
     { id: 'sentrum-l1', navn: 'Hjørnelokalet ved torget', rect: [4, 52, 16, 28], sqm: 85, kapasitet: 160, rentFactor: 1.2 },
     { id: 'sentrum-l2', navn: 'Gågata 12',                rect: [20, 44, 11, 22], sqm: 60, kapasitet: 120, rentFactor: 1.0 },

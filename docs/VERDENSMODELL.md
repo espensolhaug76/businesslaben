@@ -84,6 +84,22 @@ på minst to lokaler (billig + `sentrum-l2`), rykte 50, møter skipet.
   TAK, markedsføring har avtagende avkastning (metning). Strukturen beholdes;
   bare skalaen justeres.
 
+**Verifisert (balansespiller, sentrum-l2, rykte 50, møter skipet — snitt/mnd):**
+
+| Rad | Målbilde | Målt @ sentrum-l2 |
+|---|--:|--:|
+| Passiv — resultat | dypt minus | **−87 000** (konkurs ~mnd 3) ✓ |
+| Fornuftig solo — kunder/dag | 150–180 | **153** ✓ |
+| Fornuftig solo — oms/dag | 12–14k | **12 100** ✓ |
+| Fornuftig solo — resultat | +5–10k | **+7,4–8,9k** ✓ |
+| Godt drevet — kunder/dag | 250–300 | **279** ✓ |
+| Godt drevet — oms/dag | 20–24k | **21 300** ✓ |
+| Godt drevet — resultat | +25–40k | **+28,5–29,4k** ✓ |
+
+Alle rader innenfor intervallene. «Godt drevet» (1 ansatt + løpende mkf + én
+kampanje/mnd via ekte Tema 8-mekanikk) er ~3,5× så lønnsom som solo — bemanning
++ markedsføring lønner seg NÅR kapasiteten er der. Passiv går konkurs.
+
 ---
 
 ## 3. Lokal-stigen (`districts.ts` + `balance.ts.basetrafikk`)
@@ -98,15 +114,25 @@ SAMMEN, slik at flere strategier er levedyktige:
   ubetjente kunder blir kø/tap uten ansatte), men gir høyest inntjening NÅR det
   er bemannet.
 
-Sentrum (`leieniva` 45 000). Stigen (fylles inn med endelige tall i DEL 5):
+Sentrum (`leieniva` 45 000, husleie = `round(leieniva × rentFactor / 100) × 100`,
+se `districts.ts`). Basetrafikk (`balance.ts`) er MONOTON med rentFactor — dyrere
+lokale = mer trafikk, konsekvent:
 
-| Lokale | Navn | rentFactor | Husleie | Basetrafikk/dag | Bæres solo? |
+| Lokale | Navn | rentFactor | Husleie/mnd | Basetrafikk/dag | Bæres solo? |
 |---|---|--:|--:|--:|:--|
-| sentrum-l4 | Gågata 16 | (DEL 5) | (DEL 5) | (DEL 5) | ja |
-| sentrum-l3 | Gågata 14 | (DEL 5) | (DEL 5) | (DEL 5) | ja |
-| sentrum-l2 | Gågata 12 | (DEL 5) | (DEL 5) | (DEL 5) | på taket |
-| sentrum-l1 | Hjørnelokalet ved torget | (DEL 5) | (DEL 5) | (DEL 5) | nei (krever bemanning) |
-| sentrum-l5 | Torggata 1 | (DEL 5) | (DEL 5) | (DEL 5) | nei (krever bemanning) |
+| sentrum-l4 | Gågata 16 | 0,80 | 36 000 | 118 | **ja** — billigst, trafikk under solo-taket |
+| sentrum-l7 | Torggata 5 | 0,85 | 38 300 | 125 | ja |
+| sentrum-l3 | Gågata 14 | 0,90 | 40 500 | 132 | ja |
+| sentrum-l6 | Torggata 3 | 0,95 | 42 800 | 140 | ja (nær taket) |
+| sentrum-l2 | Gågata 12 | 1,00 | 45 000 | 150 | **på taket** (REFERANSE) |
+| sentrum-l1 | Hjørnelokalet v/torget | 1,20 | 54 000 | 175 | **nei** — kø uten bemanning |
+| sentrum-l5 | Torggata 1 | 1,25 | 56 300 | 195 | **nei** — krever bemanning |
+
+**Lesning:** billig + lav trafikk (l4) bæres trygt solo (~+2–4k/mnd), men har lavt
+tak. Dyrt + høy trafikk (l1/l5) gir kø og TAP solo (trafikken overstiger
+solo-taket ~150–160), men BEST inntjening når det er bemannet. Ingen «gratis
+vinner» — flere strategier er levedyktige. (Verifisert i balansespilleren på l2 +
+l4, se `BALANSE_ANALYSE.md`.)
 
 ---
 
