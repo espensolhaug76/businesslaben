@@ -249,9 +249,9 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   // gang (persistert fired-sett, som alle mentor-triggere).
   useEffect(() => {
     if (temaVedStart.current === null) {
-      temaVedStart.current = { budsjett: !!aktiveTemaer['budsjett']?.aktiv, nokkeltall: !!aktiveTemaer['nokkeltall']?.aktiv, kampanje: !!aktiveTemaer['kampanje']?.aktiv }
+      temaVedStart.current = { budsjett: !!aktiveTemaer['budsjett']?.aktiv, nokkeltall: !!aktiveTemaer['nokkeltall']?.aktiv, kampanje: !!aktiveTemaer['kampanje']?.aktiv, reiseliv: !!aktiveTemaer['reiseliv']?.aktiv }
     }
-    for (const tema of ['budsjett', 'nokkeltall', 'kampanje'] as const) {
+    for (const tema of ['budsjett', 'nokkeltall', 'kampanje', 'reiseliv'] as const) {
       if (!aktiveTemaer[tema]?.aktiv) continue
       const varAktivVedStart = temaVedStart.current[tema]
       if (!varAktivVedStart || dashApnet) fire(`tema_${tema}_aktivert`)

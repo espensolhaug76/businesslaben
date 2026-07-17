@@ -155,6 +155,11 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Læreren har åpnet [[MKT_051|Kampanje]] — du finner den i 📢 Markedsføring-fanen. Planlegg en kampanje: sett et mål, velg kanal og [[MKT_021|målgruppe]], så evaluerer vi effekten etterpå.',
   },
   {
+    id: 'tema_reiseliv_aktivert',
+    betingelse: 'Temaet Reiseliv slås på (via lærerens Spillet-fane) — samme timing som budsjett-temaet',
+    melding: 'Læreren har åpnet Reiseliv og vertskap. Når turistsesongen starter dukker det opp 🧳-turister i kundestrømmen — de har egne behov. Turistkontoret i sentrum viser sesongprognosen og en gjestepakke du kan melde kaféen inn i.',
+  },
+  {
     id: 'kampanje_effekt',
     betingelse: 'Kampanjen er ferdig og effektrapporten vises — dynamisk melding leser mål, faktisk resultat og kanal×målgruppe-treff',
     melding: 'Kampanjen er evaluert. Traff kanalen din målgruppa — og hvordan ser du det i tallene?',

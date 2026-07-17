@@ -88,6 +88,23 @@ export const TEMAER: TemaDef[] = [
       'kanal, budsjett, periode) i Markedsføring-fanen og evaluerer effekten etterpå. ' +
       'Salgskampanje-varianten håndhever førpris-regelen.',
   },
+  {
+    id: 'reiseliv',
+    navn: 'Reiseliv og vertskap',
+    nivaaer: ['vg1', 'vg2'],
+    // VG1: vertskapsrollen + kulturforståelse i kundemøter. VG2: reiselivsprodukt
+    // + internasjonale markeder (light). Aktivering slår på TURISTSESONG (egne
+    // turist-scenarier + turistkontor/hotell i sentrum). Hub-lenker per nivå.
+    hubModulRefs: [
+      '/learning/kultur/vertskapsrollen',
+      '/learning/kultur/kulturforstaelse',
+      '/learning/vg2/kommunikasjon/reiselivsprodukt',
+      '/learning/vg2/kommunikasjon/internasjonale-markeder',
+    ],
+    beskrivelse: 'Turistsesong med egne kundetyper (turister) og vertskaps-scenarier: ' +
+      'språkbarriere, kulturforståelse, anbefale lokale opplevelser, tax-free. ' +
+      'Turistkontoret og byhotellet i sentrum gir sesongprognose og en B2B-gjestepakke.',
+  },
 ]
 
 const TEMA_BY_ID: Record<string, TemaDef> = Object.fromEntries(TEMAER.map(t => [t.id, t]))
