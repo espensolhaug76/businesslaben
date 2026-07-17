@@ -231,10 +231,23 @@ export interface BolkResultat<P> {
  *  Generisk så Product-typen bevares ut. */
 export function simulerBakgrunnsbolk<P extends { id: string; name: string; stock: number; retailPrice: number; costPrice: number; markedsPris: number; category?: string }>(
   products: P[], antallKunder: number, seed: number,
+  /** TEMA 15: per-kategori pick-vekt (turister vrir etterspørsel mot kaffe/kaker).
+   *  Tom/utelatt = uniform valg (uendret). Kategorier uten oppføring = vekt 1. */
+  vareVekt: Record<string, number> = {},
 ): BolkResultat<P> {
   let s = seed >>> 0
   const stock = new Map(products.map(p => [p.id, p.stock]))
   const pool = products   // HELE sortimentet — uprisede varer teller (mangler-pris-tap)
+  // Vektet trekning når vareVekt er satt: kumulativ vekt over poolen.
+  const vektet = Object.keys(vareVekt).length > 0
+  const vekter = vektet ? pool.map(p => Math.max(0, vareVekt[p.category ?? ''] ?? 1)) : null
+  const vektSum = vekter ? vekter.reduce((a, v) => a + v, 0) : 0
+  const velg = (r: number): P => {
+    if (!vekter || vektSum <= 0) return pool[Math.floor(r * pool.length)]!
+    let x = r * vektSum
+    for (let j = 0; j < pool.length; j++) { x -= vekter[j]!; if (x < 0) return pool[j]! }
+    return pool[pool.length - 1]!
+  }
 
   let bakgrunnKunder = 0, bakgrunnStk = 0, bakgrunnKr = 0, varekostKr = 0
   let tapteSalgStk = 0, tapteSalgKr = 0, manglerPrisStk = 0, manglerPrisKr = 0, overprisStk = 0, overprisKr = 0
@@ -249,7 +262,7 @@ export function simulerBakgrunnsbolk<P extends { id: string; name: string; stock
     const antallVarer = rand01(s) < BALANCE.sannsynlighetToVarer ? 2 : 1
     for (let i = 0; i < antallVarer; i++) {
       s = nextSeed(s)
-      const pref = pool[Math.floor(rand01(s) * pool.length)]!
+      const pref = velg(rand01(s))
       // 1. UPRISET → mangler pris.
       if (pref.retailPrice <= 0) {
         manglerPrisStk++; manglerPrisKr += pref.markedsPris

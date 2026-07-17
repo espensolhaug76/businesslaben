@@ -274,7 +274,7 @@ export interface PestEvent {
 
 export interface InboxMessage {
   id: string
-  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event' | 'beredskap' | 'kampanje'
+  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event' | 'beredskap' | 'kampanje' | 'hotellavtale'
   title: string
   body: string
   date: string
@@ -416,6 +416,28 @@ export interface DayBackground {
    *  (flyttall — glatter ut at kapasitet/tick < 1 kunde). Kunder som kommer
    *  når `Math.floor(pool)` er tom → tapt salg med årsak «kø». */
   kapasitetRest: number
+  /** TEMA 15: andel av dagens bakgrunnskunder som er TURISTER (0 utenom sesong).
+   *  Snapshot ved OPEN_DAY så dagen er deterministisk. */
+  turistandel: number
+  /** TEMA 15: per-kategori pick-vekt i bakgrunnssalget (turister vrir etterspørsel
+   *  mot kaffe/kaker). Tom utenom sesong. */
+  vareVekt: Record<string, number>
+}
+
+/** TEMA 15 REISELIV — turistsesong (tidsavgrenset vindu). Starter når læreren
+ *  aktiverer reiseliv-temaet; varer `varighet` handledager. I sesong er en andel
+ *  av kundestrømmen turister, trafikken løftes, og etterspørselen vris mot
+ *  kaffe/kaker. Tunbart i `balance.ts.turistsesong`. */
+export interface Turistsesong {
+  /** Absolutt handledag (absDag) sesongen startet. */
+  startAbsDag: number
+  /** Varighet i handledager (kopiert fra balance ved start). */
+  varighet: number
+  /** Akkumulert gjennom sesongen (mentor-refleksjon ved sesongslutt). */
+  turistKunder: number
+  bakgrunnKunder: number
+  /** Sesongslutt-refleksjonen er allerede vist (mentor fyres én gang). */
+  sluttVist: boolean
 }
 
 /** Et planlagt kundemøte på et klokkeslett (SPILLKLOKKE). Kunden spawner når
@@ -685,6 +707,16 @@ export interface GameState {
   /** Absolutt spilldag da produktets retailPrice sist ble AKTIVT endret av eleven
    *  (førpris-regelen). Mangler = etablert pris (aldri endret). Persistert. */
   prisendretDag: Record<string, number>
+
+  // ── TEMA 15 Reiseliv og vertskap (kun i bruk når temaet er aktivt) ──
+  /** Aktiv/siste turistsesong (null = aldri startet). Persistert. */
+  turistsesong: Turistsesong | null
+  /** Byhotellets gjestepakke-avtale (DEL 5): 'ingen' (uavklart), 'akseptert'
+   *  (gjestestrøm mot 15 % av pakkesalg), 'avslatt'. Persistert. */
+  hotellavtale: 'ingen' | 'akseptert' | 'avslatt'
+  /** «Opplev byen»-gjestepakken via turistkontoret (DEL 5) — eleven har meldt
+   *  kaféen inn (flere anbefal-scenarier). Persistert. */
+  opplevByenPameldt: boolean
 }
 
 /** All spilltilstand for tema Beredskap (HMS-fanen + brannalarm-hendelsen).

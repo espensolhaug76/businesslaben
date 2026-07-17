@@ -115,6 +115,30 @@ export const BALANCE = {
     },
   },
 
+  /** TEMA 15 REISELIV — turistsesong. Lillehammer-klasse småby med sesongturisme
+   *  (vinter/sommer): i sesong løftes trafikken og en tredjedel av kundene er
+   *  tilreisende som vrir etterspørselen mot kaffe/kaker (grab-and-go). Se
+   *  docs/VERDENSMODELL.md §1 (sesong-antagelsen). ALT tunbart. */
+  turistsesong: {
+    /** Sesongens varighet i HANDLEDAGER (~2–3 spilluker; en spilluke ≈ 6
+     *  handledager, halv spillmåned). */
+    varighet: 14,
+    /** Andel av dagens bakgrunnskunder som er TURISTER i sesong. */
+    turistandel: 0.30,
+    /** Ekstra trafikkløft i sesong (tilreisende oppå den vanlige strømmen). */
+    trafikkLoft: 0.20,
+    /** Per-kategori pick-vekt for turister (vrir etterspørsel; drikke=kaffe,
+     *  kaker). Kategorier ikke nevnt = vekt 1,0. */
+    vareVekt: { drikke: 1.6, kaker: 1.5 } as Record<string, number>,
+    /** DEL 5 — byhotellets gjestepakke: hotellet tar denne andelen av
+     *  pakkesalget, mot ekstra turisttrafikk (multiplikator) ved aksept. */
+    hotellKutt: 0.15,
+    hotellTrafikkBonus: 0.25,
+    /** DEL 5 — «Opplev byen»-gjestepakke (turistkontor): løfter frekvensen av
+     *  anbefal-opplevelse-scenarier (multiplikator på turistandelen av møter). */
+    opplevByenScenarioLoft: 1.5,
+  },
+
   /** SPILLKLOKKE — klokka eier den åpne dagen (09:00–17:00). Tempo: tickMs
    *  sanntid per tikk, minutterPerTick spillminutter per tikk. Default:
    *  480 spillminutter / (1 min pr 0,75 s) = 360 s ≈ 6 min åpen dag

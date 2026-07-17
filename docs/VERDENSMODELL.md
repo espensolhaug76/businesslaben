@@ -52,8 +52,25 @@ undervisningsdata, aldri som spillaktør).
 ### Tid
 
 - **Spillmåned = 12 handledager.** ALLE dagstall × 12 gir månedstall.
-- Åpningstid 09:00–17:00 (8 timer). Sesongmekanikk (Tema 15) skalerer
-  basetrafikken per måned — forankres her når den bygges.
+- **Spilluke ≈ 6 handledager** (halv spillmåned) — brukes av turistsesongen.
+- Åpningstid 09:00–17:00 (8 timer).
+
+### Sesong (Tema 15 Reiseliv) — antagelse
+
+En Lillehammer-klasse småby har markert **sesongturisme** (vinteridrett/OL-arv,
+sommer-/hyttesesong). Antagelse i modellen (`balance.ts.turistsesong`, tunbart):
+
+- **Turistsesong varer ~14 handledager** (~2–3 spilluker). Læreren styrer den
+  gjennom tema-aktiveringen: når `reiseliv`-temaet slås på (samme RTDB-kontrakt
+  som de andre temaene — INGEN egen node), starter en sesong automatisk fra den
+  dagen. (Valgt fordi det er enklest innenfor `temaAktivering`-kontrakten; en
+  dev-knapp kan restarte for testing/demonstrasjon.)
+- **I sesong: +20 % trafikk** (tilreisende oppå den vanlige strømmen), og **~30 %
+  av kundene er turister**. Realistisk størrelsesorden for en småby der reiseliv
+  er en merkbar, men ikke dominerende, del av handelen.
+- **Turister vrir etterspørselen** mot kaffe (drikke) og kaker (grab-and-go,
+  spisekultur på farten) — pick-vekt drikke ×1,6, kaker ×1,5. Konsekvens for
+  elevens bestilling (aldri forklart på forhånd — kobling til Tema 4 Verdikjeden).
 
 ---
 

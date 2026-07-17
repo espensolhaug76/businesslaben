@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useGame } from '../GameContext'
+import { useGame, turistsesongInfo } from '../GameContext'
 import { BALANCE } from '../data/balance'
 
 // ─── DAGSPULS (SPILLKLOKKE DEL 3) ─────────────────────────────────────────────
@@ -22,6 +22,7 @@ function formatKr(n: number) { return `${Math.round(n).toLocaleString('nb-NO')} 
 
 export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardOpen: boolean; onSteng: () => void }) {
   const { state } = useGame()
+  const sesong = turistsesongInfo(state)
   const [minimert, setMinimert] = useState(false)
 
   // Gate: kun i åpningstid, aldri over et aktivt kundemøte eller dashbordet.
@@ -82,6 +83,14 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
           <div style={{ textAlign: 'center' }}>
             <span style={{ display: 'inline-block', background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 99, padding: '3px 12px', fontSize: 12, fontWeight: 800, color: '#c084fc' }}>
               📣 Kampanje pågår (dag {state.kampanje.aktiv.dagerKjort + 1} av {state.kampanje.aktiv.varighet})
+            </span>
+          </div>
+        )}
+        {/* TEMA 15: turistsesong-indikator */}
+        {sesong?.aktiv && (
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ display: 'inline-block', background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.5)', borderRadius: 99, padding: '3px 12px', fontSize: 12, fontWeight: 800, color: '#7dd3fc' }}>
+              🧳 Turistsesong (dag {sesong.dag} av {sesong.varighet}) · ~{Math.round(sesong.turistandel * 100)} % turister
             </span>
           </div>
         )}

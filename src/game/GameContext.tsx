@@ -24,7 +24,7 @@ import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinn
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
-import { scenariosForIndustry, scenariosForMix } from './sales/scenarios'
+import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS, TURIST_OPPLEVELSE_ID } from './sales/scenarios'
 
 // Tom dagsstatistikk (BAKGRUNNSSALG-feltene inkludert) — brukt av initialState,
 // OPEN_DAY (nullstilling).
@@ -246,6 +246,9 @@ const initialState: GameState = {
   budsjettOppgjorHint: null,
   kampanje: { aktiv: null, historikk: [], visRapportFor: null },
   prisendretDag: {},
+  turistsesong: null,
+  hotellavtale: 'ingen',
+  opplevByenPameldt: false,
 }
 
 // ─── Actions ────────────────────────────────────────────────────────────────
@@ -331,6 +334,12 @@ type Action =
   | { type: 'DISMISS_KAMPANJE_RAPPORT' }
   | { type: 'SET_KAMPANJE_ROI_SVAR'; id: string; svar: number }
   | { type: 'DEV_SPOL_KAMPANJE' }   // ?dev=1: spol aktiv kampanje til slutt
+  // TEMA 15 Reiseliv — turistsesong + reiselivsavtaler.
+  | { type: 'START_TURISTSESONG' }        // auto (tema aktivert) + ?dev=1
+  | { type: 'DEV_SPOL_TURISTSESONG_SLUTT' } // ?dev=1: spol til sesongslutt
+  | { type: 'MARKER_SESONGSLUTT_VIST' }   // mentor-refleksjonen er vist
+  | { type: 'SET_HOTELLAVTALE'; svar: 'akseptert' | 'avslatt' }  // DEL 5
+  | { type: 'SET_OPPLEV_BYEN'; pameldt: boolean }                // DEL 5
   // Økonomi-samling (DEL 2): lukk månedsoppgjør-overlayet.
   | { type: 'DISMISS_MONTH_SETTLEMENT' }
   | { type: 'RESET' }
@@ -372,6 +381,28 @@ function calcPlanQuality(state: GameState): number {
 /** Monoton absolutt spilldag (dayNumber nullstilles hver måned). */
 function absDag(year: number, month: number, dayNumber: number): number {
   return ((year - 1) * 12 + (month - 1)) * DAY_CONFIG.daysPerMonth + dayNumber
+}
+
+/** TEMA 15 — er turistsesongen aktiv PÅ en gitt absolutt dag? (startet, og
+ *  innenfor varigheten). */
+function turistsesongAktivPaa(ts: GameState['turistsesong'], absDagNaa: number): boolean {
+  return !!ts && absDagNaa >= ts.startAbsDag && absDagNaa < ts.startAbsDag + ts.varighet
+}
+/** Er turistsesongen aktiv NÅ (basert på statens dato)? */
+function turistsesongAktiv(state: GameState): boolean {
+  return turistsesongAktivPaa(state.turistsesong, absDag(state.currentYear, state.currentMonth, state.dayNumber))
+}
+/** TEMA 15 — dagens møte-scenariopool i turistsesong: kaféens vanlige scenarier
+ *  PLUSS turist-scenariene lagt inn ekstra (hyppigere i sesong). «Opplev byen»-
+ *  påmelding løfter opplevelse-anbefalingen ytterligere. */
+function turistScenarioPool(basePool: string[], opplevByenPameldt: boolean): string[] {
+  const rene = basePool.filter(id => !TURIST_SCENARIO_IDS.includes(id))
+  const ekstra: string[] = [...TURIST_SCENARIO_IDS]
+  if (opplevByenPameldt) {
+    const loft = Math.max(1, Math.round(BALANCE.turistsesong.opplevByenScenarioLoft))
+    for (let i = 1; i < loft; i++) ekstra.push(TURIST_OPPLEVELSE_ID)
+  }
+  return [...rene, ...TURIST_SCENARIO_IDS, ...ekstra]
 }
 
 /** Fullfør en kampanje som har kjørt ferdig: bygg effektrapport, restaurer
@@ -430,6 +461,10 @@ function reducer(state: GameState, action: Action): GameState {
         nokkeltall: state.nokkeltall,
         kampanje: state.kampanje,
         prisendretDag: state.prisendretDag,
+        // TEMA 15: turistsesong + reiselivs-avtaler overlever START_GAME.
+        turistsesong: state.turistsesong,
+        hotellavtale: state.hotellavtale,
+        opplevByenPameldt: state.opplevByenPameldt,
         companyName: action.companyName,
         industry: action.industry,
         money: STARTING_MONEY[action.industry],
@@ -947,6 +982,36 @@ function reducer(state: GameState, action: Action): GameState {
       }
     }
 
+    // ── TEMA 15 REISELIV — turistsesong + reiselivsavtaler ──────────────────────
+    case 'START_TURISTSESONG': {
+      // Start (eller restart) en turistsesong fra i dag. Ingen dobbeltstart hvis
+      // en sesong alt er aktiv.
+      if (turistsesongAktiv(state)) return state
+      const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      return {
+        ...state,
+        turistsesong: { startAbsDag: naa, varighet: BALANCE.turistsesong.varighet, turistKunder: 0, bakgrunnKunder: 0, sluttVist: false },
+      }
+    }
+    case 'DEV_SPOL_TURISTSESONG_SLUTT': {
+      // ?dev=1: flytt sesongstarten bakover så den akkurat er over NÅ (uten å
+      // hoppe i kalenderen) — for å teste sesongslutt-refleksjonen.
+      if (!state.turistsesong) return state
+      const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      return { ...state, turistsesong: { ...state.turistsesong, startAbsDag: naa - state.turistsesong.varighet } }
+    }
+    case 'MARKER_SESONGSLUTT_VIST': {
+      if (!state.turistsesong) return state
+      return { ...state, turistsesong: { ...state.turistsesong, sluttVist: true } }
+    }
+    case 'SET_HOTELLAVTALE': {
+      // Fjern eventuell åpen hotell-innboksmelding når eleven har svart.
+      const messages = state.messages.filter(m => m.type !== 'hotellavtale')
+      return { ...state, hotellavtale: action.svar, messages, unreadCount: messages.filter(m => !m.read).length }
+    }
+    case 'SET_OPPLEV_BYEN':
+      return { ...state, opplevByenPameldt: action.pameldt }
+
     case 'BUY_MARKET_RESEARCH': {
       if (state.money < 10_000) return state
       const bp = { ...state.businessPlan, marketResearchDone: true }
@@ -1236,15 +1301,32 @@ function reducer(state: GameState, action: Action): GameState {
       })
       // TEMA 8: aktiv kampanje løfter trafikken med sin (låste) faktor.
       const kampAktiv = state.kampanje.aktiv && state.kampanje.aktiv.dagerKjort < state.kampanje.aktiv.varighet
-      const kunder = kampAktiv ? Math.round(baseKunder * state.kampanje.aktiv!.faktor) : baseKunder
-      const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed, kapasitetRest: 0 }
+      let kunder = kampAktiv ? Math.round(baseKunder * state.kampanje.aktiv!.faktor) : baseKunder
+      // TEMA 15: turistsesong løfter trafikken (+ hotellavtale-bonus ved aksept)
+      // og setter turistandel/vare-vekt for bakgrunnssalget (deterministisk snapshot).
+      const sesong = turistsesongAktiv(state)
+      let turistandel = 0
+      let vareVekt: Record<string, number> = {}
+      if (sesong) {
+        const T = BALANCE.turistsesong
+        const hotellBonus = state.hotellavtale === 'akseptert' ? T.hotellTrafikkBonus : 0
+        kunder = Math.round(kunder * (1 + T.trafikkLoft + hotellBonus))
+        turistandel = T.turistandel
+        vareVekt = T.vareVekt
+      }
+      const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed, kapasitetRest: 0, turistandel, vareVekt }
 
       // SPILLKLOKKE: planlegg dagens kundemøter på klokkeslett (avtagende antall
-      // fra dag 3). Scenariene trekkes uten gjentakelse til poolen er tømt.
-      const poolIds = scenariosForMix(
+      // fra dag 3). Scenariene trekkes uten gjentakelse til poolen er tømt. TEMA 15:
+      // i turistsesong blandes turist-scenarier inn (vektet av turistandel + ev.
+      // «Opplev byen»-påmelding som løfter anbefal-opplevelse-frekvensen).
+      const basePool = scenariosForMix(
         scenariosForIndustry(getActiveIndustryDefinition().scenariePool),
         DAY_CONFIG.scenarioMix,
       ).map(s => s.id)
+      const poolIds = sesong
+        ? turistScenarioPool(basePool, state.opplevByenPameldt)
+        : basePool.filter(id => !TURIST_SCENARIO_IDS.includes(id))
       const dayMeetings = planleggMoter(moterForDag(state.dayNumber), poolIds, (Math.imul(seed, 2654435761)) >>> 0)
 
       return {
@@ -1277,6 +1359,7 @@ function reducer(state: GameState, action: Action): GameState {
       let dayProductStats = state.dayProductStats
       let dayTicker = state.dayTicker
       let dayBackground = state.dayBackground
+      let turistsesong = state.turistsesong   // TEMA 15: akkumuler sesongens tall
 
       if (state.dayBackground) {
         // BEMANNING (kapasitet): betjeningskapasitet opparbeides HVERT tikk
@@ -1300,7 +1383,7 @@ function reducer(state: GameState, action: Action): GameState {
         let seed = state.dayBackground.seed
         if (betjent > 0) {
           // Kun de BETJENTE kundene når disken (kan så tape til tomt lager).
-          const r = simulerBakgrunnsbolk(state.products, betjent, state.dayBackground.seed)
+          const r = simulerBakgrunnsbolk(state.products, betjent, state.dayBackground.seed, state.dayBackground.vareVekt)
           products = r.products
           money = state.money + r.bakgrunnKr
           seed = r.seed
@@ -1320,6 +1403,14 @@ function reducer(state: GameState, action: Action): GameState {
           }
           dayProductStats = mergeProductStats(dayProductStats, r.perProdukt)
           dayTicker = [...r.ticker, ...dayTicker].slice(0, TICKER_MAX)
+          // TEMA 15: akkumuler sesongens turist-/bakgrunnstall (mentor-refleksjon).
+          if (turistsesong && state.dayBackground.turistandel > 0) {
+            turistsesong = {
+              ...turistsesong,
+              turistKunder: turistsesong.turistKunder + Math.round(r.bakgrunnKunder * state.dayBackground.turistandel),
+              bakgrunnKunder: turistsesong.bakgrunnKunder + r.bakgrunnKunder,
+            }
+          }
         }
         if (koKunder > 0) dayStats = { ...dayStats, koKunder: dayStats.koKunder + koKunder }
         // `prosessert` teller ALLE ankomne (betjent + kø) så drypp-kurven ikke
@@ -1336,7 +1427,7 @@ function reducer(state: GameState, action: Action): GameState {
         activeMeetingScenarioId = state.dayMeetings[dueIdx]!.scenarioId
       }
 
-      return { ...state, dayMinute: nyMinutt, products, money, dayStats, dayProductStats, dayTicker, dayBackground, dayMeetings, activeMeetingScenarioId }
+      return { ...state, dayMinute: nyMinutt, products, money, dayStats, dayProductStats, dayTicker, dayBackground, dayMeetings, activeMeetingScenarioId, turistsesong }
     }
 
     case 'CLOSE_DAY': {
@@ -1685,7 +1776,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const v = JSON.parse(raw)
         s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall,
-          kampanje: v.kampanje ?? s.kampanje, prisendretDag: v.prisendretDag ?? s.prisendretDag }
+          kampanje: v.kampanje ?? s.kampanje, prisendretDag: v.prisendretDag ?? s.prisendretDag,
+          turistsesong: v.turistsesong ?? s.turistsesong, hotellavtale: v.hotellavtale ?? s.hotellavtale,
+          opplevByenPameldt: v.opplevByenPameldt ?? s.opplevByenPameldt }
       }
     } catch { /* korrupt/utilgjengelig */ }
     return s
@@ -1694,8 +1787,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
   useEffect(() => {
-    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag })) } catch { /* ignore */ }
-  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag])
+    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt })) } catch { /* ignore */ }
+  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.turistsesong, state.hotellavtale, state.opplevByenPameldt])
 
   // TEST-BRO (KUN DEV): speil hele spilltilstanden + dispatch på window, så det
   // automatiserte spilltest-løpet (Playwright — se docs/SPILLTESTER.md) kan LESE
@@ -1722,6 +1815,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // TEMA 15: når læreren aktiverer reiseliv-temaet OG ingen sesong har startet
+  // ennå, start turistsesongen. Kun ÉN auto-start (turistsesong != null etterpå);
+  // dev-knappen kan restarte manuelt.
+  useEffect(() => {
+    if (aktiveTemaer['reiseliv']?.aktiv && state.turistsesong === null) {
+      dispatch({ type: 'START_TURISTSESONG' })
+    }
+  }, [aktiveTemaer, state.turistsesong])
+
   return <GameContext.Provider value={{ state, dispatch, aktiveTemaer }}>{children}</GameContext.Provider>
 }
 
@@ -1729,6 +1831,16 @@ export function useGame() {
   const ctx = useContext(GameContext)
   if (!ctx) throw new Error('useGame must be used inside GameProvider')
   return ctx
+}
+
+// ─── TEMA 15 — turistsesong-selektor (UI/mentor gater på denne) ───────────────
+/** Sesonginfo for UI/mentor: aktiv nå?, hvilken dag av sesongen, total varighet.
+ *  Null når ingen sesong har startet. */
+export function turistsesongInfo(state: GameState): { aktiv: boolean; dag: number; varighet: number; turistandel: number } | null {
+  const ts = state.turistsesong
+  if (!ts) return null
+  const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+  return { aktiv: turistsesongAktivPaa(ts, naa), dag: naa - ts.startAbsDag + 1, varighet: ts.varighet, turistandel: BALANCE.turistsesong.turistandel }
 }
 
 // ─── Tema-selektorer (fremtidige temajobber gater på disse) ───────────────────

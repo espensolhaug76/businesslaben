@@ -1577,6 +1577,13 @@ export const FASHION_SCENARIOS: SalesScenario[] = [
  *  fremtidig bransje-2-aktivering. Samme mønster som CAFE_SCENARIO_IDS. */
 export const FASHION_SCENARIO_IDS: string[] = FASHION_SCENARIOS.map(s => s.id)
 
+// TEMA 15 REISELIV — turist-scenario-id-er (objektene ligger i TURIST_SCENARIOS
+// under, og legges inn i SCENARIOS + CAFE_SCENARIO_IDS). Gates av turistsesong i
+// GameContext (vises aldri utenom sesong). TURIST_OPPLEVELSE_ID løftes ekstra når
+// eleven har meldt seg på «Opplev byen»-gjestepakken.
+export const TURIST_OPPLEVELSE_ID = 'anbefal-opplevelse'
+export const TURIST_SCENARIO_IDS: string[] = ['sprakbarrieren', 'kulturmotet', TURIST_OPPLEVELSE_ID, 'taxfree-sporsmalet']
+
 export const CAFE_SCENARIO_IDS: string[] = SCENARIOS.map(s => s.id)
 
 /** Alle scenarier på tvers av bransjer — for oppslag (getScenario). SCENARIOS
