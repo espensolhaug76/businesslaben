@@ -1139,9 +1139,249 @@ export const FORSTEGANGSKUNDEN: SalesScenario = {
   ],
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TEMA 15 REISELIV — turist-scenarier (vises KUN i turistsesong, gated i
+// GameContext). Vertskap i sentrum: møt tilreisende med kulturforståelse og
+// service UT over egen disk. Turist-ness signaliseres i DIALOGEN (kart, kamera,
+// «jeg er på besøk») — aldri via etnisitet/nasjonalitet. To sprites er nye
+// (turist m/kart, turist m/kamera — NB-pilot), to gjenbruker eksisterende.
+// ═══════════════════════════════════════════════════════════════════════════
+// Turist-scenario-id-er (gates av turistsesong i GameContext; TURIST_OPPLEVELSE_ID
+// løftes ekstra ved «Opplev byen»-påmelding). Objektene + SCENARIOS-innlemming
+// under. Deklarert FØR scenariene fordi ANBEFAL_OPPLEVELSE bruker id-en.
+export const TURIST_OPPLEVELSE_ID = 'anbefal-opplevelse'
+export const TURIST_SCENARIO_IDS: string[] = ['sprakbarrieren', 'kulturmotet', TURIST_OPPLEVELSE_ID, 'taxfree-sporsmalet']
+
+const VARM_KALD_DRIKKE_TAGS = ['kaffe', 'coffee', 'espresso', 'cappuccino', 'latte', 'te', 'sjokolade', 'smoothie', 'juice', 'iste', 'mineralvann']
+
+// ─── «Språkbarrieren» ────────────────────────────────────────────────────────
+// KJERNE (kommunikasjon uten felles språk): en tilreisende som nesten ikke kan
+// norsk/engelsk. Tålmodighet, peking, vise fram, kroppsspråk — ikke høyere
+// stemme eller oppgitthet. RYKTE er metrikken; et salg kan komme via peking.
+export const SPRAKBARRIEREN: SalesScenario = {
+  id: 'sprakbarrieren',
+  customerName: 'Tilreisende gjest',
+  personaTag: 'Familieorienterte',
+  sprite: '/assets/raw/customers/turist-kart.png',   // NB-pilot (DEL 2/4)
+  outcomeKind: 'service',
+  description: 'En turist med et bykart i hånda som nesten ikke snakker norsk eller engelsk. Vil gjerne kjøpe noe, men klarer ikke å forklare hva — og merker fort om du blir utålmodig eller møter henne med tålmodighet.',
+  hiddenNeed: 'Bli møtt med tålmodighet og kroppsspråk (peke, vise fram, nikke) — ikke høyere stemme eller oppgitthet. Vil kjøpe noe varmt å drikke og finne veien videre.',
+  steps: [
+    {
+      id: 'inn',
+      customerLine: '(peker på kartet, litt hjelpeløst) Hallo … øh … kaffe? … sorry, no norsk.',
+      note: 'Førsteinntrykk: språket er en barriere, ikke et problem MED kunden.',
+      choices: [
+        { id: 'inn_a', text: '(smiler, snakker rolig og tydelig, peker mot disken) Velkommen! Kaffe — ja. Kom, jeg viser deg.', quality: 'good',
+          feedback: 'Rolig stemme, smil og peking. Du gjør språket til en liten sak og henne til en velkommen gjest.' },
+        { id: 'inn_b', text: '(snakker fortere og mer utydelig) Vi-har-kaffe-te-og-kaker-hva-vil-du-ha?', quality: 'warn',
+          feedback: 'Mer ord i høyere tempo hjelper ikke når hun ikke kan språket. Ro og visuell hjelp virker bedre enn flere setninger.' },
+        { id: 'inn_c', text: '(sukker, høyt og sakte) DU. MÅ. SNAKKE. NORSK. HER.', quality: 'bad',
+          feedback: 'Nedlatende og ekskluderende. Å heve stemmen og kreve språk stenger ute en betalende gjest — og alle rundt merker tonen.' },
+      ],
+    },
+    {
+      id: 'vis',
+      customerLine: '(ser lettet ut, følger etter, peker spørrende på menyen)',
+      note: 'Bruk det visuelle: pek på varene, vis fram, la henne velge med øynene.',
+      choices: [
+        { id: 'vi_a', text: '(peker på hver varm drikk etter tur) Kaffe? Te? Sjokolade? (holder opp en kopp)', quality: 'good',
+          feedback: 'Perfekt — du oversetter menyen til noe hun KAN forstå. Peking og en kopp sier mer enn ti setninger.' },
+        { id: 'vi_b', text: '(rekker henne menyen og venter) Bare les, det står jo der.', quality: 'warn',
+          feedback: 'Menyen er på norsk — å be henne lese løser ingenting. Vis fram i stedet.' },
+        { id: 'vi_c', text: 'Vet du hva, jeg lager bare en vanlig kaffe, ferdig med det.', quality: 'bad',
+          feedback: 'Du bestemmer for henne for å bli ferdig. Selv med språksperre kan hun velge selv hvis du gir henne muligheten.' },
+      ],
+    },
+    {
+      id: 'anbefal',
+      kind: 'recommend',
+      recommendNeed: VARM_KALD_DRIKKE_TAGS,
+      customerLine: '(nikker ivrig og peker) Ja! Den — takk!',
+      note: 'Hun pekte på noe du fører — registrer salget som til hvem som helst.',
+    },
+    {
+      id: 'vei',
+      customerLine: '(peker på kartet igjen, spørrende) … sentrum? … torg?',
+      note: 'Vertskap UT over disken: hjelp henne videre, med kroppsspråk.',
+      choices: [
+        { id: 've_a', text: '(peker på kartet, så mot døra og til høyre) Torget — den veien, rett fram. (nikker og smiler)', quality: 'good',
+          feedback: 'Du hjelper henne videre med enkle, tydelige tegn. Det er vertskap: gjesten skal lykkes, ikke bare handle.' },
+        { id: 've_b', text: '(trekker på skuldrene) Beklager, vet ikke helt.', quality: 'warn',
+          feedback: 'Selv en peking mot torget hadde hjulpet. En liten innsats i vertskapet betyr mye for en som er ny i byen.' },
+        { id: 've_c', text: '(vifter henne mot døra) Neste kunde venter, ha det.', quality: 'bad',
+          feedback: 'Avvisende. Hun rakk knapt å føle seg velkommen før du sendte henne ut.' },
+      ],
+    },
+  ],
+}
+
+// ─── «Kulturmøtet» ───────────────────────────────────────────────────────────
+// KJERNE (kulturforståelse — nabomål til Likeverd): en gjest fra en annen
+// service-/spisekultur har andre forventninger (bordservering, spørsmål om
+// innhold). Møt forskjellen med respekt og nysgjerrighet, ALDRI moralisering
+// eller «sånn gjør vi det her». RYKTE er metrikken.
+export const KULTURMOTET: SalesScenario = {
+  id: 'kulturmotet',
+  customerName: 'Reisende gjest',
+  personaTag: 'Karriereorienterte',
+  sprite: '/assets/raw/customers/camilla.png',   // gjenbruk (nøytral voksen)
+  outcomeKind: 'service',
+  description: 'En tilreisende som er vant til en annen kafékultur — venter å bli vist til bordet og servert der, og lurer på hva som er i varene. Merker fort om forskjellen møtes med respekt eller med irritasjon.',
+  hiddenNeed: 'Bli møtt med respekt for at ting gjøres annerledes der hun kommer fra — få en vennlig forklaring på hvordan det funker her, og ærlige svar om innhold, uten å bli belært eller gjort narr av.',
+  steps: [
+    {
+      id: 'inn',
+      customerLine: '(blir stående og vente ved et bord) Unnskyld — kommer det noen og tar bestillingen her?',
+      note: 'Hun venter bordservering. Det er ikke feil — bare en annen kultur.',
+      choices: [
+        { id: 'inn_a', text: 'Så hyggelig at du fant deg et bord! Hos oss bestiller du i disken, så bærer jeg gjerne ut til deg. Skal jeg vise deg menyen?', quality: 'good',
+          feedback: 'Varmt og respektfullt: du forklarer forskjellen som en selvfølge og møter forventningen halvveis ved å bære ut. Ingen belæring.' },
+        { id: 'inn_b', text: 'Nei, du må bestille i disken. Sånn er det i Norge.', quality: 'warn',
+          feedback: '«Sånn er det i Norge» gjør en praktisk forskjell til en nasjonal beskjed. Riktig info, men unødvendig belærende tone.' },
+        { id: 'inn_c', text: '(ler litt) Her serverer vi ikke ved bordet, nei. Det er ikke sånn her.', quality: 'bad',
+          feedback: 'Å le av forventningen hennes er nedlatende. En kulturforskjell er ikke noe å gjøre narr av.' },
+      ],
+    },
+    {
+      id: 'innhold',
+      customerLine: 'Takk. Jeg spiser ikke svin — er det noe i bakevarene jeg bør vite om?',
+      note: 'KJERNE: ta spørsmålet på alvor, svar ærlig, sjekk hvis du er usikker.',
+      choices: [
+        { id: 'ih_a', text: 'Godt du sier fra — jeg sjekker innholdet for deg så du er trygg. Vi har flere ting uten svin, jeg viser deg hvilke.', quality: 'good',
+          feedback: 'Du tar hensynet på alvor og gjør jobben med å finne trygge valg. Det er service og respekt i ett — beslektet med [[KULT_001|kulturforståelse]] i praksis.' },
+        { id: 'ih_b', text: 'Æsj, det er vel bare vanlige boller, tror ikke det er noe svin i dem.', quality: 'warn',
+          feedback: '«Tror ikke» er ikke godt nok når noen har et bevisst hensyn. Sjekk heller, så slipper hun å gjette.' },
+        { id: 'ih_c', text: 'Det er ikke så nøye, det er jo bare kake. Ta en, da.', quality: 'bad',
+          feedback: 'Å avfeie et mathensyn som «ikke så nøye» er respektløst — for henne kan det være viktig av kulturelle eller religiøse grunner.' },
+      ],
+    },
+    {
+      id: 'anbefal',
+      kind: 'recommend',
+      recommendNeed: KAKE_BOLLE_TAGS,
+      customerLine: 'Da tar jeg gjerne noe du kan anbefale — som er trygt for meg.',
+      note: 'Anbefal fra sortimentet, med hensynet i bakhodet.',
+    },
+    {
+      id: 'avslutt',
+      customerLine: 'Tusen takk. Det var en fin start på besøket her.',
+      note: 'Avslutt som vertskap — hun tar med seg inntrykket av byen.',
+      choices: [
+        { id: 'av_a', text: 'Så hyggelig å høre! Velkommen tilbake — og ha et fint opphold i byen.', quality: 'good',
+          feedback: 'Du gjør henne til en gjest i BYEN, ikke bare en kunde. Det er vertskap på sitt beste.' },
+        { id: 'av_b', text: 'Værsågod.', quality: 'warn',
+          feedback: 'Grei, men litt kald etter et så fint møte — en varm avslutning hadde forseglet inntrykket.' },
+      ],
+    },
+  ],
+}
+
+// ─── «Opplevelsen» ───────────────────────────────────────────────────────────
+// KJERNE (vertskap UT over egen disk + reiselivsprodukt): en turist spør hva
+// man kan gjøre i byen. God vertskap peker videre — anbefaler lokale
+// opplevelser (turistkontoret kan nevnes), selger en OPPLEVELSE, ikke bare en
+// vare. RYKTE er metrikken; et lite grab-and-go-salg kan følge med.
+export const ANBEFAL_OPPLEVELSE: SalesScenario = {
+  id: TURIST_OPPLEVELSE_ID,
+  customerName: 'Nysgjerrig turist',
+  personaTag: 'Trendbevisste',
+  sprite: '/assets/raw/customers/turist-kamera.png',   // NB-pilot (DEL 2/4)
+  outcomeKind: 'service',
+  description: 'En turist med kamera rundt halsen som har en halv dag i byen og lurer på hva som er verdt å se. Vil ha ekte tips fra en lokal — ikke bli solgt en kake og sendt ut.',
+  hiddenNeed: 'Få genuine, lokale tips om hva man kan oppleve i byen — føle at verten bryr seg om at besøket blir bra, ikke bare om å selge en vare.',
+  steps: [
+    {
+      id: 'inn',
+      customerLine: 'Hei! Jeg har noen timer i byen — hva synes DU er verdt å få med seg her?',
+      note: 'Vertskap ut over disken: hun vil ha et ekte tips, ikke en salgstale.',
+      choices: [
+        { id: 'inn_a', text: 'Så gøy at du er her! Hvis jeg var deg ville jeg tatt turen opp til utsiktspunktet og innom museet — og turistkontoret nede i gata har kart og flere tips.', quality: 'good',
+          feedback: 'Ekte, lokale anbefalinger + du sender henne til turistkontoret for mer. Du selger BYEN, ikke bare kaféen — kjernen i vertskap.' },
+        { id: 'inn_b', text: 'Nja, det er vel litt av hvert å gjøre. Du finner sikkert noe.', quality: 'warn',
+          feedback: 'Uengasjert. Hun spurte deg fordi du er lokal — et konkret tips hadde gjort besøket hennes (og inntrykket av byen) mye bedre.' },
+        { id: 'inn_c', text: 'Aner ikke, jeg jobber jo bare her. Skal du ha noe å kjøpe?', quality: 'bad',
+          feedback: 'Du avviser spørsmålet og hopper rett til salg. Det er det motsatte av vertskap — hun føler seg som en lommebok, ikke en gjest.' },
+      ],
+    },
+    {
+      id: 'opplevelse',
+      customerLine: 'Så fint! Er det noe spesielt jeg bør oppleve mens jeg er her?',
+      note: 'Anbefal en OPPLEVELSE (ikke en vare) — det er reiselivsproduktet.',
+      choices: [
+        { id: 'op_a', text: 'Akkurat nå er det sesong — det er ofte noe på gang på torget i helgene. Spør på turistkontoret, de vet hva som skjer akkurat nå.', quality: 'good',
+          feedback: 'Du kobler henne til lokale opplevelser og den beste kilden. Vertskap handler om at gjesten lykkes, ikke bare handler hos deg.' },
+        { id: 'op_b', text: 'Du kan jo ta en kaffe her og se det an?', quality: 'warn',
+          feedback: 'Du vrir samtalen tilbake til eget salg. Ikke galt å tilby kaffe — men hun spurte om opplevelser, ikke om menyen.' },
+        { id: 'op_c', text: 'Opplevelser? Kjøp en kake og sett deg, det er opplevelse nok.', quality: 'bad',
+          feedback: 'Avfeiende. Du gjør narr av spørsmålet og mister sjansen til å være et godt vertskap for byen.' },
+      ],
+    },
+    {
+      id: 'anbefal',
+      kind: 'recommend',
+      recommendNeed: VARM_KALD_DRIKKE_TAGS,
+      customerLine: 'Takk for tipsene! Jeg tar noe å drikke med på veien — hva vil du anbefale?',
+      note: 'NÅ kommer salget naturlig — grab-and-go til en fornøyd gjest.',
+    },
+  ],
+}
+
+// ─── «Tax-free-spørsmålet» ───────────────────────────────────────────────────
+// KJERNE (praktisk servicekunnskap): en turist spør om tax-free og kvittering.
+// Ærlig, korrekt info: tax-free-ordningen gjelder VARER man tar ut av landet
+// (ikke servering man spiser her), og kvittering får man alltid. Ikke bløffe.
+export const TAXFREE_SPORSMALET: SalesScenario = {
+  id: 'taxfree-sporsmalet',
+  customerName: 'Handlende gjest',
+  personaTag: 'Karriereorienterte',
+  sprite: '/assets/raw/customers/bjorn.png',   // gjenbruk (nøytral voksen)
+  outcomeKind: 'service',
+  description: 'En turist som skal reise hjem og lurer på om han kan få tax-free og en ordentlig kvittering på det han kjøper. Vil ha ærlige, korrekte svar — ikke gjetting.',
+  hiddenNeed: 'Få riktig, ærlig informasjon om tax-free (gjelder varer ut av landet, ikke servering man spiser her) og en kvittering — uten at selgeren bløffer eller gjetter for å virke hjelpsom.',
+  steps: [
+    {
+      id: 'inn',
+      customerLine: 'Jeg reiser hjem i morgen — kan jeg få tax-free på det jeg kjøper her?',
+      note: 'Praktisk servicekunnskap: svar ærlig, også når svaret er «nei».',
+      choices: [
+        { id: 'inn_a', text: 'Godt spørsmål! Tax-free gjelder varer du tar med UT av landet — servering du spiser her, faller utenfor. Skal du ha noe med deg pakket, kan vi se på det.', quality: 'good',
+          feedback: 'Ærlig og korrekt, og du snur det til noe praktisk. Å svare riktig — også «nei» — bygger mer tillit enn å bløffe.' },
+        { id: 'inn_b', text: 'Hmm, tror kanskje det går an, jeg er ikke helt sikker …', quality: 'warn',
+          feedback: 'Usikkerhet er ærlig, men å la det henge gir ham ingenting å handle etter. Sjekk eller forklar hovedregelen.' },
+        { id: 'inn_c', text: 'Ja da, det ordner vi, bare kjøp i vei!', quality: 'bad',
+          feedback: 'Du lover noe du ikke kan holde for å få et salg. Når det ikke stemmer, sitter han igjen som lurt — dyrt for ryktet.' },
+      ],
+    },
+    {
+      id: 'kvittering',
+      customerLine: 'Ok, det forstår jeg. Men jeg får kvittering, sant? Jeg fører reiseregnskap.',
+      note: 'Kvittering er en selvfølge — og et lovkrav ved salg.',
+      choices: [
+        { id: 'kv_a', text: 'Selvsagt — du får alltid kvittering hos oss. Vil du ha den på papir eller på e-post?', quality: 'good',
+          feedback: 'Ryddig og profesjonelt. Kvittering skal alltid tilbys, og du gjør det enkelt for ham.' },
+        { id: 'kv_b', text: 'Ja, hvis du vil ha, så kan jeg skrive ut en.', quality: 'warn',
+          feedback: 'Litt tafatt — kvittering er en selvfølge, ikke noe han skal måtte be pent om.' },
+        { id: 'kv_c', text: 'Trenger du egentlig det? Det er jo bare en kaffe.', quality: 'bad',
+          feedback: 'Å problematisere en kvittering er både dårlig service og feil — kunden har krav på den.' },
+      ],
+    },
+    {
+      id: 'anbefal',
+      kind: 'recommend',
+      recommendNeed: KAKE_BOLLE_TAGS,
+      customerLine: 'Perfekt. Da tar jeg noe godt med meg også — hva anbefaler du?',
+      note: 'Fornøyd kunde → naturlig mersalg til reisen.',
+    },
+  ],
+}
+
+export const TURIST_SCENARIOS: SalesScenario[] = [SPRAKBARRIEREN, KULTURMOTET, ANBEFAL_OPPLEVELSE, TAXFREE_SPORSMALET]
+
 export const SCENARIOS: SalesScenario[] = [
   MORGENKUNDEN, REKLAMASJONEN, ALLERGIKEREN, PRUTEKUNDEN, DEN_USIKRE, STORBESTILLINGEN,
   KRYSSALGET, ANGRERETTEN, HASTVERKSKUNDEN, GAVEKJOPET, STUDENTRABATTEN, LIKEVERD, VENTETIDEN, FORSTEGANGSKUNDEN,
+  ...TURIST_SCENARIOS,
 ]
 
 /** BRANSJE-DEFINISJON — id-ene kafeens IndustryDefinition.scenariePool peker
@@ -1576,13 +1816,6 @@ export const FASHION_SCENARIOS: SalesScenario[] = [
  *  INDUSTRY_DEFINITIONS) — de skal bare finnes og typesjekke, klare til en
  *  fremtidig bransje-2-aktivering. Samme mønster som CAFE_SCENARIO_IDS. */
 export const FASHION_SCENARIO_IDS: string[] = FASHION_SCENARIOS.map(s => s.id)
-
-// TEMA 15 REISELIV — turist-scenario-id-er (objektene ligger i TURIST_SCENARIOS
-// under, og legges inn i SCENARIOS + CAFE_SCENARIO_IDS). Gates av turistsesong i
-// GameContext (vises aldri utenom sesong). TURIST_OPPLEVELSE_ID løftes ekstra når
-// eleven har meldt seg på «Opplev byen»-gjestepakken.
-export const TURIST_OPPLEVELSE_ID = 'anbefal-opplevelse'
-export const TURIST_SCENARIO_IDS: string[] = ['sprakbarrieren', 'kulturmotet', TURIST_OPPLEVELSE_ID, 'taxfree-sporsmalet']
 
 export const CAFE_SCENARIO_IDS: string[] = SCENARIOS.map(s => s.id)
 
