@@ -116,3 +116,70 @@ gjester (backpacker ved peisen + eldre par ved lenestolene) verifisert headless.
 
 **Endret:** `LobbyView.tsx` + `lobbyAmbient.ts` (nye), `App.tsx` (rute),
 `GamePage.tsx` (isLobby-gren), `DistrictView.tsx` (dev-inngang), denne rapporten.
+
+---
+
+## DEL 3 — «Gjestepakke-forhandlingen» + hotellsjef-sprite (pilot-port, STOPP)
+
+### Møtescenario «Gjestepakke-forhandlingen» ✅
+
+Forgrenings-format (samme mønster som `sales/scenarios.ts`: steg → replikk +
+valg → forgrening via `next`, terminalvalg bærer et `utfall`). Bygget SELVSTENDIG
+(`src/game/city/gjestepakkeForhandling.ts` + `GjestepakkeOverlay.tsx`) — en
+hotellavtale-forhandling passer ikke i kaféens salgs-/lager-/rykte-motor
+(`SalesScenarioOverlay`), så den fikk sin egen kompakte dialog i samme stil.
+
+**VG2-forhandling, konsekvens aldri fasit:** hotellsjefen tilbyr kaféen plass i
+gjestepakken mot 15 % rabatt til pakkegjestene. Tre forgreninger:
+- **Ja (15 %)** → `akseptert`: volum-strategi (flere turister, lavere margin).
+- **Motforslag (8 % + toppplassering)** → steg 2 «kontring»: hotellsjefen møter på
+  **12 % uten toppplassering** → `akseptert` (mildere kutt) eller `avslatt` (brudd).
+- **Nei takk** → `avslatt`: margin-strategi (full margin, færre turister).
+
+Hver utgang viser en KONSEKVENS-tekst som beskriver avveiningen (margin ↔ trafikk)
+— begge veier er gyldige, ingen «riktig» svar. Åpnes ved klikk på hotellsjefen i
+lobbyen. Verifisert headless: begge steg + alle forgreninger rendrer.
+
+**KOBLING til hotellavtale-state — DEFENSIV (som ambient-gjestene):** ved
+fullføring dispatches `{ type: 'SET_HOTELLAVTALE', svar }`. Den action-typen
+finnes KUN på `spor-a/tema-reiseliv` (der `state.hotellavtale` +
+`SET_HOTELLAVTALE`-casen bor) — IKKE på main. På main er dispatchen en **no-op**
+(reduceren returnerer uendret state i default-casen), så forhandlingen spilles
+helt ut og viser konsekvensen frittstående, og **setter avtalen automatisk når
+reiseliv merges**. Dispatch castes løst nettopp fordi typen ikke finnes i main
+sitt Action-union (dokumentert i `GjestepakkeOverlay.tsx`).
+
+`tsc -b` + `vite build` grønne. `npm run spilltest`: **14/14 PASS** (uendret mot
+main — additivt, lobby-isolert).
+
+### Hotellsjef-sprite — PILOT-PORT (generering blokkert → STOPP for Espen) ⏸️
+
+NB-generering er fortsatt blokkert i CC-sesjonen (`AQ.`-token, 401). Som med
+lobbyen: **Espen genererer manuelt fra prompten under (maks 2 piloter), sjekker/
+fjerner ✦, og velger.** LobbyView refererer allerede `/assets/raw/hotellsjef.png`
+og viser en nøytral silhuett til spriten finnes.
+
+**Prompt (fiktiv voksen i vertskapsklær, nøytral, tekstfri):**
+> `3D-rendered miniature diorama character, same stylized-but-dimensional render
+> style as the existing café customer sprites (kari.png / tom.png): a single
+> friendly adult HOTEL MANAGER standing front-facing in a neutral, welcoming
+> posture, arms relaxed. Nordic small-town hotel host attire — a dark
+> waistcoat/blazer over a light shirt, tidy reception look. Approachable,
+> professional, middle-aged, gender-neutral in feel. FULL BODY, standing, feet
+> visible, tall narrow framing (aspect ~0.4). Isolated on a PLAIN WHITE
+> background (for background removal), soft contact shadow. Absolutely NO text,
+> NO name-tag lettering, NO logos or brand marks anywhere (blank badge/clothing).
+> Muted naturalistic colors, soft volumetric lighting. Photoreal stylized 3D
+> render, NOT a 2D illustration, NOT a drawing, NOT cel-shaded.`
+
+**Kjørbart (når `AIza`-nøkkel er på plass):**
+`./scripts/nb-generate.sh hotellsjef-pilot-1-raw "<prompt>" public/assets/raw/customers/kari.png`
+(anker mot en eksisterende kunde-sprite for stil). Deretter rembg → transparent →
+`public/assets/raw/hotellsjef.png`. **STOPP: venter på Espens sprite-valg.**
+
+Etter valg gjenstår KUN å låse plasseringen: hotellsjefen står allerede riktig
+(møtepunkt bak disken, lår-og-opp) — Espen finjusterer `LOBBY_*`-konstantene i
+`?dev=1` mot den ekte spriten og melder tilbake.
+
+**Endret:** `gjestepakkeForhandling.ts` + `GjestepakkeOverlay.tsx` (nye),
+`LobbyView.tsx` (åpner forhandlingen ved klikk), denne rapporten.

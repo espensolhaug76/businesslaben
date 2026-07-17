@@ -4,6 +4,7 @@ import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import { useGame } from '../GameContext'
 import { erTuristsesong, velgAmbientTurister, lobbySeed } from './lobbyAmbient'
+import GjestepakkeOverlay from './GjestepakkeOverlay'
 
 // ── LobbyView — Byhotellets lobby (B2B-møtescene) ────────────────────────────
 // Spor C DEL 2. Bygget etter kaféens KASSEVY-MØNSTER (InteriorView): cover-stage
@@ -71,6 +72,8 @@ export default function LobbyView({ districtId }: { districtId: string }) {
   // (på main finnes verken sesong-state eller turist-sprites — se lobbyAmbient.ts).
   const [devGuests, setDevGuests] = useState(false)
   const [gjestFeil, setGjestFeil] = useState<Record<string, boolean>>({})
+  // DEL 3: «Gjestepakke-forhandlingen» — åpnes ved klikk på hotellsjefen.
+  const [forhandlingOpen, setForhandlingOpen] = useState(false)
   const visGjester = erTuristsesong(state) || (IS_DEV_COORDS && devGuests)
   const gjester = visGjester ? velgAmbientTurister(lobbySeed(state), GJEST_SLOTS.length) : []
 
@@ -127,7 +130,7 @@ export default function LobbyView({ districtId }: { districtId: string }) {
             strekker seg under OCCLUDE-linja og skjules av forgrunns-laget.
             Klikk starter møtescenarioet (DEL 3 — wires når scenarioet finnes). */}
         <div
-          onClick={() => window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: 'gjestepakke-forhandlingen' } }))}
+          onClick={() => setForhandlingOpen(true)}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
           title="Snakk med hotellsjefen"
@@ -236,6 +239,9 @@ export default function LobbyView({ districtId }: { districtId: string }) {
       }}>
         🏨 Byhotellet — lobby (B2B-møtescene){IS_DEV_COORDS ? ' · kalibrering aktiv (panel øverst høyre)' : ''}
       </div>
+
+      {/* DEL 3: «Gjestepakke-forhandlingen» — åpnes ved klikk på hotellsjefen. */}
+      <GjestepakkeOverlay open={forhandlingOpen} onClose={() => setForhandlingOpen(false)} />
     </div>
   )
 }
