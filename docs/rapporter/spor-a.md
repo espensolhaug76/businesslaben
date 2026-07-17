@@ -1688,6 +1688,95 @@ kaffe (HØY) @ 2× → **0 solgt, 92 tapt** (for høy pris). **14/14 PASS.**
   korrigerer selv (netto). Vurder om oppgjøret bør vise kampanjekostnad som egen
   linje (konsistens kasse ↔ resultat). Ikke rørt her (motor-endring).
 
+## 36. TEMA 15 REISELIV OG VERTSKAP (bølge 3)
+
+> **Status: bygget + verifisert (DEL 1, 3–6). To PILOT-PORTER åpne (bilder).**
+> Gren `spor-a/tema-reiseliv` (fra main). `tsc -b` + `vite build` + `npm run
+> spilltest` (**15/15**) grønn. IKKE merget — Espen validerer + velger piloter.
+> Tema 14 Arrangement bygges IKKE som spillmekanikk (Espens beslutning);
+> vertskaps-kompetansen bæres av dette temaet.
+
+**DEL 1 — registrering.** `temaer.ts`: `reiseliv` (vg1+vg2) + hub-lenker
+(vertskapsrollen, kulturforståelse, reiselivsprodukt, internasjonale markeder).
+Mentor-trigger `tema_reiseliv_aktivert` + reiseliv i tema-aktiveringsløkka.
+
+**DEL 3 — turistsesong (kjernen).** Læreren slår på reiseliv-temaet → sesong
+starter automatisk (samme `temaAktivering`-kontrakt, INGEN egen RTDB-node —
+enklest; dokumentert i VERDENSMODELL §1). Varighet ~14 handledager (tunbar). I
+sesong: **+20 % trafikk**, **~30 % turister** (dagspuls «🧳 Turistsesong (dag X
+av Y)»), og **vare-vekt** (drikke ×1,6, kaker ×1,5) vrir bakgrunnssalget mot
+kaffe/kaker (konsekvens, aldri forklart på forhånd). Sesong-antagelsen forankret
+i VERDENSMODELL. Alt i `balance.ts.turistsesong`.
+
+**DEL 4 — 4 turist-scenarier** (Likeverd-kvalitet, gated av sesong): Språkbarrieren
+(kommunikasjon uten felles språk), Kulturmøtet (kulturforståelse, nabomål til
+Likeverd), Opplevelsen (anbefale lokale opplevelser — vertskap ut over disken,
+nevner turistkontoret), Tax-free-spørsmålet (praktisk servicekunnskap).
+
+**DEL 5 — turistkontor + hotell.** TuristkontorPanel (sesongstatus + «Opplev
+byen»-gjestepakke → løfter opplevelse-scenariet). Byhotellet: innboks-
+samarbeidshendelse ved sesongstart (15 % kutt mot gjestestrøm, svar innen 3
+dager); aksept → +25 % turisttrafikk MEN lavere realisert margin (hotellet tar
+sin andel), avslag → full margin. Tunbart, deterministisk.
+
+**DEL 6 — mentor + dev + spilltest.** Dynamisk mentor ved sesongslutt (elevens
+turisttall vs. normaluke) + ved hotellsvar (VG2: gjester vs. margin). Dev: «⏩
+Start turistsesong nå» + «⏩ Spol til sesongslutt». **Spilltest steg 15 (15/15):**
+turistandel + vare-vekt + trafikkløft (+20 %) == fasit; hotellavtale-hendelsen
+dukker opp; aksept → +25 % hotellbonus == fasit (146 → 177 kunder/dag).
+
+### 🚧 PILOT-PORT 1 (DEL 2) — bygg-fasader (STOPP: Espen velger)
+2 kandidater per motiv i `ASSET_PROMPTS.json` (diorama-stil, matcher bydelsbildet,
+fiktivt — base_style forbyr all tekst/logo/skilt). Komponerer korrekt via
+`generate-asset.sh`. Genereres med `/asset <id>` (nano-banana MCP — ikke
+tilgjengelig i denne økten):
+- `turistkontor` / `turistkontor_b` → `public/assets/raw/turistkontor{,_b}.png`
+- `byhotell` / `byhotell_b` → `public/assets/raw/byhotell{,_b}.png`
+
+### 🚧 PILOT-PORT 2 (DEL 4) — turist-sprites (STOPP: Espen velger)
+2 gjenbruker eksisterende nøytrale voksne (Kulturmøtet=camilla, Tax-free=bjorn).
+2 NYE turist-sprites trengs (kunde-ark-pipeline, ikke `ASSET_PROMPTS.json`).
+**Fiktive personer, INGEN nasjonalitets-stereotypier — turist signaliseres av
+REKVISITTER (kart/kamera/sekk) + dialog, ALDRI etnisitet.** Foreslåtte prompts:
+- `turist-kart.png` (Språkbarrieren): «En vennlig voksen turist stående, holder
+  et utbrettet bykart, liten ryggsekk, avslappet reiseklær; nøytralt ansikt,
+  ingen bestemt etnisitet; ren PNG med alfa, samme stil/lys som eksisterende
+  kunde-sprites (kari/tom).»
+- `turist-kamera.png` (Opplevelsen): «En nysgjerrig voksen turist stående, med
+  et fotokamera rundt halsen og en liten dagstursekk, ser interessert rundt seg;
+  nøytralt utseende, ingen bestemt etnisitet; ren PNG med alfa, samme
+  stil/lys/skala som eksisterende kunde-sprites.»
+
+Scenariene refererer disse filstiene; de rendres først når arkene er generert +
+valgt. **Ingen hotspot-integrasjon** (turistkontor/byhotell på bydelsbildet) før
+Espen har valgt fasade-pilot OG tracet rect med `?dev=1` (CLAUDE.md — aldri gjett
+koordinater). Panelet nås inntil da via en midlertidig labelknapp i sentrum.
+
+### Chrome-sjekkliste (Espen validerer)
+1. **Aktivering:** slå på Reiseliv (lærer/temaAktivering) → mentor-boble om
+   turistsesong; sesongen starter.
+2. **Turistsesong i dagspulsen:** åpne en dag → «🧳 Turistsesong (dag X av Y) ·
+   ~30 % turister». Bruk «⏩ Start turistsesong nå» (?dev=1) om nødvendig.
+3. **Sortimentseffekt:** i sesong selger du merkbart mer kaffe/kaker (vare-vekt).
+4. **Turist-scenarier:** spill noen kundemøter i sesong → turist-scenariene
+   dukker opp (Språkbarrieren/Kulturmøtet/Opplevelsen/Tax-free). NB: de 2 nye
+   sprites vises som placeholder til pilotene er generert.
+5. **Turistkontoret:** «🧳 Turistkontoret»-knapp i sentrum → panel med
+   sesongstatus + «Opplev byen»-påmelding.
+6. **Byhotellet:** innboksen får «🏨 Byhotellet vil samarbeide» ved sesongstart →
+   aksept gir mer turisttrafikk (dagspuls) men litt lavere margin; avslag ikke.
+7. **Sesongslutt:** «⏩ Spol til sesongslutt» → mentor-refleksjon om turisttall.
+8. **Piloter:** generer de 4 fasade-kandidatene (`/asset`) + de 2 turist-arkene,
+   velg, og trace hotspot-rect for turistkontor/byhotell på sentrum-bydelsbildet.
+
+### Åpen oppfølging / flagg
+- **Glossary «vertskap» + «kulturforståelse» MANGLER** som egne termer — IKKE
+  diktet opp. Brukte nærmeste (KULT_001 Kulturdimensjoner). Trenger Espen-godkjente
+  definisjoner, så aktiveres fagord-token i turist-scenariene + mentor.
+- **Hotspot-plassering** (turistkontor/byhotell) venter pilotvalg + `?dev=1`-trace.
+- **Turist-sprites** (turist-kart, turist-kamera): generer arkene + cut, legg i
+  `public/assets/raw/customers/`.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Løpende markedsføring (`BALANCE.kampanje.lopende`) — SATT (pkt. 34→35):** pkt.
