@@ -113,6 +113,9 @@ export default function DistrictView({
         {lokaler.map(l => {
           const [x, y, w, h] = l.rect
           const mine = state.rentedLocationId === l.id
+          // Etablering ikke åpnet i bydelen → skjul ledige lokaler helt (skilt +
+          // leie-klikk). Eget lokale vises alltid (om man alt har et her).
+          if (!mine && district.visLedigeLokaler === false) return null
           return (
             <div key={l.id}>
               {/* Usynlig klikkflate over butikkfronten */}

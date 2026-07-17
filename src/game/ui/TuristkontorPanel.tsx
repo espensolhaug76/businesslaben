@@ -154,10 +154,7 @@ export default function TuristkontorPanel({ onLukk }: { onLukk: () => void }) {
           <div style={{ marginTop: '1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.9rem', padding: '0.95rem 1rem' }}>
             <div style={{ fontSize: 14.5, fontWeight: 800, marginBottom: 6 }}>🎒 Sett sammen en pakke</div>
             <p style={{ fontSize: 12.5, lineHeight: 1.55, color: '#94a3b8', margin: '0 0 0.85rem' }}>
-              {/* FLAGG: fagordet «reiselivsprodukt» finnes ennå IKKE i glossary.json.
-                  Jeg dikter ikke opp definisjonen — venter på Espens tekst, og
-                  bytter <em> → <Fagord id="…"> når termen er lagt inn. */}
-              Et <em>reiselivsprodukt</em> er en pakke av
+              Et <Fagord id="REIS_001">reiselivsprodukt</Fagord> er en pakke av
               opplevelser satt sammen for en bestemt gjest. Godt <Fagord id="KULT_003">vertskap</Fagord> vil
               si å lese hva <em>disse</em> gjestene faktisk trenger.
             </p>

@@ -74,6 +74,11 @@ export default function ZoneTracer({ onApply, targets, drawZones }: {
   const [drag, setDrag] = useState<{ sx: number; sy: number; cx: number; cy: number } | null>(null)
   const [last, setLast] = useState<Rect | null>(null)
   const [, bump] = useState(0) // re-tegn etikettene etter «Bruk»
+  // Tegne-laget fanger ALLE klikk når det er på, så hotspots/knapper UNDER
+  // traceren (turistkontor/byhotell osv.) blir uklikkbare. Default AV: laget er
+  // pointerEvents:none (soner vises fortsatt, klikk går gjennom til scenen); slå
+  // PÅ for å dra rektangler. Toggles i panelet.
+  const [traceOn, setTraceOn] = useState(false)
 
   function pct(e: React.PointerEvent): [number, number] {
     const r = e.currentTarget.getBoundingClientRect()
@@ -121,7 +126,7 @@ export default function ZoneTracer({ onApply, targets, drawZones }: {
           setDrag(null)
         }
       }}
-      style={{ position: 'absolute', inset: 0, zIndex: 55, cursor: 'crosshair', touchAction: 'none' }}
+      style={{ position: 'absolute', inset: 0, zIndex: 55, cursor: traceOn ? 'crosshair' : 'default', touchAction: 'none', pointerEvents: traceOn ? 'auto' : 'none' }}
     >
       {/* Eksisterende soner i hver sin farge */}
       {zones.map(z => zoneBox(z.rect, z.color, z.label, z.dashed, z.surface, z.id ?? z.label))}
@@ -156,9 +161,13 @@ export default function ZoneTracer({ onApply, targets, drawZones }: {
           }}
         >
           <div style={{ color: '#ffd24a', fontSize: 12, fontWeight: 800 }}>🧭 Sone-tracer</div>
+          <button
+            style={{ ...btnStyle, background: traceOn ? 'rgba(255,210,74,0.28)' : 'rgba(255,255,255,0.06)', borderColor: traceOn ? '#ffd24a' : 'rgba(255,255,255,0.25)', color: traceOn ? '#ffd24a' : '#cbd5e1' }}
+            onClick={() => setTraceOn(v => !v)}
+          >{traceOn ? '✋ Tracer PÅ (klikk sperret)' : '✋ Tracer AV (klikk virker)'}</button>
           <div style={{ color: '#94a3b8', fontSize: 10, lineHeight: 1.4 }}>
-            Dra et rektangel over fasaden. «Bruk» skriver det inn i sonen live
-            (verdien logges for districts.ts).
+            Slå PÅ for å dra et rektangel over scenen (klikk på hotspots sperres da).
+            «Bruk» skriver rektangelet inn i sonen live (verdien logges for districts.ts).
           </div>
           <div style={{ color: '#cbd5e1', fontSize: 11, fontFamily: 'monospace' }}>
             Siste: {last ? fmt(last) : '—'}

@@ -198,7 +198,7 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
   if (id === 'pakke_bygget') {
     const p = s.reiselivPakke
     if (!p) return undefined
-    if (p.treff >= 0.66) return `Pakka traff gjestene godt — ${p.turister} kjøpte den. Du leste hva nettopp disse var ute etter, og det er kjernen i et godt reiselivsprodukt. Hva var det som gjorde at akkurat disse opplevelsene passet dem?`
+    if (p.treff >= 0.66) return `Pakka traff gjestene godt — ${p.turister} kjøpte den. Du leste hva nettopp disse var ute etter, og det er kjernen i et godt [[REIS_001|reiselivsprodukt]]. Hva var det som gjorde at akkurat disse opplevelsene passet dem?`
     if (p.treff >= 0.33) return `Pakka traff sånn passe — ${p.turister} kjøpte den. Noe stemte, noe bommet. Se på gjestene igjen: hadde de mye tid eller lite? Stor lommebok eller liten? Hvilket kort ville du byttet ut?`
     return `Få gjester kjøpte pakka denne gangen (${p.turister}). Det betyr ikke at opplevelsene var dårlige — de passet bare ikke disse gjestene. Les beskrivelsen av dem på nytt: hva var de egentlig ute etter?`
   }

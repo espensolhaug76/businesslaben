@@ -172,7 +172,7 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
   {
     id: 'pakke_bygget',
     betingelse: 'Eleven har tilbudt en reiselivspakke i turistkontoret — dynamisk melding leser treffet mot besøksprofilen (godt/middels/svakt) uten å avsløre fasiten',
-    melding: 'Du satte sammen et reiselivsprodukt for gjestene — godt [[KULT_003|vertskap]] er å lese hva nettopp disse trengte. Traff pakken det de faktisk var ute etter?',
+    melding: 'Du satte sammen et [[REIS_001|reiselivsprodukt]] for gjestene — godt [[KULT_003|vertskap]] er å lese hva nettopp disse trengte. Traff pakken det de faktisk var ute etter?',
   },
   {
     id: 'kampanje_effekt',

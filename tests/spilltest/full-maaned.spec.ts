@@ -804,7 +804,15 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(body.includes('Turistkontoret'), '«🧳 Turistkontoret»-label rendres på recten').toBe(true)
     expect(body.includes('Byhotellet'), '«🏨 Byhotellet»-label rendres på recten').toBe(true)
     expect(body.includes('Sone-tracer'), 'sone-traceren (ZoneTracer) er montert').toBe(true)
-    ctx.ok('?dev=1 (uten ?skip) → stasjonsbydelen (phase exploring_city), «🧳 Turistkontoret» + «🏨 Byhotellet»-labels + sone-tracer synlige, ingen bransjevelger')
+    // FIX B: etablering ikke åpnet på stasjonen → ingen TIL LEIE-skilt.
+    expect((body.match(/TIL LEIE/g) ?? []).length, 'ingen TIL LEIE-skilt på stasjonen (visLedigeLokaler:false)').toBe(0)
+    // FIX A: sone-traceren er default AV (klikk går gjennom) → hotspot-klikk
+    // åpner panelet i ?dev=1 (traceren blokkerer ikke lenger).
+    expect(body.includes('Tracer AV'), 'tracer default AV (klikk virker)').toBe(true)
+    await page.locator('[title="Turistkontoret"]').click({ force: true })
+    await page.waitForTimeout(600)
+    expect((await page.textContent('body') ?? '').includes('SESONGSTATUS'), 'turistkontor-klikk åpner panelet i dev').toBe(true)
+    ctx.ok('?dev=1 (uten ?skip) → stasjonsbydelen, labels + tracer synlige, INGEN TIL LEIE på stasjonen, tracer default AV → hotspot-klikk åpner panelet, ingen bransjevelger')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

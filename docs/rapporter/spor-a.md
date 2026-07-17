@@ -1850,10 +1850,22 @@ avsløre fasiten.
 9. **Sesongslutt:** «⏩ Spol til sesongslutt» → mentor-refleksjon om turisttall.
 
 ### Åpen oppfølging / flagg
-- **Fagord «reiselivsprodukt» MANGLER** i `glossary.json` — IKKE diktet opp.
-  Rendres som ren `<em>`-tekst i panelet + mentor (kode-kommentar markerer det).
-  Trenger Espen-godkjent definisjon; bytt `<em>` → `<Fagord id="…">` når termen
-  er lagt inn. (`vertskap`=KULT_003 + `kulturforståelse`=KULT_004 er nå på plass.)
+- **Fagord «reiselivsprodukt» — LØST:** Espen-godkjent definisjon lagt inn som
+  `REIS_001` (kategori «Reiseliv», VG2). Fagord-token aktivert der det var flagget
+  som ren tekst: TuristkontorPanel (`<em>` → `<Fagord id="REIS_001">`) + mentor
+  (`[[REIS_001|reiselivsprodukt]]` i `pakke_bygget`-melding + dynamisk 66 %-treff).
+  (`vertskap`=KULT_003 + `kulturforståelse`=KULT_004 fra før.)
+- **Dev-modus finpuss (Espens klikk-test):**
+  - **Tracer-lag sperret hotspot-klikk i `?dev=1`** (Espen så labelene, kom ikke
+    inn). Fikset: `ZoneTracer` har nå en «✋ Tracer AV/PÅ»-toggle, **default AV**
+    (`pointerEvents:none` → klikk går gjennom til turistkontor/byhotell; soner
+    vises fortsatt). Slå PÅ for å dra rektangler. Verifisert headless: begge
+    hotspots åpner panel/hotellstatus i dev.
+  - **TIL LEIE-skiltene skjult på stasjonen** (`visLedigeLokaler:false` på bydelen
+    i `districts.ts`; sentrum uendret). Etablering der er ikke åpnet ennå — KUN
+    visningen gates, lokaldataene/mekanikken (LOKALER + RENT_LOCATION) beholdes.
+  - Begge vokta av **spilltest steg 17** (17/17): ingen TIL LEIE på stasjonen,
+    tracer default AV, turistkontor-klikk åpner panelet.
 - **Hotspot-plassering — LÅST:** `STASJON_REISELIV_HOTSPOTS` er Espen-tracet
   (turistkontor `[57, 26.6, 4.2, 11.3]`, byhotell `[47.6, 15.8, 8.7, 13.8]` på det
   sentrale HOTEL-bygget). **Tooling-fiks beholdt:** stasjonsbydelen bruker nå

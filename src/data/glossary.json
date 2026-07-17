@@ -1592,6 +1592,17 @@
       "common_mistake": "Å behandle forskjeller som problemer — nysgjerrighet og respekt fungerer bedre enn antagelser."
     },
     {
+      "id": "REIS_001",
+      "term": "Reiselivsprodukt",
+      "category": "Reiseliv",
+      "level": "VG2",
+      "definition": "En sammensatt pakke av opplevelser, mat og tjenester som til sammen dekker den besøkendes behov — helheten er produktet.",
+      "example": "Kanefart + kafébesøk + museumsbillett solgt som én pakke til barnefamilien.",
+      "formula": null,
+      "related_terms": ["Vertskap", "Kulturforståelse"],
+      "common_mistake": "Å tro produktet bare er én attraksjon — den besøkende opplever reisen som ETT produkt, og ett svakt ledd trekker ned helheten."
+    },
+    {
       "id": "MKT_044",
       "term": "Yield management",
       "category": "Markedsfoering",

@@ -24,6 +24,10 @@ export interface District {
   polygon: [number, number][]
   /** Bydelsbilde i /public/assets/city/ — undefined ⇒ «kommer snart». */
   image?: string
+  /** Vis ledige lokaler (TIL LEIE-skilt + leie-klikk) i bydelen. Undefined ⇒
+   *  true. Settes false på bydeler der etablering ennå ikke er åpnet (skjuler
+   *  KUN visningen; lokaldataene/mekanikken beholdes). */
+  visLedigeLokaler?: boolean
 }
 
 export interface Lokale {
@@ -61,6 +65,9 @@ export const DISTRICTS: District[] = [
     zone: 'hovedgata',
     polygon: [[40, 62], [78, 62], [78, 82], [40, 82]],
     image: '/assets/city/district_stasjonsomradet.png',
+    // Etablering på stasjonen er ikke åpnet ennå (Espens beslutning) — skjul
+    // TIL LEIE-skiltene. Lokaldataene (LOKALER) + reiselivs-hotspotene beholdes.
+    visLedigeLokaler: false,
   },
   {
     id: 'storhandel',
