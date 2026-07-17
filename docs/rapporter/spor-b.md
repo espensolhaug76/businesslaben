@@ -1038,6 +1038,47 @@ med 🎚️-panelet, bla gjennom alle 8 kundene i velgeren så okklusjonen sitte
 alle, «📋 Kopier» → lim inn i `districts.ts` (KLESBUTIKK_KASSE_*). 🧭 Soner: trace
 KUNDE_BASE (midtfeltet av gulvet). ✦-vannmerket: se bilde-avsnittet over.
 
+### DEL 3 — fashion-kundeark: splitt + kunde-registser (inaktivt)
+
+**a/b) Splitt (COMMITTET tidlig — DEL 2-kalibreringen trengte en ekte kunde):**
+oppdragets «ark 01/02» = FYSISK `customers-ark-03/04-raw.png` (numrene stokket, som
+`klar`-arkene tidligere). ark-02 er kafé-kundene (allerede splittet). De to
+fashion-arkene (Espen lastet opp, dobbel-endelse ryddet) splittet med
+`split-product-sheet.py` (rembg u2net, 4 blobs/ark, halo=0, ✦ utenfor figurene) →
+**8 kunde-sprites** i `raw/customers/`:
+`dame-camel-veske`, `mann-skjegg-pakke`, `forretningsdame-klokke`,
+`mann-strikk-mobil` (ark-03) · `ung-mann-sekk`, `dame-forerhund` (m/førerhund —
+universell utforming), `arbeidsmann-korslagt`, `ung-dame-skjerf` (ark-04).
+`CUSTOMERS_DIR` var hardkodet til MAIN-treet → rettet til worktree; navnekart 03/04
+lagt til. Verifisert visuelt (grå montasje): ren alfa, ingen halo/nabovare-rest.
+
+**d) Per-kunde spriteCal — FØRSTEPASNING (skjermbilde-løkke, alle 8):** rendret alle
+8 kundene i kassevy-scenen. Den delte base-kalibreringen (DEL 2) traff **ALLE 8**
+rent — ingen svever/synker, alle okkluderes ved disk-kanten. Derfor er `spriteCal`
+UTELATT (= ren base) på alle i første pass (`klesbutikkKunder.ts`). Feltet står
+klart for per-kunde dx/dy/scale i 🎚️-panelet der Espen vil finjustere en enkelt
+kunde.
+
+**c/e) Kobling til scenario-datastrukturen — ⚠️ AVKLART MED ESPEN, IKKE koblet:**
+De 6 «inaktive klesbutikk-scenariene» **finnes ikke i koden**:
+`KLESBUTIKK.scenariePool = []`, ingen fashion-`SalesScenario` i `sales/scenarios.ts`,
+og `docs/BRANSJE2_KLESBUTIKK.md` nevner bare KONSEPTENE (prøverom / bytterett /
+størrelsesråd — eksplisitt «egen runde»). Å definere 6 scenarier + kunde↔scenario-
+mapping ville vært GJETTET innhold (CLAUDE.md: «Aldri gjett»). **Espens beslutning:
+KUN kunde-registser nå** — ingen `SalesScenario`-stubs før han spesifiserer de 6.
+- **Datastrukturen som er levert:** `src/game/data/klesbutikkKunder.ts`
+  (`KasseKunde { id, navn, sprite, spriteCal? }` + de 8 kundene). Rent
+  presentasjons-/kalibreringslag; brukes av kassevy-kunde-velgeren (DEL 2).
+- **FLAGGET (DEL 3e):** de 6 scenario-DEFINISJONENE mangler helt — ingen sprite
+  «mangler» for en definert scenario ennå, fordi ingen scenarier er definert. 8
+  kunde-sprites står klare. Ingen nye NB-ark generert (pilot-regelen).
+
+**➡️ Til Espen:** når du vil skrive de 6 scenariene, gi meg navn + skjult behov (+
+evt. dialog/utfallstype) per scenario, så kobler jeg de 8 kundene (eller flagger
+hvilke scenarier som mangler en passende kunde-sprite) og legger dem i
+`sales/klesbutikkScenarios.ts` — fortsatt INAKTIVT (utenfor `scenariePool`) til du
+sier fra. De 8 kandidatene med sprite ligger i `klesbutikkKunder.ts`.
+
 ---
 
 ## Verifisering

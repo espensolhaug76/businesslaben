@@ -21,7 +21,14 @@ export interface KasseKunde {
 const S = (id: string) => `/assets/raw/customers/${id}.png`
 
 /** De 8 fashion-kundene (ark-03 + ark-04), i split-rekkefølge. `spriteCal` er
- *  FØRSTEPASNING (CC-kalibrert mot kassevy-scenen) — tomt = ren base. */
+ *  FØRSTEPASNING (CC-kalibrert mot kassevy-scenen) — tomt = ren base.
+ *
+ *  spriteCal-FØRSTEPASNING (skjermbilde-løkke, alle 8 rendret i kassevy-scenen):
+ *  den delte base-kalibreringen (districts.ts KLESBUTIKK_KASSE_*) traff ALLE 8
+ *  kundene rent — ingen svever/synker, alle okkluderes ved disk-kanten. Derfor er
+ *  `spriteCal` UTELATT (= ren base) på alle i første pass. Feltet står klart:
+ *  Espen legger inn per-kunde dx/dy/scale i 🎚️-panelet (💰 Kasse, ?dev=1) der en
+ *  spesifikk kunde trenger finjustering. */
 export const KLESBUTIKK_KASSE_KUNDER: KasseKunde[] = [
   // ── ark-03 ──
   { id: 'dame-camel-veske',      navn: 'Dame m/camel-jakke',        sprite: S('dame-camel-veske') },
