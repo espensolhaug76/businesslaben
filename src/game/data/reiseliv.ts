@@ -6,6 +6,7 @@
 // FIKTIVE (Lillehammer-klasse by, ingen ekte navn). Vekter bor i balance.ts.
 
 import { BALANCE } from './balance'
+import { TURIST_OPPLEVELSE_ID, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS } from '../sales/scenarios'
 
 /** En besøksprofil — behovene beskrives i TEKST (aldri som fasitliste). De
  *  skjulte preferansene (liker/maksTimer/prisPref) styrer treffet, men vises ikke. */
@@ -106,6 +107,25 @@ export const TURIST_SPRITER: TuristSprite[] = [
   { id: 'turist-backpacker',  fil: `${CUST}/turist-backpacker.png`,  navn: 'Backpacker' },
   { id: 'turist-eldrepar',    fil: `${CUST}/turist-eldrepar.png`,    navn: 'Eldre turistpar',        gruppe: true },
 ]
+
+// ─── REISELIVS-SCENARIO-INNGANGER (bølge 3 v3) ───────────────────────────────
+// Turistene er UT av kaféen. Turistkontoret og byhotellet har hver sin «møt
+// en …»-inngang som starter ett scenario (seedet rotasjon) med dialogkort-UI.
+
+/** Seedet valg av ett turistkontor-scenario (Språkbarrieren / Opplevelsen).
+ *  «Opplev byen»-gjestepakke-påmelding vekter mot opplevelses-anbefalingen
+ *  (gjestepakke-effekten flyttet hit fra kaféens scenariofrekvens). Ren fn. */
+export function velgTuristkontorScenario(seed: number, opplevByen: boolean): string {
+  const pool = opplevByen
+    ? [TURIST_OPPLEVELSE_ID, ...TURISTKONTOR_SCENARIO_IDS]  // ekstra vekt på opplevelse
+    : [...TURISTKONTOR_SCENARIO_IDS]
+  return pool[(seed >>> 0) % pool.length]!
+}
+
+/** Seedet valg av ett byhotell-scenario (Kulturmøtet / Tax-free). Ren fn. */
+export function velgByhotellScenario(seed: number): string {
+  return BYHOTELL_SCENARIO_IDS[(seed >>> 0) % BYHOTELL_SCENARIO_IDS.length]!
+}
 
 /** Deterministisk utvalg av N distinkte ambient-turister fra registeret, seedet
  *  av dagen. Ren funksjon (ingen Math.random) — samme dag gir samme gjester, så

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useGame, useAktiveTemaer } from '../GameContext'
+import { useGame, useAktiveTemaer, turistsesongInfo } from '../GameContext'
 import { getDistrict, KUNDESKALA, KUNDESTIER, LOKALER, NO_GO, STASJON_REISELIV_HOTSPOTS, lokaleRent, type District, type Lokale } from '../../data/districts'
+import { velgByhotellScenario } from '../data/reiseliv'
+import { dagSeed } from '../data/backgroundSales'
 import TuristkontorPanel from '../ui/TuristkontorPanel'
 import CustomerFlow from './CustomerFlow'
 import DevCoordHelper, { IS_DEV_COORDS } from './DevCoordHelper'
@@ -220,8 +222,19 @@ export default function DistrictView({
 function ByhotellStatus({ onLukk }: { onLukk: () => void }) {
   const { state, dispatch } = useGame()
   const pending = state.messages.find(m => m.type === 'hotellavtale')
+  const sesong = turistsesongInfo(state)
   const svar = (valg: 'aksepter' | 'avslaa') => {
     if (pending) dispatch({ type: 'RESOLVE_GAME_EVENT', eventId: 'hotellavtale', choiceId: valg, messageId: pending.id })
+    onLukk()
+  }
+  // Bølge 3 v3 — «møt en gjest»: start ett hotell-scenario (Kulturmøtet /
+  // Tax-free) med dialogkort-UI. Defensivt mot spor-c/hotell-lobby: når lobbyen
+  // merges flyttes møtene inn i lobby-scenen; til da kjøres de herfra.
+  const [motNr, setMotNr] = useState(0)
+  const motGjest = () => {
+    const seed = dagSeed(state.dayNumber, state.currentMonth, state.currentYear) + motNr
+    setMotNr(n => n + 1)
+    window.dispatchEvent(new CustomEvent('game:openScenario', { detail: { scenarioId: velgByhotellScenario(seed) } }))
     onLukk()
   }
   const statusTekst = state.hotellavtale === 'akseptert'
@@ -246,6 +259,20 @@ function ByhotellStatus({ onLukk }: { onLukk: () => void }) {
           </>
         ) : (
           <p style={{ fontSize: 13.5, lineHeight: 1.55, color: '#cbd5e1', margin: 0 }}>{statusTekst}</p>
+        )}
+
+        {/* Bølge 3 v3 — «Møt en gjest»: hotell-scenariene (Kulturmøtet / Tax-free)
+            kjøres fra hotspoten inntil spor-c/hotell-lobby merges. Kun i sesong. */}
+        {sesong?.aktiv && !pending && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <p style={{ fontSize: 12.5, lineHeight: 1.55, color: '#94a3b8', margin: '0 0 0.7rem' }}>
+              En hotellgjest er i lobbyen og lurer på noe. Øv deg som vertskap.
+            </p>
+            <button onClick={motGjest}
+              style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', border: 'none', borderRadius: 99, padding: '0.55rem 1.3rem', color: '#0b1120', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+              👋 Møt en gjest
+            </button>
+          </div>
         )}
       </div>
     </div>

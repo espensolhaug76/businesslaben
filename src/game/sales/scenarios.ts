@@ -1146,11 +1146,18 @@ export const FORSTEGANGSKUNDEN: SalesScenario = {
 // «jeg er på besøk») — aldri via etnisitet/nasjonalitet. To sprites er nye
 // (turist m/kart, turist m/kamera — NB-pilot), to gjenbruker eksisterende.
 // ═══════════════════════════════════════════════════════════════════════════
-// Turist-scenario-id-er (gates av turistsesong i GameContext; TURIST_OPPLEVELSE_ID
-// løftes ekstra ved «Opplev byen»-påmelding). Objektene + SCENARIOS-innlemming
-// under. Deklarert FØR scenariene fordi ANBEFAL_OPPLEVELSE bruker id-en.
+// Turist-scenario-id-er. Bølge 3 v3 (Espens designbeslutning): turistene er
+// FLYTTET UT av kaféens kundemøte-strøm (TURIST_SCENARIO_IDS filtreres BORT fra
+// kafépoolen i GameContext) og fordelt på to reiselivs-innganger:
+//   • Turistkontoret («møt en besøkende»): Språkbarrieren + Opplevelsen
+//   • Byhotellet («møt en gjest»): Kulturmøtet + Tax-free
+// (defensivt mot spor-c/hotell-lobby: når lobbyen merges flyttes hotell-møtene
+// inn i lobby-scenen). Objektene + SCENARIOS-innlemming under. Deklarert FØR
+// scenariene fordi ANBEFAL_OPPLEVELSE bruker id-en.
 export const TURIST_OPPLEVELSE_ID = 'anbefal-opplevelse'
 export const TURIST_SCENARIO_IDS: string[] = ['sprakbarrieren', 'kulturmotet', TURIST_OPPLEVELSE_ID, 'taxfree-sporsmalet']
+export const TURISTKONTOR_SCENARIO_IDS: string[] = ['sprakbarrieren', TURIST_OPPLEVELSE_ID]
+export const BYHOTELL_SCENARIO_IDS: string[] = ['kulturmotet', 'taxfree-sporsmalet']
 
 const VARM_KALD_DRIKKE_TAGS = ['kaffe', 'coffee', 'espresso', 'cappuccino', 'latte', 'te', 'sjokolade', 'smoothie', 'juice', 'iste', 'mineralvann']
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useGame, turistsesongInfo, aktivBesoksprofil, useTemaNivaa } from '../GameContext'
 import Fagord from './Fagord'
-import { OPPLEVELSER, opplevelseById, EGEN_KAFE_ID, velgAmbientTurister } from '../data/reiseliv'
+import { OPPLEVELSER, opplevelseById, EGEN_KAFE_ID, velgAmbientTurister, velgTuristkontorScenario } from '../data/reiseliv'
 import { dagSeed } from '../data/backgroundSales'
 
 // Faste posisjoner for ambient turist-gjester OPPÅ turistkontor-heroen (satt
@@ -45,10 +45,21 @@ export default function TuristkontorPanel({ onLukk }: { onLukk: () => void }) {
   }
   const nyPakke = () => { dispatch({ type: 'SET_REISELIV_PAKKE', profilId: '', kortIds: [], pris: 0 }); setValgte([]) }
 
+  // Bølge 3 v3 — «møt en besøkende»: start ett reiselivs-scenario (Språkbarrieren
+  // / Opplevelsen) med dialogkort-UI. Seedet rotasjon (dag + klikk-teller), og
+  // «Opplev byen»-påmelding vekter mot opplevelses-anbefalingen.
+  const [motNr, setMotNr] = useState(0)
+  const motBesokende = () => {
+    const scenarioId = velgTuristkontorScenario(heroSeed + motNr, state.opplevByenPameldt)
+    setMotNr(n => n + 1)
+    window.dispatchEvent(new CustomEvent('game:openScenario', { detail: { scenarioId } }))
+    onLukk()
+  }
+
   const statusTekst = !sesong
     ? 'Ingen turistsesong ennå. Når læreren åpner Reiseliv-temaet, starter sesongen.'
     : sesong.aktiv
-      ? `Turistsesong pågår — dag ${sesong.dag} av ${sesong.varighet}. Omtrent ${Math.round(sesong.turistandel * 100)} % av kundene er tilreisende. ${igjen} handledager igjen av sesongen.`
+      ? `Turistsesong pågår — dag ${sesong.dag} av ${sesong.varighet}. Byen er full av tilreisende — møt en av dem her. ${igjen} handledager igjen av sesongen.`
       : 'Turistsesongen er over for denne gang.'
 
   return (
@@ -97,6 +108,22 @@ export default function TuristkontorPanel({ onLukk }: { onLukk: () => void }) {
           <div style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', letterSpacing: '0.06em', marginBottom: 4 }}>SESONGSTATUS</div>
           <div style={{ fontSize: 13.5, lineHeight: 1.5, color: '#cbd5e1' }}>{statusTekst}</div>
         </div>
+
+        {/* Bølge 3 v3 — «Møt en besøkende»: start et reiselivs-scenario her
+            (turistene er ute av kaféen). Kun i sesong. */}
+        {sesong?.aktiv && (
+          <div style={{ background: 'rgba(250,204,21,0.06)', border: '1px solid rgba(250,204,21,0.3)', borderRadius: '0.9rem', padding: '0.85rem 1rem', marginBottom: '1rem' }}>
+            <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>👋 Møt en besøkende</div>
+            <p style={{ fontSize: 12.5, lineHeight: 1.55, color: '#94a3b8', margin: '0 0 0.7rem' }}>
+              En tilreisende kommer inn på turistkontoret. Øv deg som vertskap —
+              les hva gjesten trenger og møt henne godt.
+            </p>
+            <button onClick={motBesokende}
+              style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', border: 'none', borderRadius: 99, padding: '0.55rem 1.3rem', color: '#0b1120', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Snakk med gjesten
+            </button>
+          </div>
+        )}
 
         {/* «Opplev byen»-gjestepakken */}
         <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.9rem', padding: '0.85rem 1rem' }}>

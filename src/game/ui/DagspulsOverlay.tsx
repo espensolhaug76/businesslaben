@@ -90,7 +90,7 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
         {sesong?.aktiv && (
           <div style={{ textAlign: 'center' }}>
             <span style={{ display: 'inline-block', background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.5)', borderRadius: 99, padding: '3px 12px', fontSize: 12, fontWeight: 800, color: '#7dd3fc' }}>
-              🧳 Turistsesong (dag {sesong.dag} av {sesong.varighet}) · ~{Math.round(sesong.turistandel * 100)} % turister
+              🧳 Turistsesong (dag {sesong.dag} av {sesong.varighet})
             </span>
           </div>
         )}

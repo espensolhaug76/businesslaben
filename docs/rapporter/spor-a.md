@@ -1701,6 +1701,31 @@ kaffe (HØY) @ 2× → **0 solgt, 92 tapt** (for høy pris). **14/14 PASS.**
 > «Piloter/assets» under. De 4 fasade-oppføringene er fjernet fra
 > `ASSET_PROMPTS.json`.
 
+### OMBYGGING v3 (Espens designbeslutning) — turister UT av kaféen
+Turist-scenariene bor ikke lenger i kaféens kundemøte-strøm; de er flyttet til
+**reiselivsstedene**. Kaféens sesongeffekt er nå **kun økonomisk**.
+- **Turistkontoret** («👋 Møt en besøkende», TuristkontorPanel, i sesong) →
+  starter **Språkbarrieren** eller **Opplevelsen** (seedet rotasjon; «Opplev byen»-
+  påmelding vekter mot opplevelses-anbefalingen) med samme dialogkort-UI.
+- **Byhotellet** («👋 Møt en gjest», hotell-hotspot, i sesong) → **Kulturmøtet**
+  eller **Tax-free**. *Defensivt mot `spor-c/hotell-lobby`:* når lobbyen merges,
+  flyttes disse møtene inn i lobby-scenen; til da kjøres de fra hotspot-klikket.
+- **Kaféen i sesong:** INGEN turist-sprites/-scenarier. Bare økonomi —
+  trafikkløft (+20 %) + varevekt (kaffe/kaker). Dagspulsen viser «🧳 Turistsesong
+  (dag X av Y)» uten turistandel-prosent. `TURIST_SCENARIO_IDS` filtreres alltid
+  bort fra kafépoolen (`turistScenarioPool`-funksjonen fjernet).
+- **Uendret:** pakkebyggeren, «Opplev byen»-gjestepakken, hotellavtalen (bor
+  allerede riktig sted). `turistandel` beholdes som INTERN økonomisk parameter
+  (hotell-kuttet + sesong-akkumuleringen) — bare ikke lenger surfacet som
+  «synlige turister i kaféen».
+- **Teknisk:** ny ekte inngang `game:openScenario`-event (ved siden av dev-
+  `dev:openSalesScenario`) → samme `SalesScenarioOverlay`. Innganger + seedet
+  valg i `data/reiseliv.ts` (`velgTuristkontorScenario`/`velgByhotellScenario`),
+  pooler i `sales/scenarios.ts` (`TURISTKONTOR_SCENARIO_IDS`/`BYHOTELL_SCENARIO_IDS`).
+- **Horisont (framtidig lag):** en **engelsk-/språkmodul** kan legges oppå
+  scenariene (særlig Språkbarrieren) — la eleven øve vertskap på engelsk. Ikke
+  bygget nå; scenariomotoren tar det som et rent innholds-/språklag senere.
+
 **DEL 1 — registrering.** `temaer.ts`: `reiseliv` (vg1+vg2) + hub-lenker
 (vertskapsrollen, kulturforståelse, reiselivsprodukt, internasjonale markeder).
 Mentor-trigger `tema_reiseliv_aktivert` (m/ [[KULT_003]]-token) + reiseliv i
@@ -1709,12 +1734,13 @@ tema-aktiveringsløkka.
 **DEL 3 — turistsesong (kjernen).** Læreren slår på reiseliv-temaet → sesong
 starter automatisk (samme `temaAktivering`-kontrakt, INGEN egen RTDB-node —
 enklest; dokumentert i VERDENSMODELL §1). Varighet ~14 handledager (tunbar). I
-sesong: **+20 % trafikk**, **~30 % turister** (dagspuls «🧳 Turistsesong (dag X
-av Y)»), og **vare-vekt** (drikke ×1,6, kaker ×1,5) vrir bakgrunnssalget mot
-kaffe/kaker (konsekvens, aldri forklart på forhånd). Alt i
+sesong (KAFÉEN, kun økonomisk etter v3): **+20 % trafikk** (dagspuls «🧳
+Turistsesong (dag X av Y)») + **vare-vekt** (drikke ×1,6, kaker ×1,5) vrir
+bakgrunnssalget mot kaffe/kaker (konsekvens, aldri forklart på forhånd). Alt i
 `balance.ts.turistsesong`.
 
-**DEL 4 — 4 turist-scenarier** (Likeverd-kvalitet, gated av sesong): Språkbarrieren
+**DEL 4 — 4 turist-scenarier** (Likeverd-kvalitet; etter v3 kjørt fra
+reiselivsstedene, IKKE kaféen — se OMBYGGING v3 over): Språkbarrieren
 (kommunikasjon uten felles språk), Kulturmøtet (kulturforståelse, nabomål til
 Likeverd), Opplevelsen (anbefale lokale opplevelser — vertskap ut over disken,
 nevner turistkontoret), Tax-free-spørsmålet (praktisk servicekunnskap). Fagord-
@@ -1801,11 +1827,13 @@ avsløre fasiten.
 ### Chrome-sjekkliste (Espen validerer)
 1. **Aktivering:** slå på Reiseliv (lærer/temaAktivering) → mentor-boble om
    turistsesong; sesongen starter.
-2. **Turistsesong i dagspulsen:** åpne en dag → «🧳 Turistsesong (dag X av Y) ·
-   ~30 % turister». Bruk «⏩ Start turistsesong nå» (?dev=1) om nødvendig.
+2. **Turistsesong i dagspulsen:** åpne en dag → «🧳 Turistsesong (dag X av Y)»
+   (uten turistandel-prosent etter v3). Bruk «⏩ Start turistsesong nå» (?dev=1).
 3. **Sortimentseffekt:** i sesong selger du merkbart mer kaffe/kaker (vare-vekt).
-4. **Turist-scenarier:** spill noen kundemøter i sesong → turist-scenariene
-   dukker opp (Språkbarrieren/Kulturmøtet/Opplevelsen/Tax-free).
+   **Ingen** turist-sprites/-scenarier i kaféen (kun økonomi).
+4. **Turist-scenarier (fra reiselivsstedene):** i sesong → Turistkontoret «👋 Møt
+   en besøkende» gir Språkbarrieren/Opplevelsen; Byhotellet «👋 Møt en gjest» gir
+   Kulturmøtet/Tax-free. Samme dialogkort-UI som kaféens kundemøter.
 5. **Stasjons-hotspots (LÅST):** gå til stasjonsbydelen → «🧳 Turistkontoret»
    (bygg langs gata) + «🏨 Byhotellet» (det sentrale HOTEL-bygget) er klikkbare.
    Turistkontor → panel; hotell → status/innboks. Rectene er Espen-tracet og låst

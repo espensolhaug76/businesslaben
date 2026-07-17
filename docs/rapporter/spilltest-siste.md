@@ -1,28 +1,28 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-07-17T13:35:10.870Z
+> Startet: 2026-07-17T14:31:38.161Z
 
 **Resultat: ✅ GRØNT** — 16 PASS · 0 FAIL · 0 KJENT FEIL (16 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 189 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 7068 |
-| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 578 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 213 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 10541 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 7438 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 4115 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 16895 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 4953 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 5866 |
-| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 13285 |
-| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 3184 |
-| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 9279 |
-| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 4946 |
-| 15 | Reiseliv: turistsesong (turistandel + trafikkløft == fasit) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 4987 |
-| 16 | Pakkebyggeren: treff == delt fasit (beregnPakke) + egen-kafé-kort gir målbar ekstra sesongtrafikk | ✅ PASS | 3912 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 1150 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 9736 |
+| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 669 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 199 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 12700 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 6530 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 4067 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 14133 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 5848 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 5803 |
+| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 11786 |
+| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 3148 |
+| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 10336 |
+| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 3909 |
+| 15 | Reiseliv: turistsesong (turistandel + trafikkløft == fasit) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 4808 |
+| 16 | Pakkebyggeren: treff == delt fasit (beregnPakke) + egen-kafé-kort gir målbar ekstra sesongtrafikk | ✅ PASS | 4536 |
 
 ## Detaljer per steg
 
@@ -57,7 +57,7 @@ Verifiserte tall/tilstander:
 - bakgrunnssalg etter 150 tikk (dayMinute 122): 1752 kr, 34 kunder
 - kundemøte startet: «likeverd»
 - kundemøtet spilt til slutt (meetingsToday=1)
-- auto-klokka tikket (dayMinute 124 → økte av seg selv)
+- auto-klokka tikket (dayMinute 125 → økte av seg selv)
 - dagsoppgjør: omsetning=1802 kr, varekost=558, svinn=0 kr (0 stk), tapt=125 stk
 - resultat=1244 kr summerer konsistent (salg+bakgrunn−varekost−svinn)
 
@@ -121,7 +121,7 @@ Verifiserte tall/tilstander:
 ### ✅ Steg 15 — Reiseliv: turistsesong (turistandel + trafikkløft == fasit) + byhotell-avtale gir riktig effekt ved aksept
 
 Verifiserte tall/tilstander:
-- sesong: ~30 % turister, trafikk 122 → 146 (+20 %), vare-vekt drikke 1.6
+- sesong (kafé): trafikk 122 → 146 (+20 %), vare-vekt drikke 1.6, turist-scenarier i kafépool: 0
 - hotellavtale akseptert → trafikk 146 → 177 (+25 % hotellbonus)
 
 ### ✅ Steg 16 — Pakkebyggeren: treff == delt fasit (beregnPakke) + egen-kafé-kort gir målbar ekstra sesongtrafikk
@@ -129,6 +129,7 @@ Verifiserte tall/tilstander:
 Verifiserte tall/tilstander:
 - profil «Busslast med seniorer» → treff 47 %, 13 turister kjøpte pakken (fasit 13)
 - egen kafé i pakken → sesongtrafikk 146 → 165 (+15 % kafébonus)
+- reiselivs-innganger: turistkontor/byhotell velger fra riktig pool; «møt en …»-event åpner dialogkort-overlayet (turister UT av kaféen)
 
 ## Notater
 

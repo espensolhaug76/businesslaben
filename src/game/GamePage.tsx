@@ -105,6 +105,8 @@ function GameContent() {
 
   // DEL 4: lytt etter dev-trigger fra dashbordet («Øv salg»). Åpner
   // salgssituasjon-overlayet oppå et evt. åpent dashbord.
+  // TEMA 15 bølge 3 v3: `game:openScenario` er den EKTE (ikke-dev) inngangen —
+  // turistkontoret/byhotellet starter reiselivs-scenariene med samme overlay.
   useEffect(() => {
     const handler = (e: Event) => {
       const id = (e as CustomEvent).detail?.scenarioId ?? 'morgenkunden'
@@ -113,7 +115,11 @@ function GameContent() {
       setOverlay(true)
     }
     window.addEventListener('dev:openSalesScenario', handler)
-    return () => window.removeEventListener('dev:openSalesScenario', handler)
+    window.addEventListener('game:openScenario', handler)
+    return () => {
+      window.removeEventListener('dev:openSalesScenario', handler)
+      window.removeEventListener('game:openScenario', handler)
+    }
   }, [])
 
   // TEMA 1 — dev/test-hook: utløs brannalarmen manuelt (reduceren gater åpen dag

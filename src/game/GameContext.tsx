@@ -24,7 +24,7 @@ import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinn
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
-import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS, TURIST_OPPLEVELSE_ID } from './sales/scenarios'
+import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS } from './sales/scenarios'
 import { beregnPakke, velgProfil, BESOKSPROFILER } from './data/reiseliv'
 
 // Tom dagsstatistikk (BAKGRUNNSSALG-feltene inkludert) — brukt av initialState,
@@ -394,18 +394,6 @@ function turistsesongAktivPaa(ts: GameState['turistsesong'], absDagNaa: number):
 /** Er turistsesongen aktiv NÅ (basert på statens dato)? */
 function turistsesongAktiv(state: GameState): boolean {
   return turistsesongAktivPaa(state.turistsesong, absDag(state.currentYear, state.currentMonth, state.dayNumber))
-}
-/** TEMA 15 — dagens møte-scenariopool i turistsesong: kaféens vanlige scenarier
- *  PLUSS turist-scenariene lagt inn ekstra (hyppigere i sesong). «Opplev byen»-
- *  påmelding løfter opplevelse-anbefalingen ytterligere. */
-function turistScenarioPool(basePool: string[], opplevByenPameldt: boolean): string[] {
-  const rene = basePool.filter(id => !TURIST_SCENARIO_IDS.includes(id))
-  const ekstra: string[] = [...TURIST_SCENARIO_IDS]
-  if (opplevByenPameldt) {
-    const loft = Math.max(1, Math.round(BALANCE.turistsesong.opplevByenScenarioLoft))
-    for (let i = 1; i < loft; i++) ekstra.push(TURIST_OPPLEVELSE_ID)
-  }
-  return [...rene, ...TURIST_SCENARIO_IDS, ...ekstra]
 }
 
 /** Fullfør en kampanje som har kjørt ferdig: bygg effektrapport, restaurer
@@ -1364,16 +1352,16 @@ function reducer(state: GameState, action: Action): GameState {
       const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed, kapasitetRest: 0, turistandel, vareVekt }
 
       // SPILLKLOKKE: planlegg dagens kundemøter på klokkeslett (avtagende antall
-      // fra dag 3). Scenariene trekkes uten gjentakelse til poolen er tømt. TEMA 15:
-      // i turistsesong blandes turist-scenarier inn (vektet av turistandel + ev.
-      // «Opplev byen»-påmelding som løfter anbefal-opplevelse-frekvensen).
+      // fra dag 3). Scenariene trekkes uten gjentakelse til poolen er tømt.
+      // TEMA 15 bølge 3 v3: turist-scenariene er FLYTTET UT av kaféens
+      // kundemøte-strøm (til turistkontoret + byhotellet) — de filtreres derfor
+      // ALLTID bort fra kafépoolen. Sesongeffekten i kaféen er kun økonomisk
+      // (trafikkløft + varevekt, satt over): byen har flere folk.
       const basePool = scenariosForMix(
         scenariosForIndustry(getActiveIndustryDefinition().scenariePool),
         DAY_CONFIG.scenarioMix,
       ).map(s => s.id)
-      const poolIds = sesong
-        ? turistScenarioPool(basePool, state.opplevByenPameldt)
-        : basePool.filter(id => !TURIST_SCENARIO_IDS.includes(id))
+      const poolIds = basePool.filter(id => !TURIST_SCENARIO_IDS.includes(id))
       const dayMeetings = planleggMoter(moterForDag(state.dayNumber), poolIds, (Math.imul(seed, 2654435761)) >>> 0)
 
       return {

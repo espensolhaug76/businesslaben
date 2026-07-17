@@ -12,7 +12,8 @@ import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinn
 import { DAY_CONFIG } from '../../src/game/data/dayConfig'
 import { INDUSTRY_META } from '../../src/game/data/industries'
 import { BALANCE } from '../../src/game/data/balance'
-import { beregnPakke, velgProfil, EGEN_KAFE_ID } from '../../src/game/data/reiseliv'
+import { beregnPakke, velgProfil, EGEN_KAFE_ID, velgTuristkontorScenario, velgByhotellScenario } from '../../src/game/data/reiseliv'
+import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS } from '../../src/game/sales/scenarios'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
 // Spiller byspillet (/game) ende til ende og asserter på state + DOM ved hvert
@@ -638,7 +639,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
   })
 
   // ── STEG 15 — TEMA 15 Reiseliv: turistsesong (andel + trafikkløft) + hotellavtale ─
-  await steg(page, rapport, 15, 'Reiseliv: turistsesong (turistandel + trafikkløft == fasit) + byhotell-avtale gir riktig effekt ved aksept', async ctx => {
+  await steg(page, rapport, 15, 'Reiseliv: turistsesong i kaféen er kun økonomisk (trafikkløft + varevekt, INGEN turist-scenarier i pool) + byhotell-avtale gir riktig effekt ved aksept', async ctx => {
     const T = BALANCE.turistsesong
     // Hermetisk: frisk boot + sentrum-l2 + priset lager + ett trau.
     await page.goto('/game?skip=1')
@@ -675,14 +676,18 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     const hotellMsg = s1.messages.find(m => m.type === 'hotellavtale')
     expect(hotellMsg, 'byhotellets gjestepakke ligger i innboksen').toBeTruthy()
 
-    // SESONGDAG (uten avtale): turistandel + vare-vekt + trafikkløft == fasit.
+    // SESONGDAG (uten avtale): vare-vekt + trafikkløft == fasit. Bølge 3 v3:
+    // sesongeffekten i KAFÉEN er kun økonomisk — turist-scenariene er flyttet ut
+    // (til turistkontor/hotell), så kaféens møte-pool skal IKKE inneholde dem.
     await dispatch(page, { type: 'OPEN_DAY' })
     await ventState(page, s => s.dayPhase === 'åpen' && !!s.dayBackground, 'sesongdag åpen')
-    const bgS = (await lesState(page)).dayBackground!
-    expect(bgS.turistandel, 'turistandel == BALANCE-fasit').toBeCloseTo(T.turistandel, 5)
+    const sS = await lesState(page)
+    const bgS = sS.dayBackground!
     expect(bgS.vareVekt.drikke, 'vare-vekt drikke == fasit').toBe(T.vareVekt.drikke)
     expect(bgS.total, 'trafikkløft == round(base × (1+loft))').toBe(Math.round(base * (1 + T.trafikkLoft)))
-    ctx.ok(`sesong: ~${Math.round(T.turistandel * 100)} % turister, trafikk ${base} → ${bgS.total} (+${Math.round(T.trafikkLoft * 100)} %), vare-vekt drikke ${bgS.vareVekt.drikke}`)
+    const turistIMote = sS.dayMeetings.filter(m => TURIST_SCENARIO_IDS.includes(m.scenarioId))
+    expect(turistIMote.length, 'kaféens møte-pool inneholder INGEN turist-scenarier (flyttet ut)').toBe(0)
+    ctx.ok(`sesong (kafé): trafikk ${base} → ${bgS.total} (+${Math.round(T.trafikkLoft * 100)} %), vare-vekt drikke ${bgS.vareVekt.drikke}, turist-scenarier i kafépool: 0`)
     await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør 2')
     await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag 2')
 
@@ -700,7 +705,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
   })
 
   // ── STEG 16 — TEMA 15 DEL 7 Pakkebyggeren (reiselivsprodukt) ────────────────
-  await steg(page, rapport, 16, 'Pakkebyggeren: treff == delt fasit (beregnPakke) + egen-kafé-kort gir målbar ekstra sesongtrafikk', async ctx => {
+  await steg(page, rapport, 16, 'Pakkebyggeren (treff == beregnPakke-fasit + kafé-trafikk) + reiselivs-inngangene (turistkontor/byhotell velger scenario + åpner dialogkort)', async ctx => {
     const T = BALANCE.turistsesong
     // Hermetisk boot + sentrum-l2 (basetrafikk 150) + priset lager + kaffe i trau
     // (holdbar → eksponering identisk baseline↔sesong, som i steg 15). VIKTIG:
@@ -760,6 +765,27 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(medKafe, 'kafé-kort i pakke → +kafeTrafikkBonus == round(base × (1+løft+kafébonus))')
       .toBe(Math.round(base * (1 + T.trafikkLoft + T.pakke.kafeTrafikkBonus)))
     ctx.ok(`egen kafé i pakken → sesongtrafikk ${Math.round(base * (1 + T.trafikkLoft))} → ${medKafe} (+${Math.round(T.pakke.kafeTrafikkBonus * 100)} % kafébonus)`)
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør steg16')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag steg16')
+
+    // REISELIVS-INNGANGENE (bølge 3 v3): turistkontoret + byhotellet velger sine
+    // scenarier (seedet) fra RIKTIG pool, og «møt en …»-eventet åpner dialogkort-
+    // overlayet (samme UI som kaféens kundemøter). Verifiser begge deler.
+    for (let seed = 0; seed < 8; seed++) {
+      expect(TURISTKONTOR_SCENARIO_IDS, `turistkontor seed ${seed} ∈ turistkontor-pool`).toContain(velgTuristkontorScenario(seed, false))
+      expect(TURISTKONTOR_SCENARIO_IDS, `turistkontor (opplev byen) seed ${seed} ∈ pool`).toContain(velgTuristkontorScenario(seed, true))
+      expect(BYHOTELL_SCENARIO_IDS, `byhotell seed ${seed} ∈ byhotell-pool`).toContain(velgByhotellScenario(seed))
+    }
+    // «Opplev byen»-vekting: opplevelses-anbefalingen skal dominere over 8 seeds.
+    const medOpplev = Array.from({ length: 8 }, (_, s) => velgTuristkontorScenario(s, true)).filter(id => id === 'anbefal-opplevelse').length
+    const utenOpplev = Array.from({ length: 8 }, (_, s) => velgTuristkontorScenario(s, false)).filter(id => id === 'anbefal-opplevelse').length
+    expect(medOpplev, 'påmelding vekter mot opplevelses-anbefaling').toBeGreaterThan(utenOpplev)
+
+    // Inngang → dialogkort-overlay: send det EKTE game-eventet og bekreft at
+    // salgsoverlayet åpner med et turist-scenario (samme pipeline som knappene).
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('game:openScenario', { detail: { scenarioId: 'sprakbarrieren' } })))
+    await page.getByTestId('salgsoverlay').waitFor({ state: 'visible', timeout: 4000 })
+    ctx.ok(`reiselivs-innganger: turistkontor/byhotell velger fra riktig pool; «møt en …»-event åpner dialogkort-overlayet (turister UT av kaféen)`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
