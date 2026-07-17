@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGame, useAktiveTemaer } from '../GameContext'
-import { getDistrict, KUNDESKALA, KUNDESTIER, LOKALER, NO_GO, lokaleRent, type District, type Lokale } from '../../data/districts'
+import { getDistrict, KUNDESKALA, KUNDESTIER, LOKALER, NO_GO, STASJON_REISELIV_HOTSPOTS, lokaleRent, type District, type Lokale } from '../../data/districts'
 import TuristkontorPanel from '../ui/TuristkontorPanel'
 import CustomerFlow from './CustomerFlow'
 import DevCoordHelper, { IS_DEV_COORDS } from './DevCoordHelper'
@@ -39,6 +39,7 @@ export default function DistrictView({
   // Zoom-overgang inn mot eget lokale før navigasjon til StorefrontView.
   const [zoomOrigin, setZoomOrigin] = useState<[number, number] | null>(null)
   const [turistkontorAapen, setTuristkontorAapen] = useState(false)   // TEMA 15 DEL 5
+  const [byhotellAapen, setByhotellAapen] = useState(false)           // TEMA 15 DEL 5
 
   if (!district) {
     return (
@@ -84,7 +85,11 @@ export default function DistrictView({
         {IS_DEV_COORDS && (
           <DevCoordHelper
             paths={KUNDESTIER[district.id]}
-            zones={NO_GO[district.id]}
+            // TEMA 15: vis reiseliv-hotspotene som gule zones på stasjonsbydelen
+            // så Espen kan trace turistkontor/byhotell-rectene (?dev=1).
+            zones={district.id === 'stasjonsomradet'
+              ? [...(NO_GO[district.id] ?? []), ...Object.values(STASJON_REISELIV_HOTSPOTS)]
+              : NO_GO[district.id]}
             skala={KUNDESKALA[district.id]}
           />
         )}
@@ -141,6 +146,35 @@ export default function DistrictView({
             </div>
           )
         })}
+
+        {/* TEMA 15 REISELIV — turistkontor + byhotell (stasjonsbydel, kun når
+            reiseliv er aktivt). Rects er PLACEHOLDER til Espen tracer dem (?dev=1
+            viser dem som gule zones i rute-traceren) og låser i districts.ts. */}
+        {district.id === 'stasjonsomradet' && aktiveTemaer['reiseliv']?.aktiv && (
+          <>
+            {(['turistkontor', 'byhotell'] as const).map(key => {
+              const [x, y, w, h] = STASJON_REISELIV_HOTSPOTS[key]
+              const erKontor = key === 'turistkontor'
+              return (
+                <div key={key}>
+                  <div
+                    onClick={() => (erKontor ? setTuristkontorAapen(true) : setByhotellAapen(true))}
+                    title={erKontor ? 'Turistkontoret' : 'Byhotellet'}
+                    style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`, cursor: 'pointer', borderRadius: 6, zIndex: 3, outline: '1px solid rgba(56,189,248,0)', transition: 'outline 0.15s, background 0.15s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(56,189,248,0.12)'; (e.currentTarget as HTMLDivElement).style.outline = '1px solid rgba(56,189,248,0.6)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.outline = '1px solid rgba(56,189,248,0)' }}
+                  />
+                  {/* Label over recten (samme mønster som TIL LEIE-skiltene) */}
+                  <div style={{ position: 'absolute', left: `${x + w / 2}%`, top: `${y}%`, transform: 'translate(-50%, -120%)', pointerEvents: 'none', fontFamily: "'Outfit', sans-serif" }}>
+                    <span className={reduced ? undefined : 'badge-sway'} style={{ display: 'inline-block', background: 'rgba(14,165,233,0.92)', color: '#fff', borderRadius: 4, padding: '0.12rem 0.5rem', fontSize: 10, fontWeight: 800, letterSpacing: 0.5, boxShadow: '0 2px 6px rgba(0,0,0,0.35)', whiteSpace: 'nowrap' }}>
+                      {erKontor ? '🧳 Turistkontoret' : (state.hotellavtale === 'akseptert' ? '🏨 Byhotellet ✓' : '🏨 Byhotellet')}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </>
+        )}
       </CoverStage>
       </div>
 
@@ -157,18 +191,48 @@ export default function DistrictView({
           <div style={{ fontWeight: 800 }}>{district.navn}</div>
           <div style={{ fontSize: 11, color: '#94a3b8' }}>Leienivå {district.leieniva.toLocaleString('nb-NO')} kr/mnd · {district.trafikk} trafikk</div>
         </div>
-        {/* TEMA 15 DEL 5: turistkontor-inngang (sentrum, kun når reiseliv er aktivt).
-            MIDLERTIDIG labelknapp — den ENDELIGE hotspoten legges på turistkontor-
-            fasaden på bydelsbildet når Espen har valgt pilot og tracet rect (?dev=1). */}
-        {district.id === 'sentrum' && aktiveTemaer['reiseliv']?.aktiv && (
-          <button onClick={() => setTuristkontorAapen(true)}
-            style={{ background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.5)', borderRadius: 12, padding: '0.5rem 0.9rem', color: '#7dd3fc', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-            🧳 Turistkontoret
-          </button>
-        )}
       </div>
 
       {turistkontorAapen && <TuristkontorPanel onLukk={() => setTuristkontorAapen(false)} />}
+      {byhotellAapen && <ByhotellStatus onLukk={() => setByhotellAapen(false)} />}
+    </div>
+  )
+}
+
+// ── TEMA 15: byhotell-status (klikk på hotell-hotspoten) ──────────────────────
+/** Viser avtalestatus; ligger en ULEST gjestepakke-hendelse i innboksen, kan
+ *  eleven svare direkte herfra (samme effekt som i innboksen). */
+function ByhotellStatus({ onLukk }: { onLukk: () => void }) {
+  const { state, dispatch } = useGame()
+  const pending = state.messages.find(m => m.type === 'hotellavtale')
+  const svar = (valg: 'aksepter' | 'avslaa') => {
+    if (pending) dispatch({ type: 'RESOLVE_GAME_EVENT', eventId: 'hotellavtale', choiceId: valg, messageId: pending.id })
+    onLukk()
+  }
+  const statusTekst = state.hotellavtale === 'akseptert'
+    ? '✓ Avtale aktiv: byhotellet sender gjester til deg gjennom sesongen, mot en andel av det pakkegjestene handler for.'
+    : state.hotellavtale === 'avslatt'
+      ? 'Du takket nei til gjestepakken. Du beholder full margin, men får ingen ekstra gjestestrøm fra hotellet.'
+      : 'Ingen avtale med byhotellet ennå.'
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: "'Outfit', sans-serif" }}>
+      <div style={{ background: 'rgba(15,23,42,0.98)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '1.4rem', padding: '1.6rem', maxWidth: 440, width: '100%', color: '#f1f5f9' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+          <div style={{ fontSize: 18, fontWeight: 900 }}>🏨 Byhotellet</div>
+          <button onClick={onLukk} aria-label="Lukk" style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer' }}>×</button>
+        </div>
+        {pending ? (
+          <>
+            <p style={{ fontSize: 13.5, lineHeight: 1.55, color: '#cbd5e1', margin: '0 0 1rem' }}>{pending.body}</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => svar('aksepter')} style={{ flex: 1, background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)', border: 'none', borderRadius: 99, padding: '0.6rem', color: '#0b1120', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Ja, vi er med</button>
+              <button onClick={() => svar('avslaa')} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 99, padding: '0.6rem', color: '#cbd5e1', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Nei takk</button>
+            </div>
+          </>
+        ) : (
+          <p style={{ fontSize: 13.5, lineHeight: 1.55, color: '#cbd5e1', margin: 0 }}>{statusTekst}</p>
+        )}
+      </div>
     </div>
   )
 }

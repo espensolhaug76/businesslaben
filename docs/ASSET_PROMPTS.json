@@ -211,30 +211,6 @@
     "size_variant": "small",
     "location_specific": "subtle muted yellow-orange accent stripe along the entrance canopy"
   },
-  "turistkontor": {
-    "building_type": "tourist information office",
-    "interior_hint": "a large wall-mounted regional map and a small info desk with brochure racks visible through the big glass front, warm interior lighting",
-    "size_variant": "small",
-    "location_specific": "welcoming full-height glass entrance under a small flat canopy"
-  },
-  "turistkontor_b": {
-    "building_type": "tourist information office",
-    "interior_hint": "an info desk and a freestanding brochure carousel visible through the glass, cosy warm lighting",
-    "size_variant": "medium",
-    "location_specific": "light painted-wood facade with a narrow wall-mounted window-box planter and an inviting timber-framed entrance"
-  },
-  "byhotell": {
-    "building_type": "small-town hotel",
-    "interior_hint": "a lobby reception counter with a luggage cart and a couple of armchairs visible through the tall ground-floor windows, warm interior lighting",
-    "size_variant": "large",
-    "location_specific": "modest canopy over the main entrance, low three-story facade with a row of upper-floor guest-room windows"
-  },
-  "byhotell_b": {
-    "building_type": "small-town hotel",
-    "interior_hint": "a reception desk and a small seating area visible through the glass entrance, warm lobby lighting",
-    "size_variant": "medium",
-    "location_specific": "warm brick facade with an inviting entrance canopy and two rows of upper-floor guest-room windows"
-  },
   "florist": {
     "building_type": "florist",
     "interior_hint": "tall vases of cut flowers in muted pastels arranged on tiered wooden display tables visible through the glass",
