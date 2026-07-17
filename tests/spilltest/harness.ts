@@ -71,6 +71,7 @@ export interface SpillState {
   turistsesong: { startAbsDag: number; varighet: number; turistKunder: number; bakgrunnKunder: number } | null
   hotellavtale: 'ingen' | 'akseptert' | 'avslatt'
   dayBackground: { total: number; turistandel: number; vareVekt: Record<string, number> } | null
+  reiselivPakke: { profilId: string; kortIds: string[]; pris: number; treff: number; turister: number; egenKafe: boolean } | null
   phase: string
 }
 

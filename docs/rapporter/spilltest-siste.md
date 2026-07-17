@@ -1,27 +1,28 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-07-17T08:54:37.551Z
+> Startet: 2026-07-17T10:01:35.678Z
 
-**Resultat: ✅ GRØNT** — 15 PASS · 0 FAIL · 0 KJENT FEIL (15 steg)
+**Resultat: ✅ GRØNT** — 16 PASS · 0 FAIL · 0 KJENT FEIL (16 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 85 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 5045 |
-| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 443 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 149 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 7567 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 3982 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 1403 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 10616 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 2185 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 3626 |
-| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 7372 |
-| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 1873 |
-| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 3542 |
-| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 3054 |
-| 15 | Reiseliv: turistsesong (turistandel + trafikkløft == fasit) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 3331 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 81 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 4945 |
+| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 459 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 164 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 7839 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 4463 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 1406 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 9570 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 1906 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 3513 |
+| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 8750 |
+| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 1741 |
+| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 3673 |
+| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 2398 |
+| 15 | Reiseliv: turistsesong (turistandel + trafikkløft == fasit) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 2752 |
+| 16 | Pakkebyggeren: treff == delt fasit (beregnPakke) + egen-kafé-kort gir målbar ekstra sesongtrafikk | ✅ PASS | 2435 |
 
 ## Detaljer per steg
 
@@ -122,6 +123,12 @@ Verifiserte tall/tilstander:
 Verifiserte tall/tilstander:
 - sesong: ~30 % turister, trafikk 122 → 146 (+20 %), vare-vekt drikke 1.6
 - hotellavtale akseptert → trafikk 146 → 177 (+25 % hotellbonus)
+
+### ✅ Steg 16 — Pakkebyggeren: treff == delt fasit (beregnPakke) + egen-kafé-kort gir målbar ekstra sesongtrafikk
+
+Verifiserte tall/tilstander:
+- profil «Busslast med seniorer» → treff 47 %, 13 turister kjøpte pakken (fasit 13)
+- egen kafé i pakken → sesongtrafikk 146 → 165 (+15 % kafébonus)
 
 ## Notater
 

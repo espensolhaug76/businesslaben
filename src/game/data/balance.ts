@@ -137,6 +137,18 @@ export const BALANCE = {
     /** DEL 5 — «Opplev byen»-gjestepakke (turistkontor): løfter frekvensen av
      *  anbefal-opplevelse-scenarier (multiplikator på turistandelen av møter). */
     opplevByenScenarioLoft: 1.5,
+    /** DEL 7 — pakkebyggeren (reiselivsprodukt): match-vekter mot besøksprofilen.
+     *  treff = klem((Σ matchende egenskaper × egenskapVekt) − prisstraff −
+     *  timerstraff, 0, maksTreff) / maksTreff. Egen kafé i pakken gir
+     *  `kafeTrafikkBonus` ekstra trafikk i sesongen. ALT tunbart. */
+    pakke: {
+      egenskapVekt: 1,          // poeng per opplevelses-egenskap som treffer profilen
+      prisStraff: 1,            // straff per prisklasse over profilens preferanse
+      timerStraff: 0.6,         // straff per time pakken er over profilens timebudsjett
+      maksTreff: 6,             // normalisering (poeng / maksTreff → treff 0–1)
+      turisterMultiplikator: 0.5, // «X kjøpte pakken» = round(sesongturister/dag × treff × dette)
+      kafeTrafikkBonus: 0.15,   // ekstra kafé-trafikk i sesongen når egen kafé er i pakken
+    },
   },
 
   /** SPILLKLOKKE — klokka eier den åpne dagen (09:00–17:00). Tempo: tickMs

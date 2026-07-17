@@ -12,6 +12,7 @@ import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinn
 import { DAY_CONFIG } from '../../src/game/data/dayConfig'
 import { INDUSTRY_META } from '../../src/game/data/industries'
 import { BALANCE } from '../../src/game/data/balance'
+import { beregnPakke, velgProfil, EGEN_KAFE_ID } from '../../src/game/data/reiseliv'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
 // Spiller byspillet (/game) ende til ende og asserter på state + DOM ved hvert
@@ -696,6 +697,69 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     const medAvtale = (await lesState(page)).dayBackground!.total
     expect(medAvtale, 'aksept-effekt == round(base × (1+loft+hotellbonus))').toBe(Math.round(base * (1 + T.trafikkLoft + T.hotellTrafikkBonus)))
     ctx.ok(`hotellavtale akseptert → trafikk ${bgS.total} → ${medAvtale} (+${Math.round(T.hotellTrafikkBonus * 100)} % hotellbonus)`)
+  })
+
+  // ── STEG 16 — TEMA 15 DEL 7 Pakkebyggeren (reiselivsprodukt) ────────────────
+  await steg(page, rapport, 16, 'Pakkebyggeren: treff == delt fasit (beregnPakke) + egen-kafé-kort gir målbar ekstra sesongtrafikk', async ctx => {
+    const T = BALANCE.turistsesong
+    // Hermetisk boot + sentrum-l2 (basetrafikk 150) + priset lager + kaffe i trau
+    // (holdbar → eksponering identisk baseline↔sesong, som i steg 15). VIKTIG:
+    // reiseliv-tilstand (hotellavtale/turistsesong/reiselivPakke) persisteres i
+    // BUDSJETT_KEY og OVERLEVER ?skip — steg 15 aksepterte hotellavtalen, så vi
+    // MÅ rydde localStorage før boot, ellers arver steg 16 hotellbonusen.
+    await ryddLocalStorage(page)
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup' && s.hotellavtale === 'ingen' && s.turistsesong === null, 'frisk, ryddet boot for steg 16')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 200 }] })
+    await ventState(page, s => s.openingOrderPlaced && s.products.length >= 1, 'åpningslager')
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'coffee' }] })
+    await page.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const st = window.__GAME_STATE__ as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products: st.products.map((p: any) => ({ ...p, retailPrice: p.markedsPris })) })
+    })
+    await ventState(page, s => s.products.every(p => p.retailPrice > 0), 'priset til markedspris')
+
+    // BASELINE (uten sesong) — les basetrafikken (deterministisk, dag-uavhengig).
+    await dispatch(page, { type: 'OPEN_DAY' })
+    await ventState(page, s => s.dayPhase === 'åpen' && !!s.dayBackground, 'baseline-dag åpen')
+    const base = (await lesState(page)).dayBackground!.total
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag')
+
+    // START sesong → les startAbsDag og utled dagens besøksprofil (samme
+    // deterministiske rotasjon som panelet + reduceren bruker).
+    await dispatch(page, { type: 'START_TURISTSESONG' })
+    await ventState(page, s => s.turistsesong !== null, 'sesong startet')
+    const startAbsDag = (await lesState(page)).turistsesong!.startAbsDag
+    const profil = velgProfil(startAbsDag)
+
+    // DELT FASIT: sesongturister/dag == round(basetrafikk × turistandel × (1+løft)),
+    // nøyaktig som reduceren regner den (fra BALANCE.basetrafikk, ikke dagsbakgrunn).
+    const sesongTuristerPerDag = Math.round(BALANCE.basetrafikk['sentrum-l2']! * T.turistandel * (1 + T.trafikkLoft))
+    // Pakke MED elevens egen kafé (→ ekstra sesongtrafikk) + to andre kort.
+    const kortIds = [EGEN_KAFE_ID, 'bymuseum', 'fjellsti']
+    const fasit = beregnPakke(kortIds, profil, sesongTuristerPerDag)
+
+    await dispatch(page, { type: 'SET_REISELIV_PAKKE', profilId: profil.id, kortIds, pris: 349 })
+    await ventState(page, s => s.reiselivPakke !== null, 'pakke lagret')
+    const pk = (await lesState(page)).reiselivPakke!
+    expect(pk.profilId, 'lagret profil == dagens rotasjon').toBe(profil.id)
+    expect(pk.treff, 'treff == delt fasit (beregnPakke)').toBeCloseTo(fasit.treff, 5)
+    expect(pk.turister, '«X turister kjøpte» == delt fasit').toBe(fasit.turister)
+    expect(pk.egenKafe, 'egen-kafé-kort registrert').toBe(true)
+    ctx.ok(`profil «${profil.navn}» → treff ${(pk.treff * 100).toFixed(0)} %, ${pk.turister} turister kjøpte pakken (fasit ${fasit.turister})`)
+
+    // KAFÉ-TRAFIKK: sesongdag med egen-kafé i pakken → trafikk løftes ekstra med
+    // kafeTrafikkBonus (ingen hotellavtale her). == round(base × (1+løft+kafébonus)).
+    await dispatch(page, { type: 'OPEN_DAY' })
+    await ventState(page, s => s.dayPhase === 'åpen' && !!s.dayBackground, 'sesongdag m/kafépakke åpen')
+    const medKafe = (await lesState(page)).dayBackground!.total
+    expect(medKafe, 'kafé-kort i pakke → +kafeTrafikkBonus == round(base × (1+løft+kafébonus))')
+      .toBe(Math.round(base * (1 + T.trafikkLoft + T.pakke.kafeTrafikkBonus)))
+    ctx.ok(`egen kafé i pakken → sesongtrafikk ${Math.round(base * (1 + T.trafikkLoft))} → ${medKafe} (+${Math.round(T.pakke.kafeTrafikkBonus * 100)} % kafébonus)`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

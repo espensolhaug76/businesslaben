@@ -170,6 +170,11 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Du svarte byhotellet på gjestepakken. Hva var avveiingen — flere gjester mot en lavere margin?',
   },
   {
+    id: 'pakke_bygget',
+    betingelse: 'Eleven har tilbudt en reiselivspakke i turistkontoret — dynamisk melding leser treffet mot besøksprofilen (godt/middels/svakt) uten å avsløre fasiten',
+    melding: 'Du satte sammen et reiselivsprodukt for gjestene — godt [[KULT_003|vertskap]] er å lese hva nettopp disse trengte. Traff pakken det de faktisk var ute etter?',
+  },
+  {
     id: 'kampanje_effekt',
     betingelse: 'Kampanjen er ferdig og effektrapporten vises — dynamisk melding leser mål, faktisk resultat og kanal×målgruppe-treff',
     melding: 'Kampanjen er evaluert. Traff kanalen din målgruppa — og hvordan ser du det i tallene?',

@@ -102,6 +102,8 @@ function oppfylt(id: string, s: GameState): boolean {
       return !!info && !info.aktiv && (s.turistsesong?.bakgrunnKunder ?? 0) > 0
     }
     case 'hotellavtale_svart': return s.hotellavtale !== 'ingen'
+    // TEMA 15 DEL 7: eleven har tilbudt en reiselivspakke (resultat lagret).
+    case 'pakke_bygget': return s.reiselivPakke != null
     case 'kampanje_forpris_brudd': return s.kampanje.historikk[s.kampanje.historikk.length - 1]?.forprisBrudd === true
     default: return false
   }
@@ -190,6 +192,15 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
     if (s.hotellavtale === 'akseptert') return 'Du sa ja til byhotellets gjestepakke — flere gjester, men hotellet tar en andel av det de handler for. Var det verdt det? Tenk på volum × margin: mange gjester til litt lavere margin kan slå få gjester til full margin — eller ikke.'
     if (s.hotellavtale === 'avslatt') return 'Du takket nei til byhotellets gjestepakke og beholder full margin på hvert salg. Trygt — men gikk du glipp av en gjestestrøm du kunne tjent på? Det finnes ikke ett riktig svar; det avhenger av kapasitet og hva pakkegjestene ville lagt igjen.'
     return undefined
+  }
+  // TEMA 15 DEL 7: pakkebyggeren — les treffet mot besøksprofilen (godt/middels/
+  // svakt) uten å avsløre fasiten. Refleksjon om vertskap = å lese gjestens behov.
+  if (id === 'pakke_bygget') {
+    const p = s.reiselivPakke
+    if (!p) return undefined
+    if (p.treff >= 0.66) return `Pakka traff gjestene godt — ${p.turister} kjøpte den. Du leste hva nettopp disse var ute etter, og det er kjernen i et godt reiselivsprodukt. Hva var det som gjorde at akkurat disse opplevelsene passet dem?`
+    if (p.treff >= 0.33) return `Pakka traff sånn passe — ${p.turister} kjøpte den. Noe stemte, noe bommet. Se på gjestene igjen: hadde de mye tid eller lite? Stor lommebok eller liten? Hvilket kort ville du byttet ut?`
+    return `Få gjester kjøpte pakka denne gangen (${p.turister}). Det betyr ikke at opplevelsene var dårlige — de passet bare ikke disse gjestene. Les beskrivelsen av dem på nytt: hva var de egentlig ute etter?`
   }
   // TEMA 8: førpris-brudd — refleksjon om HVORFOR regelen finnes, ikke moralisering.
   if (id === 'kampanje_forpris_brudd') {

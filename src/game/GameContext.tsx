@@ -25,6 +25,7 @@ import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, plan
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
 import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS, TURIST_OPPLEVELSE_ID } from './sales/scenarios'
+import { beregnPakke, velgProfil, BESOKSPROFILER } from './data/reiseliv'
 
 // Tom dagsstatistikk (BAKGRUNNSSALG-feltene inkludert) — brukt av initialState,
 // OPEN_DAY (nullstilling).
@@ -249,6 +250,7 @@ const initialState: GameState = {
   turistsesong: null,
   hotellavtale: 'ingen',
   opplevByenPameldt: false,
+  reiselivPakke: null,
 }
 
 // ─── Actions ────────────────────────────────────────────────────────────────
@@ -340,6 +342,7 @@ type Action =
   | { type: 'MARKER_SESONGSLUTT_VIST' }   // mentor-refleksjonen er vist
   | { type: 'SET_HOTELLAVTALE'; svar: 'akseptert' | 'avslatt' }  // DEL 5
   | { type: 'SET_OPPLEV_BYEN'; pameldt: boolean }                // DEL 5
+  | { type: 'SET_REISELIV_PAKKE'; profilId: string; kortIds: string[]; pris: number }  // DEL 7
   // Økonomi-samling (DEL 2): lukk månedsoppgjør-overlayet.
   | { type: 'DISMISS_MONTH_SETTLEMENT' }
   | { type: 'RESET' }
@@ -465,6 +468,7 @@ function reducer(state: GameState, action: Action): GameState {
         turistsesong: state.turistsesong,
         hotellavtale: state.hotellavtale,
         opplevByenPameldt: state.opplevByenPameldt,
+        reiselivPakke: state.reiselivPakke,
         companyName: action.companyName,
         industry: action.industry,
         money: STARTING_MONEY[action.industry],
@@ -1039,6 +1043,19 @@ function reducer(state: GameState, action: Action): GameState {
     }
     case 'SET_OPPLEV_BYEN':
       return { ...state, opplevByenPameldt: action.pameldt }
+    case 'SET_REISELIV_PAKKE': {
+      // DEL 7: regn treffet mot besøksprofilen (delt fasit, beregnPakke) og lagre
+      // resultatet. Profil hentes ETTER id (samme som panelet viste), fallback til
+      // sesong-rotasjonen. «X turister kjøpte» skaleres av lokalets turiststrøm.
+      // Tom kortliste = «bygg ny pakke» (nullstill resultatet).
+      if (action.kortIds.length === 0) return { ...state, reiselivPakke: null }
+      const seed = state.turistsesong?.startAbsDag ?? absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      const profil = BESOKSPROFILER.find(p => p.id === action.profilId) ?? velgProfil(seed)
+      const base = (state.rentedLocationId ? BALANCE.basetrafikk[state.rentedLocationId] : undefined) ?? BALANCE.basetrafikkDefault
+      const sesongTuristerPerDag = Math.round(base * BALANCE.turistsesong.turistandel * (1 + BALANCE.turistsesong.trafikkLoft))
+      const r = beregnPakke(action.kortIds, profil, sesongTuristerPerDag)
+      return { ...state, reiselivPakke: { profilId: profil.id, kortIds: action.kortIds, pris: action.pris, treff: r.treff, turister: r.turister, tilbakemeldinger: r.tilbakemeldinger, egenKafe: r.egenKafe } }
+    }
 
     case 'BUY_MARKET_RESEARCH': {
       if (state.money < 10_000) return state
@@ -1338,7 +1355,9 @@ function reducer(state: GameState, action: Action): GameState {
       if (sesong) {
         const T = BALANCE.turistsesong
         const hotellBonus = state.hotellavtale === 'akseptert' ? T.hotellTrafikkBonus : 0
-        kunder = Math.round(kunder * (1 + T.trafikkLoft + hotellBonus))
+        // DEL 7: egen kafé i reiselivspakken → ekstra gjestestrøm i sesongen.
+        const pakkeBonus = state.reiselivPakke?.egenKafe ? T.pakke.kafeTrafikkBonus : 0
+        kunder = Math.round(kunder * (1 + T.trafikkLoft + hotellBonus + pakkeBonus))
         turistandel = T.turistandel
         vareVekt = T.vareVekt
       }
@@ -1814,7 +1833,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall,
           kampanje: v.kampanje ?? s.kampanje, prisendretDag: v.prisendretDag ?? s.prisendretDag,
           turistsesong: v.turistsesong ?? s.turistsesong, hotellavtale: v.hotellavtale ?? s.hotellavtale,
-          opplevByenPameldt: v.opplevByenPameldt ?? s.opplevByenPameldt }
+          opplevByenPameldt: v.opplevByenPameldt ?? s.opplevByenPameldt, reiselivPakke: v.reiselivPakke ?? s.reiselivPakke }
       }
     } catch { /* korrupt/utilgjengelig */ }
     return s
@@ -1823,8 +1842,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
   useEffect(() => {
-    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt })) } catch { /* ignore */ }
-  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.turistsesong, state.hotellavtale, state.opplevByenPameldt])
+    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt, reiselivPakke: state.reiselivPakke })) } catch { /* ignore */ }
+  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.turistsesong, state.hotellavtale, state.opplevByenPameldt, state.reiselivPakke])
 
   // TEST-BRO (KUN DEV): speil hele spilltilstanden + dispatch på window, så det
   // automatiserte spilltest-løpet (Playwright — se docs/SPILLTESTER.md) kan LESE
@@ -1877,6 +1896,12 @@ export function turistsesongInfo(state: GameState): { aktiv: boolean; dag: numbe
   if (!ts) return null
   const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
   return { aktiv: turistsesongAktivPaa(ts, naa), dag: naa - ts.startAbsDag + 1, varighet: ts.varighet, turistandel: BALANCE.turistsesong.turistandel }
+}
+
+/** DEL 7 — dagens besøksprofil for pakkebyggeren (deterministisk rotasjon fra
+ *  sesongstarten). Null utenom sesong. */
+export function aktivBesoksprofil(state: GameState) {
+  return state.turistsesong ? velgProfil(state.turistsesong.startAbsDag) : null
 }
 
 // ─── Tema-selektorer (fremtidige temajobber gater på disse) ───────────────────

@@ -717,6 +717,18 @@ export interface GameState {
   /** «Opplev byen»-gjestepakken via turistkontoret (DEL 5) — eleven har meldt
    *  kaféen inn (flere anbefal-scenarier). Persistert. */
   opplevByenPameldt: boolean
+  /** DEL 7 — elevens reiselivspakke (3 opplevelser mot en besøksprofil) +
+   *  resultatet (treff/turister/tilbakemeldinger). Null før noen pakke er sendt.
+   *  Persistert. */
+  reiselivPakke: {
+    profilId: string
+    kortIds: string[]
+    pris: number
+    treff: number
+    turister: number
+    tilbakemeldinger: string[]
+    egenKafe: boolean
+  } | null
 }
 
 /** All spilltilstand for tema Beredskap (HMS-fanen + brannalarm-hendelsen).
