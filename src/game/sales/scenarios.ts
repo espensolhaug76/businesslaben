@@ -1286,7 +1286,7 @@ export const ANBEFAL_OPPLEVELSE: SalesScenario = {
   id: TURIST_OPPLEVELSE_ID,
   customerName: 'Nysgjerrig turist',
   personaTag: 'Trendbevisste',
-  sprite: '/assets/raw/customers/turist-kamera.png',   // NB-pilot (DEL 2/4)
+  sprite: '/assets/raw/customers/turist-kamera.png',   // bølge 3: person 5 fra turist-arket (customers-ark-05); base-cal førstepass
   outcomeKind: 'service',
   description: 'En turist med kamera rundt halsen som har en halv dag i byen og lurer på hva som er verdt å se. Vil ha ekte tips fra en lokal — ikke bli solgt en kake og sendt ut.',
   hiddenNeed: 'Få genuine, lokale tips om hva man kan oppleve i byen — føle at verten bryr seg om at besøket blir bra, ikke bare om å selge en vare.',

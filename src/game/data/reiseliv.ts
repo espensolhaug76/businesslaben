@@ -78,6 +78,50 @@ export const OPPLEVELSER: Opplevelse[] = [
 
 export const opplevelseById = (id: string): Opplevelse | undefined => OPPLEVELSER.find(o => o.id === id)
 
+// ─── TURIST-SPRITER (bølge 3) ────────────────────────────────────────────────
+// Ett turist-ark (customers-ark-05) splittet til 6 besøkende + den godkjente
+// kart-turisten. Registeret gjør spritene tilgjengelige for (a) scenario-binding
+// og (b) ambient-gjester i interiøret. spriteCal-FØRSTEPASS: singel-figurene har
+// samme aspect (~0,36–0,40) som kari/tom → den DELTE base-kalibreringen
+// (INTERIOR_CUSTOMER_STAND) er et gyldig førstepass i scenariene; par-/familie-
+// arkene er bredere (to kropper i én sprite) men object-fit:contain håndterer
+// bredden i ambient-slotene. Espen finpusser ev. per-sprite via ?dev=1.
+export interface TuristSprite {
+  id: string
+  fil: string
+  navn: string
+  /** Scenario-id sprite er bundet til (om noen). Resten venter fremtidige scenarier. */
+  scenario?: string
+  /** Flere kropper i ÉN sprite (par/familie) — opptrer alltid samlet. */
+  gruppe?: boolean
+}
+
+const CUST = '/assets/raw/customers'
+export const TURIST_SPRITER: TuristSprite[] = [
+  { id: 'turist-kart',        fil: `${CUST}/turist-kart.png`,        navn: 'Kart-turisten',          scenario: 'sprakbarrieren' },
+  { id: 'turist-kamera',      fil: `${CUST}/turist-kamera.png`,      navn: 'Turist med kamera',      scenario: 'anbefal-opplevelse' },
+  { id: 'turist-familie',     fil: `${CUST}/turist-familie.png`,     navn: 'Turistfamilie',          gruppe: true },
+  { id: 'turist-par',         fil: `${CUST}/turist-par.png`,         navn: 'Turistpar med kart',     gruppe: true },
+  { id: 'turist-eldre-stokk', fil: `${CUST}/turist-eldre-stokk.png`, navn: 'Eldre turist med stokk' },
+  { id: 'turist-backpacker',  fil: `${CUST}/turist-backpacker.png`,  navn: 'Backpacker' },
+  { id: 'turist-eldrepar',    fil: `${CUST}/turist-eldrepar.png`,    navn: 'Eldre turistpar',        gruppe: true },
+]
+
+/** Deterministisk utvalg av N distinkte ambient-turister fra registeret, seedet
+ *  av dagen. Ren funksjon (ingen Math.random) — samme dag gir samme gjester, så
+ *  interiøret er stabilt gjennom dagen men varierer fra dag til dag. */
+export function velgAmbientTurister(seed: number, n: number): TuristSprite[] {
+  const pool = [...TURIST_SPRITER]
+  const valgt: TuristSprite[] = []
+  const antall = Math.max(0, Math.min(n, pool.length))
+  let s = seed >>> 0
+  for (let i = 0; i < antall; i++) {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0
+    valgt.push(pool.splice(s % pool.length, 1)[0]!)
+  }
+  return valgt
+}
+
 /** Deterministisk profilrotasjon — velg profil ut fra et heltall (f.eks. et
  *  seed avledet av dato). Ingen Math.random. */
 export function velgProfil(n: number): Besoksprofil {

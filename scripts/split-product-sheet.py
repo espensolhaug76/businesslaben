@@ -55,10 +55,20 @@ PRODUCTS_NAME_MAPS = {
 # (arbeidsjakke, korslagte armer), oda (skjerf + skjørt). ✦-vannmerket fjernes
 # av rembg (semi-transparent på nær-hvit bakgrunn = bakgrunn); petters
 # logo-brystlapp klone-patches i et eget steg etter splitten.
+# customers-ark-05-raw.png = TEMA 15 REISELIV (2026-07-17): ETT turist-ark med 6
+# besøkende (Espens beslutning: samlet ark i stedet for enkeltgenereringer).
+# 2×3-rutenett, lese-rekkefølge (rad for rad, v→h): (1) familie = forelder+barn
+# HÅND-I-HÅND, (2) ungt par TETT/telefon-kart, (3) eldre m/solhatt+stokk, (4)
+# backpacker m/stor sekk, (5) mann m/kamera (→ Opplevelsen-scenariet, ERSTATTER
+# gammel turist-kamera), (6) eldre par ARM-I-ARM. Par/familie/eldrepar står
+# inntil hverandre → henger sammen som ÉN blob via hender/armer (som live+
+# førerhund i ark-04); det er ØNSKET — de opptrer alltid sammen. Kart-turisten
+# (turist-kart, godkjent tidligere) er IKKE på dette arket.
 CUSTOMERS_NAME_MAPS = {
     "02": ["usikre", "prutekunden", "allergikeren", "storbestiller"],
     "03": ["amira", "bjorn", "camilla", "david"],
     "04": ["emil", "live", "petter", "oda"],
+    "05": ["turist-familie", "turist-par", "turist-eldre-stokk", "turist-backpacker", "turist-kamera", "turist-eldrepar"],
 }
 
 ALPHA_THRESHOLD = 40      # alfa over dette = «vare-piksel»

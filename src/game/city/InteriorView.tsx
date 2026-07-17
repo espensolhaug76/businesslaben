@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, type InteriorMirrorTrau } from '../../data/districts'
+import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, INTERIOR_AMBIENT_TURIST_SLOTS, type InteriorMirrorTrau } from '../../data/districts'
 import { getScenario, SCENARIOS, FASHION_SCENARIOS } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
 import { tileCount, trauCols } from './MonterScene'
-import { useGame } from '../GameContext'
+import { useGame, turistsesongInfo } from '../GameContext'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
+import { BALANCE } from '../data/balance'
+import { dagSeed } from '../data/backgroundSales'
+import { velgAmbientTurister } from '../data/reiseliv'
 
 // BRANSJE-DEFINISJON: speil-trau + tavle-sonen leses fra den AKTIVE bransjens
 // IndustryDefinition. SPILLKLOKKE: kunden spawner IKKE lenger fra en lokal
@@ -83,7 +86,7 @@ const DEFAULT_MENU_SCALE = 1
 const DEFAULT_MENU_OFFSET_X = -11
 
 // ── Tracer-mål/soner (merket «spawn/stand» + «speil-N» for glassmonter-speilet) ─
-const ZONE_COLORS: Record<string, string> = { spawn: '#50dcff', stand: '#50e08c', speil: '#c084fc', meny: '#fbbf24' }
+const ZONE_COLORS: Record<string, string> = { spawn: '#50dcff', stand: '#50e08c', speil: '#c084fc', meny: '#fbbf24', ambient: '#f472b6' }
 
 // DEV: per-kunde spriteCal-overrides persisteres i localStorage så kalibrering
 // overlever reload. `__dumpCal()` skriver en ren, ferdig blokk til konsollen.
@@ -101,6 +104,7 @@ function interiorTargets(mirrorTrau: InteriorMirrorTrau[]): Target[] {
     { id: 'spawn', label: 'spawn', get: () => INTERIOR_CUSTOMER_SPAWN, set: r => setRect(INTERIOR_CUSTOMER_SPAWN, r) },
     { id: 'stand', label: 'stand', get: () => INTERIOR_CUSTOMER_STAND, set: r => setRect(INTERIOR_CUSTOMER_STAND, r) },
     { id: 'meny', label: 'meny', get: () => MENU_BOARD_ZONE, set: r => setRect(MENU_BOARD_ZONE, r) },
+    ...INTERIOR_AMBIENT_TURIST_SLOTS.map((rect, i) => ({ id: `ambient-${i}`, label: `ambient-${i}`, get: () => rect, set: (r: Rect) => setRect(rect, r) })),
     ...mirrorTrau.map(m => ({ id: m.id, label: m.id, get: () => m.rect, set: (r: Rect) => setRect(m.rect, r) })),
   ]
 }
@@ -109,6 +113,7 @@ function interiorDrawZones(mirrorTrau: InteriorMirrorTrau[]): DrawZone[] {
     { rect: INTERIOR_CUSTOMER_SPAWN, id: 'spawn', label: 'spawn', color: ZONE_COLORS.spawn, dashed: true },
     { rect: INTERIOR_CUSTOMER_STAND, id: 'stand', label: 'stand', color: ZONE_COLORS.stand, dashed: true },
     { rect: MENU_BOARD_ZONE, id: 'meny', label: 'meny', color: ZONE_COLORS.meny, dashed: true },
+    ...INTERIOR_AMBIENT_TURIST_SLOTS.map((rect, i) => ({ rect, id: `ambient-${i}`, label: `ambient-${i}`, color: ZONE_COLORS.ambient, dashed: true })),
     ...mirrorTrau.map(m => ({ rect: m.rect, id: m.id, label: m.id, color: ZONE_COLORS.speil, dashed: true })),
   ]
 }
@@ -134,6 +139,18 @@ export default function InteriorView({ districtId, lokaleId }: {
   const previewScenario = IS_DEV_COORDS && devPreviewId ? getScenario(devPreviewId) ?? null : null
   const activeScenario = realScenario ?? previewScenario   // det som faktisk rendres i scenen
   const isPreview = !realScenario && !!previewScenario
+  // TEMA 15 REISELIV (bølge 3) — ambient turist-gjester: i sesong tegnes inntil
+  // BALANCE...ambient.maks seedede turist-sprites på ledige (traced) kunde-
+  // posisjoner. REN visuell tilstedeværelse (pointerEvents:none, ingen state) →
+  // påvirker verken salg eller spilltest-fasit. Seedet av dagen (stabil dag,
+  // varierer dag-til-dag).
+  const AMB = BALANCE.turistsesong.ambient
+  const ambientTurister = (AMB.aktiv && turistsesongInfo(state)?.aktiv)
+    ? velgAmbientTurister(
+        dagSeed(state.dayNumber, state.currentMonth, state.currentYear),
+        Math.min(AMB.maks, INTERIOR_AMBIENT_TURIST_SLOTS.length),
+      )
+    : []
   const [imgFailed, setImgFailed] = useState(false)
   const [custImgFailed, setCustImgFailed] = useState(false)  // kunde-sprite mangler/feiler
   const [shown, setShown] = useState(false)        // fade-in/ut (opacity)
@@ -602,6 +619,34 @@ export default function InteriorView({ districtId, lokaleId }: {
           <div onClick={() => setDevPreviewId(null)} title="Klikk for å fjerne forhåndsvisningen"
             style={{ position: 'absolute', inset: 0, zIndex: 9, cursor: 'zoom-out' }} />
         )}
+
+        {/* AMBIENT TURIST-GJESTER (z=8) — bak den aktive kunden (z=10) og bak
+            forgrunns-disk-laget (z=20, okkluderer underkropp naturlig). Ren
+            visuell tilstedeværelse i sesong; dimmet så de leser som bakgrunnsliv.
+            object-fit:contain forankret i bunn av slot-rekta. */}
+        {ambientTurister.map((t, i) => {
+          const slot = INTERIOR_AMBIENT_TURIST_SLOTS[i]
+          if (!slot) return null
+          return (
+            <img
+              key={t.id}
+              src={t.fil}
+              alt=""
+              aria-hidden
+              draggable={false}
+              onError={e => { e.currentTarget.style.display = 'none' }}
+              style={{
+                position: 'absolute',
+                left: `${slot[0]}%`, top: `${slot[1]}%`,
+                width: `${slot[2]}%`, height: `${slot[3]}%`,
+                objectFit: 'contain', objectPosition: 'bottom center',
+                opacity: AMB.opacity,
+                filter: 'saturate(0.85) brightness(0.92) drop-shadow(0 6px 8px rgba(0,0,0,0.35))',
+                zIndex: 8, pointerEvents: 'none', userSelect: 'none',
+              }}
+            />
+          )
+        })}
 
         {activeScenario && (
           <div

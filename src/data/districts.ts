@@ -340,6 +340,18 @@ export const STOREFRONT_DISPLAY_ZONES: { id: 'disk' | 'bakvegg' | 'hylle_venstre
 export const INTERIOR_CUSTOMER_SPAWN: [number, number, number, number] = [42.6, 26, 27.1, 50.5]
 export const INTERIOR_CUSTOMER_STAND: [number, number, number, number] = [42.6, 26, 27.1, 50.5]
 
+/** TEMA 15 REISELIV (bølge 3) — ledige kundeposisjoner for AMBIENT turist-
+ *  gjester (ren visuell tilstedeværelse i sesong; ingen interaksjon). Prosent
+ *  av interior-kasse.png [x, y, b, h], sprite tegnes object-fit:contain forankret
+ *  i bunn. PLACEHOLDER-rects (grovt estimat til hver side av kunde-standen) —
+ *  Espen tracer med ?dev=1 (sone-tracer «ambient-N») og LÅSER her, som for
+ *  STASJON_REISELIV_HOTSPOTS. */
+export const INTERIOR_AMBIENT_TURIST_SLOTS: [number, number, number, number][] = [
+  [12, 30, 18, 52],  // venstre bak — PLACEHOLDER
+  [70, 30, 18, 52],  // høyre bak — PLACEHOLDER
+  [2, 34, 15, 48],   // ytterste venstre — PLACEHOLDER (reserve)
+]
+
 /** Disk-monterens utstillingsflate (INTERIØR-NIVÅ) — prosent av interiørbildet
  *  [x, y, b, h]. Andre flate for vareeksponering (fixtureId='monter');
  *  vindusutstillingen er den første. Flaten ligger i forgrunnen, NEDENFOR

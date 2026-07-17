@@ -1690,10 +1690,11 @@ kaffe (HØY) @ 2× → **0 solgt, 92 tapt** (for høy pris). **14/14 PASS.**
 
 ## 36. TEMA 15 REISELIV OG VERTSKAP (bølge 3)
 
-> **Status: bygget + verifisert (DEL 1, 3–7).** Gren `spor-a/tema-reiseliv` (fra
-> main). `tsc -b` + `vite build` + `npm run spilltest` (**16/16**) grønn. IKKE
-> merget — Espen validerer i Chrome. Tema 14 Arrangement bygges IKKE som
-> spillmekanikk (Espens beslutning); vertskaps-kompetansen bæres av dette temaet.
+> **Status: bygget + verifisert (DEL 1, 3–7 + bølge-3 turist-ark & ambient-
+> gjester).** Gren `spor-a/tema-reiseliv` (fra main). `tsc -b` + `vite build` +
+> `npm run spilltest` (**16/16**) grønn. IKKE merget — Espen validerer i Chrome.
+> Tema 14 Arrangement bygges IKKE som spillmekanikk (Espens beslutning);
+> vertskaps-kompetansen bæres av dette temaet.
 >
 > **DEL 2 (fasade-generering) UTGÅTT** etter Espens Chrome-verifisering:
 > stasjonsbydelen finnes allerede med hotellet bakt inn i bydelsbildet — se
@@ -1765,9 +1766,28 @@ avsløre fasiten.
 - **Turist-interiør** (`turistkontor-interior.png`, Espen-generert): ✦-vannmerket
   fjernet med `cv2.inpaint` (NS, hjørneboks), pikseldiff-verifisert; brukt som
   CSS-hero i panelet (INGEN sone-kalibrering nå).
-- **2 turist-sprites** generert (`turist-kart.png`, `turist-kamera.png`) →
-  `public/assets/raw/customers/`, rembg'd + tett croppet. Turist signaliseres av
-  REKVISITTER (kart/kamera/sekk) + dialog, ALDRI etnisitet.
+- **Turist-sprites — ETT samlet ark (bølge 3, Espens beslutning).**
+  `turist-ark-05a.png` (2 forsøk generert, Espen valgte A) → kopiert til
+  `customers-ark-05-raw.png` → splittet med `split-product-sheet.py` (rembg +
+  blob-crop, halo=0) til **6 sprites** i `public/assets/raw/customers/`:
+  `turist-familie`, `turist-par`, `turist-eldre-stokk`, `turist-backpacker`,
+  `turist-kamera` (person 5, **ERSTATTER** den gamle i Opplevelsen-scenariet),
+  `turist-eldrepar`. Par/familie/eldrepar står inntil hverandre → splittes som
+  ÉN sprite hver (ønsket — opptrer alltid sammen). Turist signaliseres KUN av
+  rekvisitter (kart/kamera/sekk/hatt/stokk), aldri etnisitet. Kart-turisten
+  (`turist-kart.png`, godkjent tidligere) er IKKE på arket og beholdes.
+  **spriteCal-førstepass:** singel-figurene har samme aspect (~0,36–0,40) som
+  kari/tom → scenariene bruker den delte base-kalibreringen (gyldig førstepass);
+  Espen finpusser ev. per-sprite via `?dev=1`. Registeret `TURIST_SPRITER`
+  (`data/reiseliv.ts`) holder alle 7 klare for fremtidige scenarier.
+- **Ambient turist-gjester (bølge 3, DEL c).** I sesong tegner `InteriorView`
+  inntil `BALANCE.turistsesong.ambient.maks` (2) seedede turist-sprites på ledige
+  kundeposisjoner — REN visuell tilstedeværelse (`pointerEvents:none`, ingen
+  state, påvirker verken salg eller spilltest-fasit; 16/16 fortsatt grønn).
+  Utvalget er deterministisk pr. dag (`velgAmbientTurister(dagSeed(...))`).
+  Tunbar av/på + antall + dimming i `balance.ts`. Posisjonene
+  (`INTERIOR_AMBIENT_TURIST_SLOTS`, 3 placeholder-rects) er lagt inn i interiørets
+  `?dev=1`-sonetracer («ambient-N») — **venter Espens trace + lås**.
 
 ### Chrome-sjekkliste (Espen validerer)
 1. **Aktivering:** slå på Reiseliv (lærer/temaAktivering) → mentor-boble om
@@ -1785,7 +1805,11 @@ avsløre fasiten.
 7. **Pakkebyggeren:** i panelet i sesong → «🎒 Sett sammen en pakke»: les
    besøksprofilen, velg 3 opplevelser (VG2 setter pris), tilby → resultatkort «X
    turister kjøpte» + tilbakemeldinger. Egen kafé i pakken → mer trafikk.
-8. **Sesongslutt:** «⏩ Spol til sesongslutt» → mentor-refleksjon om turisttall.
+8. **Ambient turist-gjester:** gå inn i kaféen (/inne) i sesong → 1–2 dimmede
+   turist-sprites står som bakgrunnsliv. Ren visning (ikke klikkbare). Posisjonene
+   er placeholder — trace «ambient-N» med `?dev=1` og lås i `districts.ts`.
+   Slå av med `BALANCE.turistsesong.ambient.aktiv=false` ved behov.
+9. **Sesongslutt:** «⏩ Spol til sesongslutt» → mentor-refleksjon om turisttall.
 
 ### Åpen oppfølging / flagg
 - **Fagord «reiselivsprodukt» MANGLER** i `glossary.json` — IKKE diktet opp.
@@ -1794,8 +1818,12 @@ avsløre fasiten.
   er lagt inn. (`vertskap`=KULT_003 + `kulturforståelse`=KULT_004 er nå på plass.)
 - **Hotspot-plassering** (turistkontor/byhotell på stasjonsbydelen): placeholder-
   rects i `districts.ts.STASJON_REISELIV_HOTSPOTS` venter `?dev=1`-trace + lås.
-- **Turist-sprites deler kari-likhet** (samme stilreferanse i generatoren) —
-  Espen vurderer om de er distinkte nok eller skal regenereres.
+- **Ambient-slots** (`INTERIOR_AMBIENT_TURIST_SLOTS`, 3 placeholder-rects): venter
+  `?dev=1`-trace («ambient-N») + lås. Til da står gjestene på grovt estimerte
+  sideposisjoner.
+- **Turist-ark bølge 3 — LØST:** ETT ark (Espen valgte kandidat A) splittet til 6
+  sprites; erstattet enkeltgenereringene. Kari-likhets-flagget fra forrige runde
+  er dermed utgått.
 - **Interiør-inpaint:** en svak myk flekk står igjen der ✦ var (akseptabelt i
   dimmet bakgrunn). Full scene-oppgradering (tracede UI-soner mot interiøret) er
   egen fremtidig jobb (horisont).

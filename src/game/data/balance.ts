@@ -149,6 +149,15 @@ export const BALANCE = {
       turisterMultiplikator: 0.5, // «X kjøpte pakken» = round(sesongturister/dag × treff × dette)
       kafeTrafikkBonus: 0.15,   // ekstra kafé-trafikk i sesongen når egen kafé er i pakken
     },
+    /** BØLGE 3 — ambient turist-gjester i interiøret: i sesong vises inntil
+     *  `maks` seedede turist-sprites på ledige kundeposisjoner. REN visuell
+     *  tilstedeværelse (ingen interaksjon, påvirker ikke salg/fasit). Slå av
+     *  ved å sette `aktiv: false`. */
+    ambient: {
+      aktiv: true,
+      maks: 2,        // antall ambient-gjester samtidig (≤ antall traced slots)
+      opacity: 0.5,   // dimming så de leser som bakgrunnsliv, ikke aktiv kunde
+    },
   },
 
   /** SPILLKLOKKE — klokka eier den åpne dagen (09:00–17:00). Tempo: tickMs
