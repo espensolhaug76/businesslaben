@@ -788,6 +788,25 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`reiselivs-innganger: turistkontor/byhotell velger fra riktig pool; «møt en …»-event åpner dialogkort-overlayet (turister UT av kaféen)`)
   })
 
+  // ── STEG 17 — DEV-DYPLENKE: /game/d/stasjonsomradet?dev=1 må vise stasjons-
+  //    bydelen med hotspot-labels + tracer, ALDRI bransjevelgeren ─────────────
+  await steg(page, rapport, 17, 'Dev-dyplenke: /game/d/stasjonsomradet?dev=1 viser stasjonsbydelen (hotspot-labels + sone-tracer), aldri bransjevelgeren', async ctx => {
+    // Fersk navigasjon UTEN ?skip — spilltilstand overlever ikke reload, så uten
+    // fiksen står phase='startup' → bransjevelger. Dyplenke-seedingen skal starte
+    // et engangsspill så scenen rendres.
+    await page.goto('/game/d/stasjonsomradet?dev=1')
+    await ventState(page, s => s.phase !== 'startup', 'dev-dyplenke seedet engangsspill (ikke startup)')
+    await page.waitForTimeout(400)
+    const body = await page.textContent('body') ?? ''
+    expect(body.includes('Velg din bransje'), 'ALDRI bransjevelgeren på dev-dyplenke').toBe(false)
+    // «Turistkontoret»/«Byhotellet» (stor forbokstav + -et) = spillets hotspot-
+    // labels (tracerens knapper er «turistkontor»/«byhotell», små bokstaver).
+    expect(body.includes('Turistkontoret'), '«🧳 Turistkontoret»-label rendres på recten').toBe(true)
+    expect(body.includes('Byhotellet'), '«🏨 Byhotellet»-label rendres på recten').toBe(true)
+    expect(body.includes('Sone-tracer'), 'sone-traceren (ZoneTracer) er montert').toBe(true)
+    ctx.ok('?dev=1 (uten ?skip) → stasjonsbydelen (phase exploring_city), «🧳 Turistkontoret» + «🏨 Byhotellet»-labels + sone-tracer synlige, ingen bransjevelger')
+  })
+
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
   const { pass, fail, kjent } = skrivRapport(rapport, notater)
   expect(fail, `Reelle FAIL-steg (KJENT FEIL teller ikke): ${fail}. Se docs/rapporter/spilltest-siste.md`).toBe(0)

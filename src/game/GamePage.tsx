@@ -70,6 +70,12 @@ function GameContent() {
   const pathname = useLocation().pathname
   const isInterior = pathname.endsWith('/inne')
   const isCounter = pathname.endsWith('/disk')
+  // DEV-DYPLENKE: `?dev=1` rett til en bydel/scene (f.eks.
+  // /game/d/stasjonsomradet?dev=1 for sone-tracing) skal vise scenen, ALDRI
+  // bransjevelgeren. Uten et aktivt spill står phase='startup' (spilltilstand
+  // overlever ikke reload) → StartupScreen. Vi seeder derfor et engangsspill
+  // (samme som ?skip=1) når dev-flagget er satt OG ruten peker på en bydel.
+  const devDeepLink = import.meta.env.DEV && IS_DEV_COORDS && !!districtId
   const [simOpen, setSimOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [dashboardTab, setDashboardTab] = useState<string>('oversikt')
@@ -81,9 +87,10 @@ function GameContent() {
   const [salesOpen, setSalesOpen] = useState(false)
   const [salesScenarioId, setSalesScenarioId] = useState('morgenkunden')
 
-  // Dev shortcut: ?skip=1 seeds defaults and skips the StartupScreen wizard.
+  // Dev shortcut: ?skip=1 (eller dev-dyplenke til en bydel) seeds defaults and
+  // skips the StartupScreen wizard.
   useEffect(() => {
-    if (!IS_DEV_SKIP) return
+    if (!IS_DEV_SKIP && !devDeepLink) return
     if (state.phase !== 'startup') return
     dispatch({
       type: 'START_GAME',
@@ -101,7 +108,7 @@ function GameContent() {
     // finnes så snart eleven har lagt den i åpningsbestillingen).
     dispatch({ type: 'SET_MAIN_PRODUCT', id: 'coffee' })
     console.log('[DEV] StartupScreen skipped, seeded defaults (åpningsbestilling ved leie)')
-  }, [state.phase, dispatch])
+  }, [state.phase, dispatch, devDeepLink])
 
   // DEL 4: lytt etter dev-trigger fra dashbordet («Øv salg»). Åpner
   // salgssituasjon-overlayet oppå et evt. åpent dashbord.
@@ -160,7 +167,9 @@ function GameContent() {
   }, [beredskapAktiv, state.dayPhase, state.dayNumber, state.currentMonth, state.beredskap.planBekreftet, state.beredskap.brannalarmMnd, dispatch])
 
   if (state.phase === 'startup') {
-    if (IS_DEV_SKIP) return null
+    // Dev-dyplenke / ?skip: vis ingenting mens engangsspillet seedes (effekten
+    // over dispatcher START_GAME → re-render med scenen), aldri bransjevelgeren.
+    if (IS_DEV_SKIP || devDeepLink) return null
     return <StartupScreen />
   }
 

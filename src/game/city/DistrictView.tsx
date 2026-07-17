@@ -164,10 +164,10 @@ export default function DistrictView({
           )
         })}
 
-        {/* TEMA 15 REISELIV — turistkontor + byhotell (stasjonsbydel, kun når
-            reiseliv er aktivt). Rects er PLACEHOLDER til Espen tracer dem (?dev=1
-            viser dem som gule zones i rute-traceren) og låser i districts.ts. */}
-        {district.id === 'stasjonsomradet' && aktiveTemaer['reiseliv']?.aktiv && (
+        {/* TEMA 15 REISELIV — turistkontor + byhotell (stasjonsbydel). Vises når
+            reiseliv er aktivt ELLER i ?dev=1 (så labelene/hotspotene kan
+            valideres/traces uten at læreren har slått på temaet). */}
+        {district.id === 'stasjonsomradet' && (aktiveTemaer['reiseliv']?.aktiv || IS_DEV_COORDS) && (
           <>
             {(['turistkontor', 'byhotell'] as const).map(key => {
               const [x, y, w, h] = STASJON_REISELIV_HOTSPOTS[key]

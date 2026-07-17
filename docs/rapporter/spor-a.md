@@ -1860,6 +1860,15 @@ avsløre fasiten.
   RECT-traceren (`ZoneTracer`, dra boks + «Bruk siste på: …»), ikke rute-traceren
   (`DevCoordHelper` ga bare polyline-punkter → kunne ikke definere et rekt; det
   var derfor det første trace-forsøket ga ubrukelige verdier).
+- **BUGFIX (dev-dyplenke):** `/game/d/stasjonsomradet?dev=1` ga bransjevelgeren.
+  Rotårsak (reprodusert headless, ikke gjettet): en direkte bydel-URL uten aktivt
+  spill står `phase='startup'` (spilltilstand overlever ikke reload) → GamePage
+  rendret `StartupScreen`; kun `?skip=1` seedet et spill. Fiks: `?dev=1` + en
+  bydel i ruten seeder nå et engangsspill (`devDeepLink` i GamePage, samme som
+  `?skip`), OG stasjons-hotspotene rendres i `?dev=1` uansett om reiseliv-temaet
+  er på (`|| IS_DEV_COORDS` i DistrictView) — så «🧳 Turistkontoret»/«🏨 Byhotellet»-
+  labelene faktisk vises for tracing/validering. Ny **spilltest steg 17**
+  vokter dette (17/17); labelene også visuelt bekreftet headless.
 - **Kafé-ambient PARKERT** (`ambient.aktiv=false`): `INTERIOR_AMBIENT_TURIST_SLOTS`
   + «ambient-N»-traceren ligger klare men trenger IKKE trace nå (turistene vises i
   turistkontor-panelet i stedet).
