@@ -1193,9 +1193,10 @@ Bygget som **dev-showcase** i Interiør-vyen (ny **🛒 Salg**-modus i
 DEL 1 (mekanikk) og DEL 3 (velger + kobling) er én sammenhengende interaktiv
 feature, committet sammen.
 
-**a) 3 gulv-ståpunkter** (`districts.ts KLESBUTIKK_KUNDE_STAPUNKTER`, ⚠️
-FØRSTEPASNING): `stativ (41,71,0.56)` · `midtgang (55,78,0.62)` · `proverom
-(73,69,0.5)` — perspektiv-gradient (front større). Bunn-ankret, scale = kundehøyde.
+**a) 3 gulv-ståpunkter** (`districts.ts KLESBUTIKK_KUNDE_STAPUNKTER`) — CC
+førstepasning, deretter **✅ LÅST av Espen 2026-07-17** (📍-traceren): `stativ
+(56, 78.9, 0.44)` · `midtgang (37, 84.5, 0.46)` · `proverom (75, 86.5, 0.48)`.
+Bunn-ankret, scale = kundehøyde.
 **Ståpunkt-tracer** (📍-panel i 🛒 Salg): dra punktene, ± scale mot silhuett, «Logg
 array» → districts.ts. Skjermbilde-løkke: alle 3 kundene står naturlig på gulvet i
 riktig dybde (`public/dev-screenshots/salg-stapunkter.png`).

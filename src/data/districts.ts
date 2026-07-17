@@ -326,13 +326,12 @@ export const KLESBUTIKK_KUNDE_BASE: [number, number, number, number] = [34, 40, 
 // ── OPPSØKENDE SALG: gulv-ståpunkter (interiør-scenen, 1375×768) ──────────────
 // Faste punkter der en kunde spawner og venter på å bli kontaktet (DEL 1).
 // Bunn-ankret (fotpunkt), scale = kundehøyde som andel av scenehøyden.
-// ⚠️ FØRSTEPASNING (CC-kalibrert via skjermbilde-løkke) — Espen finpusser/låser
-// i /dev/klesbutikk?dev=1 → 🛍 Interiør → 🛒 Salg (ståpunkt-tracer).
+// ✅ LÅST av Espen 2026-07-17 (📍-ståpunkt-traceren i 🛒 Salg, ?dev=1).
 export interface Stapunkt { id: string; navn: string; x: number; y: number; scale: number }
 export const KLESBUTIKK_KUNDE_STAPUNKTER: Stapunkt[] = [
-  { id: 'stativ',   navn: 'Ved stativ',   x: 41, y: 71, scale: 0.56 },
-  { id: 'midtgang', navn: 'Midtgang',     x: 55, y: 78, scale: 0.62 },
-  { id: 'proverom', navn: 'Nær prøverom', x: 73, y: 69, scale: 0.5 },
+  { id: 'stativ',   navn: 'Ved stativ',   x: 56, y: 78.9, scale: 0.44 },
+  { id: 'midtgang', navn: 'Midtgang',     x: 37, y: 84.5, scale: 0.46 },
+  { id: 'proverom', navn: 'Nær prøverom', x: 75, y: 86.5, scale: 0.48 },
 ]
 
 /** Produkt-sprites (VINDUSHUD) — klippet fra bakery_assets.png
