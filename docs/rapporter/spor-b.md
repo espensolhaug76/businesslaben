@@ -1081,6 +1081,68 @@ sier fra. De 8 kandidatene med sprite ligger i `klesbutikkKunder.ts`.
 
 ---
 
+## VANNMERKE-FJERNING (scenebilder) + OKKLUSJONS-FIKS
+
+### a) ✦-vannmerker identifisert (alle scenebilder i treet)
+| Bilde | ✦? | Plassering |
+|---|---|---|
+| `klesbutikk-kassevy.png` (1296×832) | ✅ JA | bunn-h., på kremhvit søyle (~1177,709) |
+| `klesbutikk-fasade.png` (1376×768) | ✅ JA | bunn-h., på mursteinsokkel/grus (~1254,648) |
+| `klesbutikk-interior-mobler.png` (1375×768) | ❌ NEI | allerede fjernet i tidligere jobb (rad-interpolasjon); kun en svak glatt flekk igjen, ingen ✦ |
+
+**Kafé-treet (main):** `interior-kasse.png` HAR ✦ (2 stk, bunn-h. på veggen/disken).
+Den hører til kafeen/main — **egen jobb på main** (rørt IKKE herfra, jf. oppdraget).
+
+### b) Fjerning (scriptlaget: `scripts/dewatermark-scene.py`, Pillow/numpy/scipy)
+Metode = **fjæret klon fra nabopiksel-område rett OVENFOR** ✦-et (samme x, forskjøvet
+y). Klonen bevarer vertikale kanter (søylens hjørne / mursteinsføyer) fordi kilden
+ligger rett over med samme x. **Ikke beskjært** (all traced geometri urørt). Alfa
+hardklippet til en liten hjørneboks ⇒ endringen er strengt lokal.
+- **kassevy:** klon dy=54, boks (1129,665,1225,753) — søylens hjørnekant bevart rent.
+- **fasade:** klon dy=52, boks (1224,617,1286,682) — murstein-teksturen fortsetter
+  naturlig (diffusjon-fyll ga en synlig glatt blob + fargestøy; forkastet til fordel
+  for klon, som ga ekte mursteinstekstur).
+
+**Pikseldiff (mot git HEAD, dekodet):** KUN hjørneboksen endret —
+`kassevy: OUTSIDE=0`, `fasade: OUTSIDE=0`. Bekreftet at ingen traced sone/geometri
+flyttet seg.
+
+### c) Visuell sjekk + før/etter (utsnitt i `public/dev-screenshots/`)
+- `wm-kassevy-for-etter.png` — ✦ vekk, søylekant intakt.
+- `wm-fasade-for-etter.png` — ✦ vekk, mursteinstekstur naturlig.
+- Sjekk-render (alle 3 faner, `/dev/klesbutikk`): scenebildene lastes, 0 konsollfeil.
+  `tsc`/`vite build` urørt av bildeendringene (grønt).
+
+### TILLEGG — kassevy-okklusjon (Espens funn: kundens bein synes under disken)
+
+**Rotårsak (reprodusert full-side headless):** kunde-spriten er STØRRE enn
+scene-boksen (forankret på livlinja, høyde 106–128 %), så den strekker seg NEDENFOR
+boksen (~147 %). Kafeens kassevy (`InteriorView`) unngår dette fordi scenen FYLLER
+viewporten — kundens bein havner utenfor skjermen. I stillaset er scenen en
+**avgrenset boks** med `overflow: visible`, så beina spilte ut NEDENFOR disken (på
+sidebakgrunnen). Forgrunns-disk-laget dekket kun 80–100 % av boksen, ikke feltet
+UNDER boksen. **Altså ikke manglende/invertert clip-path — men manglende
+boks-klipp.** (Okklusjons-linja `OCCLUDE_Y_LEFT/RIGHT` 80/79 interpoleres allerede
+over bredden via `polygon()`, som kafeen — beholdt.)
+
+**Fiks (samme mønster som kafeen, gjenbruk):** kunden + forgrunns-disk-laget pakket
+i en `overflow: hidden`-container (`inset:0`) i `KassevyLayer`. Samme okklusjons-idé
+som kafeen (forgrunns-disk-lag + klipp av alt under), men klippet mot BOKSEN i
+stedet for viewporten. Ingen ny okklusjons-variant, ingen endring av de Espen-låste
+konstantene.
+
+**Verifisert (skjermbilde-løkke):**
+- Før/etter samme sted som beina var synlige: `kassevy-okklusjon-for-etter.png` —
+  FØR = jeans/bein under disken, ETTER = rent (ingen kunde-piksler under boksen).
+- **Alle 8 kundene i ett render-pass** (ulike sprite-høyder 0.98–1.28): ingen bein
+  under disken for NOEN av dem — boks-klippet gjelder alle. 0 konsollfeil.
+  `tsc -b` + `vite build` grønt.
+
+**➡️ Espen:** visuell sluttsjekk i Chrome (`/dev/klesbutikk` → 💰 Kasse): ✦ vekk på
+kassevy + fasade, og ingen bein under disken (bla gjennom alle 8 kundene i 🎚️).
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.

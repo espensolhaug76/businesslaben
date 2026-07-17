@@ -1458,13 +1458,22 @@ function KassevyLayer({ imgSrc }: { imgSrc: string }) {
 
   return (
     <>
-      {/* KUNDEN (z10) — forankret på livlinja; per-kunde spriteCal fra registeret. */}
-      <img src={kunde.sprite} alt={kunde.navn} draggable={false}
-        style={{ ...customerAnchorStyle(k, kunde.spriteCal), zIndex: 10, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.45))', pointerEvents: 'none', userSelect: 'none' }} />
-      {/* FORGRUNNS-DISK-LAG (z20) — samme scenebilde klippet til båndet UNDER den
-          (evt. skrå) disk-kanten. Okkluderer kundens underkropp. */}
-      <img src={imgSrc} alt="" aria-hidden draggable={false}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', clipPath: occlusionClipPath(occLeft, occRight), zIndex: 20, pointerEvents: 'none', userSelect: 'none' }} />
+      {/* SCENE-KLIPP: kunden er større enn scene-boksen (forankret på livlinja) og
+          strekker seg UNDER boksen. Uten klipp spilte beina ut NEDENFOR disken
+          (Espens funn). Kafeens kassevy (InteriorView) unngår det ved at scenen
+          fyller viewporten (beina havner utenfor skjermen); her er scenen en
+          avgrenset boks, så vi klipper eksplisitt med overflow:hidden — samme
+          okklusjons-idé (forgrunns-disk-lag + klipp av alt under), tilpasset en
+          boks i stedet for viewporten. */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 5 }}>
+        {/* KUNDEN (z10) — forankret på livlinja; per-kunde spriteCal fra registeret. */}
+        <img src={kunde.sprite} alt={kunde.navn} draggable={false}
+          style={{ ...customerAnchorStyle(k, kunde.spriteCal), zIndex: 10, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.45))', pointerEvents: 'none', userSelect: 'none' }} />
+        {/* FORGRUNNS-DISK-LAG (z20) — samme scenebilde klippet til båndet UNDER den
+            (evt. skrå) disk-kanten. Okkluderer kundens underkropp. */}
+        <img src={imgSrc} alt="" aria-hidden draggable={false}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', clipPath: occlusionClipPath(occLeft, occRight), zIndex: 20, pointerEvents: 'none', userSelect: 'none' }} />
+      </div>
       {/* ?dev=1: KUNDE_BASE-sone-omriss (referanse — kalibreres i 🧭 Soner). */}
       {IS_DEV_COORDS && (
         <div style={{ position: 'absolute', left: `${KLESBUTIKK_KUNDE_BASE[0]}%`, top: `${KLESBUTIKK_KUNDE_BASE[1]}%`, width: `${KLESBUTIKK_KUNDE_BASE[2]}%`, height: `${KLESBUTIKK_KUNDE_BASE[3]}%`, border: '1px dashed #50e08c88', zIndex: 22, pointerEvents: 'none' }} />
