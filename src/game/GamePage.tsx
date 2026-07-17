@@ -23,6 +23,7 @@ import DistrictView, { type LokaleClick } from './city/DistrictView'
 import StorefrontView from './city/StorefrontView'
 import InteriorView from './city/InteriorView'
 import MonterScene from './city/MonterScene'
+import LobbyView from './city/LobbyView'
 import { districtOfLokale } from '../data/districts'
 import { IS_DEV_COORDS } from './city/DevCoordHelper'
 
@@ -76,6 +77,8 @@ function GameContent() {
   // overlever ikke reload) → StartupScreen. Vi seeder derfor et engangsspill
   // (samme som ?skip=1) når dev-flagget er satt OG ruten peker på en bydel.
   const devDeepLink = import.meta.env.DEV && IS_DEV_COORDS && !!districtId
+  // Spor C: Byhotellets lobby (B2B-møtescene) — bydel-nivå rute-suffiks.
+  const isLobby = pathname.endsWith('/hotell-lobby')
   const [simOpen, setSimOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [dashboardTab, setDashboardTab] = useState<string>('oversikt')
@@ -225,7 +228,9 @@ function GameContent() {
                   onOpenPanel={tab => { setDashboardTab(tab); setDashboardOpen(true); setOverlay(true) }}
                 />)
         : districtId
-          ? <DistrictView districtId={districtId} onVacantClick={onVacantClick} />
+          ? (isLobby
+              ? <LobbyView districtId={districtId} />
+              : <DistrictView districtId={districtId} onVacantClick={onVacantClick} />)
           : <CityMapView />}
 
       <HUD

@@ -110,6 +110,21 @@ export default function DistrictView({
             skala={KUNDESKALA[district.id]}
           />
         )}
+        {/* Spor C (?dev=1): inngang til Byhotellets lobby (B2B-møtescene).
+            Dev-affordance FØR hotell-hotspoten er tracet/låst — Espen erstatter
+            denne knappen med en usynlig hotspot-klikkflate over hotellbygget
+            (samme mønster som lokalene over) når han låser koordinatene. */}
+        {IS_DEV_COORDS && district.id === 'stasjonsomradet' && (
+          <button
+            onClick={() => navigate(`/game/d/${district.id}/hotell-lobby`)}
+            style={{
+              position: 'absolute', left: '50%', top: '18%', transform: 'translate(-50%,-50%)',
+              zIndex: 6, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+              background: 'rgba(192,132,252,0.18)', border: '1px solid #c084fc',
+              borderRadius: 8, padding: '5px 11px', color: '#e9d5ff', fontSize: 12, fontWeight: 800,
+            }}
+          >🏨 Hotell-lobby (dev)</button>
+        )}
         {lokaler.map(l => {
           const [x, y, w, h] = l.rect
           const mine = state.rentedLocationId === l.id

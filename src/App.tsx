@@ -438,6 +438,9 @@ function App() {
               lokale (/game/d/:id/l/:id). Samme GamePage leser URL-params. */}
           <Route path="/game" element={<GamePage />} />
           <Route path="/game/d/:districtId" element={<GamePage />} />
+          {/* Spor C: Byhotellets lobby (B2B-møtescene) — bydel-nivå, ikke et
+              lokale. Nås fra hotell-hotspoten på stasjonsbydelen (?dev=1). */}
+          <Route path="/game/d/:districtId/hotell-lobby" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId/inne" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId/disk" element={<GamePage />} />
