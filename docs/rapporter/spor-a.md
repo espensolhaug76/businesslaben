@@ -1806,12 +1806,10 @@ avsløre fasiten.
 3. **Sortimentseffekt:** i sesong selger du merkbart mer kaffe/kaker (vare-vekt).
 4. **Turist-scenarier:** spill noen kundemøter i sesong → turist-scenariene
    dukker opp (Språkbarrieren/Kulturmøtet/Opplevelsen/Tax-free).
-5. **Stasjons-hotspots:** gå til stasjonsbydelen → «🧳 Turistkontoret» + «🏨
-   Byhotellet» er klikkbare. Turistkontor → panel; hotell → status/innboks. NB:
-   rectene er placeholder (byhotell-recten sitter ennå på det HØYRE bygget, ikke
-   det sentrale HOTEL-bygget) — trace begge med `?dev=1` **RECT-traceren** (🧭
-   Sone-tracer: dra en boks → «Bruk siste på: turistkontor/byhotell») og lim
-   verdiene til meg for lås i `districts.ts`.
+5. **Stasjons-hotspots (LÅST):** gå til stasjonsbydelen → «🧳 Turistkontoret»
+   (bygg langs gata) + «🏨 Byhotellet» (det sentrale HOTEL-bygget) er klikkbare.
+   Turistkontor → panel; hotell → status/innboks. Rectene er Espen-tracet og låst
+   i `districts.ts`.
 6. **Byhotellet:** innboksen får «🏨 Byhotellet vil samarbeide» ved sesongstart →
    aksept gir mer turisttrafikk (dagspuls) men litt lavere margin; avslag ikke.
 7. **Pakkebyggeren:** i panelet i sesong → «🎒 Sett sammen en pakke»: les
@@ -1828,13 +1826,12 @@ avsløre fasiten.
   Rendres som ren `<em>`-tekst i panelet + mentor (kode-kommentar markerer det).
   Trenger Espen-godkjent definisjon; bytt `<em>` → `<Fagord id="…">` når termen
   er lagt inn. (`vertskap`=KULT_003 + `kulturforståelse`=KULT_004 er nå på plass.)
-- **Hotspot-plassering** (turistkontor/byhotell på stasjonsbydelen): placeholder-
-  rects i `districts.ts.STASJON_REISELIV_HOTSPOTS` venter `?dev=1`-trace + lås.
-  **Tooling fikset:** stasjonsbydelen bruker nå RECT-traceren (`ZoneTracer`, dra
-  boks + «Bruk siste på: turistkontor/byhotell»), ikke rute-traceren
-  (`DevCoordHelper` ga bare polyline-punkter → kan ikke definere et rekt; det var
-  derfor de første trace-verdiene ikke kunne brukes). Byhotell-recten bør flyttes
-  til det sentrale HOTEL-bygget.
+- **Hotspot-plassering — LÅST:** `STASJON_REISELIV_HOTSPOTS` er Espen-tracet
+  (turistkontor `[57, 26.6, 4.2, 11.3]`, byhotell `[47.6, 15.8, 8.7, 13.8]` på det
+  sentrale HOTEL-bygget). **Tooling-fiks beholdt:** stasjonsbydelen bruker nå
+  RECT-traceren (`ZoneTracer`, dra boks + «Bruk siste på: …»), ikke rute-traceren
+  (`DevCoordHelper` ga bare polyline-punkter → kunne ikke definere et rekt; det
+  var derfor det første trace-forsøket ga ubrukelige verdier).
 - **Kafé-ambient PARKERT** (`ambient.aktiv=false`): `INTERIOR_AMBIENT_TURIST_SLOTS`
   + «ambient-N»-traceren ligger klare men trenger IKKE trace nå (turistene vises i
   turistkontor-panelet i stedet).
