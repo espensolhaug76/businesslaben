@@ -281,14 +281,13 @@ export const STOREFRONT_HOTSPOTS: Record<'skilt' | 'vindu' | 'dor', [number, num
 }
 
 /** TEMA 15 REISELIV — hotspots på STASJONS-bydelsbildet (prosent [x, y, b, h]).
- *  Byhotellet er alt bakt inn i bildet (mursteinsbygget merket HOTEL i enden av
- *  gata) → recten legges der. Turistkontoret legges på et egnet eksisterende
- *  bygg langs gata (Espen velger hvilket). PLACEHOLDER-verdier — Espen tracer
- *  begge med ?dev=1 (rute-traceren viser dem som gule zones) og 📋-kopierer;
- *  låses her etterpå. Vises kun når reiseliv-temaet er aktivt. */
+ *  Byhotellet er bakt inn i bildet (mursteinsbygget merket HOTEL midt i enden av
+ *  gata); turistkontoret ligger på et bygg langs gata. LÅST av Espen via ?dev=1
+ *  ZoneTracer (RECT-traceren — se DistrictView). Vises/klikkbare kun når
+ *  reiseliv-temaet er aktivt. */
 export const STASJON_REISELIV_HOTSPOTS: Record<'turistkontor' | 'byhotell', [number, number, number, number]> = {
-  turistkontor: [20, 45, 12, 14],  // PLACEHOLDER — Espen tracer (bygg langs gata)
-  byhotell:     [66, 40, 14, 20],  // PLACEHOLDER — Espen tracer (HOTEL-bygget i enden)
+  turistkontor: [57, 26.6, 4.2, 11.3],   // Espen-tracet (?dev=1 ZoneTracer) — bygg langs gata
+  byhotell:     [47.6, 15.8, 8.7, 13.8], // Espen-tracet — det sentrale HOTEL-bygget
 }
 
 /** Høyre vindu — kampanjeflate (fremtidig markedsførings-visning).
