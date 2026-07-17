@@ -771,6 +771,14 @@ function reducer(state: GameState, action: Action): GameState {
     }
 
     case 'RESOLVE_GAME_EVENT': {
+      // TEMA 15 DEL 5 — byhotellets gjestepakke (ikke i EVENT_POOL). Aksept gir
+      // ekstra turisttrafikk mot at hotellet tar en andel av pakkesalget (begge
+      // deler i balance.ts, virker i OPEN_DAY). Deterministisk.
+      if (action.eventId === 'hotellavtale') {
+        const svar = action.choiceId === 'aksepter' ? 'akseptert' : 'avslatt'
+        const messages = state.messages.filter(m => m.id !== action.messageId)
+        return { ...state, hotellavtale: svar, messages, unreadCount: messages.filter(m => !m.read).length }
+      }
       const event = EVENT_POOL.find(e => e.id === action.eventId)
       if (!event) return state
       const choice = event.choices.find(c => c.id === action.choiceId)
@@ -988,9 +996,29 @@ function reducer(state: GameState, action: Action): GameState {
       // en sesong alt er aktiv.
       if (turistsesongAktiv(state)) return state
       const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      // DEL 5 — byhotellets gjestepakke-tilbud i innboksen (kun hvis uavklart og
+      // ikke alt liggende der). B2B-smakebit; VG2-refleksjon i etterkant.
+      const harHotellMsg = state.messages.some(m => m.type === 'hotellavtale')
+      const messages = (state.hotellavtale === 'ingen' && !harHotellMsg)
+        ? [...state.messages, {
+            id: `hotellavtale_${naa}`,
+            type: 'hotellavtale' as const,
+            title: '🏨 Byhotellet vil samarbeide',
+            body: 'Hei! Byhotellet setter sammen en gjestepakke for tilreisende og vil gjerne ha kaféen din med som frokost-/kaffestopp. Vi sender gjester til deg gjennom sesongen — mot at hotellet beholder ' + Math.round(BALANCE.turistsesong.hotellKutt * 100) + ' % av det pakkegjestene handler for hos deg. Svar innen 3 dager. Hva sier du?',
+            date: `Dag ${state.dayNumber} · Måned ${state.currentMonth}`,
+            read: false,
+            competenceGoal: 'Reiselivsprodukt og B2B-samarbeid (VG2)',
+            choices: [
+              { text: 'Ja, vi er med (gjestestrøm mot ' + Math.round(BALANCE.turistsesong.hotellKutt * 100) + ' % kutt)', effect: 'Mer turisttrafikk, lavere margin på pakkesalg', eventId: 'hotellavtale', choiceId: 'aksepter' },
+              { text: 'Nei takk, vi står på egne bein', effect: 'Beholder full margin, ingen ekstra gjestestrøm', eventId: 'hotellavtale', choiceId: 'avslaa' },
+            ],
+          }]
+        : state.messages
       return {
         ...state,
         turistsesong: { startAbsDag: naa, varighet: BALANCE.turistsesong.varighet, turistKunder: 0, bakgrunnKunder: 0, sluttVist: false },
+        messages,
+        unreadCount: messages.filter(m => !m.read).length,
       }
     }
     case 'DEV_SPOL_TURISTSESONG_SLUTT': {
@@ -1385,14 +1413,22 @@ function reducer(state: GameState, action: Action): GameState {
           // Kun de BETJENTE kundene når disken (kan så tape til tomt lager).
           const r = simulerBakgrunnsbolk(state.products, betjent, state.dayBackground.seed, state.dayBackground.vareVekt)
           products = r.products
-          money = state.money + r.bakgrunnKr
+          // DEL 5: har eleven takket JA til hotellpakken, tar hotellet sin andel
+          // av pakkegjestenes forbruk i sesong → lavere REALISERT omsetning (og
+          // dermed margin) for kaféen. Andelen = hotellKutt × pakkegjest-share.
+          const T = BALANCE.turistsesong
+          const pakkeShare = T.hotellTrafikkBonus / (1 + T.trafikkLoft + T.hotellTrafikkBonus)
+          const hotellMargin = (state.dayBackground.turistandel > 0 && state.hotellavtale === 'akseptert')
+            ? (1 - T.hotellKutt * pakkeShare) : 1
+          const nettoBakgrunnKr = Math.round(r.bakgrunnKr * hotellMargin)
+          money = state.money + nettoBakgrunnKr
           seed = r.seed
           dayStats = {
             ...dayStats,
             varekostKr: dayStats.varekostKr + r.varekostKr,
             bakgrunnKunder: dayStats.bakgrunnKunder + r.bakgrunnKunder,
             bakgrunnStk: dayStats.bakgrunnStk + r.bakgrunnStk,
-            bakgrunnKr: dayStats.bakgrunnKr + r.bakgrunnKr,
+            bakgrunnKr: dayStats.bakgrunnKr + nettoBakgrunnKr,
             tapteSalgStk: dayStats.tapteSalgStk + r.tapteSalgStk,
             tapteSalgKr: dayStats.tapteSalgKr + r.tapteSalgKr,
             manglerPrisStk: dayStats.manglerPrisStk + r.manglerPrisStk,

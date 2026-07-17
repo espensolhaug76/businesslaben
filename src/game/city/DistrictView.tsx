@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useGame } from '../GameContext'
+import { useGame, useAktiveTemaer } from '../GameContext'
 import { getDistrict, KUNDESKALA, KUNDESTIER, LOKALER, NO_GO, lokaleRent, type District, type Lokale } from '../../data/districts'
+import TuristkontorPanel from '../ui/TuristkontorPanel'
 import CustomerFlow from './CustomerFlow'
 import DevCoordHelper, { IS_DEV_COORDS } from './DevCoordHelper'
 import { useReducedMotion } from './anim'
@@ -32,10 +33,12 @@ export default function DistrictView({
 }) {
   const navigate = useNavigate()
   const { state } = useGame()
+  const aktiveTemaer = useAktiveTemaer()
   const district = getDistrict(districtId)
   const reduced = useReducedMotion()
   // Zoom-overgang inn mot eget lokale før navigasjon til StorefrontView.
   const [zoomOrigin, setZoomOrigin] = useState<[number, number] | null>(null)
+  const [turistkontorAapen, setTuristkontorAapen] = useState(false)   // TEMA 15 DEL 5
 
   if (!district) {
     return (
@@ -154,7 +157,18 @@ export default function DistrictView({
           <div style={{ fontWeight: 800 }}>{district.navn}</div>
           <div style={{ fontSize: 11, color: '#94a3b8' }}>Leienivå {district.leieniva.toLocaleString('nb-NO')} kr/mnd · {district.trafikk} trafikk</div>
         </div>
+        {/* TEMA 15 DEL 5: turistkontor-inngang (sentrum, kun når reiseliv er aktivt).
+            MIDLERTIDIG labelknapp — den ENDELIGE hotspoten legges på turistkontor-
+            fasaden på bydelsbildet når Espen har valgt pilot og tracet rect (?dev=1). */}
+        {district.id === 'sentrum' && aktiveTemaer['reiseliv']?.aktiv && (
+          <button onClick={() => setTuristkontorAapen(true)}
+            style={{ background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.5)', borderRadius: 12, padding: '0.5rem 0.9rem', color: '#7dd3fc', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            🧳 Turistkontoret
+          </button>
+        )}
       </div>
+
+      {turistkontorAapen && <TuristkontorPanel onLukk={() => setTuristkontorAapen(false)} />}
     </div>
   )
 }
