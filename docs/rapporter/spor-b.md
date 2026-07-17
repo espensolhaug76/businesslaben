@@ -1186,6 +1186,56 @@ er brukt FAKTA-korrekt i teksten, men flere mangler som glossary-oppslag:
 **INAKTIVE:** `KLESBUTIKK_SCENARIOS` står utenfor enhver `scenariePool` — kun
 tilgjengelig via dev-velgeren (DEL 1/3). `tsc -b` grønt.
 
+### DEL 1 + DEL 3 — oppsøkende salg-mekanikk + dev-scenariovelger
+
+Bygget som **dev-showcase** i Interiør-vyen (ny **🛒 Salg**-modus i
+`KlesbutikkStillas`) — scenariene er inaktive, så mekanikken lever i stillaset.
+DEL 1 (mekanikk) og DEL 3 (velger + kobling) er én sammenhengende interaktiv
+feature, committet sammen.
+
+**a) 3 gulv-ståpunkter** (`districts.ts KLESBUTIKK_KUNDE_STAPUNKTER`, ⚠️
+FØRSTEPASNING): `stativ (41,71,0.56)` · `midtgang (55,78,0.62)` · `proverom
+(73,69,0.5)` — perspektiv-gradient (front større). Bunn-ankret, scale = kundehøyde.
+**Ståpunkt-tracer** (📍-panel i 🛒 Salg): dra punktene, ± scale mot silhuett, «Logg
+array» → districts.ts. Skjermbilde-løkke: alle 3 kundene står naturlig på gulvet i
+riktig dybde (`public/dev-screenshots/salg-stapunkter.png`).
+
+**b) Spawn + kontakt + tapt salg:** velg scenario i velgeren → kunden spawner på
+ståpunktet (scenario-indeks % 3). Etter `KLESBUTIKK_KONTAKT_HINT` (3 s) dukker et
+diskret **💬** opp. **Klikk kunden = ta kontakt** → dialogen åpnes. Ikke kontaktet
+innen **`KLESBUTIKK_KONTAKT_VINDU`** (12 s, `data/balance.ts`, tunbart): kunden går,
+**tapt salg** logges (konsoll «TAPT SALG (ikke kontaktet)») + rød toast. Verifisert
+headless: 💬 etter 3 s ✓, tapt-salg-toast + kunde borte + konsoll-logg etter 12 s ✓.
+
+**c) Kassevy = oppgjørsscene + `avsluttesVedKasse`:** dialog-overlayet ligger på
+TOPPNIVÅ (overlever scenebytte). Nytt felt `SalesScenario.avsluttesVedKasse` (#1
+Angrekjøpet, #4 Gaven): når dialogen når **`kasse`-steget** (via overlayets nye
+valgfrie `onStep`-callback) flyttes scenen til **💰 Kasse**, og scenariets kunde
+vises ved disken (`KassevyLayer forcedKundeId` ← `KLESBUTIKK_SCENARIO_KUNDE`).
+Verifisert: Angrekjøpet god-sti → «STEG 7 (ved kassen)» → bakgrunn = kassevy m/
+mann-skjegg ved disken (`salg-avsluttes-ved-kasse.png`). Lukk → tilbake til Interiør,
+kunde fjernet.
+
+**Dialogkort-UI = kafeens (gjenbruk, standard look):** `SalesScenarioOverlay` fikk
+to bakoverkompatible, valgfrie props — `scenario` (send objektet direkte, så
+INAKTIVE bransje-scenarier slipper å registreres i kafeens `getScenario`) + `onStep`.
+Kafé-stien (GamePage → `scenarioId`) er URØRT.
+
+**DEL 3 dev-scenariovelger** (🛒-panel, `?dev=1`, kafé-mønster): start hvilket som
+helst av de 6, **✓ på spilte**, **💰** på avsluttesVedKasse-scenarier. Kobling:
+scenariene bærer sprite fra `klesbutikkKunder.ts`; kassevyens spriteCal (Espen-låst)
+gjenbrukes for oppgjørs-kunden. 0 konsollfeil i alle testene. `tsc -b` + `vite build`
+grønt.
+
+**➡️ Espen (finpuss + valider per scenario, `/dev/klesbutikk?dev=1` → 🛍 Interiør →
+🛒 Salg):** (1) **Ståpunktene** er førstepasning — dra dem i 📍-traceren så kundene
+står der du vil (ved stativ / midtgang / prøverom), «Logg» → districts.ts. (2) Spill
+gjennom **hvert av de 6** scenariene (klikk kunden): sjekk at åpningsvalgene (A/B/C)
+kjennes riktige, at forgreningene og fagordene stemmer, og at #1/#4 flytter oppgjøret
+til kassen naturlig. (3) Vurder **fagord-flaggene** (over) — legg manglende ord i
+glossary hvis de skal være oppslag. Scenariene forblir **INAKTIVE** til du aktiverer
+dem (legg id-ene i en `scenariePool`).
+
 ---
 
 ## Verifisering

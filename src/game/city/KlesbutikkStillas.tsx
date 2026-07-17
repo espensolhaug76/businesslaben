@@ -1,13 +1,18 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import {
   KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG, KLESBUTIKK_KUNDE_BASE,
   KLESBUTIKK_KASSE_SCALE, KLESBUTIKK_KASSE_CENTER_X, KLESBUTIKK_KASSE_WAIST_Y,
   KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT, KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT,
+  KLESBUTIKK_KUNDE_STAPUNKTER,
 } from '../../data/districts'
 import { occlusionClipPath, customerAnchorStyle, type KassevyKonstanter } from '../geometry/kassevyBase'
 import { KLESBUTIKK_KASSE_KUNDER } from '../data/klesbutikkKunder'
+import { KLESBUTIKK_SCENARIOS, KLESBUTIKK_SCENARIO_KUNDE } from '../sales/klesbutikkScenarios'
+import { KLESBUTIKK_KONTAKT_VINDU, KLESBUTIKK_KONTAKT_HINT } from '../data/balance'
+import type { SalesScenario } from '../sales/types'
+import SalesScenarioOverlay from '../ui/SalesScenarioOverlay'
 import { GameProvider, useGame } from '../GameContext'
 import { KLESBUTIKK, type Gulvplan, type Vareplass, type PlassType, type PlassDukketype, type HengVariant } from '../data/industryDefinition'
 import { KLESBUTIKK_FIXTURES, fixtureDef, vareplasser, kapasitet, type VareplassType } from '../data/klesbutikkFixtures'
@@ -162,7 +167,7 @@ const PLAN_ICON: Record<KlesbutikkFixtureId, { round: boolean; color: string }> 
 
 // Interiør = scene (bakt bilde). gulvplan/vareplass/sone er dev-tracere.
 // ('plan' er parkert med fri møblering, men beholdt i unionen for død kode.)
-type DevMode = 'plan' | 'scene' | 'gulvplan' | 'sone' | 'vareplass'
+type DevMode = 'plan' | 'scene' | 'gulvplan' | 'sone' | 'vareplass' | 'salg'
 
 interface Scene {
   id: 'fasade' | 'interior' | 'kassevy'
@@ -214,6 +219,23 @@ function KlesbutikkStillasInner() {
   const mode: DevMode = IS_DEV_COORDS ? devMode : 'scene'
   const showSlots = IS_DEV_COORDS && mode === 'scene'
 
+  // ── OPPSØKENDE SALG (DEL 1/3) ──────────────────────────────────────────────
+  // Dialog-scenarioet ligger på TOPPNIVÅ (overlever scenebytte), så et
+  // `avsluttesVedKasse`-scenario kan flytte sluttsteget til kassevyen mens
+  // dialogen står åpen. `forcedKasseKunde` viser scenariets kunde i kassevyen.
+  const [salgScenario, setSalgScenario] = useState<SalesScenario | null>(null)
+  const [forcedKasseKunde, setForcedKasseKunde] = useState<string | null>(null)
+  const [spilte, setSpilte] = useState<Set<string>>(() => new Set())
+  const startScenario = (sc: SalesScenario) => { setSalgScenario(sc); setForcedKasseKunde(null); setSpilte(p => new Set(p).add(sc.id)) }
+  const closeScenario = () => { setSalgScenario(null); setForcedKasseKunde(null); if (sceneId === 'kassevy') setSceneId('interior') }
+  const onScenarioStep = (stepId: string) => {
+    // Flytt til kassevyen når et avsluttesVedKasse-scenario når 'kasse'-steget.
+    if (salgScenario?.avsluttesVedKasse && stepId === 'kasse') {
+      setForcedKasseKunde(KLESBUTIKK_SCENARIO_KUNDE[salgScenario.id] ?? null)
+      setSceneId('kassevy')
+    }
+  }
+
   return (
     <div style={{
       position: 'fixed', inset: 0, fontFamily: "'Outfit', sans-serif",
@@ -238,6 +260,7 @@ function KlesbutikkStillasInner() {
             )}
             {scene.id === 'interior' && (
               <>
+                <button onClick={() => setDevMode('salg')} style={tabStyle(mode === 'salg')}>🛒 Salg</button>
                 <button onClick={() => setDevMode('gulvplan')} style={tabStyle(mode === 'gulvplan')}>📐 Gulvplan</button>
                 <button onClick={() => setDevMode('vareplass')} style={tabStyle(mode === 'vareplass')}>📌 Vareplass</button>
               </>
@@ -282,11 +305,12 @@ function KlesbutikkStillasInner() {
               {(mode === 'scene' || mode === 'sone') && (
                 <FloorLayer interactive={mode === 'scene'} showSlots={showSlots} />
               )}
+              {mode === 'salg' && <SalgLayer onContact={startScenario} spilte={spilte} dialogAapen={!!salgScenario} bump={bump} />}
               {mode === 'gulvplan' && <GulvplanTracer bump={bump} />}
               {mode === 'vareplass' && <VareplassTracer bump={bump} />}
             </>
           ) : scene.id === 'kassevy' ? (
-            mode !== 'sone' && <KassevyLayer imgSrc={scene.img} />
+            mode !== 'sone' && <KassevyLayer imgSrc={scene.img} forcedKundeId={forcedKasseKunde} />
           ) : (
             mode !== 'sone' && (
               <div style={{
@@ -313,9 +337,16 @@ function KlesbutikkStillasInner() {
           ? 'Gulvplan-tracer: dra de 4 hjørnene, juster front/bak-skala mot preview-dukkene, «Logg objekt».'
           : scene.id === 'interior' && mode === 'vareplass'
             ? 'Vareplass-tracer: velg type, klikk = ny plass, dra = flytt, ± = scale, «Logg array».'
-            : scene.id === 'kassevy' && IS_DEV_COORDS && mode === 'scene'
-              ? 'Kassevy: 🎚️-panelet justerer kunde + disk-okklusjon (5 konstanter), 🧭 Soner sporer kunde-basen. «Logg» → districts.ts.'
-              : scene.hint}</div>
+            : scene.id === 'interior' && mode === 'salg'
+              ? '🛒 Salg: velg et scenario → kunden dukker opp på et ståpunkt. Klikk kunden = ta kontakt. Ikke kontaktet i tide = tapt salg.'
+              : scene.id === 'kassevy' && IS_DEV_COORDS && mode === 'scene'
+                ? 'Kassevy: 🎚️-panelet justerer kunde + disk-okklusjon (5 konstanter), 🧭 Soner sporer kunde-basen. «Logg» → districts.ts.'
+                : scene.hint}</div>
+
+      {/* OPPSØKENDE SALG — dialog-overlayet (kafeens dialogkort-UI, gjenbruk).
+          Toppnivå: overlever scenebytte, så avsluttesVedKasse kan flytte scenen
+          til kassevyen mens dialogen står åpen. */}
+      <SalesScenarioOverlay open={!!salgScenario} scenario={salgScenario ?? undefined} onClose={closeScenario} onStep={onScenarioStep} />
     </div>
   )
 }
@@ -1432,7 +1463,7 @@ const miniBtn: React.CSSProperties = {
 // ?dev=1: 🎚️-panel (kunde-velger + 5 slidere) + KUNDE_BASE-omriss. Mutér-og-logg
 // som resten av tracerne; «Logg»/«Kopier» → lim inn i districts.ts. Kunde-basens
 // sone kalibreres i 🧭 Soner (delt sone-tracer, target = KLESBUTIKK_KUNDE_BASE).
-function KassevyLayer({ imgSrc }: { imgSrc: string }) {
+function KassevyLayer({ imgSrc, forcedKundeId }: { imgSrc: string; forcedKundeId?: string | null }) {
   const [scale, setScale] = useState(KLESBUTIKK_KASSE_SCALE)
   const [centerX, setCenterX] = useState(KLESBUTIKK_KASSE_CENTER_X)
   const [waistY, setWaistY] = useState(KLESBUTIKK_KASSE_WAIST_Y)
@@ -1440,7 +1471,9 @@ function KassevyLayer({ imgSrc }: { imgSrc: string }) {
   const [occRight, setOccRight] = useState(KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT)
   const [kundeIdx, setKundeIdx] = useState(0)
   const [copied, setCopied] = useState(false)
-  const kunde = KLESBUTIKK_KASSE_KUNDER[kundeIdx]
+  // forcedKundeId (oppgjør ved kassen fra 🛒 Salg) overstyrer velgeren.
+  const forcedIdx = forcedKundeId ? KLESBUTIKK_KASSE_KUNDER.findIndex(k => k.id === forcedKundeId) : -1
+  const kunde = KLESBUTIKK_KASSE_KUNDER[forcedIdx >= 0 ? forcedIdx : kundeIdx]
   const k: KassevyKonstanter = { SCALE: scale, CENTER_X: centerX, WAIST_Y: waistY, OCCLUDE_Y_LEFT: occLeft, OCCLUDE_Y_RIGHT: occRight }
 
   const blockText = () =>
@@ -1474,12 +1507,14 @@ function KassevyLayer({ imgSrc }: { imgSrc: string }) {
         <img src={imgSrc} alt="" aria-hidden draggable={false}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', clipPath: occlusionClipPath(occLeft, occRight), zIndex: 20, pointerEvents: 'none', userSelect: 'none' }} />
       </div>
-      {/* ?dev=1: KUNDE_BASE-sone-omriss (referanse — kalibreres i 🧭 Soner). */}
-      {IS_DEV_COORDS && (
+      {/* ?dev=1: KUNDE_BASE-sone-omriss (referanse — kalibreres i 🧭 Soner).
+          Skjules under 🛒 Salg-oppgjør (forcedKundeId) — da er scenen «i bruk»,
+          ikke i kalibrering. */}
+      {IS_DEV_COORDS && !forcedKundeId && (
         <div style={{ position: 'absolute', left: `${KLESBUTIKK_KUNDE_BASE[0]}%`, top: `${KLESBUTIKK_KUNDE_BASE[1]}%`, width: `${KLESBUTIKK_KUNDE_BASE[2]}%`, height: `${KLESBUTIKK_KUNDE_BASE[3]}%`, border: '1px dashed #50e08c88', zIndex: 22, pointerEvents: 'none' }} />
       )}
-      {/* CAL-PANEL (?dev=1) — kunde-velger + 5 konstanter. */}
-      {IS_DEV_COORDS && createPortal(
+      {/* CAL-PANEL (?dev=1) — kunde-velger + 5 konstanter. Skjult under oppgjør. */}
+      {IS_DEV_COORDS && !forcedKundeId && createPortal(
         <div onPointerDown={e => e.stopPropagation()} style={{
           position: 'fixed', top: 64, right: 16, zIndex: 300, width: 234,
           background: 'rgba(10,14,26,0.94)', border: '1px solid #7dd3fc55', borderRadius: 12,
@@ -1531,4 +1566,204 @@ function KasseSlider({ label, value, min, max, step, onChange, fmt }: {
 const miniActionBtn: React.CSSProperties = {
   flex: 1, background: 'rgba(125,211,252,0.12)', color: '#7dd3fc', border: '1px solid #7dd3fc55',
   borderRadius: 7, padding: '4px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+}
+
+// ── OPPSØKENDE SALG-LAG (Interiør, 🛒 Salg-modus) ────────────────────────────
+// Velg et scenario → kunden spawner på et gulv-ståpunkt (bunn-ankret, scale fra
+// ståpunktet). Etter KLESBUTIKK_KONTAKT_HINT dukker et diskret 💬 opp. Klikk
+// kunden = ta kontakt (onContact åpner dialogen på toppnivå). Ikke kontaktet
+// innen KLESBUTIKK_KONTAKT_VINDU: kunden går + logges som tapt salg. Ståpunktene
+// er FØRSTEPASNING (tracer for Espen). Dette er en dev-showcase — scenariene er
+// inaktive (utenfor scenariePool).
+function SalgLayer({ onContact, spilte, dialogAapen, bump }: {
+  onContact: (sc: SalesScenario) => void
+  spilte: Set<string>
+  dialogAapen: boolean
+  bump: () => void
+}) {
+  // Spawnet kunde: hvilket scenario + hvilket ståpunkt.
+  const [spawn, setSpawn] = useState<{ sc: SalesScenario; stIdx: number } | null>(null)
+  const [hint, setHint] = useState(false)
+  const [contacted, setContacted] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const [visTracer, setVisTracer] = useState(false)
+  const prevDialog = useRef(dialogAapen)
+
+  // Spawn-timere: 💬-hint + tapt-salg-vindu. Ryddes ved avspawn/kontakt.
+  useEffect(() => {
+    if (!spawn || contacted) return
+    setHint(false)
+    const tHint = window.setTimeout(() => setHint(true), KLESBUTIKK_KONTAKT_HINT)
+    const tGone = window.setTimeout(() => {
+      const navn = spawn.sc.customerName
+      console.log(`[SalgLayer] TAPT SALG (ikke kontaktet): ${spawn.sc.id} — ${navn}`)
+      setToast(`Tapt salg: «${navn}» gikk uten å bli kontaktet.`)
+      setSpawn(null); setHint(false)
+      window.setTimeout(() => setToast(null), 3500)
+    }, KLESBUTIKK_KONTAKT_VINDU)
+    return () => { window.clearTimeout(tHint); window.clearTimeout(tGone) }
+  }, [spawn, contacted])
+
+  // Dialogen lukket (true→false) ⇒ kunden er ekspedert, fjern henne fra gulvet.
+  useEffect(() => {
+    if (prevDialog.current && !dialogAapen) { setSpawn(null); setContacted(false); setHint(false) }
+    prevDialog.current = dialogAapen
+  }, [dialogAapen])
+
+  const spawnScenario = (sc: SalesScenario) => {
+    const stIdx = KLESBUTIKK_SCENARIOS.indexOf(sc) % KLESBUTIKK_KUNDE_STAPUNKTER.length
+    setContacted(false); setHint(false); setToast(null); setSpawn({ sc, stIdx })
+  }
+  const takeContact = () => {
+    if (!spawn || contacted) return
+    setContacted(true); setHint(false); onContact(spawn.sc)
+  }
+
+  const st = spawn ? KLESBUTIKK_KUNDE_STAPUNKTER[spawn.stIdx] : null
+
+  return (
+    <>
+      {/* Ståpunkt-markører (dev-referanse) */}
+      {IS_DEV_COORDS && KLESBUTIKK_KUNDE_STAPUNKTER.map(p => (
+        <div key={p.id} title={p.navn} style={{
+          position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, transform: 'translate(-50%, -50%)',
+          width: 12, height: 12, borderRadius: '50%', border: '2px solid #7dd3fc', background: '#7dd3fc55',
+          zIndex: 8, pointerEvents: 'none',
+        }} />
+      ))}
+
+      {/* Spawnet kunde (bunn-ankret på ståpunktet) */}
+      {spawn && st && (
+        <div onClick={takeContact} title={contacted ? 'I samtale …' : 'Klikk = ta kontakt'} style={{
+          position: 'absolute', left: `${st.x}%`, top: `${st.y}%`, height: `${st.scale * 100}%`, width: 'auto',
+          transform: 'translate(-50%, -100%)', zIndex: 10, cursor: contacted ? 'default' : 'pointer',
+          filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.45))',
+        }}>
+          <img src={spawn.sc.sprite} alt={spawn.sc.customerName} draggable={false}
+            style={{ height: '100%', width: 'auto', display: 'block', userSelect: 'none' }} />
+          {/* Diskret 💬-hint */}
+          {hint && !contacted && (
+            <div style={{
+              position: 'absolute', left: '50%', top: 0, transform: 'translate(-50%, -120%)',
+              background: 'rgba(10,14,26,0.92)', border: '1px solid rgba(125,211,252,0.6)', borderRadius: 10,
+              padding: '2px 8px', fontSize: 16, animation: 'none', pointerEvents: 'none',
+            }}>💬</div>
+          )}
+        </div>
+      )}
+
+      {/* Tapt-salg-toast */}
+      {toast && createPortal(
+        <div style={{
+          position: 'fixed', bottom: 60, left: '50%', transform: 'translateX(-50%)', zIndex: 120,
+          background: 'rgba(220,38,38,0.16)', border: '1px solid rgba(220,38,38,0.6)', borderRadius: 12,
+          padding: '0.5rem 1rem', color: '#fca5a5', fontSize: 13, fontWeight: 700, fontFamily: "'Outfit', sans-serif",
+        }}>⛔ {toast}</div>, document.body)}
+
+      {/* Scenariovelger (dev) — start hvilket som helst, ✓ på spilte */}
+      {IS_DEV_COORDS && createPortal(
+        <div onPointerDown={e => e.stopPropagation()} style={{
+          position: 'fixed', top: 64, right: 16, zIndex: 96, width: 218,
+          background: 'rgba(10,14,26,0.94)', border: '1px solid #7dd3fc55', borderRadius: 12,
+          padding: '10px 12px', fontFamily: "'Outfit', sans-serif",
+        }}>
+          <div style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>🛒 Scenario-velger</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {KLESBUTIKK_SCENARIOS.map(sc => {
+              const aktiv = spawn?.sc.id === sc.id
+              return (
+                <button key={sc.id} onClick={() => spawnScenario(sc)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left',
+                  background: aktiv ? 'rgba(125,211,252,0.18)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${aktiv ? '#7dd3fc' : 'rgba(255,255,255,0.12)'}`, borderRadius: 8,
+                  padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#e2e8f0', cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                }}>
+                  <span style={{ width: 14 }}>{spilte.has(sc.id) ? '✓' : ''}</span>
+                  <span style={{ flex: 1 }}>{sc.customerName}</span>
+                  {sc.avsluttesVedKasse && <span title="avsluttes ved kassen" style={{ opacity: 0.7 }}>💰</span>}
+                </button>
+              )
+            })}
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#94a3b8', marginTop: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={visTracer} onChange={e => setVisTracer(e.target.checked)} />
+            ståpunkt-tracer
+          </label>
+          <div style={{ fontSize: 9, color: '#64748b', marginTop: 4, lineHeight: 1.4 }}>
+            Klikk kunden i scenen for å ta kontakt. Vindu: {(KLESBUTIKK_KONTAKT_VINDU / 1000).toFixed(0)} s.
+          </div>
+        </div>, document.body)}
+
+      {/* Ståpunkt-tracer (dev) */}
+      {IS_DEV_COORDS && visTracer && <StapunktTracer bump={bump} />}
+    </>
+  )
+}
+
+// Ståpunkt-tracer: dra de 3 punktene, ± scale, «Logg array» → districts.ts.
+// Muterer en arbeidskopi (samme mutér-og-logg-mønster som de andre tracerne).
+function StapunktTracer({ bump }: { bump: () => void }) {
+  const pts = useRef(KLESBUTIKK_KUNDE_STAPUNKTER.map(p => ({ ...p }))).current
+  const [sel, setSel] = useState<string>(pts[0]?.id ?? '')
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const [, force] = useState(0); const rerender = () => { force(n => n + 1); bump() }
+
+  const move = (id: string, e: React.PointerEvent) => {
+    e.preventDefault(); e.stopPropagation(); setSel(id)
+    const onMove = (ev: PointerEvent) => {
+      const r = overlayRef.current?.getBoundingClientRect(); if (!r) return
+      const p = pts.find(v => v.id === id); if (!p) return
+      p.x = +clamp(((ev.clientX - r.left) / r.width) * 100, 0, 100).toFixed(1)
+      p.y = +clamp(((ev.clientY - r.top) / r.height) * 100, 0, 100).toFixed(1)
+      rerender()
+    }
+    const onUp = () => { window.removeEventListener('pointermove', onMove, true); window.removeEventListener('pointerup', onUp, true) }
+    window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true)
+  }
+  const nudge = (d: number) => { const p = pts.find(v => v.id === sel); if (!p) return; p.scale = +clamp(p.scale + d, 0.2, 2).toFixed(3); rerender() }
+  const logArr = () => {
+    const txt = pts.map(p => `  { id: '${p.id}', navn: '${p.navn}', x: ${p.x}, y: ${p.y}, scale: ${p.scale} },`).join('\n')
+    console.log(`[StapunktTracer] lim inn i KLESBUTIKK_KUNDE_STAPUNKTER (districts.ts):\n[\n${txt}\n]`)
+  }
+
+  return (
+    <>
+      <div ref={overlayRef} style={{ position: 'absolute', inset: 0, zIndex: 46 }}>
+        {pts.map(p => {
+          const valgt = sel === p.id
+          return (
+            <div key={p.id}>
+              {/* preview-kunde-silhuett i ståpunktets skala */}
+              <div style={{
+                position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, height: `${p.scale * 100}%`, width: `${p.scale * 26}%`,
+                transform: 'translate(-50%, -100%)', border: `1px dashed ${valgt ? '#ffffff' : '#7dd3fc'}`,
+                background: 'rgba(125,211,252,0.08)', borderRadius: 6, pointerEvents: 'none',
+              }} />
+              <div onPointerDown={e => move(p.id, e)} title={`${p.navn} — dra`} style={{
+                position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, transform: 'translate(-50%, -50%)',
+                width: 16, height: 16, borderRadius: '50%', border: `2px solid ${valgt ? '#fff' : '#7dd3fc'}`,
+                background: '#7dd3fcaa', cursor: 'grab',
+              }} />
+              {valgt && <span style={{ position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, transform: 'translate(12px, -50%)', fontSize: 9, fontFamily: 'monospace', color: '#7dd3fc', background: 'rgba(0,0,0,0.65)', padding: '0 3px', whiteSpace: 'nowrap' }}>{p.id} · {p.scale.toFixed(2)}</span>}
+            </div>
+          )
+        })}
+      </div>
+      {createPortal(
+        <div onPointerDown={e => e.stopPropagation()} style={{ position: 'fixed', top: 300, right: 16, zIndex: 97, width: 200, background: 'rgba(10,14,26,0.94)', border: '1px solid #7dd3fc55', borderRadius: 12, padding: '10px 12px', fontFamily: "'Outfit', sans-serif" }}>
+          <div style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>📍 Ståpunkt-tracer</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+            {pts.map(p => <button key={p.id} onClick={() => setSel(p.id)} style={{ ...miniActionBtn, flex: 'none', background: sel === p.id ? 'rgba(125,211,252,0.25)' : 'rgba(125,211,252,0.1)' }}>{p.id}</button>)}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ color: '#94a3b8', fontSize: 11 }}>scale</span>
+            <button style={miniActionBtn} onClick={() => nudge(-0.02)}>−</button>
+            <span style={{ color: '#f1f5f9', fontSize: 11, fontFamily: 'monospace', minWidth: 34, textAlign: 'center' }}>{(pts.find(v => v.id === sel)?.scale ?? 0).toFixed(2)}</span>
+            <button style={miniActionBtn} onClick={() => nudge(0.02)}>+</button>
+          </div>
+          <button style={{ ...miniActionBtn, width: '100%' }} onClick={logArr}>Logg array</button>
+          <div style={{ fontSize: 9, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>Dra punktene, ± scale mot silhuetten, «Logg» → districts.ts.</div>
+        </div>, document.body)}
+    </>
+  )
 }

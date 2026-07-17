@@ -323,6 +323,18 @@ export const KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT = 79
  *  kunde-plasseringen over, men ikke denne sonen ennå — trace i 🧭 Soner). */
 export const KLESBUTIKK_KUNDE_BASE: [number, number, number, number] = [34, 40, 28, 30]
 
+// ── OPPSØKENDE SALG: gulv-ståpunkter (interiør-scenen, 1375×768) ──────────────
+// Faste punkter der en kunde spawner og venter på å bli kontaktet (DEL 1).
+// Bunn-ankret (fotpunkt), scale = kundehøyde som andel av scenehøyden.
+// ⚠️ FØRSTEPASNING (CC-kalibrert via skjermbilde-løkke) — Espen finpusser/låser
+// i /dev/klesbutikk?dev=1 → 🛍 Interiør → 🛒 Salg (ståpunkt-tracer).
+export interface Stapunkt { id: string; navn: string; x: number; y: number; scale: number }
+export const KLESBUTIKK_KUNDE_STAPUNKTER: Stapunkt[] = [
+  { id: 'stativ',   navn: 'Ved stativ',   x: 41, y: 71, scale: 0.56 },
+  { id: 'midtgang', navn: 'Midtgang',     x: 55, y: 78, scale: 0.62 },
+  { id: 'proverom', navn: 'Nær prøverom', x: 73, y: 69, scale: 0.5 },
+]
+
 /** Produkt-sprites (VINDUSHUD) — klippet fra bakery_assets.png
  *  (scripts/cut-pedestrians.py, 3×3 --smart). Matches mot produktNAVN
  *  (lowercase contains) så både demo- og katalogprodukter treffer;
