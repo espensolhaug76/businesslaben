@@ -21,25 +21,25 @@ export interface KasseKunde {
 const S = (id: string) => `/assets/raw/customers/${id}.png`
 
 /** De 8 fashion-kundene (ark-03 + ark-04), i split-rekkefølge. `spriteCal` er
- *  FØRSTEPASNING (CC-kalibrert mot kassevy-scenen) — tomt = ren base.
+ *  ✅ LÅST av Espen 2026-07-17 (kalibrert per kunde i 💰 Kasse, ?dev=1).
  *
- *  spriteCal-FØRSTEPASNING (skjermbilde-løkke, alle 8 rendret i kassevy-scenen):
- *  den delte base-kalibreringen (districts.ts KLESBUTIKK_KASSE_*) traff ALLE 8
- *  kundene rent — ingen svever/synker, alle okkluderes ved disk-kanten. Derfor er
- *  `spriteCal` UTELATT (= ren base) på alle i første pass. Feltet står klart:
- *  Espen legger inn per-kunde dx/dy/scale i 🎚️-panelet (💰 Kasse, ?dev=1) der en
- *  spesifikk kunde trenger finjustering. */
+ *  Espen ga ABSOLUTTE per-kunde-verdier; de er kodet om til base + delta:
+ *    base (districts.ts) = SCALE 1.28 · CENTER_X 50 · WAIST_Y 78 · OCCLUDE 80/79
+ *    spriteCal.dx    = kundens CENTER_X − 50   (sidelengs plassering)
+ *    spriteCal.scale = kundens SCALE / 1.28    (høyde)
+ *  WAIST_Y + OCCLUDE var IDENTISK for alle ⇒ ren base (ingen dy). Kunder som
+ *  matcher basen eksakt (ung-mann-sekk: 1.28/50) har INGEN spriteCal. */
 export const KLESBUTIKK_KASSE_KUNDER: KasseKunde[] = [
-  // ── ark-03 ──
-  { id: 'dame-camel-veske',      navn: 'Dame m/camel-jakke',        sprite: S('dame-camel-veske') },
-  { id: 'mann-skjegg-pakke',     navn: 'Skjeggete mann m/pakke',    sprite: S('mann-skjegg-pakke') },
-  { id: 'forretningsdame-klokke', navn: 'Forretningsdame (hastverk)', sprite: S('forretningsdame-klokke') },
-  { id: 'mann-strikk-mobil',     navn: 'Mann i strikkegenser',      sprite: S('mann-strikk-mobil') },
+  // ── ark-03 ──   (Espens absolutt-verdier i parentes)
+  { id: 'dame-camel-veske',      navn: 'Dame m/camel-jakke',        sprite: S('dame-camel-veske'),      spriteCal: { dx: -17.5, scale: 0.890625 } }, // 1.14 / x32.5
+  { id: 'mann-skjegg-pakke',     navn: 'Skjeggete mann m/pakke',    sprite: S('mann-skjegg-pakke'),     spriteCal: { dx: -17.5 } },                  // 1.28 / x32.5
+  { id: 'forretningsdame-klokke', navn: 'Forretningsdame (hastverk)', sprite: S('forretningsdame-klokke'), spriteCal: { dx: 21 } },                  // 1.28 / x71
+  { id: 'mann-strikk-mobil',     navn: 'Mann i strikkegenser',      sprite: S('mann-strikk-mobil'),     spriteCal: { dx: 21 } },                     // 1.28 / x71
   // ── ark-04 ──
-  { id: 'ung-mann-sekk',         navn: 'Ung mann m/sekk',           sprite: S('ung-mann-sekk') },
-  { id: 'dame-forerhund',        navn: 'Dame m/førerhund',          sprite: S('dame-forerhund') },
-  { id: 'arbeidsmann-korslagt',  navn: 'Barsk arbeidsmann',         sprite: S('arbeidsmann-korslagt') },
-  { id: 'ung-dame-skjerf',       navn: 'Ung dame m/skjerf',         sprite: S('ung-dame-skjerf') },
+  { id: 'ung-mann-sekk',         navn: 'Ung mann m/sekk',           sprite: S('ung-mann-sekk') },                                                    // 1.28 / x50 = base
+  { id: 'dame-forerhund',        navn: 'Dame m/førerhund',          sprite: S('dame-forerhund'),        spriteCal: { scale: 0.96875 } },             // 1.24 / x50
+  { id: 'arbeidsmann-korslagt',  navn: 'Barsk arbeidsmann',         sprite: S('arbeidsmann-korslagt'),  spriteCal: { scale: 0.96875 } },             // 1.24 / x50
+  { id: 'ung-dame-skjerf',       navn: 'Ung dame m/skjerf',         sprite: S('ung-dame-skjerf'),       spriteCal: { dx: -14.5, scale: 0.765625 } }, // 0.98 / x35.5
 ]
 
 export const kasseKundeById = (id: string): KasseKunde | undefined =>

@@ -1005,38 +1005,38 @@ Klesbutikkens kassevy bruker basen med sine EGNE konstanter; **kafeens InteriorV
 er RØRT IKKE** (motor — CLAUDE.md), men er referanse-mønsteret basen er hentet fra
 og kan adoptere den senere.
 
-**Konstanter (`districts.ts`, ⚠️ FØRSTEPASNING — CC-kalibrert, IKKE Espen-låst):**
-```
-KLESBUTIKK_KASSE_SCALE          = 1.06
-KLESBUTIKK_KASSE_CENTER_X       = 47
-KLESBUTIKK_KASSE_WAIST_Y        = 67
-KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT = 72     (disk-toppens bakkant ≈ 72 %)
-KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT= 71.5   (jevn disk ⇒ nær like)
-KLESBUTIKK_KUNDE_BASE           = [34, 40, 28, 30]   (midtfeltet av gulvflaten)
-```
+**Skjermbilde-løkke (AUTONOM_PIPELINE-metoden, CC-førstepasning, 2 runder):** render
+`?dev=1` → 💰 Kasse → 🛍 Scene headless (fersk context ⇒ leser gjeldende konstanter;
+Vite Fast-Refresh beholder ellers `useState`, men fersk navigasjon reinitialiserer).
+Førstepasningen (SCALE 1.06 / CENTER_X 47 / WAIST_Y 67 / OCCLUDE 72/71.5) plasserte
+kundene rimelig; Espen finpusset så per kunde og LÅSTE (under).
 
-**Skjermbilde-løkke (AUTONOM_PIPELINE-metoden, 2 runder):** render `?dev=1` →
-💰 Kasse → 🛍 Scene headless (fersk context ⇒ leser gjeldende konstanter; Vite
-Fast-Refresh beholder ellers `useState`, men fersk navigasjon reinitialiserer).
-R1 (grove startverdier): kunden litt for stor + okklusjon 2 % over disk-bakkanten.
-R2: `SCALE 1.12→1.06`, `WAIST_Y 66→67`, `OCCLUDE 70/69→72/71.5`. Verifisert mot TO
-kunder (dame-camel-veske + arbeidsmann-korslagt): begge står bak disken, okkludert
-ved hoften nøyaktig der disk-bakkanten er (bekreftet clipPath `polygon(0% 72%,
-100% 71.5% …)` + kunde `top:67% height:106%`). PROD + DEV: 1 kunde-sprite, 0
-konsollfeil. 🧭 Soner-traceren rendrer for kassevy (target=KUNDE_BASE, gjenbruker
-`ZoneTracer`), kunden skjult i sone-modus. `tsc -b` + `vite build` grønt.
+**✅ ESPEN-LÅST 2026-07-17 (per-kunde kalibrering → base + spriteCal):** Espen ga
+ABSOLUTTE 5-konstant-sett per kunde. **Nøkkelfunn:** `WAIST_Y` (78) og `OCCLUDE`
+(80/79) var **IDENTISK for alle 8** — disk-okklusjonen er kunde-uavhengig ⇒ de er
+den DELTE basen. Kun `SCALE` + `CENTER_X` varierte ⇒ kodet som per-kunde `spriteCal`
+(dx = CENTER_X−50, scale = SCALE/1.28). Dette VALIDERER delt-base-designet: base =
+disk + referanse, spriteCal = per-kunde plassering.
+```
+BASE (districts.ts, LÅST):  SCALE 1.28 · CENTER_X 50 · WAIST_Y 78 · OCCLUDE 80/79
+spriteCal (klesbutikkKunder.ts):  dame-camel {dx-17.5, scale .8906}  ·
+  mann-skjegg {dx-17.5}  ·  forretningsdame {dx+21}  ·  mann-strikk {dx+21}  ·
+  ung-mann-sekk {ingen = base}  ·  dame-forerhund {scale .9688}  ·
+  arbeidsmann {scale .9688}  ·  ung-dame {dx-14.5, scale .7656}
+KLESBUTIKK_KUNDE_BASE = [34,40,28,30]  ⚠️ FORTSATT FØRSTEPASNING (ikke låst ennå)
+```
+**Verifisert (headless, alle 8):** hver kunde rendrer PIKSEL-EKSAKT på Espens
+absolutt-verdier (left/height/top=78 + clipPath `polygon(0% 80%, 100% 79% …)`) —
+`ALL MATCH: true`. `tsc -b` + `vite build` grønt.
 
 **Kunde-registser (`src/game/data/klesbutikkKunder.ts`, ny):** de 8 fashion-kundene
-(id/navn/sprite + valgfri `spriteCal`), brukt av kassevy-kunde-velgeren (dev) og
-senere scenario-koblingen. `KassevyLayer` (i `KlesbutikkStillas.tsx`) rendrer kunde
-(z10) + forgrunns-disk-lag (z20) + 🎚️-cal-panel (kunde-velger + 5 slidere +
-«Logg»/«Kopier» → districts.ts).
+(id/navn/sprite + `spriteCal`), brukt av kassevy-kunde-velgeren (dev) og senere
+scenario-koblingen. `KassevyLayer` (i `KlesbutikkStillas.tsx`) rendrer kunde (z10) +
+forgrunns-disk-lag (z20) + 🎚️-cal-panel (kunde-velger + 5 slidere + «Logg»/«Kopier»).
 
-**➡️ Til Espen (finpuss + LÅS i Chrome):** `/dev/klesbutikk?dev=1` → 💰 Kasse.
-🛍 Scene: dra kunden (SCALE/CENTER_X/WAIST_Y) + disk-kanten (OCCLUDE_Y_LEFT/RIGHT)
-med 🎚️-panelet, bla gjennom alle 8 kundene i velgeren så okklusjonen sitter for
-alle, «📋 Kopier» → lim inn i `districts.ts` (KLESBUTIKK_KASSE_*). 🧭 Soner: trace
-KUNDE_BASE (midtfeltet av gulvet). ✦-vannmerket: se bilde-avsnittet over.
+**➡️ Gjenstår for Espen:** (1) **KUNDE_BASE-sonen** er ikke låst ennå — trace i
+`/dev/klesbutikk?dev=1` → 💰 Kasse → 🧭 Soner (midtfeltet av gulvet). (2) **✦-
+vannmerket** på pilot-bildet — se bilde-avsnittet over.
 
 ### DEL 3 — fashion-kundeark: splitt + kunde-registser (inaktivt)
 
@@ -1052,12 +1052,12 @@ universell utforming), `arbeidsmann-korslagt`, `ung-dame-skjerf` (ark-04).
 `CUSTOMERS_DIR` var hardkodet til MAIN-treet → rettet til worktree; navnekart 03/04
 lagt til. Verifisert visuelt (grå montasje): ren alfa, ingen halo/nabovare-rest.
 
-**d) Per-kunde spriteCal — FØRSTEPASNING (skjermbilde-løkke, alle 8):** rendret alle
-8 kundene i kassevy-scenen. Den delte base-kalibreringen (DEL 2) traff **ALLE 8**
-rent — ingen svever/synker, alle okkluderes ved disk-kanten. Derfor er `spriteCal`
-UTELATT (= ren base) på alle i første pass (`klesbutikkKunder.ts`). Feltet står
-klart for per-kunde dx/dy/scale i 🎚️-panelet der Espen vil finjustere en enkelt
-kunde.
+**d) Per-kunde spriteCal — ✅ ESPEN-LÅST 2026-07-17:** CC-førstepasningen (ren base
+traff alle 8 rimelig) ble finpusset av Espen per kunde. Han ga absolutte 5-konstant-
+sett; kodet om til base + per-kunde `spriteCal` (se kassevy-avsnittet over for
+detaljer + verifisering). `WAIST_Y`/`OCCLUDE` var lik for alle (delt base), kun
+`SCALE`+`CENTER_X` varierte (spriteCal). Verifisert headless: alle 8 rendrer
+piksel-eksakt på Espens verdier.
 
 **c/e) Kobling til scenario-datastrukturen — ⚠️ AVKLART MED ESPEN, IKKE koblet:**
 De 6 «inaktive klesbutikk-scenariene» **finnes ikke i koden**:

@@ -301,20 +301,26 @@ export const KLESBUTIKK_BUTIKKVEGG: [number, number, number, number] = [39.6, 29
 // pilot-bildet gir én jevn, rett okklusjonslinje over hele bredden, så
 // venstre/høyre-verdiene er tilnærmet like.
 //
-// ⚠️ FØRSTEPASNING (CC-kalibrert via skjermbilde-løkke, IKKE Espen-låst): Espen
-// finpusser + låser i /dev/klesbutikk?dev=1 → 💰 Kasse (🎚️-panel + 🧭 sone-tracer).
-/** Kundehøyde som andel av scenehøyden. */
-export const KLESBUTIKK_KASSE_SCALE = 1.06
-/** Kundens senter-x (% av scenebredden). */
-export const KLESBUTIKK_KASSE_CENTER_X = 47
-/** Kundens livlinje (% av scenehøyden) — der livet møter disk-kanten. */
-export const KLESBUTIKK_KASSE_WAIST_Y = 67
-/** Disk-kantens y ved venstre/høyre scenekant (% høyde) — rett disk ⇒ nær like
- *  (disk-toppens BAKKANT ≈ 72 % i pilot-bildet). */
-export const KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT = 72
-export const KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT = 71.5
+// ✅ LÅST av Espen 2026-07-17 (kalibrert per kunde i /dev/klesbutikk?dev=1 →
+// 💰 Kasse). Disk-okklusjonen (WAIST_Y/OCCLUDE_*) er IDENTISK for alle 8 kundene
+// (disken er kunde-uavhengig) ⇒ de er den DELTE basen her. Kun kundens SCALE +
+// CENTER_X varierte per kunde ⇒ lagt som per-kunde `spriteCal` i
+// klesbutikkKunder.ts (base = 1.28 / 50; spriteCal = delta). Base-verdiene under
+// er Espens verdi for de vanligste kundene (SCALE 1.28, sentrert).
+/** Kundehøyde som andel av scenehøyden (base — per-kunde `spriteCal.scale`). */
+export const KLESBUTIKK_KASSE_SCALE = 1.28
+/** Kundens senter-x (% av scenebredden) (base — per-kunde `spriteCal.dx`). */
+export const KLESBUTIKK_KASSE_CENTER_X = 50
+/** Kundens livlinje (% av scenehøyden) — der livet møter disk-kanten. DELT (lik
+ *  for alle kunder). */
+export const KLESBUTIKK_KASSE_WAIST_Y = 78
+/** Disk-kantens y ved venstre/høyre scenekant (% høyde) — DELT (kunde-uavhengig).
+ *  Nær like ⇒ jevn, rett disk over hele bredden. */
+export const KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT = 80
+export const KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT = 79
 /** Kunde-basen — sonen kunden står i (midtfeltet av gulvflaten bak disken).
- *  [x, y, b, h] i % av scenebildet. FØRSTEPASNING. */
+ *  [x, y, b, h] i % av scenebildet. ⚠️ FORTSATT FØRSTEPASNING (Espen låste
+ *  kunde-plasseringen over, men ikke denne sonen ennå — trace i 🧭 Soner). */
 export const KLESBUTIKK_KUNDE_BASE: [number, number, number, number] = [34, 40, 28, 30]
 
 /** Produkt-sprites (VINDUSHUD) — klippet fra bakery_assets.png
