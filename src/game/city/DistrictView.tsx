@@ -5,6 +5,7 @@ import { getDistrict, KUNDESKALA, KUNDESTIER, LOKALER, NO_GO, STASJON_REISELIV_H
 import TuristkontorPanel from '../ui/TuristkontorPanel'
 import CustomerFlow from './CustomerFlow'
 import DevCoordHelper, { IS_DEV_COORDS } from './DevCoordHelper'
+import ZoneTracer, { type Target, type DrawZone } from './ZoneTracer'
 import { useReducedMotion } from './anim'
 import './cityAnim.css'
 
@@ -40,6 +41,7 @@ export default function DistrictView({
   const [zoomOrigin, setZoomOrigin] = useState<[number, number] | null>(null)
   const [turistkontorAapen, setTuristkontorAapen] = useState(false)   // TEMA 15 DEL 5
   const [byhotellAapen, setByhotellAapen] = useState(false)           // TEMA 15 DEL 5
+  const [, setRev] = useState(0)   // re-render når sone-traceren skriver (?dev=1)
 
   if (!district) {
     return (
@@ -80,16 +82,29 @@ export default function DistrictView({
       <CoverStage image={district.image}>
         {/* LEVENDE BY DEL 3: kundestrøm langs gågata, koblet til spillstate */}
         <CustomerFlow district={district} />
-        {/* ?dev=1: rute-tracer (klikk = punkt, «Kopier» eksporterer
-            KUNDESTIER-element) + overlays for stier/no-go/kalibrering */}
-        {IS_DEV_COORDS && (
+        {/* ?dev=1: på stasjonsbydelen brukes RECT-traceren (ZoneTracer, dra en
+            boks) for turistkontor/byhotell — rute-traceren (DevCoordHelper) gir
+            bare polyline-punkter og kan ikke definere et [x,y,b,h]-rekt. Dra
+            boks over bygget → «Bruk siste på: turistkontor / byhotell» skriver
+            den inn live og logger verdien for innliming i districts.ts. Andre
+            bydeler beholder rute-traceren (stier/no-go/kalibrering). */}
+        {IS_DEV_COORDS && district.id === 'stasjonsomradet' && (
+          <ZoneTracer
+            onApply={() => setRev(r => r + 1)}
+            targets={[
+              { id: 'turistkontor', label: 'turistkontor', get: () => STASJON_REISELIV_HOTSPOTS.turistkontor, set: (r: [number, number, number, number]) => { STASJON_REISELIV_HOTSPOTS.turistkontor = r } },
+              { id: 'byhotell', label: 'byhotell', get: () => STASJON_REISELIV_HOTSPOTS.byhotell, set: (r: [number, number, number, number]) => { STASJON_REISELIV_HOTSPOTS.byhotell = r } },
+            ] satisfies Target[]}
+            drawZones={[
+              { rect: STASJON_REISELIV_HOTSPOTS.turistkontor, color: '#ffd24a', label: 'turistkontor', dashed: true },
+              { rect: STASJON_REISELIV_HOTSPOTS.byhotell, color: '#50dcff', label: 'byhotell', dashed: true },
+            ] satisfies DrawZone[]}
+          />
+        )}
+        {IS_DEV_COORDS && district.id !== 'stasjonsomradet' && (
           <DevCoordHelper
             paths={KUNDESTIER[district.id]}
-            // TEMA 15: vis reiseliv-hotspotene som gule zones på stasjonsbydelen
-            // så Espen kan trace turistkontor/byhotell-rectene (?dev=1).
-            zones={district.id === 'stasjonsomradet'
-              ? [...(NO_GO[district.id] ?? []), ...Object.values(STASJON_REISELIV_HOTSPOTS)]
-              : NO_GO[district.id]}
+            zones={NO_GO[district.id]}
             skala={KUNDESKALA[district.id]}
           />
         )}

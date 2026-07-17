@@ -1,7 +1,17 @@
 import { useState } from 'react'
 import { useGame, turistsesongInfo, aktivBesoksprofil, useTemaNivaa } from '../GameContext'
 import Fagord from './Fagord'
-import { OPPLEVELSER, opplevelseById, EGEN_KAFE_ID } from '../data/reiseliv'
+import { OPPLEVELSER, opplevelseById, EGEN_KAFE_ID, velgAmbientTurister } from '../data/reiseliv'
+import { dagSeed } from '../data/backgroundSales'
+
+// Faste posisjoner for ambient turist-gjester OPPÅ turistkontor-heroen (satt
+// visuelt mot turistkontor-interior.png — INGEN tracer-kalibrering; Espen
+// finjusterer i validering hvis de står dumt). Prosent av hero-boksen, forankret
+// i bunn. To slots → 1–2 gjester (seedet rotasjon per dag).
+const HERO_GJEST_SLOTS: { left: number; bottom: number; h: number }[] = [
+  { left: 58, bottom: 0, h: 84 },
+  { left: 80, bottom: 0, h: 74 },
+]
 
 // ─── TEMA 15 — TURISTKONTORET (DEL 5a + DEL 7 pakkebygger) ────────────────────
 // Sesongstatus/prognose + «Opplev byen»-gjestepakken + pakkebyggeren
@@ -11,6 +21,14 @@ export default function TuristkontorPanel({ onLukk }: { onLukk: () => void }) {
   const { state, dispatch } = useGame()
   const sesong = turistsesongInfo(state)
   const igjen = sesong?.aktiv ? Math.max(0, sesong.varighet - sesong.dag + 1) : 0
+
+  // Ambient turist-gjester i heroen: i sesong 1–2 seedede sprites (rolig
+  // rotasjon per dag, ingen interaksjon). Turistene hører hjemme på
+  // reiselivsstedene (bølge 3 v2) — kafé-ambient er av som standard.
+  const heroSeed = dagSeed(state.dayNumber, state.currentMonth, state.currentYear)
+  const heroGjester = sesong?.aktiv
+    ? velgAmbientTurister(heroSeed, 1 + (heroSeed % 2)).slice(0, HERO_GJEST_SLOTS.length)
+    : []
 
   // DEL 7 — pakkebyggeren. Dagens besøksprofil roterer deterministisk fra
   // sesongstarten; VG2 setter også pakkepris. Treffet regnes i reduceren.
@@ -41,12 +59,36 @@ export default function TuristkontorPanel({ onLukk }: { onLukk: () => void }) {
             for lesbarhet. (Horisont: full scene-oppgradering med tracede UI-soner
             er egen fremtidig jobb.) */}
         <div style={{
-          position: 'relative', height: 150,
+          position: 'relative', height: 150, overflow: 'hidden',
           backgroundImage: "linear-gradient(180deg, rgba(15,23,42,0.15) 40%, rgba(15,23,42,0.95) 100%), url('/assets/raw/turistkontor-interior.png')",
           backgroundSize: 'cover', backgroundPosition: 'center 38%',
         }}>
-          <button onClick={onLukk} aria-label="Lukk" style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: 99, width: 30, height: 30, color: '#fff', fontSize: 18, cursor: 'pointer' }}>×</button>
-          <div style={{ position: 'absolute', left: 18, bottom: 12, fontSize: 21, fontWeight: 900, textShadow: '0 2px 8px rgba(0,0,0,0.7)' }}>🧳 Turistkontoret</div>
+          {/* Ambient turist-gjester oppå heroen (bølge 3 v2) — seedet 1–2 pr. dag,
+              faste posisjoner, ren visning. Tegnes FØR tittel/lukk så de blir
+              liggende oppå. */}
+          {heroGjester.map((t, i) => {
+            const slot = HERO_GJEST_SLOTS[i]
+            if (!slot) return null
+            return (
+              <img
+                key={t.id}
+                src={t.fil}
+                alt=""
+                aria-hidden
+                draggable={false}
+                onError={e => { e.currentTarget.style.display = 'none' }}
+                style={{
+                  position: 'absolute', left: `${slot.left}%`, bottom: `${slot.bottom}%`,
+                  height: `${slot.h}%`, width: 'auto', transform: 'translateX(-50%)',
+                  objectFit: 'contain', objectPosition: 'bottom center',
+                  filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.55))',
+                  pointerEvents: 'none', userSelect: 'none',
+                }}
+              />
+            )
+          })}
+          <button onClick={onLukk} aria-label="Lukk" style={{ position: 'absolute', top: 10, right: 12, zIndex: 2, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: 99, width: 30, height: 30, color: '#fff', fontSize: 18, cursor: 'pointer' }}>×</button>
+          <div style={{ position: 'absolute', left: 18, bottom: 12, zIndex: 2, fontSize: 21, fontWeight: 900, textShadow: '0 2px 8px rgba(0,0,0,0.7)' }}>🧳 Turistkontoret</div>
         </div>
         <div style={{ padding: '1.25rem 1.5rem 1.6rem' }}>
 

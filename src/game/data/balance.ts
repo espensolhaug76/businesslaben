@@ -149,12 +149,15 @@ export const BALANCE = {
       turisterMultiplikator: 0.5, // «X kjøpte pakken» = round(sesongturister/dag × treff × dette)
       kafeTrafikkBonus: 0.15,   // ekstra kafé-trafikk i sesongen når egen kafé er i pakken
     },
-    /** BØLGE 3 — ambient turist-gjester i interiøret: i sesong vises inntil
-     *  `maks` seedede turist-sprites på ledige kundeposisjoner. REN visuell
-     *  tilstedeværelse (ingen interaksjon, påvirker ikke salg/fasit). Slå av
-     *  ved å sette `aktiv: false`. */
+    /** BØLGE 3 — ambient turist-gjester i KAFÉ-interiøret: i sesong kan inntil
+     *  `maks` seedede turist-sprites vises på ledige kundeposisjoner. REN visuell
+     *  tilstedeværelse (ingen interaksjon, påvirker ikke salg/fasit).
+     *  AV SOM STANDARD (Espens beslutning bølge 3 v2): turistene hører hjemme på
+     *  REISELIVSSTEDENE, ikke i kaféen — de vises nå i TuristkontorPanel-heroen
+     *  (og skal inn i hotellobbyen, spor-c). Systemet beholdes bygget; slå på
+     *  igjen med `aktiv: true` etter pilot-erfaring. */
     ambient: {
-      aktiv: true,
+      aktiv: false,
       maks: 2,        // antall ambient-gjester samtidig (≤ antall traced slots)
       opacity: 0.5,   // dimming så de leser som bakgrunnsliv, ikke aktiv kunde
     },

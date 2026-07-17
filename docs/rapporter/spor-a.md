@@ -1780,14 +1780,23 @@ avsløre fasiten.
   kari/tom → scenariene bruker den delte base-kalibreringen (gyldig førstepass);
   Espen finpusser ev. per-sprite via `?dev=1`. Registeret `TURIST_SPRITER`
   (`data/reiseliv.ts`) holder alle 7 klare for fremtidige scenarier.
-- **Ambient turist-gjester (bølge 3, DEL c).** I sesong tegner `InteriorView`
-  inntil `BALANCE.turistsesong.ambient.maks` (2) seedede turist-sprites på ledige
-  kundeposisjoner — REN visuell tilstedeværelse (`pointerEvents:none`, ingen
-  state, påvirker verken salg eller spilltest-fasit; 16/16 fortsatt grønn).
-  Utvalget er deterministisk pr. dag (`velgAmbientTurister(dagSeed(...))`).
-  Tunbar av/på + antall + dimming i `balance.ts`. Posisjonene
-  (`INTERIOR_AMBIENT_TURIST_SLOTS`, 3 placeholder-rects) er lagt inn i interiørets
-  `?dev=1`-sonetracer («ambient-N») — **venter Espens trace + lås**.
+- **Ambient turist-gjester (bølge 3, DEL c) — flyttet til reiselivsstedene
+  (Espens beslutning v2).** Turistene hører hjemme der man møter reisende, ikke i
+  kaféen. To spor:
+  - **Kafé-interiøret (`InteriorView`): PARKERT, av som standard**
+    (`BALANCE.turistsesong.ambient.aktiv=false`). Systemet er beholdt bygget
+    (seedet utvalg på ledige kundeposisjoner, `pointerEvents:none`, påvirker ikke
+    fasit) og kan slås på igjen etter pilot-erfaring. `INTERIOR_AMBIENT_TURIST_SLOTS`
+    + `?dev=1`-tracern («ambient-N») ligger klare, men **trenger IKKE tracing nå**.
+  - **TuristkontorPanel-heroen: AKTIVT.** I sesong vises **1–2 seedede** turist-
+    sprites oppå `turistkontor-interior.png` (faste CSS-posisjoner `HERO_GJEST_SLOTS`,
+    satt visuelt — ingen tracer; Espen finjusterer i validering). Rolig rotasjon
+    pr. dag (`velgAmbientTurister(dagSeed(...))`) så det ikke er samme gjester hver
+    dag. Verifisert headless: backpacker + eldrepar står naturlig ved disken,
+    klar av tittelen.
+  - **KRAV til `spor-c/hotell-lobby`:** SAMME mønster skal brukes i hotellobbyen
+    (1–2 seedede gjester ved peisen/stolene, faste posisjoner, ingen interaksjon).
+    Gjenbruk `TURIST_SPRITER` + `velgAmbientTurister` fra `data/reiseliv.ts`.
 
 ### Chrome-sjekkliste (Espen validerer)
 1. **Aktivering:** slå på Reiseliv (lærer/temaAktivering) → mentor-boble om
@@ -1799,16 +1808,19 @@ avsløre fasiten.
    dukker opp (Språkbarrieren/Kulturmøtet/Opplevelsen/Tax-free).
 5. **Stasjons-hotspots:** gå til stasjonsbydelen → «🧳 Turistkontoret» + «🏨
    Byhotellet» er klikkbare. Turistkontor → panel; hotell → status/innboks. NB:
-   rectene er placeholder — trace dem med `?dev=1` og lås i `districts.ts`.
+   rectene er placeholder (byhotell-recten sitter ennå på det HØYRE bygget, ikke
+   det sentrale HOTEL-bygget) — trace begge med `?dev=1` **RECT-traceren** (🧭
+   Sone-tracer: dra en boks → «Bruk siste på: turistkontor/byhotell») og lim
+   verdiene til meg for lås i `districts.ts`.
 6. **Byhotellet:** innboksen får «🏨 Byhotellet vil samarbeide» ved sesongstart →
    aksept gir mer turisttrafikk (dagspuls) men litt lavere margin; avslag ikke.
 7. **Pakkebyggeren:** i panelet i sesong → «🎒 Sett sammen en pakke»: les
    besøksprofilen, velg 3 opplevelser (VG2 setter pris), tilby → resultatkort «X
    turister kjøpte» + tilbakemeldinger. Egen kafé i pakken → mer trafikk.
-8. **Ambient turist-gjester:** gå inn i kaféen (/inne) i sesong → 1–2 dimmede
-   turist-sprites står som bakgrunnsliv. Ren visning (ikke klikkbare). Posisjonene
-   er placeholder — trace «ambient-N» med `?dev=1` og lås i `districts.ts`.
-   Slå av med `BALANCE.turistsesong.ambient.aktiv=false` ved behov.
+8. **Ambient turist-gjester (i turistkontoret):** åpne Turistkontoret i sesong →
+   1–2 turist-sprites står i heroen (ved disken), roterer pr. dag. Ren visning.
+   Si fra om noen står dumt, så flytter jeg `HERO_GJEST_SLOTS`. (Kafé-interiørets
+   ambient er PARKERT/av — ikke noe å sjekke der nå.)
 9. **Sesongslutt:** «⏩ Spol til sesongslutt» → mentor-refleksjon om turisttall.
 
 ### Åpen oppfølging / flagg
@@ -1818,9 +1830,16 @@ avsløre fasiten.
   er lagt inn. (`vertskap`=KULT_003 + `kulturforståelse`=KULT_004 er nå på plass.)
 - **Hotspot-plassering** (turistkontor/byhotell på stasjonsbydelen): placeholder-
   rects i `districts.ts.STASJON_REISELIV_HOTSPOTS` venter `?dev=1`-trace + lås.
-- **Ambient-slots** (`INTERIOR_AMBIENT_TURIST_SLOTS`, 3 placeholder-rects): venter
-  `?dev=1`-trace («ambient-N») + lås. Til da står gjestene på grovt estimerte
-  sideposisjoner.
+  **Tooling fikset:** stasjonsbydelen bruker nå RECT-traceren (`ZoneTracer`, dra
+  boks + «Bruk siste på: turistkontor/byhotell»), ikke rute-traceren
+  (`DevCoordHelper` ga bare polyline-punkter → kan ikke definere et rekt; det var
+  derfor de første trace-verdiene ikke kunne brukes). Byhotell-recten bør flyttes
+  til det sentrale HOTEL-bygget.
+- **Kafé-ambient PARKERT** (`ambient.aktiv=false`): `INTERIOR_AMBIENT_TURIST_SLOTS`
+  + «ambient-N»-traceren ligger klare men trenger IKKE trace nå (turistene vises i
+  turistkontor-panelet i stedet).
+- **KRAV til spor-c/hotell-lobby:** samme ambient-gjest-mønster (1–2 seedede
+  gjester ved peis/stoler) — gjenbruk `TURIST_SPRITER` + `velgAmbientTurister`.
 - **Turist-ark bølge 3 — LØST:** ETT ark (Espen valgte kandidat A) splittet til 6
   sprites; erstattet enkeltgenereringene. Kari-likhets-flagget fra forrige runde
   er dermed utgått.
