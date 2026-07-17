@@ -183,3 +183,44 @@ Etter valg gjenstår KUN å låse plasseringen: hotellsjefen står allerede rikt
 
 **Endret:** `gjestepakkeForhandling.ts` + `GjestepakkeOverlay.tsx` (nye),
 `LobbyView.tsx` (åpner forhandlingen ved klikk), denne rapporten.
+
+---
+
+## DEL 4 + 4b — Bykatalogen (delt datakilde + booking/provisjon) ✅
+
+`src/game/data/bykatalog.ts` — byens tilbud som **vertskapsarena**: den delte
+kilden hotellets gjestescenarier (DEL 5) anbefaler fra. **18 FIKTIVE oppføringer**
+(aldri ekte navn), Lillehammer-klasse by:
+- **14 aktiviteter:** Utsiktsheisen, Bymuseet, Kunstgalleriet, Klatreparken,
+  Badelandet, Kanefart (vinter), Fjellstien (gratis), Gågate-vandringen,
+  Gårdsbesøket, Torghandelen (gratis), Bryggeriomvisningen, Kirkekonserten,
+  Akebakken (vinter, gratis), Elvepadlingen (sommer).
+- **Hotellets egne tilbud** (kategori `hotell`, egen omsetning, INGEN provisjon):
+  Frokostbuffet, Hotellets spa, Hotellrestauranten.
+- **Partner:** Kaféen din (elevens kafé).
+
+Hver post: `navn`, `beskrivelse`, `varighet`, `prisklasse` (1–3), `sesong`
+(helår/vinter/sommer), `egenskaper` (behovs-tagger), `kategori`, + DEL 4b
+`bookbar` + `provisjonsProsent` + `pris`. Hjelpere: `tagTreff`, `dekkerBehov`,
+`provisjonKr`.
+
+**DEL 4b — provisjon & booking:** bookbare aktiviteter gir formidlingsprovisjon
+(10–20 %, bevisst VARIERT mellom tilbydere). Hotellets egne tilbud + gratis/
+ikke-bookbare (Fjellstien, Torghandelen, Akebakken) har `provisjonsProsent: 0` —
+de er ofte BEST for gjesten, men gir hotellet ingenting. Det er kjernen i
+provisjons-spenningen (DEL 5, Innsjekket): f.eks. **Gårdsbesøket** (rolig+
+barnevennlig, provisjon 8 % = lav) er best for en sliten familie, mens
+**Klatreparken** (aktiv, «for mye», provisjon 18 % = høy) frister med mer penger.
+
+**KOMPATIBILITET / DEFENSIV KOBLING (pakkebyggeren, spor-a/tema-reiseliv):**
+feltnavna `id/navn/beskrivelse/varighet/prisklasse/egenskaper` er IDENTISKE med
+A-grenens `Opplevelse` (reiseliv.ts). `egenskaper` er et SUPERSETT — mandatets
+behovs-tagger (barnevennlig/aktiv/rolig/kultur/mat/uteliv/tilgjengelig/kort-tid/
+heldag) PLUSS A-grenens synonymer (`familie` ≈ barnevennlig, `natur` ≈ uteliv),
+så pakkebyggerens profil-matching (`liker: ['familie','natur',…]`) fortsatt
+treffer. **Ved merge skal pakkebyggeren pekes HIT** (les `BYKATALOG` i stedet for
+sin egen `OPPLEVELSER`) — A-grenen røres IKKE herfra; koblingen gjøres i
+merge-runden. `sesong/kategori/bookbar/provisjonsProsent/pris` er utvidelser
+utover A-grenen (pakkebyggeren ignorerer dem trygt).
+
+`tsc -b` grønn. **Endret:** `src/game/data/bykatalog.ts` (ny), denne rapporten.
