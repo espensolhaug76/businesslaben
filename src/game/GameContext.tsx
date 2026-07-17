@@ -251,6 +251,8 @@ const initialState: GameState = {
   hotellavtale: 'ingen',
   opplevByenPameldt: false,
   reiselivPakke: null,
+  hotellProvisjon: 0,
+  hotellProvisjonIntroVist: false,
 }
 
 // ─── Actions ────────────────────────────────────────────────────────────────
@@ -302,6 +304,8 @@ type Action =
   | { type: 'SEED_ORG_FROM_TASKS' }
   | { type: 'APPLY_MONTH_RESULT'; result: MonthResult }
   | { type: 'ADD_MESSAGE'; message: InboxMessage }
+  // Spor C: registrer formidlingsprovisjon fra en booking i hotell-lobbyen.
+  | { type: 'REGISTRER_PROVISJON'; kr: number; tilbudNavn: string }
   | { type: 'READ_MESSAGE'; id: string }
   | { type: 'SET_TUTORIAL_STEP'; step: number }
   | { type: 'SET_P1_COMPLETE' }
@@ -1277,6 +1281,30 @@ function reducer(state: GameState, action: Action): GameState {
         messages: [...state.messages, action.message],
         unreadCount: state.unreadCount + 1,
       }
+
+    case 'REGISTRER_PROVISJON': {
+      // Spor C: legg formidlingsprovisjonen til hotell-driften. FØRSTE gang
+      // fyrer en mentor-note (innboks) om hva provisjon er, og hvorfor tillit er
+      // hotellets egentlige valuta. Ingen fasit — bare begrepet + spørsmålet.
+      const forste = !state.hotellProvisjonIntroVist
+      const messages = forste
+        ? [...state.messages, {
+            id: `provisjon_intro_${state.dayNumber}`,
+            type: 'mentor' as const,
+            title: '🧑‍🏫 Provisjon — og hotellets egentlige valuta',
+            body: `Du fikk nettopp ${action.kr} kr i PROVISJON for å formidle «${action.tilbudNavn}» — en andel av prisen, betalt av tilbyderen. Fristende, ikke sant? Men husk: en gjest som ble anbefalt noe som IKKE passet, kommer sjelden tilbake. Tilliten er det hotellet egentlig lever av. Anbefal det som er RIKTIG for gjesten — provisjonen kommer av seg selv når folk stoler på deg.`,
+            date: `Dag ${state.dayNumber} · Måned ${state.currentMonth}`,
+            read: false,
+          }]
+        : state.messages
+      return {
+        ...state,
+        hotellProvisjon: state.hotellProvisjon + Math.max(0, Math.round(action.kr)),
+        hotellProvisjonIntroVist: true,
+        messages,
+        unreadCount: forste ? state.unreadCount + 1 : state.unreadCount,
+      }
+    }
 
     case 'READ_MESSAGE': {
       const messages = state.messages.map(m => m.id === action.id ? { ...m, read: true } : m)

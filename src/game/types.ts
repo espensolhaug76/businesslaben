@@ -729,6 +729,12 @@ export interface GameState {
     tilbakemeldinger: string[]
     egenKafe: boolean
   } | null
+  // ── Spor C: Byhotellet som vertskapsarena (gjestescenarier + provisjon) ──
+  /** Akkumulert formidlingsprovisjon fra bookinger i hotell-lobbyen (kr) —
+   *  «Provisjon formidling» i hotell-driftens oppsummering. Persistert. */
+  hotellProvisjon: number
+  /** Én-gang: er mentor-noten om provisjon vist (ved første provisjonsinntekt)? */
+  hotellProvisjonIntroVist: boolean
 }
 
 /** All spilltilstand for tema Beredskap (HMS-fanen + brannalarm-hendelsen).

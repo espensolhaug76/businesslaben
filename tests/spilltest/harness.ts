@@ -61,6 +61,7 @@ export interface SpillState {
   dayMeetings: { scenarioId: string; minutt: number; spawned: boolean }[]
   lastDayResult: unknown | null
   lastMonthSettlement: MonthSettlement | null
+  hotellProvisjon: number
   beredskap: { planBekreftet: boolean }
   // TEMA 2/3 — budsjett + nøkkeltall
   budsjett: { maaneder: Record<string, { budsjett: Record<string, number>; laastVedOppgjor: boolean; avvikNotater: Record<string, string> }> }

@@ -11,6 +11,7 @@ import { BUDSJETT_LINJER, maanedNokkel, faktiskeLinjer, linjeAvvik, type Budsjet
 import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinntekt, kampanjeRoi } from '../../src/game/data/kampanje'
 import { DAY_CONFIG } from '../../src/game/data/dayConfig'
 import { INDUSTRY_META } from '../../src/game/data/industries'
+import { provisjonKr, byTilbudById } from '../../src/game/data/bykatalog'
 import { BALANCE } from '../../src/game/data/balance'
 import { beregnPakke, velgProfil, EGEN_KAFE_ID, velgTuristkontorScenario, velgByhotellScenario } from '../../src/game/data/reiseliv'
 import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS } from '../../src/game/sales/scenarios'
@@ -813,6 +814,39 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await page.waitForTimeout(600)
     expect((await page.textContent('body') ?? '').includes('SESONGSTATUS'), 'turistkontor-klikk åpner panelet i dev').toBe(true)
     ctx.ok('?dev=1 (uten ?skip) → stasjonsbydelen, labels + tracer synlige, INGEN TIL LEIE på stasjonen, tracer default AV → hotspot-klikk åpner panelet, ingen bransjevelger')
+  })
+  // ── STEG 18 — Hotell-lobby: booking → provisjon (match == fasit, feilmatch == 0)
+  await steg(page, rapport, 18, 'Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen', async ctx => {
+    // Lobbyen (?dev=1 for scenario-picker som omgår sesong-gating på main).
+    await page.goto('/game/d/stasjonsomradet/hotell-lobby?skip=1&dev=1')
+    await ventState(page, s => s.phase !== 'startup', 'lobby lastet')
+    const før = (await lesState(page)).hotellProvisjon
+    const fasit = provisjonKr(byTilbudById('gardsbesok')!)   // 150 × 8 % = 12
+
+    // Hjelper: spill Innsjekket, anbefal `tilbud`, book, fullfør.
+    async function spillInnsjekket(tilbud: string) {
+      await page.getByTestId('gjest-innsjekket').click()
+      await page.locator('button', { hasText: 'Fortell' }).click()          // god probing
+      await page.getByRole('button', { name: /Videre/ }).click()
+      await page.locator('button', { hasText: tilbud }).first().click()      // anbefal
+      await page.getByRole('button', { name: /Ja — book/ }).click()          // book
+      await page.getByRole('button', { name: /resultatet|Videre/ }).first().click()
+      await page.getByRole('button', { name: /Fullfør/ }).click()
+    }
+
+    // (1) MATCH: Gårdsbesøket (full behovstreff) → gjesten booker → provisjon == fasit.
+    await spillInnsjekket('Gårdsbesøket')
+    await ventState(page, s => s.hotellProvisjon === før + fasit, 'provisjon registrert (match)')
+    const etterMatch = (await lesState(page)).hotellProvisjon
+    expect(etterMatch, `match → provisjon == provisjonKr-fasit (${fasit} kr)`).toBe(før + fasit)
+    ctx.ok(`match (Gårdsbesøket): hotellProvisjon ${før} → ${etterMatch} kr (+${fasit}, == fasit)`)
+
+    // (2) FEILMATCH: Bryggeriomvisningen (bom for familien) → gjesten takker NEI → ingen provisjon.
+    await spillInnsjekket('Bryggeriomvisningen')
+    await expect(page.getByText('Oppsummering')).toBeHidden()   // overlayet lukket etter Fullfør
+    const etterFeil = (await lesState(page)).hotellProvisjon
+    expect(etterFeil, 'feilmatch → INGEN ny provisjon (gjesten takket nei)').toBe(etterMatch)
+    ctx.ok(`feilmatch (Bryggeriomvisningen): provisjon uendret (${etterFeil} kr) — ingen booking`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

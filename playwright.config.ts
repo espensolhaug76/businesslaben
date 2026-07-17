@@ -20,9 +20,9 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   forbidOnly: false,
-  // Rikelig timeout: ett monolittisk løp spiller en hel måned (12 dager) med
-  // reloads via tidsbroen. Hele løpet må få plass innenfor denne.
-  timeout: 300_000,
+  // Rikelig timeout: ett monolittisk løp spiller en hel måned (12 dager) + 15
+  // steg med reloads via tidsbroen. Hele løpet må få plass innenfor denne.
+  timeout: 480_000,
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:5176',

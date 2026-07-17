@@ -5,6 +5,8 @@ import { IS_DEV_COORDS } from './DevCoordHelper'
 import { useGame } from '../GameContext'
 import { erTuristsesong, velgAmbientTurister, lobbySeed } from './lobbyAmbient'
 import GjestepakkeOverlay from './GjestepakkeOverlay'
+import HotellGjestOverlay from './HotellGjestOverlay'
+import { velgGjestescenario, GJESTESCENARIER } from './hotellGjest'
 
 // ── LobbyView — Byhotellets lobby (B2B-møtescene) ────────────────────────────
 // Spor C DEL 2. Bygget etter kaféens KASSEVY-MØNSTER (InteriorView): cover-stage
@@ -74,6 +76,16 @@ export default function LobbyView({ districtId }: { districtId: string }) {
   const [gjestFeil, setGjestFeil] = useState<Record<string, boolean>>({})
   // DEL 3: «Gjestepakke-forhandlingen» — åpnes ved klikk på hotellsjefen.
   const [forhandlingOpen, setForhandlingOpen] = useState(false)
+  // DEL 5/6: «Møt en gjest» — seedet rotasjon av gjestescenariene (sesong-gatet:
+  // Innsjekket/Umulige kun i turistsesong, Klagen/Mersalget hele året).
+  const [gjestId, setGjestId] = useState<string | null>(null)
+  const [gjestTeller, setGjestTeller] = useState(0)
+  function moetEnGjest() {
+    const seed = (lobbySeed(state) + gjestTeller * 2654435761) >>> 0
+    const sc = velgGjestescenario(seed, erTuristsesong(state))
+    setGjestTeller(n => n + 1)
+    setGjestId(sc.id)
+  }
   const visGjester = erTuristsesong(state) || (IS_DEV_COORDS && devGuests)
   const gjester = visGjester ? velgAmbientTurister(lobbySeed(state), GJEST_SLOTS.length) : []
 
@@ -105,6 +117,31 @@ export default function LobbyView({ districtId }: { districtId: string }) {
       {/* Tilbake til stasjonsbydelen */}
       <div style={{ position: 'fixed', top: 64, left: 20, zIndex: 80 }}>
         <BackButton onClick={() => navigate(`/game/d/${districtId}`)} label="← Ut til stasjonsområdet" />
+      </div>
+
+      {/* DEL 6: «Møt en gjest» — start et gjestescenario (seedet, sesong-gatet). */}
+      <div style={{ position: 'fixed', bottom: 30, left: 24, zIndex: 80, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+        <button onClick={moetEnGjest}
+          title="Ta imot en gjest i resepsjonen"
+          style={{
+            background: 'linear-gradient(135deg, #0ea5e9, #0369a1)', border: 'none', borderRadius: 99,
+            padding: '0.7rem 1.4rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            fontFamily: "'Outfit', sans-serif", boxShadow: '0 0 20px rgba(14,165,233,0.4)',
+          }}>
+          🛎️ Møt en gjest
+        </button>
+        {/* ?dev=1: start et BESTEMT scenario (omgår sesong-gating) — for test +
+            demo før reiseliv/turistsesong finnes på main. */}
+        {IS_DEV_COORDS && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxWidth: 300 }}>
+            {GJESTESCENARIER.map(s => (
+              <button key={s.id} data-testid={`gjest-${s.id}`} onClick={() => setGjestId(s.id)}
+                style={{ background: 'rgba(56,189,248,0.12)', border: '1px solid #38bdf855', borderRadius: 7, padding: '3px 8px', color: '#7dd3fc', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {s.tittel}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Cover-stage: lobby-bildet dekker skjermen; sprite + forgrunns-disk +
@@ -242,6 +279,8 @@ export default function LobbyView({ districtId }: { districtId: string }) {
 
       {/* DEL 3: «Gjestepakke-forhandlingen» — åpnes ved klikk på hotellsjefen. */}
       <GjestepakkeOverlay open={forhandlingOpen} onClose={() => setForhandlingOpen(false)} />
+      {/* DEL 5/6: gjestescenariene — «Møt en gjest». */}
+      <HotellGjestOverlay scenarioId={gjestId} open={!!gjestId} onClose={() => setGjestId(null)} />
     </div>
   )
 }
