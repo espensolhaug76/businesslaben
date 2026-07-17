@@ -1570,6 +1570,28 @@
       "espenTips": "Det farligste et team kan si er «Vi visste det ville gå galt, men ingen turde si det». Bygg trygghet før krisen kommer."
     },
     {
+      "id": "KULT_003",
+      "term": "Vertskap",
+      "category": "Kulturforstaelse",
+      "level": "VG1",
+      "definition": "Å få gjester til å føle seg velkomne og ivaretatt — service ut over selve salget.",
+      "example": "Turisten spurte om veien til museet — du tegnet på kartet og anbefalte kaféens beste kake til turen.",
+      "formula": null,
+      "related_terms": ["Kulturforståelse", "Servicekvalitet"],
+      "common_mistake": "Å tro vertskap bare gjelder hotell og restaurant — enhver servicebedrift er vertskap for sine gjester."
+    },
+    {
+      "id": "KULT_004",
+      "term": "Kulturforståelse",
+      "category": "Kulturforstaelse",
+      "level": "VG1",
+      "definition": "Å forstå at kunder kan ha ulike skikker, forventninger og måter å kommunisere på — og tilpasse servicen med respekt.",
+      "example": "Gjesten takket nei til smaksprøven med et smil — du lot tilbudet ligge uten å mase.",
+      "formula": null,
+      "related_terms": ["Vertskap", "Kulturdimensjoner (Hofstede)"],
+      "common_mistake": "Å behandle forskjeller som problemer — nysgjerrighet og respekt fungerer bedre enn antagelser."
+    },
+    {
       "id": "MKT_044",
       "term": "Yield management",
       "category": "Markedsfoering",

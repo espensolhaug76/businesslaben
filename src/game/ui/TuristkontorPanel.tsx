@@ -19,11 +19,20 @@ export default function TuristkontorPanel({ onLukk }: { onLukk: () => void }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: "'Outfit', sans-serif" }}>
-      <div style={{ background: 'rgba(15,23,42,0.98)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '1.5rem', padding: '1.75rem', maxWidth: 460, width: '100%', color: '#f1f5f9' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-          <div style={{ fontSize: 19, fontWeight: 900 }}>🧳 Turistkontoret</div>
-          <button onClick={onLukk} aria-label="Lukk" style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer' }}>×</button>
+      <div style={{ background: 'rgba(15,23,42,0.98)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '1.5rem', overflow: 'hidden', maxWidth: 480, width: '100%', maxHeight: '88vh', overflowY: 'auto', color: '#f1f5f9' }}>
+        {/* HERO: turistkontor-interiøret (Espen-generert) som visuell ramme — ren
+            CSS-bakgrunn, ingen sone-kalibrering. Tittel + lukk oppå med gradient
+            for lesbarhet. (Horisont: full scene-oppgradering med tracede UI-soner
+            er egen fremtidig jobb.) */}
+        <div style={{
+          position: 'relative', height: 150,
+          backgroundImage: "linear-gradient(180deg, rgba(15,23,42,0.15) 40%, rgba(15,23,42,0.95) 100%), url('/assets/raw/turistkontor-interior.png')",
+          backgroundSize: 'cover', backgroundPosition: 'center 38%',
+        }}>
+          <button onClick={onLukk} aria-label="Lukk" style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: 99, width: 30, height: 30, color: '#fff', fontSize: 18, cursor: 'pointer' }}>×</button>
+          <div style={{ position: 'absolute', left: 18, bottom: 12, fontSize: 21, fontWeight: 900, textShadow: '0 2px 8px rgba(0,0,0,0.7)' }}>🧳 Turistkontoret</div>
         </div>
+        <div style={{ padding: '1.25rem 1.5rem 1.6rem' }}>
 
         {/* Sesongstatus / prognose */}
         <div style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: '0.9rem', padding: '0.85rem 1rem', marginBottom: '1rem' }}>
@@ -53,6 +62,7 @@ export default function TuristkontorPanel({ onLukk }: { onLukk: () => void }) {
               Meld kaféen inn
             </button>
           )}
+        </div>
         </div>
       </div>
     </div>

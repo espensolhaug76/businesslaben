@@ -1,11 +1,27 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../GameContext'
+import Fagord from './Fagord'
 import { IS_DEV_COORDS } from '../city/DevCoordHelper'
 import { getScenario } from '../sales/scenarios'
 import { productMatchesNeed, findProductByTags, interpolateTokens, buildSalesResult, shuffle } from '../sales/engine'
 import type { SalesScenario, SalesStep, SalesChoice, SaleLine, ScoredPick, ChoiceQuality } from '../sales/types'
 import type { Product } from '../types'
+
+/** Render [[GLOSSARY_ID|tekst]]-tokens i feedback som klikkbare <Fagord> (samme
+ *  mønster som mentoren). TEMA 15: brukes for vertskap/kulturforståelse. */
+function renderFagord(text: string): ReactNode {
+  const re = /\[\[([A-Z0-9_]+)\|([^\]]+)\]\]/g
+  const parts: ReactNode[] = []
+  let last = 0, key = 0, m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index))
+    parts.push(<Fagord key={key++} id={m[1]!}>{m[2]}</Fagord>)
+    last = m.index + m[0].length
+  }
+  if (last < text.length) parts.push(text.slice(last))
+  return parts
+}
 
 // ─── SALGSSITUASJON-MOTOR — dialog-overlay ───────────────────────────────────
 // Dialogbasert salgs/service-rollespill. Ett steg om gangen: kunde-replikk +
@@ -480,7 +496,7 @@ function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixe
               {QUALITY_UI[pending.quality].icon}
             </span>
             <div>
-              <div style={{ fontSize: 14, color: '#e2e8f0', lineHeight: 1.5 }}>{pendingText}</div>
+              <div style={{ fontSize: 14, color: '#e2e8f0', lineHeight: 1.5 }}>{renderFagord(pendingText)}</div>
               {pending.extra && (
                 <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>{pending.extra}</div>
               )}

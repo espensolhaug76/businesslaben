@@ -157,7 +157,7 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
   {
     id: 'tema_reiseliv_aktivert',
     betingelse: 'Temaet Reiseliv slås på (via lærerens Spillet-fane) — samme timing som budsjett-temaet',
-    melding: 'Læreren har åpnet Reiseliv og vertskap. Når turistsesongen starter dukker det opp 🧳-turister i kundestrømmen — de har egne behov. Turistkontoret i sentrum viser sesongprognosen og en gjestepakke du kan melde kaféen inn i.',
+    melding: 'Læreren har åpnet Reiseliv og [[KULT_003|vertskap]]. Når turistsesongen starter dukker det opp 🧳-turister i kundestrømmen — de har egne behov. Turistkontoret ved stasjonen viser sesongprognosen og en gjestepakke du kan melde kaféen inn i.',
   },
   {
     id: 'turistsesong_slutt',

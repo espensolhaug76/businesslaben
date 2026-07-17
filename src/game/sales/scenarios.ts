@@ -1206,7 +1206,7 @@ export const SPRAKBARRIEREN: SalesScenario = {
       note: 'Vertskap UT over disken: hjelp henne videre, med kroppsspråk.',
       choices: [
         { id: 've_a', text: '(peker på kartet, så mot døra og til høyre) Torget — den veien, rett fram. (nikker og smiler)', quality: 'good',
-          feedback: 'Du hjelper henne videre med enkle, tydelige tegn. Det er vertskap: gjesten skal lykkes, ikke bare handle.' },
+          feedback: 'Du hjelper henne videre med enkle, tydelige tegn. Det er [[KULT_003|vertskap]]: gjesten skal lykkes, ikke bare handle.' },
         { id: 've_b', text: '(trekker på skuldrene) Beklager, vet ikke helt.', quality: 'warn',
           feedback: 'Selv en peking mot torget hadde hjulpet. En liten innsats i vertskapet betyr mye for en som er ny i byen.' },
         { id: 've_c', text: '(vifter henne mot døra) Neste kunde venter, ha det.', quality: 'bad',
@@ -1249,7 +1249,7 @@ export const KULTURMOTET: SalesScenario = {
       note: 'KJERNE: ta spørsmålet på alvor, svar ærlig, sjekk hvis du er usikker.',
       choices: [
         { id: 'ih_a', text: 'Godt du sier fra — jeg sjekker innholdet for deg så du er trygg. Vi har flere ting uten svin, jeg viser deg hvilke.', quality: 'good',
-          feedback: 'Du tar hensynet på alvor og gjør jobben med å finne trygge valg. Det er service og respekt i ett — beslektet med [[KULT_001|kulturforståelse]] i praksis.' },
+          feedback: 'Du tar hensynet på alvor og gjør jobben med å finne trygge valg. Det er service og respekt i ett — beslektet med [[KULT_004|kulturforståelse]] i praksis.' },
         { id: 'ih_b', text: 'Æsj, det er vel bare vanlige boller, tror ikke det er noe svin i dem.', quality: 'warn',
           feedback: '«Tror ikke» er ikke godt nok når noen har et bevisst hensyn. Sjekk heller, så slipper hun å gjette.' },
         { id: 'ih_c', text: 'Det er ikke så nøye, det er jo bare kake. Ta en, da.', quality: 'bad',
@@ -1269,7 +1269,7 @@ export const KULTURMOTET: SalesScenario = {
       note: 'Avslutt som vertskap — hun tar med seg inntrykket av byen.',
       choices: [
         { id: 'av_a', text: 'Så hyggelig å høre! Velkommen tilbake — og ha et fint opphold i byen.', quality: 'good',
-          feedback: 'Du gjør henne til en gjest i BYEN, ikke bare en kunde. Det er vertskap på sitt beste.' },
+          feedback: 'Du gjør henne til en gjest i BYEN, ikke bare en kunde. Det er [[KULT_003|vertskap]] på sitt beste.' },
         { id: 'av_b', text: 'Værsågod.', quality: 'warn',
           feedback: 'Grei, men litt kald etter et så fint møte — en varm avslutning hadde forseglet inntrykket.' },
       ],
@@ -1297,7 +1297,7 @@ export const ANBEFAL_OPPLEVELSE: SalesScenario = {
       note: 'Vertskap ut over disken: hun vil ha et ekte tips, ikke en salgstale.',
       choices: [
         { id: 'inn_a', text: 'Så gøy at du er her! Hvis jeg var deg ville jeg tatt turen opp til utsiktspunktet og innom museet — og turistkontoret nede i gata har kart og flere tips.', quality: 'good',
-          feedback: 'Ekte, lokale anbefalinger + du sender henne til turistkontoret for mer. Du selger BYEN, ikke bare kaféen — kjernen i vertskap.' },
+          feedback: 'Ekte, lokale anbefalinger + du sender henne til turistkontoret for mer. Du selger BYEN, ikke bare kaféen — kjernen i [[KULT_003|vertskap]].' },
         { id: 'inn_b', text: 'Nja, det er vel litt av hvert å gjøre. Du finner sikkert noe.', quality: 'warn',
           feedback: 'Uengasjert. Hun spurte deg fordi du er lokal — et konkret tips hadde gjort besøket hennes (og inntrykket av byen) mye bedre.' },
         { id: 'inn_c', text: 'Aner ikke, jeg jobber jo bare her. Skal du ha noe å kjøpe?', quality: 'bad',
