@@ -636,6 +636,68 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`upriset croissant: ${r.manglerPrisStk} tapt (mangler pris); kaffe 2× (${marked * 2} kr): ${kaffeSolgt} solgt, ${kaffeOverpris.tapte} tapt (for høy pris)`)
   })
 
+  // ── STEG 15 — TEMA 15 Reiseliv: turistsesong (andel + trafikkløft) + hotellavtale ─
+  await steg(page, rapport, 15, 'Reiseliv: turistsesong (turistandel + trafikkløft == fasit) + byhotell-avtale gir riktig effekt ved aksept', async ctx => {
+    const T = BALANCE.turistsesong
+    // Hermetisk: frisk boot + sentrum-l2 + priset lager + ett trau.
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'frisk boot for steg 15')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 200 }, { productId: 'croissant', qty: 80 }] })
+    await ventState(page, s => s.openingOrderPlaced && s.products.length >= 2, 'åpningslager')
+    // Trau med KAFFE (holdbar → stock består over natta, så eksponeringen — og
+    // dermed basetrafikken — er IDENTISK på baseline- og sesongdag; croissant er
+    // ferskvare og ville svunnet mellom dagene og endret eksponeringen).
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'coffee' }] })
+    await page.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const st = window.__GAME_STATE__ as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products: st.products.map((p: any) => ({ ...p, retailPrice: p.markedsPris })) })
+    })
+    await ventState(page, s => s.products.every(p => p.retailPrice > 0), 'priset til markedspris')
+
+    // BASELINE (uten sesong): åpne en dag, les basetrafikken (deterministisk,
+    // dag-uavhengig). Ingen turister utenom sesong.
+    await dispatch(page, { type: 'OPEN_DAY' })
+    await ventState(page, s => s.dayPhase === 'åpen' && !!s.dayBackground, 'baseline-dag åpen')
+    const bg0 = (await lesState(page)).dayBackground!
+    const base = bg0.total
+    expect(bg0.turistandel, 'ingen turister utenom sesong').toBe(0)
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag')
+
+    // START turistsesong (genererer også byhotellets innboksmelding).
+    await dispatch(page, { type: 'START_TURISTSESONG' })
+    await ventState(page, s => s.turistsesong !== null, 'sesong startet')
+    const s1 = await lesState(page)
+    const hotellMsg = s1.messages.find(m => m.type === 'hotellavtale')
+    expect(hotellMsg, 'byhotellets gjestepakke ligger i innboksen').toBeTruthy()
+
+    // SESONGDAG (uten avtale): turistandel + vare-vekt + trafikkløft == fasit.
+    await dispatch(page, { type: 'OPEN_DAY' })
+    await ventState(page, s => s.dayPhase === 'åpen' && !!s.dayBackground, 'sesongdag åpen')
+    const bgS = (await lesState(page)).dayBackground!
+    expect(bgS.turistandel, 'turistandel == BALANCE-fasit').toBeCloseTo(T.turistandel, 5)
+    expect(bgS.vareVekt.drikke, 'vare-vekt drikke == fasit').toBe(T.vareVekt.drikke)
+    expect(bgS.total, 'trafikkløft == round(base × (1+loft))').toBe(Math.round(base * (1 + T.trafikkLoft)))
+    ctx.ok(`sesong: ~${Math.round(T.turistandel * 100)} % turister, trafikk ${base} → ${bgS.total} (+${Math.round(T.trafikkLoft * 100)} %), vare-vekt drikke ${bgS.vareVekt.drikke}`)
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør 2')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag 2')
+
+    // AKSEPTER byhotell-avtalen → hotellavtale akseptert + melding fjernet.
+    await dispatch(page, { type: 'RESOLVE_GAME_EVENT', eventId: 'hotellavtale', choiceId: 'aksepter', messageId: hotellMsg!.id })
+    await ventState(page, s => s.hotellavtale === 'akseptert', 'avtale akseptert')
+    expect((await lesState(page)).messages.some(m => m.type === 'hotellavtale'), 'avtalemeldingen fjernet ved svar').toBe(false)
+
+    // SESONGDAG MED avtale: trafikk løftes ekstra med hotellbonus == fasit.
+    await dispatch(page, { type: 'OPEN_DAY' })
+    await ventState(page, s => s.dayPhase === 'åpen' && !!s.dayBackground, 'sesongdag m/avtale åpen')
+    const medAvtale = (await lesState(page)).dayBackground!.total
+    expect(medAvtale, 'aksept-effekt == round(base × (1+loft+hotellbonus))').toBe(Math.round(base * (1 + T.trafikkLoft + T.hotellTrafikkBonus)))
+    ctx.ok(`hotellavtale akseptert → trafikk ${bgS.total} → ${medAvtale} (+${Math.round(T.hotellTrafikkBonus * 100)} % hotellbonus)`)
+  })
+
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
   const { pass, fail, kjent } = skrivRapport(rapport, notater)
   expect(fail, `Reelle FAIL-steg (KJENT FEIL teller ikke): ${fail}. Se docs/rapporter/spilltest-siste.md`).toBe(0)

@@ -67,6 +67,10 @@ export interface SpillState {
   // TEMA 8 — kampanje
   kampanje: { aktiv: { faktor: number; dagerKjort: number; varighet: number } | null; historikk: KampanjeResultat[]; visRapportFor: string | null }
   messages: { id: string; type: string; read: boolean }[]
+  // TEMA 15 — reiseliv/turistsesong
+  turistsesong: { startAbsDag: number; varighet: number; turistKunder: number; bakgrunnKunder: number } | null
+  hotellavtale: 'ingen' | 'akseptert' | 'avslatt'
+  dayBackground: { total: number; turistandel: number; vareVekt: Record<string, number> } | null
   phase: string
 }
 

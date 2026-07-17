@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useGame } from '../GameContext'
+import { useGame, turistsesongInfo } from '../GameContext'
 import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, MENTOR_INTRO } from '../data/mentorTriggers'
 import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
@@ -96,6 +96,12 @@ function oppfylt(id: string, s: GameState): boolean {
     }
     // TEMA 8: leser siste fullførte kampanje (effektrapport + førpris-brudd).
     case 'kampanje_effekt': return s.kampanje.historikk.length > 0
+    // TEMA 15: sesongslutt = en sesong har startet, men er nå UTE av varigheten.
+    case 'turistsesong_slutt': {
+      const info = turistsesongInfo(s)
+      return !!info && !info.aktiv && (s.turistsesong?.bakgrunnKunder ?? 0) > 0
+    }
+    case 'hotellavtale_svart': return s.hotellavtale !== 'ingen'
     case 'kampanje_forpris_brudd': return s.kampanje.historikk[s.kampanje.historikk.length - 1]?.forprisBrudd === true
     default: return false
   }
@@ -171,6 +177,19 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
     const maalOrd = r.maalType === 'kunder' ? 'flere kunder' : 'mer salg'
     const kanalHint = kanal ? ` ${kanal.navn} når rundt ${treff} av 100 i [[MKT_021|målgruppa]] di daglig.` : ''
     return `Du satte mål om +${r.maalProsent} % ${maalOrd} — du fikk +${r.faktiskProsent} %.${kanalHint} Ser du sammenhengen mellom kanalvalg og målgruppe?`
+  }
+  // TEMA 15: sesongslutt — les elevens sesongtall (turister vs. normaluke). Aldri fasit.
+  if (id === 'turistsesong_slutt') {
+    const ts = s.turistsesong
+    if (!ts || ts.bakgrunnKunder <= 0) return undefined
+    const andel = Math.round((ts.turistKunder / Math.max(1, ts.bakgrunnKunder)) * 100)
+    return `Turistsesongen er over. Rundt ${ts.turistKunder} av kundene dine var tilreisende (~${andel} % av strømmen) — i en vanlig uke er det nesten ingen. La du merke til at de vred etterspørselen mot kaffe og kaker? Hva ville du bestilt annerledes om du visste sesongen kom igjen?`
+  }
+  // TEMA 15: hotellavtale — VG2-refleksjon om avveiingen gjester vs. margin.
+  if (id === 'hotellavtale_svart') {
+    if (s.hotellavtale === 'akseptert') return 'Du sa ja til byhotellets gjestepakke — flere gjester, men hotellet tar en andel av det de handler for. Var det verdt det? Tenk på volum × margin: mange gjester til litt lavere margin kan slå få gjester til full margin — eller ikke.'
+    if (s.hotellavtale === 'avslatt') return 'Du takket nei til byhotellets gjestepakke og beholder full margin på hvert salg. Trygt — men gikk du glipp av en gjestestrøm du kunne tjent på? Det finnes ikke ett riktig svar; det avhenger av kapasitet og hva pakkegjestene ville lagt igjen.'
+    return undefined
   }
   // TEMA 8: førpris-brudd — refleksjon om HVORFOR regelen finnes, ikke moralisering.
   if (id === 'kampanje_forpris_brudd') {

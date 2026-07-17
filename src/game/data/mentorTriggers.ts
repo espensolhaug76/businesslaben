@@ -160,6 +160,16 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Læreren har åpnet Reiseliv og vertskap. Når turistsesongen starter dukker det opp 🧳-turister i kundestrømmen — de har egne behov. Turistkontoret i sentrum viser sesongprognosen og en gjestepakke du kan melde kaféen inn i.',
   },
   {
+    id: 'turistsesong_slutt',
+    betingelse: 'Første turistsesong er over — dynamisk melding leser elevens sesongtall (turister vs. normaluke)',
+    melding: 'Turistsesongen er over. Hva merket du på kundestrømmen og etterspørselen mens den varte?',
+  },
+  {
+    id: 'hotellavtale_svart',
+    betingelse: 'Eleven har svart på byhotellets gjestepakke (aksept eller avslag) — dynamisk refleksjon',
+    melding: 'Du svarte byhotellet på gjestepakken. Hva var avveiingen — flere gjester mot en lavere margin?',
+  },
+  {
     id: 'kampanje_effekt',
     betingelse: 'Kampanjen er ferdig og effektrapporten vises — dynamisk melding leser mål, faktisk resultat og kanal×målgruppe-treff',
     melding: 'Kampanjen er evaluert. Traff kanalen din målgruppa — og hvordan ser du det i tallene?',

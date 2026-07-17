@@ -250,7 +250,19 @@ function GameContent() {
         <div style={{
           position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
           zIndex: 92, fontFamily: "'Outfit', sans-serif",
+          display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center',
         }}>
+          {/* TEMA 15 dev: start/spol turistsesong for testing/demonstrasjon. */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => dispatch({ type: 'START_TURISTSESONG' })}
+              style={{ background: 'rgba(56,189,248,0.18)', border: '1px solid rgba(56,189,248,0.5)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#7dd3fc', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+              ⏩ Start turistsesong nå
+            </button>
+            <button onClick={() => dispatch({ type: 'DEV_SPOL_TURISTSESONG_SLUTT' })}
+              style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.35)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#7dd3fc', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+              ⏩ Spol til sesongslutt
+            </button>
+          </div>
           <button
             onClick={() => { setSimOpen(true); setOverlay(true) }}
             title="Dev: gammel PEST-månedssimulering (dagssyklusen eier månedsrullen)"
