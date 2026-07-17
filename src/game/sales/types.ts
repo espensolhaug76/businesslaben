@@ -93,6 +93,12 @@ export interface SalesScenario {
    *  'service' = hovedmetrikken er RYKTE (f.eks. klage/reklamasjon): ingen
    *  salgsforventning, og en god løsning kan koste penger. */
   outcomeKind?: 'sale' | 'service'
+  /** Klesbutikk (oppsøkende salg): når true flyttes SLUTTSTEGET til kassevyen
+   *  (oppgjørsscenen) — brukes der oppgjøret naturlig skjer ved kassen (f.eks.
+   *  angrekjøp/retur, gavekjøp med kvittering). Ignoreres av kafeens flyt (bak-
+   *  disken-scenen ER kassen). Kun et scene-hint til stillaset; endrer ikke
+   *  scoringen. */
+  avsluttesVedKasse?: boolean
   /** Ordnet liste steg; første element = startsteg. */
   steps: SalesStep[]
 }

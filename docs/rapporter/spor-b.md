@@ -1143,6 +1143,51 @@ kassevy + fasade, og ingen bein under disken (bla gjennom alle 8 kundene i 🎚�
 
 ---
 
+## KLESBUTIKK-SCENARIER + OPPSØKENDE SALG (Espen-godkjent innhold)
+
+### DEL 2 — de 6 scenariene (`sales/klesbutikkScenarios.ts`, INAKTIVE)
+
+Skrevet i kafeens forgrenings-format (`SalesScenario`, samme kvalitet/struktur).
+**Alle** starter med åpningssteget «Ta kontakt» med tre valg:
+**(A)** observasjonsbasert (knytter an til det kunden gjør — best) · **(B)** standard
+«Hei! Kan jeg hjelpe deg?» (lukker ofte → «nei takk, bare ser» → `gjenapne`-steg) ·
+**(C)** vente/smile (RIKTIG for browsere, FEIL for utålmodige/utilpasse — konsekvens
+i feedback, aldri fasit). Åpningsvalget påvirker tone/vanskelighet, låser ikke utfall.
+
+| # | Scenario | Kunde | Kjerne / fagord | outcomeKind | avsluttesVedKasse |
+|---|---|---|---|---|---|
+| 1 | Angrekjøpet | mann-skjegg-pakke | angrerett (netthandel!) vs. bytterett vs. reklamasjon | service | ✅ |
+| 2 | Jobbintervjuet | ung-dame-skjerf | behovsavklaring, mersalg, ærlig råd vs. smiger | sale | — |
+| 3 | Størrelsen | dame-camel-veske | kundebehandling, produktspråk (plagg ≠ kropp) | sale | — |
+| 4 | Gaven | arbeidsmann-korslagt | bytterett, gavekvittering, mersalg | sale | ✅ |
+| 5 | Prøverommet | dame-forerhund | likeverd, universell utforming (mal: kafeens Likeverd) | service | — |
+| 6 | Mobilbildet | mann-strikk-mobil | forbrukeratferd, sortiment, alternativ i eget sortiment | sale | — |
+
+- **#1** har kryssjekk-gren: om kunden VISER en mangel (glidelås) → reklamasjon
+  (annen løype); ellers angret kjøp → frivillig bytte/tilgodelapp (god) vs. blankt
+  avslag (korrekt jus, tapt kunde) vs. refusjon (kostnad + presedens-refleksjon).
+- **#5** følger kafeens Likeverd-standard: arbeidshund med overalt (ingen nekt),
+  ingen sentimentalisering/klapping, praktisk tilrettelegging uten umyndiggjøring.
+- Nytt felt `SalesScenario.avsluttesVedKasse?` (types.ts): scene-hint som flytter
+  sluttsteget til kassevyen (#1, #4). Endrer ikke scoring; ignoreres av kafeen.
+- Sprite pr. scenario hentes fra `klesbutikkKunder.ts`; `KLESBUTIKK_SCENARIO_KUNDE`
+  kobler scenario→kunde-id for spriteCal (DEL 3).
+
+**⚠️ FAGORD-FLAGG (glossary-sjekk, `src/data/glossary.json` — ikke diktet):** termene
+er brukt FAKTA-korrekt i teksten, men flere mangler som glossary-oppslag:
+- **FINNES:** angrerett · reklamasjon · kundebehandling · sortiment.
+- **MANGLER (flagget, ikke definert av meg):** **bytterett · behovsavklaring ·
+  mersalg · gavekvittering · likeverd · universell utforming · forbrukeratferd.**
+  Legg dem til i glossary hvis de skal være klikkbare oppslag — jeg har KUN brukt
+  dem korrekt i replikk/feedback, ikke funnet opp definisjoner. (`gavekvittering`
+  spesielt etterspurt: mangler → flagget.) NB: glossary.json tilhører learning-hub-
+  appen; game-scenariene lenker ikke til den ennå.
+
+**INAKTIVE:** `KLESBUTIKK_SCENARIOS` står utenfor enhver `scenariePool` — kun
+tilgjengelig via dev-velgeren (DEL 1/3). `tsc -b` grønt.
+
+---
+
 ## Verifisering
 - `tsc -b`: grønt. `vite build`: grønt (moduler bundler, scenebilder + sprites
   serves fra `/assets/raw/…`). `dist/` slettet etterpå.
