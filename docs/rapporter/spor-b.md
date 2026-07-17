@@ -1196,7 +1196,9 @@ feature, committet sammen.
 **a) 3 gulv-ståpunkter** (`districts.ts KLESBUTIKK_KUNDE_STAPUNKTER`) — CC
 førstepasning, deretter **✅ LÅST av Espen 2026-07-17** (📍-traceren): `stativ
 (56, 78.9, 0.44)` · `midtgang (37, 84.5, 0.46)` · `proverom (75, 86.5, 0.48)`.
-Bunn-ankret, scale = kundehøyde.
+Bunn-ankret, scale = kundehøyde. (Låsen er ren data; `tsc -b` + `vite build`
+bekreftet grønt via bakgrunnskjøring — miljøet var minne-utsultet av parallelle
+CC-økter, så forgrunns-kjøring ble Terminated på ~100 s; full rebuild tok ~120 s.)
 **Ståpunkt-tracer** (📍-panel i 🛒 Salg): dra punktene, ± scale mot silhuett, «Logg
 array» → districts.ts. Skjermbilde-løkke: alle 3 kundene står naturlig på gulvet i
 riktig dybde (`public/dev-screenshots/salg-stapunkter.png`).
