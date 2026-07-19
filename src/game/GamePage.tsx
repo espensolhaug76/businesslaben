@@ -22,6 +22,7 @@ import CityMapView from './city/CityMapView'
 import DistrictView, { type LokaleClick } from './city/DistrictView'
 import StorefrontView from './city/StorefrontView'
 import InteriorView from './city/InteriorView'
+import TuristkontorScene from './city/TuristkontorScene'
 import MonterScene from './city/MonterScene'
 import LobbyView from './city/LobbyView'
 import { districtOfLokale } from '../data/districts'
@@ -71,6 +72,7 @@ function GameContent() {
   const pathname = useLocation().pathname
   const isInterior = pathname.endsWith('/inne')
   const isCounter = pathname.endsWith('/disk')
+  const isTuristkontor = pathname.endsWith('/turistkontor')   // TEMA 15 rom-scene
   // DEV-DYPLENKE: `?dev=1` rett til en bydel/scene (f.eks.
   // /game/d/stasjonsomradet?dev=1 for sone-tracing) skal vise scenen, ALDRI
   // bransjevelgeren. Uten et aktivt spill står phase='startup' (spilltilstand
@@ -230,7 +232,9 @@ function GameContent() {
         : districtId
           ? (isLobby
               ? <LobbyView districtId={districtId} />
-              : <DistrictView districtId={districtId} onVacantClick={onVacantClick} />)
+              : isTuristkontor
+                ? <TuristkontorScene districtId={districtId} />
+                : <DistrictView districtId={districtId} onVacantClick={onVacantClick} />)
           : <CityMapView />}
 
       <HUD

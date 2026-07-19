@@ -808,12 +808,13 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // FIX B: etablering ikke åpnet på stasjonen → ingen TIL LEIE-skilt.
     expect((body.match(/TIL LEIE/g) ?? []).length, 'ingen TIL LEIE-skilt på stasjonen (visLedigeLokaler:false)').toBe(0)
     // FIX A: sone-traceren er default AV (klikk går gjennom) → hotspot-klikk
-    // åpner panelet i ?dev=1 (traceren blokkerer ikke lenger).
+    // virker i ?dev=1 (traceren blokkerer ikke lenger). Turistkontoret er nå en
+    // ROM-scene: klikk NAVIGERER inn (/turistkontor), ikke panel.
     expect(body.includes('Tracer AV'), 'tracer default AV (klikk virker)').toBe(true)
     await page.locator('[title="Turistkontoret"]').click({ force: true })
-    await page.waitForTimeout(600)
-    expect((await page.textContent('body') ?? '').includes('SESONGSTATUS'), 'turistkontor-klikk åpner panelet i dev').toBe(true)
-    ctx.ok('?dev=1 (uten ?skip) → stasjonsbydelen, labels + tracer synlige, INGEN TIL LEIE på stasjonen, tracer default AV → hotspot-klikk åpner panelet, ingen bransjevelger')
+    await page.waitForURL(/\/turistkontor$/, { timeout: 4000 })
+    expect(page.url().endsWith('/turistkontor'), 'turistkontor-klikk navigerer inn i rom-scenen').toBe(true)
+    ctx.ok('?dev=1 (uten ?skip) → stasjonsbydelen, labels + tracer synlige, INGEN TIL LEIE på stasjonen, tracer default AV → turistkontor-klikk navigerer inn i rom-scenen, ingen bransjevelger')
   })
   // ── STEG 18 — Hotell-lobby: booking → provisjon (match == fasit, feilmatch == 0)
   await steg(page, rapport, 18, 'Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen', async ctx => {

@@ -4,7 +4,6 @@ import { useGame, useAktiveTemaer, turistsesongInfo } from '../GameContext'
 import { getDistrict, KUNDESKALA, KUNDESTIER, LOKALER, NO_GO, STASJON_REISELIV_HOTSPOTS, lokaleRent, type District, type Lokale } from '../../data/districts'
 import { velgByhotellScenario } from '../data/reiseliv'
 import { dagSeed } from '../data/backgroundSales'
-import TuristkontorPanel from '../ui/TuristkontorPanel'
 import CustomerFlow from './CustomerFlow'
 import DevCoordHelper, { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Target, type DrawZone } from './ZoneTracer'
@@ -41,8 +40,8 @@ export default function DistrictView({
   const reduced = useReducedMotion()
   // Zoom-overgang inn mot eget lokale før navigasjon til StorefrontView.
   const [zoomOrigin, setZoomOrigin] = useState<[number, number] | null>(null)
-  const [turistkontorAapen, setTuristkontorAapen] = useState(false)   // TEMA 15 DEL 5
   const [byhotellAapen, setByhotellAapen] = useState(false)           // TEMA 15 DEL 5
+  // Turistkontoret er nå en ROM-scene (naviger inn), ikke et panel.
   const [, setRev] = useState(0)   // re-render når sone-traceren skriver (?dev=1)
 
   if (!district) {
@@ -193,7 +192,7 @@ export default function DistrictView({
               return (
                 <div key={key}>
                   <div
-                    onClick={() => (erKontor ? setTuristkontorAapen(true) : setByhotellAapen(true))}
+                    onClick={() => (erKontor ? navigate(`/game/d/${district.id}/turistkontor`) : setByhotellAapen(true))}
                     title={erKontor ? 'Turistkontoret' : 'Byhotellet'}
                     style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`, cursor: 'pointer', borderRadius: 6, zIndex: 3, outline: '1px solid rgba(56,189,248,0)', transition: 'outline 0.15s, background 0.15s' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(56,189,248,0.12)'; (e.currentTarget as HTMLDivElement).style.outline = '1px solid rgba(56,189,248,0.6)' }}
@@ -228,7 +227,6 @@ export default function DistrictView({
         </div>
       </div>
 
-      {turistkontorAapen && <TuristkontorPanel onLukk={() => setTuristkontorAapen(false)} />}
       {byhotellAapen && <ByhotellStatus onLukk={() => setByhotellAapen(false)} />}
     </div>
   )

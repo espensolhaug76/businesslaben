@@ -439,8 +439,10 @@ function App() {
           <Route path="/game" element={<GamePage />} />
           <Route path="/game/d/:districtId" element={<GamePage />} />
           {/* Spor C: Byhotellets lobby (B2B-møtescene) — bydel-nivå, ikke et
-              lokale. Nås fra hotell-hotspoten på stasjonsbydelen (?dev=1). */}
+              lokale. Nås fra hotell-hotspoten på stasjonsbydelen. */}
           <Route path="/game/d/:districtId/hotell-lobby" element={<GamePage />} />
+          {/* TEMA 15: Turistkontor-rom-scenen — bydel-nivå. */}
+          <Route path="/game/d/:districtId/turistkontor" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId/inne" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId/disk" element={<GamePage />} />
