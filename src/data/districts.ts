@@ -358,6 +358,15 @@ export const INTERIOR_AMBIENT_TURIST_SLOTS: [number, number, number, number][] =
   [2, 34, 15, 48],   // ytterste venstre — PLACEHOLDER (reserve)
 ]
 
+/** TEMA 15 — TURISTKONTOR-SCENE (rom): den besøkendes plass ved disken +
+ *  forgrunns-okklusjon. `gjest` forankres på livet (scale = andel av scene-
+ *  høyden, centerX/waistY = prosent). `occludeY` = disk-forgrunnslinja: en kopi
+ *  av interiørbildet under denne re-tegnes over sprite-underkroppen (disken er
+ *  LAV i bildet, så mesteparten av gjesten er synlig). PLACEHOLDER — Espen
+ *  kalibrerer med ?dev=1-sliders i scenen og låser verdiene her. */
+export const TURISTKONTOR_GJEST_CAL: { scale: number; centerX: number; waistY: number } = { scale: 0.62, centerX: 50, waistY: 58 }
+export const TURISTKONTOR_OCCLUDE_Y: number = 74
+
 /** Disk-monterens utstillingsflate (INTERIØR-NIVÅ) — prosent av interiørbildet
  *  [x, y, b, h]. Andre flate for vareeksponering (fixtureId='monter');
  *  vindusutstillingen er den første. Flaten ligger i forgrunnen, NEDENFOR

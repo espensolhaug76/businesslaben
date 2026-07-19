@@ -1,24 +1,50 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGame, turistsesongInfo } from '../GameContext'
 import { BackButton } from './DistrictView'
+import { IS_DEV_COORDS } from './DevCoordHelper'
+import { getScenario } from '../sales/scenarios'
+import { velgTuristkontorScenario } from '../data/reiseliv'
+import { dagSeed } from '../data/backgroundSales'
+import { TURISTKONTOR_GJEST_CAL, TURISTKONTOR_OCCLUDE_Y } from '../../data/districts'
 
 // ── TuristkontorScene (TEMA 15 — ROM, ikke panel) ────────────────────────────
-// Turistkontoret er nå et ROM man går INN i (som kaféens /inne), ikke et
-// overlay-panel. Fullskjerm turistkontor-interiør; eleven står bak disken
-// (perspektivet i bildet). Besøkende kommer inn som sprite og stiller seg ved
-// disken (DEL b); panel-innholdet (sesongstatus, pakkebygger, gjestepakke)
-// legges inn som UI-lag i rommet (DEL c). Rute:
-//   /game/d/:districtId/turistkontor
-// Nås fra turistkontor-hotspoten på stasjonsbydelen.
+// Turistkontoret er et ROM man går INN i (som kaféens /inne). Fullskjerm
+// interiør; eleven står bak disken. En besøkende kommer inn i sesong og stiller
+// seg ved disken (sprite = det seedede scenariets kunde); klikk = start møtet.
+// Rute: /game/d/:districtId/turistkontor
+//   DEL a: scene-skall.  DEL b: besøkende-sprite + klikk→scenario (denne).
+//   DEL c: pakkebygger/gjestepakke som UI-lag.  DEL d: e-postforespørsler.
 
 const INTERIOR_IMG = '/assets/raw/turistkontor-interior.png'
-const ASPECT = 1296 / 832   // bildets faktiske sideforhold
+const ASPECT = 1296 / 832
+const WAIST_FRAC = 0.46   // sprite forankres på livet (samme som kassevyen)
 
 export default function TuristkontorScene({ districtId }: { districtId: string }) {
   const navigate = useNavigate()
   const { state } = useGame()
   const sesong = turistsesongInfo(state)
   const igjen = sesong?.aktiv ? Math.max(0, sesong.varighet - sesong.dag + 1) : 0
+
+  // Dagens besøkende: seedet scenario (Språkbarrieren/Opplevelsen), sprite =
+  // scenariets egen kunde. Vises kun i sesong.
+  const seed = dagSeed(state.dayNumber, state.currentMonth, state.currentYear)
+  const scenarioId = velgTuristkontorScenario(seed, state.opplevByenPameldt)
+  const scenario = getScenario(scenarioId)
+  const gjestSynlig = !!sesong?.aktiv && !!scenario
+
+  const [hover, setHover] = useState(false)
+  const [imgFailed, setImgFailed] = useState(false)
+
+  // Kalibrering (dev): livevis fra districts-verdiene, justerbar med ?dev=1-
+  // sliders; verdiene logges for innliming i districts.ts.
+  const [cal, setCal] = useState(TURISTKONTOR_GJEST_CAL)
+  const [occludeY, setOccludeY] = useState(TURISTKONTOR_OCCLUDE_Y)
+
+  function motGjest() {
+    if (!scenario) return
+    window.dispatchEvent(new CustomEvent('game:openScenario', { detail: { scenarioId } }))
+  }
 
   const sesongTekst = !sesong
     ? 'Ingen turistsesong ennå.'
@@ -28,19 +54,74 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#10141c', fontFamily: "'Outfit', sans-serif" }}>
-      {/* Cover-stage: interiørbildet dekker skjermen. Sprite + UI-lag overlegges
-          bildet, så prosent-koordinater treffer direkte. */}
+      {/* Cover-stage: interiørbildet dekker skjermen. */}
       <div style={{
         position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
         width: `max(100vw, calc(100vh * ${ASPECT}))`,
         height: `max(100vh, calc(100vw / ${ASPECT}))`,
       }}>
-        <img
-          src={INTERIOR_IMG}
-          alt="Turistkontoret"
-          draggable={false}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', userSelect: 'none' }}
-        />
+        {/* BAKGRUNN (z=0) */}
+        {!imgFailed ? (
+          <img
+            src={INTERIOR_IMG} alt="Turistkontoret" draggable={false}
+            onError={() => setImgFailed(true)}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', userSelect: 'none' }}
+          />
+        ) : (
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,#1c2530,#11161e)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 14 }}>
+            Turistkontor-interiøret mangler
+          </div>
+        )}
+
+        {/* BESØKENDE (z=10) — forankret på livet ved disken. */}
+        {gjestSynlig && scenario && (
+          <div
+            onClick={motGjest}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+            title="Snakk med den besøkende"
+            style={{
+              position: 'absolute', left: `${cal.centerX}%`, top: `${cal.waistY}%`,
+              height: `${cal.scale * 100}%`, width: 'auto',
+              transform: `translate(-50%, -${WAIST_FRAC * 100}%)`,
+              cursor: 'pointer', zIndex: 10,
+            }}
+          >
+            <img
+              src={scenario.sprite} alt={scenario.customerName} draggable={false}
+              onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0' }}
+              style={{
+                height: '100%', width: 'auto', display: 'block', userSelect: 'none',
+                filter: hover
+                  ? 'drop-shadow(0 0 10px rgba(125,211,252,0.9)) drop-shadow(0 6px 10px rgba(0,0,0,0.45))'
+                  : 'drop-shadow(0 6px 10px rgba(0,0,0,0.45))',
+                transition: 'filter 0.15s',
+              }}
+            />
+            {hover && (
+              <div style={{
+                position: 'absolute', left: '50%', top: 0, transform: 'translate(-50%, -120%)',
+                background: 'rgba(10,14,26,0.92)', border: '1px solid rgba(125,211,252,0.5)',
+                borderRadius: 8, padding: '0.3rem 0.7rem', color: '#f1f5f9', fontSize: 13,
+                fontWeight: 700, whiteSpace: 'nowrap', pointerEvents: 'none',
+              }}>💬 Snakk med den besøkende</div>
+            )}
+          </div>
+        )}
+
+        {/* FORGRUNNS-DISK (z=20) — kopi av interiøret klippet til båndet under
+            occludeY, re-tegnet over gjestens underkropp (disken er lav → mye
+            synlig). */}
+        {!imgFailed && (
+          <img
+            src={INTERIOR_IMG} alt="" aria-hidden draggable={false}
+            style={{
+              position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block',
+              clipPath: `polygon(0% ${occludeY}%, 100% ${occludeY}%, 100% 100%, 0% 100%)`,
+              zIndex: 20, pointerEvents: 'none', userSelect: 'none',
+            }}
+          />
+        )}
       </div>
 
       {/* Tilbake til stasjonsbydelen */}
@@ -59,6 +140,45 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
           <span>{sesongTekst}</span>
         </div>
       </div>
+
+      {/* ?dev=1: kalibrer gjest-sprite + forgrunnslinje. Verdiene logges for
+          innliming i districts.ts (TURISTKONTOR_GJEST_CAL / _OCCLUDE_Y). */}
+      {IS_DEV_COORDS && (
+        <div style={{
+          position: 'fixed', top: 64, right: 16, zIndex: 300, width: 210,
+          display: 'flex', flexDirection: 'column', gap: 6,
+          background: 'rgba(10,14,26,0.94)', border: '1px solid #ffd24a55',
+          borderRadius: 12, padding: '10px 12px', color: '#ffd24a', fontSize: 12, fontWeight: 700,
+        }}>
+          <div>🧭 Gjest-kalibrering</div>
+          <CalSlider label="scale" value={cal.scale} min={0.2} max={1.5} step={0.01}
+            onChange={v => { const n = { ...cal, scale: v }; setCal(n); logCal(n, occludeY) }} />
+          <CalSlider label="centerX" value={cal.centerX} min={0} max={100} step={0.5}
+            onChange={v => { const n = { ...cal, centerX: v }; setCal(n); logCal(n, occludeY) }} />
+          <CalSlider label="waistY" value={cal.waistY} min={0} max={100} step={0.5}
+            onChange={v => { const n = { ...cal, waistY: v }; setCal(n); logCal(n, occludeY) }} />
+          <CalSlider label="occludeY" value={occludeY} min={0} max={100} step={0.5}
+            onChange={v => { setOccludeY(v); logCal(cal, v) }} />
+        </div>
+      )}
     </div>
+  )
+}
+
+function logCal(cal: { scale: number; centerX: number; waistY: number }, occludeY: number) {
+  // eslint-disable-next-line no-console
+  console.log(`[TuristkontorScene] lim inn i districts.ts:\n  TURISTKONTOR_GJEST_CAL = { scale: ${cal.scale}, centerX: ${cal.centerX}, waistY: ${cal.waistY} }\n  TURISTKONTOR_OCCLUDE_Y = ${occludeY}`)
+}
+
+function CalSlider({ label, value, min, max, step, onChange }: {
+  label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void
+}) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#cbd5e1', fontWeight: 600 }}>
+      <span style={{ width: 58 }}>{label}</span>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))} style={{ flex: 1 }} />
+      <span style={{ width: 34, textAlign: 'right', fontFamily: 'monospace', color: '#ffd24a' }}>{value}</span>
+    </label>
   )
 }
