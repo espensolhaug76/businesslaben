@@ -153,9 +153,9 @@ export const BALANCE = {
      *  `maks` seedede turist-sprites vises på ledige kundeposisjoner. REN visuell
      *  tilstedeværelse (ingen interaksjon, påvirker ikke salg/fasit).
      *  AV SOM STANDARD (Espens beslutning bølge 3 v2): turistene hører hjemme på
-     *  REISELIVSSTEDENE, ikke i kaféen — de vises nå i TuristkontorPanel-heroen
-     *  (og skal inn i hotellobbyen, spor-c). Systemet beholdes bygget; slå på
-     *  igjen med `aktiv: true` etter pilot-erfaring. */
+     *  REISELIVSSTEDENE, ikke i kaféen — den besøkende vises nå som walk-in-sprite
+     *  ved disken i TuristkontorScene (rom), og skal inn i hotellobbyen (spor-c).
+     *  Systemet beholdes bygget; slå på igjen med `aktiv: true` etter pilot. */
     ambient: {
       aktiv: false,
       maks: 2,        // antall ambient-gjester samtidig (≤ antall traced slots)

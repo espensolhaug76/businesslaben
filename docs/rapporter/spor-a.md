@@ -1895,6 +1895,59 @@ avsløre fasiten.
   dimmet bakgrunn). Full scene-oppgradering (tracede UI-soner mot interiøret) er
   egen fremtidig jobb (horisont).
 
+## 37. TURISTKONTORET SOM ROM-SCENE (Espens designbeslutning)
+
+> **Status: bygget, IKKE merget — Espen validerer scenen.** Gren
+> `spor-a/turistkontor-scene` (fra main etter Tema 15-merge). `tsc -b` +
+> `vite build` + `npm run spilltest` (**17/17**) grønn. Turistkontoret er ikke
+> lenger et overlay-panel, men et ROM man går INN i (som kaféens /inne).
+
+**DEL a — rom-scene + rute.** Ny rute `/game/d/:districtId/turistkontor` →
+`TuristkontorScene` (fullskjerm `turistkontor-interior.png`, aspect 1296/832,
+eleven bak disken). Turistkontor-hotspoten på stasjonsbydelen NAVIGERER inn
+(ikke panel). «← Stasjonen»-knapp + diskret sesongstatus øverst.
+
+**DEL b — besøkende ved disken.** I sesong står en besøkende ved disken
+(sprite = det seedede scenariets kunde, `velgTuristkontorScenario` →
+Språkbarrieren/Opplevelsen). Klikk = start møtet (`game:openScenario` →
+dialogkort). Forgrunns-disk-okklusjon (kopi av interiøret klippet under
+`occludeY`; disken er lav → mye synlig). `?dev=1` gir gjest-kalibrerings-sliders
+(scale/centerX/waistY/occludeY) som logger verdiene → **Espen finpusser og
+låser** `TURISTKONTOR_GJEST_CAL` + `TURISTKONTOR_OCCLUDE_Y` (PLACEHOLDER nå).
+
+**DEL c — UI-lag i scenen.** Panel-innholdet flyttet inn: rom-verktøylinje
+(bunn) med «🎒 Sett sammen en pakke» + «📋 «Opplev byen»-gjestepakken».
+Pakkebyggeren trukket ut til gjenbrukbar `src/game/ui/Pakkebygger.tsx` (uendret
+logikk, tar en `profil`-prop). Sesongstatus diskret øverst.
+
+**DEL d — e-postforespørsler om pakke.** Ved sesongstart seedes **2–3**
+førstepersons e-poster i innboksen (`PAKKE_FORESPORSLER`, mot besøksprofilene):
+«Familie på 4, én dag i byen, budsjett ~1 500 kr…». «🎒 Svar med en pakke» åpner
+pakkebyggeren mot forespørselens profil → resultat/tilbakemelding som før.
+Spilltest steg 15 vokter seedingen; verifisert headless (3 forespørsler → svar →
+FORESPØRSEL-modus).
+
+**DEL e — gammelt panel fjernet.** `TuristkontorPanel.tsx` slettet (scenen dekker
+alt). Kafé-ambient-kommentaren i balance.ts oppdatert.
+
+### Chrome-sjekkliste (Espen validerer scenen)
+1. Stasjon → klikk «🧳 Turistkontoret» → du går INN i rommet (bak disken).
+2. I sesong: en besøkende står ved disken → klikk = scenariomøte (dialogkort).
+   Juster plassering/okklusjon med `?dev=1`-sliderne og meld tilbake verdiene.
+3. Rom-verktøylinja: «🎒 Sett sammen en pakke» (pakkebyggeren) + «📋 Opplev byen».
+4. Innboks: 2–3 📧-forespørsler → «Svar med en pakke» → bygg mot profilen.
+5. «← Stasjonen» tilbake.
+
+### Åpen oppfølging / flagg
+- **Gjest-cal + occludeY er PLACEHOLDER** — venter Espens ?dev-kalibrering + lås
+  i `districts.ts` (`TURISTKONTOR_GJEST_CAL` / `_OCCLUDE_Y`).
+- **Rom-verktøylinja** er flytende knapper (ikke bundet til et fysisk element i
+  bildet ennå). Å binde «pakke» til brosjyrestativet/disken som traced hotspot
+  er en mulig polish (?dev-trace) — sagt ifra om ønsket.
+- **Delt `reiselivPakke`-slot:** e-post-svar og walk-in bruker samme pakke-slot
+  (ett resultatkort om gangen) — bevisst enkelt; vurder egen slot per forespørsel
+  hvis Espen vil ha flere parallelle.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Løpende markedsføring (`BALANCE.kampanje.lopende`) — SATT (pkt. 34→35):** pkt.
