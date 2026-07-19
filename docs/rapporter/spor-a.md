@@ -1690,11 +1690,13 @@ kaffe (HØY) @ 2× → **0 solgt, 92 tapt** (for høy pris). **14/14 PASS.**
 
 ## 36. TEMA 15 REISELIV OG VERTSKAP (bølge 3)
 
-> **Status: bygget + verifisert (DEL 1, 3–7 + bølge-3 turist-ark & ambient-
-> gjester).** Gren `spor-a/tema-reiseliv` (fra main). `tsc -b` + `vite build` +
-> `npm run spilltest` (**16/16**) grønn. IKKE merget — Espen validerer i Chrome.
+> **Status: MERGET TIL MAIN (2026-07-19)** etter Espens Chrome-validering. Gren
+> `spor-a/tema-reiseliv` ff-merget til main og slettet (lokalt + origin).
+> `tsc -b` + `vite build` + `npm run spilltest` (**17/17**) grønn PÅ MAIN.
 > Tema 14 Arrangement bygges IKKE som spillmekanikk (Espens beslutning);
 > vertskaps-kompetansen bæres av dette temaet.
+> **Neste:** turistkontoret bygges om fra panel til ROM-scene på egen gren
+> `spor-a/turistkontor-scene` (se pkt. 37).
 >
 > **DEL 2 (fasade-generering) UTGÅTT** etter Espens Chrome-verifisering:
 > stasjonsbydelen finnes allerede med hotellet bakt inn i bydelsbildet — se
