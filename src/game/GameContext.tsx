@@ -25,7 +25,7 @@ import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, plan
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
 import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS } from './sales/scenarios'
-import { beregnPakke, velgProfil, BESOKSPROFILER } from './data/reiseliv'
+import { beregnPakke, velgProfil, BESOKSPROFILER, velgPakkeForesporsler } from './data/reiseliv'
 
 // Tom dagsstatistikk (BAKGRUNNSSALG-feltene inkludert) — brukt av initialState,
 // OPEN_DAY (nullstilling).
@@ -995,7 +995,7 @@ function reducer(state: GameState, action: Action): GameState {
       // DEL 5 — byhotellets gjestepakke-tilbud i innboksen (kun hvis uavklart og
       // ikke alt liggende der). B2B-smakebit; VG2-refleksjon i etterkant.
       const harHotellMsg = state.messages.some(m => m.type === 'hotellavtale')
-      const messages = (state.hotellavtale === 'ingen' && !harHotellMsg)
+      const medHotell = (state.hotellavtale === 'ingen' && !harHotellMsg)
         ? [...state.messages, {
             id: `hotellavtale_${naa}`,
             type: 'hotellavtale' as const,
@@ -1010,6 +1010,22 @@ function reducer(state: GameState, action: Action): GameState {
             ],
           }]
         : state.messages
+      // DEL d — 2–3 seedede e-postforespørsler om pakke i innboksen (kun hvis
+      // ingen alt ligger der fra denne sesongen). «Svar med en pakke» åpner
+      // pakkebyggeren mot forespørselens besøksprofil.
+      const seed = dagSeed(state.dayNumber, state.currentMonth, state.currentYear)
+      const harForesp = state.messages.some(m => m.type === 'pakkeforesporsel')
+      const pakkeMsgs = harForesp ? [] : velgPakkeForesporsler(seed, 2 + (seed % 2)).map(f => ({
+        id: `pakkeforesporsel_${f.id}_${naa}`,
+        type: 'pakkeforesporsel' as const,
+        title: f.tittel,
+        body: f.epost,
+        date: `Dag ${state.dayNumber} · Måned ${state.currentMonth}`,
+        read: false,
+        competenceGoal: 'Reiselivsprodukt — les gjestens behov (VG2)',
+        pakkeProfilId: f.profilId,
+      }))
+      const messages = [...medHotell, ...pakkeMsgs]
       return {
         ...state,
         turistsesong: { startAbsDag: naa, varighet: BALANCE.turistsesong.varighet, turistKunder: 0, bakgrunnKunder: 0, sluttVist: false },

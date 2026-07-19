@@ -11,6 +11,8 @@ import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
 import Fagord from './Fagord'
 import HmsTab from './HmsTab'
 import BrannalarmOvelse, { BrannalarmSammenligning } from './BrannalarmOvelse'
+import Pakkebygger from './Pakkebygger'
+import { BESOKSPROFILER, type Besoksprofil } from '../data/reiseliv'
 import { BRANNALARM } from '../data/beredskap'
 import { BALANCE } from '../data/balance'
 import { IS_DEV_COORDS } from '../city/DevCoordHelper'
@@ -3208,6 +3210,8 @@ function InnboksTab() {
   const { state, dispatch } = useGame()
   const [selected, setSelected] = useState<string | null>(null)
   const [choiceMade, setChoiceMade] = useState<Record<string, string>>({}) // messageId → choiceId
+  // TEMA 15 DEL d — åpen pakke-forespørsel (pakkebyggeren mot forespørselens profil).
+  const [pakkeReq, setPakkeReq] = useState<{ profil: Besoksprofil; tittel: string } | null>(null)
 
   const msgs = [...state.messages].reverse()
 
@@ -3218,6 +3222,7 @@ function InnboksTab() {
   const TYPE_ICON: Record<string, string> = {
     mentor: '🧑‍🏫', pest_event: '📰', game_event: '🚀', beredskap: '🦺',
     customer_complaint: '😤', supplier: '📦', teacher_task: '📚', kampanje: '⚖️',
+    hotellavtale: '🏨', pakkeforesporsel: '📧',
   }
 
   if (msgs.length === 0) {
@@ -3324,6 +3329,19 @@ function InnboksTab() {
                     </div>
                   )}
 
+                  {/* TEMA 15 DEL d — e-postforespørsel: svar ved å bygge en pakke
+                      mot forespørselens besøksprofil. */}
+                  {msg.type === 'pakkeforesporsel' && msg.pakkeProfilId && (
+                    <button
+                      onClick={() => {
+                        const profil = BESOKSPROFILER.find(p => p.id === msg.pakkeProfilId)
+                        if (profil) setPakkeReq({ profil, tittel: msg.title.replace(/^📧\s*/, '') })
+                      }}
+                      style={{ background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)', border: 'none', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#0b1120', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      🎒 Svar med en pakke
+                    </button>
+                  )}
+
                   {/* TEMA 1 — brannalarm som rekkefølge-øvelse, deretter utfall + sammenligning */}
                   {msg.type === 'beredskap' && (
                     (state.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0 ? (
@@ -3363,6 +3381,11 @@ function InnboksTab() {
           )
         })}
       </div>
+
+      {/* DEL d — pakkebyggeren mot forespørselens profil (samme komponent). */}
+      {pakkeReq && (
+        <Pakkebygger profil={pakkeReq.profil} foresporselTittel={pakkeReq.tittel} onLukk={() => setPakkeReq(null)} />
+      )}
     </div>
   )
 }

@@ -108,6 +108,40 @@ export const TURIST_SPRITER: TuristSprite[] = [
   { id: 'turist-eldrepar',    fil: `${CUST}/turist-eldrepar.png`,    navn: 'Eldre turistpar',        gruppe: true },
 ]
 
+// ─── E-POSTFORESPØRSLER OM PAKKE (turistkontor-scene DEL d) ───────────────────
+// Seedede pakke-forespørsler som havner i innboksen ved sesongstart. Hver mapper
+// til en BESØKSPROFIL (samme skjulte behov styrer treffet); «Svar med en pakke»
+// åpner pakkebyggeren mot profilen. E-postteksten er førsteperson (gjesten selv).
+export interface PakkeForesporsel {
+  id: string
+  profilId: string
+  tittel: string
+  epost: string
+}
+export const PAKKE_FORESPORSLER: PakkeForesporsel[] = [
+  { id: 'famferie', profilId: 'barnefamilie', tittel: '📧 Familie ønsker pakkeforslag',
+    epost: 'Hei! Vi er en familie på 4 (barn på 4 og 7) som skal en dag i byen i vinterferien. Budsjett rundt 1 500 kr. Kan dere foreslå noe rolig vi kan finne på, og et sted å spise? Mvh Familien Berg' },
+  { id: 'aktivpar', profilId: 'aktivt-par', tittel: '📧 Aktivt par spør om tips',
+    epost: 'Hallo! Kjæresten og jeg (begge glad i å være ute) har en hel dag i byen og vil finne på noe fysisk, med litt mat underveis. Vi bruker gjerne litt penger på en god opplevelse. Har dere forslag?' },
+  { id: 'seniorbuss', profilId: 'seniorbuss', tittel: '📧 Bussgruppe ber om opplegg',
+    epost: 'God dag. Vi kommer med en busslast pensjonister og ønsker et rolig kulturopplegg med en kaffepause innimellom. Ingenting for anstrengende. Kan dere sette sammen noe?' },
+  { id: 'konferanse', profilId: 'konferansegjest', tittel: '📧 Konferansegjest med én fridag',
+    epost: 'Hei, jeg er på konferanse og har én ledig ettermiddag (ca. 5 timer). Jeg vil oppleve noe ekte lokalt før jeg reiser hjem, og har god råd. Hva anbefaler dere?' },
+]
+
+/** Seedet, distinkt utvalg av N pakke-forespørsler. Ren fn (ingen Math.random). */
+export function velgPakkeForesporsler(seed: number, n: number): PakkeForesporsel[] {
+  const pool = [...PAKKE_FORESPORSLER]
+  const valgt: PakkeForesporsel[] = []
+  const antall = Math.max(0, Math.min(n, pool.length))
+  let s = seed >>> 0
+  for (let i = 0; i < antall; i++) {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0
+    valgt.push(pool.splice(s % pool.length, 1)[0]!)
+  }
+  return valgt
+}
+
 // ─── REISELIVS-SCENARIO-INNGANGER (bølge 3 v3) ───────────────────────────────
 // Turistene er UT av kaféen. Turistkontoret og byhotellet har hver sin «møt
 // en …»-inngang som starter ett scenario (seedet rotasjon) med dialogkort-UI.

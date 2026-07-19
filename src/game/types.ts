@@ -274,7 +274,7 @@ export interface PestEvent {
 
 export interface InboxMessage {
   id: string
-  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event' | 'beredskap' | 'kampanje' | 'hotellavtale'
+  type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event' | 'beredskap' | 'kampanje' | 'hotellavtale' | 'pakkeforesporsel'
   title: string
   body: string
   date: string
@@ -285,6 +285,10 @@ export interface InboxMessage {
    *  Markedsføringsloven-modulen. */
   hubRute?: string
   hubNavn?: string
+  /** TEMA 15 — e-postforespørsel om reiselivspakke: hvilken besøksprofil
+   *  forespørselen mapper til (BESOKSPROFILER). «Svar med en pakke» åpner
+   *  pakkebyggeren mot denne profilen. */
+  pakkeProfilId?: string
 }
 
 // ── Business Model Canvas ─────────────────────────────────────────────────────

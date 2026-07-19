@@ -670,12 +670,17 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør')
     await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag')
 
-    // START turistsesong (genererer også byhotellets innboksmelding).
+    // START turistsesong (genererer også byhotellets innboksmelding + DEL d
+    // e-postforespørsler om pakke).
     await dispatch(page, { type: 'START_TURISTSESONG' })
     await ventState(page, s => s.turistsesong !== null, 'sesong startet')
     const s1 = await lesState(page)
     const hotellMsg = s1.messages.find(m => m.type === 'hotellavtale')
     expect(hotellMsg, 'byhotellets gjestepakke ligger i innboksen').toBeTruthy()
+    // DEL d: 2–3 seedede pakke-forespørsler i innboksen.
+    const foresp = s1.messages.filter(m => m.type === 'pakkeforesporsel')
+    expect(foresp.length, 'DEL d: 2–3 e-postforespørsler om pakke seedet i innboksen').toBeGreaterThanOrEqual(2)
+    expect(foresp.length, 'DEL d: maks 3 e-postforespørsler').toBeLessThanOrEqual(3)
 
     // SESONGDAG (uten avtale): vare-vekt + trafikkløft == fasit. Bølge 3 v3:
     // sesongeffekten i KAFÉEN er kun økonomisk — turist-scenariene er flyttet ut
