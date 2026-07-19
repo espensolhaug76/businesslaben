@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useGame, turistsesongInfo } from '../GameContext'
+import { useGame, turistsesongInfo, aktivBesoksprofil } from '../GameContext'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import { getScenario } from '../sales/scenarios'
 import { velgTuristkontorScenario } from '../data/reiseliv'
 import { dagSeed } from '../data/backgroundSales'
 import { TURISTKONTOR_GJEST_CAL, TURISTKONTOR_OCCLUDE_Y } from '../../data/districts'
+import Pakkebygger from '../ui/Pakkebygger'
 
 // ── TuristkontorScene (TEMA 15 — ROM, ikke panel) ────────────────────────────
 // Turistkontoret er et ROM man går INN i (som kaféens /inne). Fullskjerm
@@ -22,7 +23,7 @@ const WAIST_FRAC = 0.46   // sprite forankres på livet (samme som kassevyen)
 
 export default function TuristkontorScene({ districtId }: { districtId: string }) {
   const navigate = useNavigate()
-  const { state } = useGame()
+  const { state, dispatch } = useGame()
   const sesong = turistsesongInfo(state)
   const igjen = sesong?.aktiv ? Math.max(0, sesong.varighet - sesong.dag + 1) : 0
 
@@ -35,6 +36,9 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
 
   const [hover, setHover] = useState(false)
   const [imgFailed, setImgFailed] = useState(false)
+  // UI-lag: pakkebyggeren + gjestepakke-innmelding åpnes fra rom-verktøylinja.
+  const [overlay, setOverlay] = useState<'pakke' | 'gjestepakke' | null>(null)
+  const profil = aktivBesoksprofil(state)
 
   // Kalibrering (dev): livevis fra districts-verdiene, justerbar med ?dev=1-
   // sliders; verdiene logges for innliming i districts.ts.
@@ -140,6 +144,53 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
           <span>{sesongTekst}</span>
         </div>
       </div>
+
+      {/* ROM-VERKTØYLINJE (UI-lag) — pakkebyggeren + gjestepakke åpnes herfra
+          (disken/brosjyrestativet). Bunn midtstilt. */}
+      <div style={{ position: 'absolute', bottom: 22, left: '50%', transform: 'translateX(-50%)', zIndex: 80, display: 'flex', gap: 10 }}>
+        {profil && (
+          <button onClick={() => setOverlay('pakke')}
+            style={{ background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)', border: 'none', borderRadius: 99, padding: '0.65rem 1.4rem', color: '#0b1120', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }}>
+            🎒 Sett sammen en pakke
+          </button>
+        )}
+        <button onClick={() => setOverlay('gjestepakke')}
+          style={{ background: 'rgba(10,14,26,0.9)', border: '1px solid rgba(56,189,248,0.4)', borderRadius: 99, padding: '0.65rem 1.3rem', color: '#e2e8f0', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }}>
+          📋 «Opplev byen»-gjestepakken
+        </button>
+      </div>
+
+      {/* Pakkebygger-overlay (gjenbrukt komponent) */}
+      {overlay === 'pakke' && profil && (
+        <Pakkebygger profil={profil} onLukk={() => setOverlay(null)} />
+      )}
+
+      {/* Gjestepakke-innmelding-overlay */}
+      {overlay === 'gjestepakke' && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 320, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <div style={{ background: 'rgba(15,23,42,0.98)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '1.4rem', padding: '1.5rem', maxWidth: 440, width: '100%', color: '#f1f5f9' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div style={{ fontSize: 16, fontWeight: 900 }}>📋 «Opplev byen»-gjestepakken</div>
+              <button onClick={() => setOverlay(null)} aria-label="Lukk" style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer' }}>×</button>
+            </div>
+            <p style={{ fontSize: 12.5, lineHeight: 1.55, color: '#94a3b8', margin: '0 0 1rem' }}>
+              Meld kaféen inn i turistkontorets gjestepakke — gratis. Til gjengjeld
+              forventer pakkegjestene at du er et godt vertskap: gir tips om lokale
+              opplevelser når de spør. Da kommer flere slike gjester innom.
+            </p>
+            {state.opplevByenPameldt ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#22c55e' }}>✓ Kaféen er med i gjestepakken</span>
+                <button onClick={() => dispatch({ type: 'SET_OPPLEV_BYEN', pameldt: false })}
+                  style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 99, padding: '0.35rem 0.9rem', color: '#94a3b8', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Meld ut</button>
+              </div>
+            ) : (
+              <button onClick={() => dispatch({ type: 'SET_OPPLEV_BYEN', pameldt: true })}
+                style={{ background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)', border: 'none', borderRadius: 99, padding: '0.55rem 1.3rem', color: '#0b1120', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Meld kaféen inn</button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ?dev=1: kalibrer gjest-sprite + forgrunnslinje. Verdiene logges for
           innliming i districts.ts (TURISTKONTOR_GJEST_CAL / _OCCLUDE_Y). */}
