@@ -32,9 +32,14 @@ const SCENE_W = 1376
 const SCENE_H = 768
 const ASPECT = SCENE_W / SCENE_H
 
-// Hotellsjef-sprite (DEL 3, NB-generert). Finnes den ikke ennå vises en nøytral
-// voksen-silhuett (samme diskrete fallback som kaféens kunde-sprite).
+// Hotellsjef-sprite (DEL 3, NB-generert). Er den ikke generert ennå, faller vi
+// tilbake til en EKTE turist-sprite som STAND-IN (kommer inn med Tema 15-mergen,
+// public/assets/raw/customers/) — ikke en silhuett-sirkel — så scenen viser en
+// FAKTISK person og ANCHOR/SCALE kan førstepass-kalibreres mot ekte sprite-
+// proporsjoner. Espen bytter til hotellsjef.png (og finkalibrerer) når den er
+// generert. Silhuetten er siste utvei hvis også stand-in mangler.
 const SJEF_SPRITE = '/assets/raw/hotellsjef.png'
+const SJEF_STANDIN = '/assets/raw/customers/turist-kart.png'
 
 // ── Start-verdier (førstepasning via skjermbilde-løkka — Espen LÅSER i ?dev=1) ─
 /** Diskens overkant i % av stage-høyden ved venstre/høyre kant — to punkter
@@ -46,11 +51,13 @@ const DEFAULT_OCCLUDE_Y_RIGHT = 72
 const DEFAULT_CENTER_X = 50
 /** Møtepunktets y i % (der forankringslinja — lårene — møter diskkanten). */
 const DEFAULT_ANCHOR_Y = 72
-/** Sprite-høyde som andel av stage-høyden. */
-const DEFAULT_SCALE = 0.88
-/** Hvor på spriten forankringen sitter (andel fra toppen). LÅR (≈ 0,66) — så
- *  hotellsjefen er synlig fra lårene og opp, resten skjules bak disken. */
-const THIGH_FRAC = 0.66
+/** Sprite-høyde som andel av stage-høyden. Førstepass mot EKTE turist-sprite
+ *  (aspect ~0,4, hel stående figur) — litt lavere enn silhuett-førstepasset så
+ *  hodet får luft under pendlene. Espen finkalibrerer mot ekte hotellsjef-sprite. */
+const DEFAULT_SCALE = 0.82
+/** Hvor på spriten forankringen sitter (andel fra toppen). LÅR (≈ 0,64) — så
+ *  figuren er synlig fra lårene og opp, resten skjules bak disken. */
+const THIGH_FRAC = 0.64
 
 const LS_KEY = 'lobby-cal-utkast-v1'
 
@@ -68,7 +75,8 @@ export default function LobbyView({ districtId }: { districtId: string }) {
   const navigate = useNavigate()
   const { state } = useGame()
   const [imgFailed, setImgFailed] = useState(false)
-  const [sjefFailed, setSjefFailed] = useState(false)
+  const [sjefFailed, setSjefFailed] = useState(false)       // hotellsjef.png mangler
+  const [standinFailed, setStandinFailed] = useState(false) // turist-stand-in mangler også
   const [hover, setHover] = useState(false)
   // Ambient-gjester vises i turistsesong. ?dev=1: tving dem frem for kalibrering
   // (på main finnes verken sesong-state eller turist-sprites — se lobbyAmbient.ts).
@@ -178,16 +186,22 @@ export default function LobbyView({ districtId }: { districtId: string }) {
             cursor: 'pointer', zIndex: 10,
           }}
         >
-          {!sjefFailed ? (
-            <img src={SJEF_SPRITE} alt="Hotellsjef" draggable={false} onError={() => setSjefFailed(true)}
+          {!standinFailed ? (
+            // 3-nivås fallback: hotellsjef.png → EKTE turist-sprite (stand-in) →
+            // silhuett. onError kaskaderer nedover uten brukket bilde.
+            <img
+              src={!sjefFailed ? SJEF_SPRITE : SJEF_STANDIN}
+              alt={!sjefFailed ? 'Hotellsjef' : 'Hotellsjef (stand-in — ekte sprite ikke generert)'}
+              draggable={false}
+              onError={() => (!sjefFailed ? setSjefFailed(true) : setStandinFailed(true))}
               style={{
                 height: '100%', width: 'auto', display: 'block', userSelect: 'none',
                 filter: hover ? 'drop-shadow(0 0 10px rgba(192,132,252,0.9)) drop-shadow(0 6px 10px rgba(0,0,0,0.5))' : 'drop-shadow(0 6px 10px rgba(0,0,0,0.5))',
                 transition: 'filter 0.15s',
               }} />
           ) : (
-            // Nøytral voksen-silhuett til hotellsjef-spriten er generert (DEL 3).
-            <div aria-label="Hotellsjef (sprite ikke generert ennå)"
+            // Siste utvei (også stand-in mangler): nøytral voksen-silhuett.
+            <div aria-label="Hotellsjef (ingen sprite tilgjengelig)"
               style={{ height: '100%', aspectRatio: '0.62', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
                        filter: hover ? 'drop-shadow(0 0 10px rgba(192,132,252,0.9))' : 'drop-shadow(0 6px 10px rgba(0,0,0,0.5))' }}>
               <svg viewBox="0 0 100 160" style={{ height: '100%', width: 'auto', display: 'block' }} aria-hidden>
