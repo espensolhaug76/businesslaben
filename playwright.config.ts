@@ -22,7 +22,7 @@ export default defineConfig({
   forbidOnly: false,
   // Rikelig timeout: ett monolittisk løp spiller en hel måned (12 dager) + 15
   // steg med reloads via tidsbroen. Hele løpet må få plass innenfor denne.
-  timeout: 480_000,
+  timeout: 600_000,
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:5176',

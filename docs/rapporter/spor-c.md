@@ -297,3 +297,68 @@ når maskinen er ledig for å bekrefte 15/15.
 (hotellProvisjon-state + REGISTRER_PROVISJON), `tests/spilltest/{full-maaned.spec,
 harness}.ts` (steg 15 + hotellProvisjon-felt), `playwright.config.ts` (timeout
 480s for 15 steg), denne rapporten.
+
+---
+
+## DEL 7 — Rebase på Tema 15 (main) + koblingsbekreftelse (2026-07-19)
+
+Tema 15 (reiseliv) er merget til `main` (origin/main @ `a98192a`). `spor-c/hotell-
+lobby` er **rebaset** på den. Konfliktene løst (begge sider beholdt):
+- `GamePage.tsx`: Tema 15s `devDeepLink` + min `isLobby`-gren side om side.
+- `types.ts` / `GameContext.tsx`: Tema 15s `turistsesong/hotellavtale/…` +
+  mine `hotellProvisjon`-felt/-action side om side (uavhengige tillegg).
+- `full-maaned.spec.ts`: Tema 15s steg 15–17 beholdt; **mitt hotell-steg renummerert
+  til 18**. `harness.ts` (hotellProvisjon-felt) auto-merget.
+- DEL 3/4-commitene la seg rent. `App.tsx`/`playwright.config.ts` uten konflikt.
+
+**Alle de defensive koblingene AKTIVERER nå (verifisert):**
+- **`vertskap`-token (KULT_003)** finnes nå i glossaryet → `<Fagord>` i resultat-
+  kortene er en EKTE klikkbar fagord (bekreftet: klikkbar). `mersalg` (ECO_034),
+  `service recovery` (SRV_001), `provisjon` (LED_004), `kulturforståelse`
+  (KULT_001) likeså.
+- **Turist-sprites** (`turist-*.png`) finnes nå på main → gjest-header + ambient-
+  gjester viser EKTE turister (ikke lenger silhuett-fallback). Bekreftet: Familien
+  Berg (turist-familie) i resultatkortet.
+- **`turistsesong`** finnes → `erTuristsesong()` er reell: ambient-gjestene ved
+  peisen og sesong-gatingen (Innsjekket/Umulige kun i sesong; Klagen/Mersalget
+  hele året) aktiveres av ekte sesongstate.
+- **`SET_HOTELLAVTALE`** finnes → DEL 3 «Gjestepakke-forhandlingen» setter nå EKTE
+  `state.hotellavtale` ('akseptert'/'avslatt'), ikke lenger en no-op.
+- **Provisjon-fasit** intakt: match (Gårdsbesøket) → +12 kr; delvis (Klatreparken)
+  → +58 kr + refleksjon; bom → 0.
+
+**Full spilltest kjørt alene: `npm run spilltest` = 18 PASS · 0 FAIL · 0 KJENT
+FEIL** (Tema 15s steg 15–17 + mitt hotell-steg 18). `tsc -b` grønn. (Timeout hevet
+til 600 s for 18 steg; kjør på en maskin med ledig minne — 3,2 GB-boksen som deles
+med parallelle CC-er OOM-dreper vite-serveren.)
+
+### Lobbyen ER scenen Espen ønsker — «gjest kommer inn, klikk = møte» ✅
+
+Bekreftet: `LobbyView` er den immersive byhotell-scenen (ikke en modal):
+- **Hotellsjefen** står bak resepsjonsdisken (okkludert lår-og-opp) — **klikk =
+  møte** (Gjestepakke-forhandlingen, DEL 3).
+- **«🛎️ Møt en gjest»** → en gjest «kommer inn» og et gjestescenario åpnes
+  (seedet, sesong-gatet rotasjon av de 4).
+- **Ambient-gjester** minglet ved peisen i turistsesong.
+
+**Chrome-validering (Espen) — full URL:**
+`http://localhost:5173/game/d/stasjonsomradet/hotell-lobby?dev=1`
+(Tema 15s `devDeepLink` seeder et engangsspill på `?dev=1`, så scenen rendres uten
+`?skip`.) Sjekkliste:
+1. Lobby-scenen rendrer (varmt hotell, resepsjonsdisk, peis, murstein).
+2. **Klikk hotellsjefen** → Gjestepakke-forhandlingen (3 grener, setter hotellavtale).
+3. **«Møt en gjest»** (+ `?dev=1`-scenario-pickeren nederst v.) → spill de 4:
+   Innsjekket / Mersalget / Klagen / Den umulige — sjekk forgrening, konsekvens,
+   booking→provisjon, spenningen (Gårdsbesøket vs Klatreparken), fagord klikkbare.
+4. **Ambient-gjester** ved peisen (turistsesong; `?dev=1` «🧳 Vis ambient-gjester»
+   for å tvinge dem frem).
+5. **Kalibrering** i `?dev=1`: dra OCCLUDE-linja + hotellsjefen på plass (mot den
+   ekte spriten når den er generert), lås `LOBBY_*` i `LobbyView.tsx`.
+
+**Å avklare i valideringsrunden (kobling):** Tema 15 la inn en LÅST «Byhotellet»-
+hotspot på stasjonsbydelen som i dag åpner et MODAL-panel (Tema 15s egne
+Kulturmøtet/Tax-free-scenarier). Min lobby-SCENE nås via `?dev=1`-knappen + ruta.
+Anbefaling: pek den låste byhotell-hotspoten til lobby-scenen
+(`/game/d/stasjonsomradet/hotell-lobby`) — scenen er den rikere «gjest kommer inn,
+klikk = møte»-opplevelsen — og vurder om Tema 15s byhotell-scenarier skal flyttes
+inn i lobby-motoren. Rørte IKKE Tema 15s panel i denne runden (egen beslutning).
