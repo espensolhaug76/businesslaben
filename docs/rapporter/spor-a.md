@@ -2184,6 +2184,26 @@ Full URL (dev-server 5173): **`http://localhost:5173/game?skip=1`**
   IKKE persisteres på reload (samme som dagens hotellavtale/pakke-forespørsler) —
   konsistent med eksisterende innboks, ikke en ny begrensning.
 
+### FIKS-RUNDE 2 (Espen-funn ETTER merge — gren `spor-a/innboks-fiks`)
+> **Prosess-læring:** forrige merge skjedde på et GAMMELT klarsignal og hoppet over
+> STOPP-runden — begge funn under havnet på main. CLAUDE.md er nå skjerpet
+> (pkt. C): et klarsignal gjelder kun tilstanden det ble gitt for; nye funn gjør
+> signalet ugyldig. **Denne runden STOPPER og venter på nytt klarsignal.**
+- **A) Turistsesong-banner fjernet fra KAFÉ-HUD.** «🧳 Turistsesong (dag X av 14)»
+  lå i `DagspulsOverlay` (kaféens dagspuls) — feil sted. Fjernet der (+ `sesong`-var
+  + `turistsesongInfo`-import). Sesong-EFFEKTEN på kaféen (trafikk/varevekt) er
+  urørt, og banneret vises fortsatt på reiselivsstedene (`TuristkontorScene`
+  «Turistsesong — dag X av Y», urørt).
+- **B) Innboksens tomtekst rettet + daglig generering verifisert.** Tomteksten sa
+  feilaktig «Simuler en måned …» — nå «Ingen post ennå — post kommer mens du
+  driver butikken». Genereringen fyrer i `START_NEW_DAY` (ikke månedsrull);
+  seedet: dag 2→2, dag 3→2 (klemt til taket), dag 4→0. Nytt spilltest-delsteg
+  **21D**: fersk drift, 3 åpnede dager → ≥1 quest-e-post generert, ≤ 3 aktive
+  ubesvarte (uten prisede varer får man kun markedsføringstilbud — bestillinger/
+  leverandørtilbud krever et priset sortiment; realistisk, ikke en feil).
+- **C) CLAUDE.md-regel** om ugyldig klarsignal (over).
+- `tsc -b` + `vite build` + `npm run spilltest` **21/21** grønn. IKKE merget.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Løpende markedsføring (`BALANCE.kampanje.lopende`) — SATT (pkt. 34→35):** pkt.

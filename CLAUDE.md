@@ -13,6 +13,9 @@ Dette er REGLER, ikke historie. Les før du gjør noe; hold filen kort — under
   i Chrome. Commit kun når eksplisitt bedt om det.
 - Review-grener (`spor-*` o.l.) KAN pushes til origin fortløpende så Espen kan
   lese rapport/diff fra GitHub — det er MERGE til main som venter på validering.
+- **Et klarsignal gjelder KUN tilstanden det ble gitt for.** Finner Espen nye funn
+  etter et klarsignal, er signalet UGYLDIG — fiks funnene og vent på NYTT
+  klarsignal. Aldri merge på et signal eldre enn siste Espen-tilbakemelding.
 - Playwright/headless Chromium er KUN diagnostikk (verifisere at noe
   fungerer/ikke fungerer, reprodusere bugs) — erstatter aldri Espens visuelle
   godkjenning.

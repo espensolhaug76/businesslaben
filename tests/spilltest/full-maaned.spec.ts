@@ -1026,6 +1026,34 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(moneyForC - sC.money, `betalte det rabatterte innkjøpet (${total} kr)`).toBe(total)
     expect(sC.incomingOrders.some(o => o.productId === 'coffee' && o.qty === 40), 'rabattert innkjøp på vei til lager').toBe(true)
     ctx.ok(`C: villedende tilbud akseptert — netto ${netto} kr (negativt), betalte ${total} kr`)
+
+    // ── D) DAGLIG generering: e-post kommer av DRIFT (START_NEW_DAY), ikke
+    //    månedsrull. Åpne 3 dager → minst én quest-e-post generert, innenfor taket. ──
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'frisk boot for steg 21D')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 100 }] })
+    await ventState(page, s => s.openingOrderPlaced && s.rentedLocationId === 'sentrum-l2', 'lokale leid (D)')
+    const erQuest = (m: { type: string }) => ['kundebestilling', 'leverandortilbud', 'mkftilbud'].includes(m.type)
+    const startDag = (await lesState(page)).dayNumber
+    // Rull 3 hele dagssykluser (open→close→start_new_day) UTEN å tikke (ingen salg).
+    for (let i = 0; i < 3; i++) {
+      const målDag = startDag + i + 1
+      await ventState(page, s => s.dayPhase === 'stengt', `stengt før dag-rull ${i + 1} (D)`)
+      await dispatch(page, { type: 'OPEN_DAY' })
+      await ventState(page, s => s.dayPhase === 'åpen', `dag åpen (D, rull ${i + 1})`)
+      await dispatch(page, { type: 'CLOSE_DAY' })
+      await ventState(page, s => s.dayPhase === 'oppgjør', `oppgjør (D, rull ${i + 1})`)
+      await dispatch(page, { type: 'START_NEW_DAY' })
+      await ventState(page, s => s.dayNumber === målDag && s.dayPhase === 'stengt', `ny dag ${målDag} (D)`)
+    }
+    const sD = await lesState(page)
+    const questAntall = sD.messages.filter(erQuest).length
+    const aktiveUbesvart = (sD.messages as unknown as { type: string; epostStatus?: string }[])
+      .filter(m => erQuest(m) && m.epostStatus === 'ubesvart').length
+    expect(questAntall, 'daglig generering fyrte (≥1 quest-e-post etter 3 åpnede dager)').toBeGreaterThanOrEqual(1)
+    expect(aktiveUbesvart, `innenfor taket (≤ ${BALANCE.innboks.maksAktiveUbesvart} aktive ubesvarte)`).toBeLessThanOrEqual(BALANCE.innboks.maksAktiveUbesvart)
+    ctx.ok(`D: 3 dager drift (dag ${startDag}→${sD.dayNumber}) → ${questAntall} quest-e-post generert, ${aktiveUbesvart} aktive ubesvarte (tak ${BALANCE.innboks.maksAktiveUbesvart})`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

@@ -3262,7 +3262,7 @@ function InnboksTab() {
     return (
       <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
         <div style={{ fontSize: 48, marginBottom: '1rem' }}>📬</div>
-        <p>Ingen meldinger ennå. Simuler en måned for å motta oppdateringer.</p>
+        <p>Ingen post ennå — post kommer mens du driver butikken.</p>
       </div>
     )
   }
