@@ -1940,12 +1940,20 @@ alt). Kafé-ambient-kommentaren i balance.ts oppdatert.
 
 ### Åpen oppfølging / flagg
 - **Gjest-cal + occludeY er PLACEHOLDER** — venter Espens ?dev-kalibrering + lås
-  i `districts.ts` (`TURISTKONTOR_GJEST_CAL` / `_OCCLUDE_Y`). **BUGFIX:** i ?dev=1
-  uten aktiv sesong (dev-dyplenke starter ingen sesong) rendret ingen gjest, så
-  det var «ingen å kalibrere». Nå viser scenen ALLTID en kalibrerings-gjest i
-  ?dev=1, med en **gjest-velger** (‹/›) som blar gjennom alle 7 turist-sprites
-  (`TURIST_SPRITER`) så cal kan sjekkes mot alle høyder/bredder. I ekte spill
-  vises scenariets kunde i sesong (uendret). Vokta av spilltest steg 17.
+  i `districts.ts` (`TURISTKONTOR_GJEST_CAL` / `_OCCLUDE_Y`).
+- **BUGFIX 1 (tom disk i dev):** dev-dyplenke starter ingen sesong → ingen gjest.
+  Nå viser scenen ALLTID en kalibrerings-gjest i ?dev=1, med en **gjest-velger**
+  (‹/›) gjennom alle 7 turist-sprites (`TURIST_SPRITER`).
+- **BUGFIX 2 (sprite rendret aldri, Espen-verifisert):** gjest-`<img>` hadde ingen
+  `key`, så den ble GJENBRUKT når velgeren byttet sprite. `onError` satte inline
+  `opacity:0` PERMANENT → én tidlig load-feil (f.eks. cachet 404 fra scenens
+  churn) skjulte ALLE senere sprites, selv om de lastet fint. Matcher symptomet
+  «velger virker, men ingen sprite». Fiks: `key={gjestFil}` (hver sprite = friskt
+  element, ingen lekkasje) + `onError` skjuler ikke lenger stille (logger; ekte
+  feil vises som brukket bilde). **Verifisert med skjermbilde-løkke — alle 7
+  sprites rendrer synlig ved disken** (`docs/rapporter/bilder/turistkontor-gjest-
+  velger-7sprites.png`), naturalWidth>0 + opacity 1 for hver. Vokta av steg 17.
+  → Espen bør **hard-refreshe** (Ctrl+Shift+R) for å tømme evt. cachede 404-er.
 - **Rom-verktøylinja** er flytende knapper (ikke bundet til et fysisk element i
   bildet ennå). Å binde «pakke» til brosjyrestativet/disken som traced hotspot
   er en mulig polish (?dev-trace) — sagt ifra om ønsket.

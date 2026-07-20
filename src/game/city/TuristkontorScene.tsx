@@ -100,9 +100,15 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
               cursor: 'pointer', zIndex: 10,
             }}
           >
+            {/* `key={gjestFil}`: hver sprite er et FRISKT <img> — en tidligere
+                load-feil (f.eks. en cachet 404) kan ikke lenger «henge igjen» som
+                inline opacity:0 og skjule alle senere sprites. onError skjuler
+                IKKE lenger stille (det lurte oss); en ekte feil vises som brukket
+                bilde + logges, så vi ser at det er en lastefeil, ikke posisjon. */}
             <img
+              key={gjestFil}
               src={gjestFil} alt={gjestNavn ?? ''} draggable={false}
-              onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0' }}
+              onError={() => console.warn('[TuristkontorScene] gjest-sprite lastet ikke:', gjestFil)}
               style={{
                 height: '100%', width: 'auto', display: 'block', userSelect: 'none',
                 filter: hover
