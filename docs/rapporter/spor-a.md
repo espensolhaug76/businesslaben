@@ -2063,10 +2063,11 @@ Full URL (dev-server 5173): **`http://localhost:5173/game?skip=1`**
 
 ## 39. ENGASJEMENT — KROK 7: DEN LEVENDE INNBOKSEN (7a + 7b + 7d)
 
-> **Status: BYGGET på gren `spor-a/engasjement-innboks` (fra main).** `tsc -b` +
-> `vite build` + `npm run spilltest` **GRØNN 21/21** (nytt steg 21). **IKKE
-> merget** — main urørt, avventer Espens Chrome-validering (CLAUDE.md-regel:
-> aldri push/merge før manuell godkjenning). Referansedokument:
+> **Status: MERGET TIL MAIN (2026-07-20)** etter Espens klarsignal (m/ glossary-
+> tillegg pkt. 0). Gren `spor-a/engasjement-innboks` ff-merget til main og slettet
+> (lokalt + origin). `tsc -b` + `vite build` + `npm run spilltest` **GRØNN 21/21**
+> (nytt steg 21) PÅ MAIN. **7c Lokalavisen** er fortsatt utsatt (trenger
+> stamkunder/besøk fra Krok 2/6). Referansedokument:
 > `docs/ENGASJEMENT.md` (Krok 7 + rammene + distribusjonstrappa). **7c Lokalavisen
 > er UTSATT** (krever stamkunder/besøk som kilder — Krok 2/6 må bygges først).
 > Rammene som gjelder: seedet deterministisk, tunbart tak (1–3/dag, VG1 skal ikke
@@ -2133,12 +2134,14 @@ målgruppe («traff målgruppa godt/delvis/dårlig — X % daglig treff») + VG2
   commit — les via `ventState`-polling på `epostStatus`, aldri bart `lesState` rett
   etter `dispatch`, ellers leses stale speil.)
 
-### Glossary-FLAGG (sjekket, IKKE diktet — CLAUDE.md)
-Fant + brukt som token: **MKT_006 Distribusjonskanal**, **MKT_035
-Influencer-markedsføring**. **MANGLER i `glossary.json`** (ikke oppfunnet — Espen
-avgjør om de skal legges til): **mengderabatt** (kvantumsrabatt), **pristilbud**,
-**betalt omtale**. Disse brukes i UI-tekst/refleksjon uten token inntil de ev.
-legges inn (Espen-godkjent, som ECO_035-mønsteret i pkt. 35).
+### Glossary (pkt. 0 — LØST, Espen-godkjent)
+Brukt som token: **MKT_006 Distribusjonskanal**, **MKT_035
+Influencer-markedsføring** (fantes fra før). LAGT TIL etter Espens klarsignal:
+**SAL_003 Mengderabatt** (Salg VG1), **SAL_004 Pristilbud** (Salg VG2), **JUS_008
+Betalt omtale** (Jus VG1) — med Espen-forfattede definisjoner/eksempler/vanlig-feil.
+`<Fagord>`-tokens aktivert der de brukes: mengderabatt + pristilbud i
+kundebestillingens beslutnings-UI, betalt omtale i mkf-tilbud med merkekrav.
+FLAGGet fra første runde er dermed lukket.
 
 ### Datamodell-forenkling (flagg)
 Kundeleveransens betaling legges direkte på `money` ved dagstart (utenom
