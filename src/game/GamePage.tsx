@@ -23,6 +23,7 @@ import DistrictView, { type LokaleClick } from './city/DistrictView'
 import StorefrontView from './city/StorefrontView'
 import InteriorView from './city/InteriorView'
 import TuristkontorScene from './city/TuristkontorScene'
+import GameFeelAudio from './gamefeel/GameFeelAudio'
 import MonterScene from './city/MonterScene'
 import LobbyView from './city/LobbyView'
 import { districtOfLokale } from '../data/districts'
@@ -241,6 +242,9 @@ function GameContent() {
         onMaster={onMaster}
         onOpenDashboard={() => { setDashboardTab('oversikt'); setDashboardOpen(true); setOverlay(true) }}
       />
+
+      {/* KROK 4 — Game feel: lyd-observatør (rendrer ingenting) */}
+      <GameFeelAudio />
 
       {/* Førstegangshint på masterkartet */}
       {onMaster && state.tutorialStep === 1 && !state.rentedLocationId && !tutorialDismissed && (

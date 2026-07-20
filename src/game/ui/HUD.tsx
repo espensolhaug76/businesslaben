@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useGame } from '../GameContext'
 import { INDUSTRY_META } from '../data/industries'
 import { DAY_CONFIG } from '../data/dayConfig'
+import { getLyd, setLyd } from '../gamefeel/lyd'
+import { useAnimatedNumber } from '../gamefeel/useAnimatedNumber'
+import { BALANCE } from '../data/balance'
 
 const MONTH_NAMES = ['Januar','Februar','Mars','April','Mai','Juni','Juli','August','September','Oktober','November','Desember']
 
@@ -16,6 +19,8 @@ export default function HUD({ onMaster, onOpenDashboard }: { onMaster: boolean; 
 
   const meta = INDUSTRY_META[industry]
   const xpPct = Math.round((xp / xpToNextLevel) * 100)
+  // KROK 4: kassa teller mykt opp/ned ved endring.
+  const visMoney = useAnimatedNumber(money, BALANCE.gamefeel.tallAnimMs)
 
   return (
     <div style={{
@@ -47,7 +52,7 @@ export default function HUD({ onMaster, onOpenDashboard }: { onMaster: boolean; 
       </div>
 
       {/* KPIs */}
-      <KpiChip icon="💰" value={formatKr(money)} color="#22c55e" />
+      <KpiChip icon="💰" value={formatKr(Math.round(visMoney))} color="#22c55e" />
       <KpiChip icon="⭐" value={`Rykte: ${reputation}`} color={reputation >= 60 ? '#22c55e' : reputation >= 30 ? '#facc15' : '#ef4444'} />
       <KpiChip icon="📅" value={`${MONTH_NAMES[(currentMonth - 1) % 12]} · År ${currentYear}`} color="#38bdf8" />
 
@@ -70,6 +75,7 @@ export default function HUD({ onMaster, onOpenDashboard }: { onMaster: boolean; 
       {/* Høyre: varsler + Dashbord-knapp (4P-fremdriften ligger nå i mentoren og
           Oversikt-fanen, ikke i HUD-en). */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+        <LydToggle />
         {unreadCount > 0 && (
           <div style={{ position: 'relative', cursor: 'pointer' }} title={`${unreadCount} uleste meldinger`}>
             <span style={{ fontSize: 20 }}>🔔</span>
@@ -95,6 +101,24 @@ export default function HUD({ onMaster, onOpenDashboard }: { onMaster: boolean; 
         </button>
       </div>
     </div>
+  )
+}
+
+/** KROK 4 — global lyd av/på (innstillinger). localStorage; default PÅ. */
+function LydToggle() {
+  const [on, setOn] = useState(() => getLyd())
+  return (
+    <button
+      onClick={() => { const next = !on; setOn(next); setLyd(next) }}
+      title={on ? 'Lyd på — klikk for å slå av' : 'Lyd av — klikk for å slå på'}
+      aria-label={on ? 'Slå av lyd' : 'Slå på lyd'}
+      style={{
+        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+        borderRadius: 99, width: 30, height: 30, cursor: 'pointer',
+        color: on ? '#f1f5f9' : '#64748b', fontSize: 15, lineHeight: 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
+      }}
+    >{on ? '🔊' : '🔇'}</button>
   )
 }
 

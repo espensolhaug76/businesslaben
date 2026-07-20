@@ -198,4 +198,32 @@ export const BALANCE = {
   // «godt drevet» (250–300 kunder) er UMULIG uten ansatte — man driver ikke en
   // kafé alene. Se docs/VERDENSMODELL.md §2.
   kapasitetPerTime: { junior: 20, senior: 28, ekspert: 38 } as Record<string, number>,
+
+  /** KROK 4 — GAME FEEL (docs/ENGASJEMENT.md). Rene «feel»-parametre; ingen
+   *  gameplay-effekt (kosmetikk gir ALDRI fordel). Deterministisk der innhold er
+   *  seedet (seremoni-høydepunktet). ALT tunbart her. */
+  gamefeel: {
+    /** Animerte tall: varighet (ms) for opp/ned-telling (HUD-kassa + oppgjørets
+     *  sluttsum). */
+    tallAnimMs: 450,
+    /** Dagsoppgjør-seremonien: hvor lenge oppsummeringskortet vises (ms) før
+     *  talloppsettet. Klikk hopper over. */
+    seremoniMs: 2000,
+    /** «Rolig dag»-terskel: færre enn så mange kunder (møter + bakgrunn) i
+     *  seremonien → «en rolig dag». */
+    roligDagKunder: 25,
+    /** Mikro-animasjon: leveranse-eska glir inn ved dagstart (ms). */
+    leveranseAnimMs: 1000,
+    /** 💚-fornøyd-kunde-badgen i dagspulsen vises i så mange SPILLMINUTTER etter
+     *  et fornøyd kundemøte (fader naturlig når klokka går videre). */
+    fornoydBadgeMinutt: 30,
+    /** Lyd (Web Audio, syntetisert). Av-bryter i innstillinger overstyrer
+     *  `standardPaa`; ALLTID av i headless/spilltest (navigator.webdriver). */
+    lyd: {
+      standardPaa: true,
+      plingCooldownMs: 1000,  // maks ett kasse-pling per sekund
+      plingVolum: 0.12,       // dempet
+      fanfareVolum: 0.16,
+    },
+  },
 }
