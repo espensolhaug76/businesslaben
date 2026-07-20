@@ -16,7 +16,9 @@ import { BALANCE } from '../../src/game/data/balance'
 import { beregnPakke, velgProfil, EGEN_KAFE_ID, velgTuristkontorScenario, velgByhotellScenario } from '../../src/game/data/reiseliv'
 import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS } from '../../src/game/sales/scenarios'
 import { bestillingBetaling, tilbudsprisPerEnhet, leverandorNettoBesparelse, epostAbsDag, type KundebestillingPayload, type LeverandortilbudPayload } from '../../src/game/data/innboksEpost'
-import type { InboxMessage } from '../../src/game/types'
+import { finnKandidater } from '../../src/game/data/espenSporsmal'
+import { stamkundeHilsen, STAMKUNDE_HILSEN } from '../../src/game/data/stamkundeDialog'
+import type { InboxMessage, GameState } from '../../src/game/types'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
 // Spiller byspillet (/game) ende til ende og asserter på state + DOM ved hvert
@@ -1026,6 +1028,142 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(moneyForC - sC.money, `betalte det rabatterte innkjøpet (${total} kr)`).toBe(total)
     expect(sC.incomingOrders.some(o => o.productId === 'coffee' && o.qty === 40), 'rabattert innkjøp på vei til lager').toBe(true)
     ctx.ok(`C: villedende tilbud akseptert — netto ${netto} kr (negativt), betalte ${total} kr`)
+  })
+
+  // ── STEG 22–25 — KROKER (Espen spør + Stamkunder + Nivåbryter) ──────────────
+  // Fullstendig state (inkl. felt harness-typen ikke speiler) leses via evaluate.
+  const lesFull = async (): Promise<GameState> => page.evaluate(() => window.__GAME_STATE__ as unknown as GameState)
+  const B = BALANCE
+  // Fersk kafé med én priset vare + åpen dag — felles oppsett for A/B/C.
+  const oppsettÅpenDag = async () => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'frisk boot')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 200 }] })
+    await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager')
+    const prods = (await lesState(page)).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: 50 } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+    await ventState(page, s => s.products.find(p => p.id === 'coffee')!.retailPrice === 50, 'coffee priset')
+    await dispatch(page, { type: 'OPEN_DAY' })
+    await ventState(page, s => s.dayPhase === 'åpen', 'dag åpen')
+  }
+
+  await steg(page, rapport, 22, 'Espen spør: riktig svar → kunnskapsbonus == fasit, egen P&L-linje, dagstak håndhevet', async ctx => {
+    await oppsettÅpenDag()
+    const svarRiktig = async () => {
+      await dispatch(page, { type: 'STILL_ESPEN_SPOR', nivaa: 'vg1', aktiveTemaIds: [], dev: true })
+      await ventState(page, s => !!(s as unknown as GameState).espenSpor.aktivt, 'spørsmål stilt')
+      const idx = (await lesFull()).espenSpor.aktivt!.riktigIndex
+      await dispatch(page, { type: 'SVAR_ESPEN_SPOR', index: idx })
+      await ventState(page, s => !!(s as unknown as GameState).espenSpor.sisteSvar, 'svart')
+      await dispatch(page, { type: 'LUKK_ESPEN_SPOR' })
+      await ventState(page, s => !(s as unknown as GameState).espenSpor.aktivt, 'lukket')
+    }
+    // Q1 + Q2 gir full belønning; sammen når de dagstaket.
+    const m0 = (await lesState(page)).money
+    await svarRiktig()
+    await ventState(page, s => s.money === m0 + B.espenSpor.belonningKr, `Q1 belønning +${B.espenSpor.belonningKr}`)
+    const s1 = await lesFull()
+    expect(s1.dayStats.kunnskapsbonusKr, 'Q1 i dagsstats (P&L)').toBe(B.espenSpor.belonningKr)
+    await svarRiktig()
+    await ventState(page, s => s.money === m0 + B.espenSpor.maksBelonningPerDag, 'Q2 → dagstak nådd')
+    // Q3 samme dag: riktig, men 0 ekstra (dagstak).
+    const m2 = (await lesState(page)).money
+    await svarRiktig()
+    const s3 = await lesFull()
+    expect((await lesState(page)).money, '3. riktige samme dag gir 0 ekstra (tak)').toBe(m2)
+    expect(s3.dayStats.kunnskapsbonusKr, 'kunnskapsbonus står på taket').toBe(B.espenSpor.maksBelonningPerDag)
+    // Egen linje i dagsoppgjøret (del av P&L).
+    await dispatch(page, { type: 'CLOSE_DAY' })
+    await ventState(page, s => s.dayPhase === 'oppgjør' && !!s.lastDayResult, 'dagsoppgjør')
+    const dr = (await lesFull()).lastDayResult!
+    expect(dr.kunnskapsbonusKr, 'kunnskapsbonus egen linje i dagsoppgjøret').toBe(B.espenSpor.maksBelonningPerDag)
+    ctx.ok(`Espen spør: 3 riktige → +${B.espenSpor.maksBelonningPerDag} kr (tak), 3. gav 0. Dagsoppgjør-linje = ${dr.kunnskapsbonusKr} kr`)
+  })
+
+  await steg(page, rapport, 23, 'Espen spør: feil svar → penger uendret, forklaring, spørsmål i cooldown', async ctx => {
+    await oppsettÅpenDag()
+    await dispatch(page, { type: 'STILL_ESPEN_SPOR', nivaa: 'vg1', aktiveTemaIds: [], dev: true })
+    await ventState(page, s => !!(s as unknown as GameState).espenSpor.aktivt, 'spørsmål stilt')
+    const full = await lesFull()
+    const a = full.espenSpor.aktivt!
+    const feilIndex = (a.riktigIndex + 1) % a.alternativer.length
+    const m0 = (await lesState(page)).money
+    await dispatch(page, { type: 'SVAR_ESPEN_SPOR', index: feilIndex })
+    await ventState(page, s => (s as unknown as GameState).espenSpor.sisteSvar?.riktig === false, 'feil svar registrert')
+    const etter = await lesFull()
+    expect((await lesState(page)).money, 'feil svar koster ingenting').toBe(m0)
+    expect(etter.espenSpor.sisteSvar!.riktig, 'markert feil').toBe(false)
+    expect(a.forklaring.length, 'forklaring finnes (vises etter svar)').toBeGreaterThan(0)
+    const absNaa = epostAbsDag(etter.currentYear, etter.currentMonth, etter.dayNumber)
+    expect(etter.espenSpor.feilCooldown[a.id], `spørsmålet i cooldown (${B.espenSpor.cooldownDagerVedFeil} dager)`).toBe(absNaa + B.espenSpor.cooldownDagerVedFeil)
+    expect(etter.espenSpor.besvarteIds.includes(a.id), 'feil-svart havner IKKE i «riktig besvart»').toBe(false)
+    ctx.ok(`Feil svar: penger uendret (${m0}), forklaring vist, cooldown til dag ${etter.espenSpor.feilCooldown[a.id]}`)
+  })
+
+  await steg(page, rapport, 24, 'Stamkunder: 2 fornøyde møter → erStamkunde, gjenkjenningsdialog + kjøpsbonus', async ctx => {
+    await oppsettÅpenDag()
+    const kunde = 'den-usikre'
+    const møt = async () => {
+      await dispatch(page, { type: 'DEV_SPAWN_MOTE', scenarioId: kunde })
+      await ventState(page, s => s.activeMeetingScenarioId === kunde, 'møte spawnet')
+      const m = (await lesState(page)).money
+      await dispatch(page, { type: 'RESOLVE_SALES_SCENARIO', scenarioId: kunde, sales: [{ productId: 'coffee', qty: 1 }], reputationDelta: 5, xpEarned: 0 })
+      await ventState(page, s => s.activeMeetingScenarioId === null, 'møte løst')
+      return (await lesState(page)).money - m   // penger inn på dette møtet
+    }
+    const d1 = await møt()
+    expect(d1, 'møte 1: full pris uten bonus (ennå ikke stamkunde)').toBe(50)
+    let stam = (await lesFull()).stamkunder[kunde]
+    expect(stam.fornoydeUtfall, 'ett fornøyd utfall').toBe(1)
+    expect(stam.erStamkunde, 'ennå ikke stamkunde').toBe(false)
+    const d2 = await møt()
+    expect(d2, 'møte 2: fortsatt full pris (stamkunde-status settes AV dette møtet)').toBe(50)
+    stam = (await lesFull()).stamkunder[kunde]
+    expect(stam.erStamkunde, '2 fornøyde → stamkunde').toBe(true)
+    // Møte 3: nå er kunden stamkunde → kjøpsbonus 1,2 på betalingen.
+    const d3 = await møt()
+    expect(d3, `møte 3: kjøpsbonus ×${B.stamkunder.kjopsBonusFaktor} (50 → ${Math.round(50 * B.stamkunder.kjopsBonusFaktor)})`).toBe(Math.round(50 * B.stamkunder.kjopsBonusFaktor))
+    // Gjenkjenningsdialog (ren funksjon = samme fasit UI-et bruker).
+    const minne = (await lesFull()).stamkunder[kunde]
+    const hilsen = stamkundeHilsen(kunde, minne, minne.antallMoter * 2654435761 >>> 0)
+    expect(hilsen && STAMKUNDE_HILSEN.find(h => h.scenarioId === kunde)!.fornoyd.includes(hilsen), 'varm gjenkjenningshilsen vises').toBeTruthy()
+    ctx.ok(`Stamkunde ${kunde}: 2 fornøyde → stamkunde, møte 3 betaling ${d3} kr (bonus), hilsen «${hilsen}»`)
+  })
+
+  await steg(page, rapport, 25, 'Nivåbryter: VG1 skjuler VG2-spørsmål + pristilbud-felt; VG2 viser dem', async ctx => {
+    // (D1) VG2-spørsmål gates i spørsmålspoolen (ren finnKandidater-fasit).
+    await oppsettÅpenDag()
+    const st = await lesFull()
+    const ctxBase = { aktiveTemaIds: [] as string[], besvarteIds: [] as string[], feilCooldown: {}, absDag: 1 }
+    const kandVg1 = finnKandidater(st, { nivaa: 'vg1', ...ctxBase })
+    const kandVg2 = finnKandidater(st, { nivaa: 'vg2', ...ctxBase })
+    expect(kandVg1.length, 'VG1 har spørsmål').toBeGreaterThan(0)
+    expect(kandVg1.every(q => q.nivaa === 'vg1'), 'VG1: ingen VG2-spørsmål i poolen').toBe(true)
+    expect(kandVg2.some(q => q.nivaa === 'vg2'), 'VG2: VG2-spørsmål er med i poolen').toBe(true)
+
+    // (D2) pristilbud-feltet (kundebestilling) gates i UI-et på globalt nivå.
+    const åpneBestilling = async (nivaa: 'vg1' | 'vg2') => {
+      await page.evaluate(n => localStorage.setItem('klasse-nivaa-dev-override', n), nivaa)
+      await page.reload()
+      await ventState(page, s => s.phase !== 'startup', `boot (${nivaa})`)
+      await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+      await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 100 }] })
+      await ventState(page, s => s.products.some(p => p.id === 'coffee'), `lager (${nivaa})`)
+      const prods = (await lesState(page)).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: 50 } : p)
+      await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+      await dispatch(page, { type: 'DEV_SEND_TEST_EPOSTER' })
+      await ventState(page, s => s.messages.some(m => m.type === 'kundebestilling'), `bestilling i innboks (${nivaa})`)
+      await page.getByRole('button', { name: /Dashbord/ }).first().click()
+      await page.getByTestId('fane-innboks').click()
+      await page.getByRole('button', { name: /📋 Bestilling/ }).first().click()   // ekspandér
+    }
+    await åpneBestilling('vg1')
+    await expect(page.getByPlaceholder(/pristilbud|samlet 540/i), 'VG1: pristilbud-feltet skjult').toHaveCount(0)
+    await åpneBestilling('vg2')
+    await expect(page.getByPlaceholder(/samlet 540/i), 'VG2: pristilbud-feltet synlig').toHaveCount(1)
+    await page.evaluate(() => localStorage.removeItem('klasse-nivaa-dev-override'))
+    ctx.ok(`Nivå: VG1-pool ${kandVg1.length} spm (0 VG2), VG2-pool har VG2-spm; pristilbud-felt skjult i VG1, synlig i VG2`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

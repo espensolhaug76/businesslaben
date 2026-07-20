@@ -342,6 +342,9 @@ type Action =
   | { type: 'LUKK_ESPEN_SPOR' }
   /** Dev (?dev=1): gjør siste møtte kunde (ev. en standard) til stamkunde. */
   | { type: 'DEV_GJOR_STAMKUNDE' }
+  /** Dev/test: sett et bestemt kundemøte som aktivt nå (for å teste møteflyt/
+   *  stamkunder deterministisk). Kun i åpen butikk. */
+  | { type: 'DEV_SPAWN_MOTE'; scenarioId: string }
   | { type: 'SET_TUTORIAL_STEP'; step: number }
   | { type: 'SET_P1_COMPLETE' }
   | { type: 'SET_P2_COMPLETE' }
@@ -1609,6 +1612,11 @@ function reducer(state: GameState, action: Action): GameState {
         : state
 
     // ── KROK 2 — STAMKUNDER (dev) ────────────────────────────────────────────
+    case 'DEV_SPAWN_MOTE':
+      return state.dayPhase === 'åpen'
+        ? { ...state, activeMeetingScenarioId: action.scenarioId }
+        : state
+
     case 'DEV_GJOR_STAMKUNDE': {
       const id = state.sisteMoteKundeId ?? 'den-usikre'   // fallback = Maren (gjenkjenning finnes)
       const cur = state.stamkunder[id]

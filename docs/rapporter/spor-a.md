@@ -2213,3 +2213,124 @@ Full URL (dev-server 5173): **`http://localhost:5173/game?skip=1`**
   basetrafikk (l2 er «sweet spot» per oppgaven) — vurder om dyre lokaler bør
   få mer trafikk for å forsvare leia. Eksponering krever manuell trau-plassering
   (`eksponeringReferanse = 4`); en tom disk gir 0,7-faktor.
+
+## 40. KROKER — global nivåbryter + Krok 6 «Espen spør» + Krok 2 Stamkunder
+
+> **Status: BYGGET på gren `spor-a/kroker-espen-spor-stamkunder` (fra origin/main
+> 2f7fab0).** `tsc -b` + `vite build` + `npm run spilltest` **GRØNN 25/25** (nye
+> steg 22–25). **IKKE merget** — main urørt, avventer Espens Chrome-validering.
+> MERK: bygget PÅ toppen av den MERGEDE innboksen (Krok 7); den separate
+> `spor-a/innboks-fiks` (oppgjør-scroll, Te-navn, tomtekst) er IKKE med her —
+> begge grener rører `DayResultOverlay`/`DashboardOverlay`, så en liten
+> flettekonflikt kan oppstå når begge merges (triviell).
+
+### DEL 0 — GLOBALT KLASSENIVÅ (VG1/VG2)
+Lukker flagget «ingen global VG1/VG2 utenfor tema» fra innboks-runden.
+- **RTDB:** `klasser/{klassekode}/klasseNivaa` = `'vg1' | 'vg2'` (søsternode til
+  `temaAktivering`), default `vg1`. `GameContext` abonnerer live (eget `onValue`),
+  localStorage-fallback `klasse-nivaa-dev` uten klassekode.
+- **Hooks:** `useKlasseNivaa()` (globalt effektivt) + `useEffektivtNivaa(temaId?)`
+  — presedens: aktivt temas nivå (`useTemaNivaa`) overstyrer globalt INNENFOR
+  temaets innhold; globalt gjelder alt annet.
+- **Lærer:** global VG1/VG2-velger øverst i `TemaAktiveringPanel` («Spillet»-fanen),
+  med forklaring. **Dev (?dev=1):** nivå-toggle i dev-panelet — egen nøkkel
+  `klasse-nivaa-dev-override` som VINNER over RTDB/fallback (merket «DEV»).
+- **Binding:** VG2-tilleggene fra innboks-runden gates nå på nivået — skriftlig
+  **pristilbud**-felt (kundebestilling) og **betalt-omtale**-vinkelen
+  (mkf-refleksjon, via `visMerkekrav`-flagg i `ACCEPT_MKFTILBUD`) vises kun ved vg2.
+
+### DEL 1 — KROK 6 «ESPEN SPØR»
+- **`data/espenSporsmal.ts`:** 15 statiske grunnpool-spørsmål (VG1-vekt) + 5
+  dynamiske (elevens egne tall: DB, DG, påslag, svinn %, målgruppe) + 4 VG2 + 1
+  tema-gatet (Kampanje). `bygg(state)` returnerer null når data mangler (dynamiske).
+  Forklaringer bruker `[[GLOSSARY_ID|..]]`-tokens og er sjekket mot glossary.json
+  (motsier ikke definisjonene).
+- **State/reducer:** `state.espenSpor` (aktivt snapshot, sisteSvar, besvarteIds,
+  feilCooldown, dagTeller/dagBelonning) — persistert i `BUDSJETT_KEY`.
+  `STILL/SVAR/LUKK_ESPEN_SPOR`. Maks ett ubesvart om gangen; `finnKandidater`
+  filtrerer nivå/tema/besvart/cooldown/data.
+- **P&L (lærdom fra forrige flagg):** riktig svar → kunnskapsbonus lagt på `money`
+  MED i P&L — `dayStats.kunnskapsbonusKr` → `DayResult.kunnskapsbonusKr` → egen
+  «🎓 Kunnskapsbonus»-linje i dagsoppgjøret + med i `resultat`. Ikke utenom.
+- **Mentor:** quizen flyter gjennom kø-mekanismen (peker + N-badge, klikk når du
+  vil, aldri avbrytende). Interaktiv boble: svarknapper → fasit + forklaring ETTER
+  svar. Fargeblind-trygt: «✓ Riktig svar»/«✗ Ditt svar»-tekstlabels, aldri kun
+  farge. Kadens: etter dagsoppgjør (drift), etter (ny) prising (kalkyle), etter
+  målgruppevalg (malgruppe) — reduceren gater, så dispatchene er trygge å fyre ofte.
+- **Dev (?dev=1):** «🎓 Still neste spørsmål nå» (bypasser dagstaket).
+- **BALANCE.espenSpor:** `belonningKr: 200` (≈ én god times driftsmargin, jf.
+  målbildet 3 000–5 000 kr/dag/8 t — merkbart, ikke en snarvei), `maksBelonningPerDag:
+  400` (2 riktige), `maksPerDag: 2` (auto-triggere; VG1 skal ikke drukne),
+  `cooldownDagerVedFeil: 3`.
+
+### DEL 2 — KROK 2 STAMKUNDER
+- **State:** `state.stamkunder[scenarioId]` = `{ antallMoter, fornoydeUtfall,
+  sisteUtfall, erStamkunde }` — persistert. Oppdateres i `RESOLVE_SALES_SCENARIO`
+  (KUN ekte møter, `isMeeting`). Utfall mappet fra `reputationDelta` (>0 fornøyd /
+  <0 misfornøyd / =0 nøytralt) — GJENBRUKER samme signal som 💚-badgen, ikke et
+  nytt utfallslager. 2+ fornøyde → `erStamkunde`.
+- **Kundemiks:** `planleggMoter` fikk valgfritt `vekter`-param (Efraimidis–Spirakis
+  vektet-uten-gjentakelse): stamkunde ×2, «misfornøyd sist» ×0,5 (aldri helt borte
+  — service recovery). No-weight-stien er **byte-identisk** (fersk kafé → uendret
+  miks, så eksisterende spilltest-determinisme er bevart).
+- **Kjøpsbonus:** stamkunde-kjøp får `kjopsBonusFaktor 1,2` på scenariobetalingen
+  (kr, ikke antall; varekost urørt).
+- **`data/stamkundeDialog.ts`:** 6 særpregede kunder (Live m/førerhund, Maren,
+  Roger, Tom, Sunniva, Fredrik) med 2–3 varme gjenkjenningshilsener (refererer
+  forrige møtes tema) + 1 kjøligere ved misfornøyd. Vises som et LAG oppå møtestart
+  (steg 1) — scenariodata (`scenarios.ts`) er uendret. Fargeblind-trygt: «👋 KJENNER
+  DEG IGJEN»-tekstlabel.
+- **Målgruppe-fanen:** stamkunde-oversikt (navn + tekstlabel-status «Stamkunde»/
+  «Misfornøyd sist»/«Kjenner deg» + besøkstall; ingen scores/målere).
+- **Mentor:** dynamisk trigger `stamkunde_forste` (navngir kunden,
+  `[[MKT_027|stamkunde]]`).
+- **Dev (?dev=1):** «👋 Gjør siste kunde til stamkunde» (`DEV_GJOR_STAMKUNDE`,
+  virker på `sisteMoteKundeId`, fallback Maren).
+- **BALANCE.stamkunder:** `fornoydeForStamkunde: 2`, `vektFaktor: 2`,
+  `vektMisfornoyd: 0.5`, `kjopsBonusFaktor: 1.2`.
+
+### DEL 3 — SPILLTEST (25/25)
+Nye steg (les state via `ventState`-polling, aldri bart `lesState` rett etter
+dispatch — fallgruven fra innboks-runden):
+- **22 (A):** Espen spør — riktig svar → `money += belonningKr`; dagstak håndhevet
+  (3. riktige samme dag gir 0 ekstra); egen `kunnskapsbonusKr`-linje i `DayResult`
+  == fasit (400 kr).
+- **23 (B):** feil svar → penger uendret; `sisteSvar.riktig=false`; forklaring
+  finnes; `feilCooldown[id] == absDag + 3`; id IKKE i `besvarteIds`.
+- **24 (C):** 2 fornøyde møter (seedet via ny test/dev-action `DEV_SPAWN_MOTE`) →
+  `erStamkunde`; møte 3 betaling `50 → 60` (kjøpsbonus); `stamkundeHilsen` gir varm
+  hilsen.
+- **25 (D):** nivåbryter — `finnKandidater` med `vg1` har 0 VG2-spørsmål, med `vg2`
+  har VG2-spørsmål; pristilbud-feltet er skjult i VG1 og synlig i VG2 (DOM).
+
+### Åpne flagg
+- **Glossary «stamkunde»:** brukt `[[MKT_027|stamkunde]]` (Kundelojalitet) — dekker
+  konseptet, men det finnes ikke en egen «Stamkunde»-term. Espen avgjør om en
+  egen term skal legges til (ikke oppfunnet her).
+- **`DEV_SPAWN_MOTE`** er en test-/dev-affordance (setter aktivt kundemøte) — også
+  nyttig for manuell testing; ingen produksjonskode utenom ?dev/spilltest bruker den.
+- **VG1/VG2 «etter første prising»-kadens** er approksimert (fyres ved enhver ny
+  prising i løpet av dagen; dagstaket begrenser til 2 auto-spørsmål/dag).
+
+### Chrome-sjekkliste (Espen validerer)
+Full URL (dev-server): **`http://localhost:5173/game?dev=1&skip=1`**
+1. **Dev-knapper (nederst):** «🎓 Still neste spørsmål nå», «👋 Gjør siste kunde til
+   stamkunde», og «Nivå: VG1/VG2 DEV»-togglene.
+2. **Espen spør:** klikk «🎓 Still neste spørsmål nå» → Espen nede i hjørnet PEKER
+   med **N-badge** (ingen popup). Klikk figuren → spørsmål med svarknapper. Svar
+   **riktig** → «✅ Riktig! Kunnskapsbonus +200 kr» + forklaring (📚-ord klikkbare);
+   svar **feil** → «❌ Ikke helt —» + forklaring, ingen straff. Steng en dag →
+   **🎓 Kunnskapsbonus**-linje i dagsoppgjøret. Still 3 samme dag → 3. gir 0 kr.
+3. **Stamkunder:** klikk «👋 Gjør siste kunde til stamkunde» (eller spill 2 gode
+   møter med samme kunde). Neste møte med den kunden åpner med en **👋 KJENNER DEG
+   IGJEN**-hilsen. Se **Målgruppe-fanen → «Stamkunder — kjente fjes»** (navn +
+   status-tekstlabel + besøk). Mentor sier fra første gang en kunde blir stamkunde.
+4. **Nivåbryter — VG1:** sett «Nivå: VG1 DEV». Åpne en **kundebestilling** i
+   📬 Innboks → **INGEN** «skriftlig pristilbud»-felt. Espen spør stiller kun
+   VG1-spørsmål.
+5. **Nivåbryter — VG2:** sett «Nivå: VG2 DEV». Samme kundebestilling → **pristilbud**-
+   feltet er nå der. Markedsføringstilbud fra en influenser viser «⚖️ betalt omtale
+   må merkes». Espen spør kan nå stille VG2-spørsmål (dekningsgrad, betalt omtale,
+   førpris, pristilbud).
+6. **Lærer-panelet** (TeacherDashboard → «Spillet»): global «Klassens nivå»-velger
+   (VG1/VG2) over tema-lista — endring ses live i spillet for elever med klassekoden.
