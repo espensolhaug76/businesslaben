@@ -9,8 +9,10 @@ Dette er REGLER, ikke historie. Les før du gjør noe; hold filen kort — under
   INGENTING og gir falsk trygghet.
 
 ## Push og validering
-- **ALDRI push** uten at Espen har validert manuelt i Chrome. Commit kun når
-  eksplisitt bedt om det.
+- **ALDRI push til `main`** (eller merge dit) uten at Espen har validert manuelt
+  i Chrome. Commit kun når eksplisitt bedt om det.
+- Review-grener (`spor-*` o.l.) KAN pushes til origin fortløpende så Espen kan
+  lese rapport/diff fra GitHub — det er MERGE til main som venter på validering.
 - Playwright/headless Chromium er KUN diagnostikk (verifisere at noe
   fungerer/ikke fungerer, reprodusere bugs) — erstatter aldri Espens visuelle
   godkjenning.
