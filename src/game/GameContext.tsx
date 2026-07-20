@@ -257,6 +257,7 @@ const initialState: GameState = {
   mkfBoost: null,
   espenSpor: { aktivt: null, sisteSvar: null, besvarteIds: [], feilCooldown: {}, dagTeller: 0, dagBelonning: 0 },
   stamkunder: {},
+  sisteMoteKundeId: null,
   turistsesong: null,
   hotellavtale: 'ingen',
   opplevByenPameldt: false,
@@ -339,6 +340,8 @@ type Action =
   | { type: 'SVAR_ESPEN_SPOR'; index: number }
   /** Lukk spørsmålet etter at forklaringen er lest. */
   | { type: 'LUKK_ESPEN_SPOR' }
+  /** Dev (?dev=1): gjør siste møtte kunde (ev. en standard) til stamkunde. */
+  | { type: 'DEV_GJOR_STAMKUNDE' }
   | { type: 'SET_TUTORIAL_STEP'; step: number }
   | { type: 'SET_P1_COMPLETE' }
   | { type: 'SET_P2_COMPLETE' }
@@ -669,6 +672,28 @@ function reducer(state: GameState, action: Action): GameState {
       // urørt, så et ventende ekte møte gjenopptas rent — ingen spøkelser.
       const isMeeting = inDay && state.activeMeetingScenarioId === action.scenarioId
 
+      // KROK 2 — STAMKUNDER: en stamkunde handler litt mer (påslag på betalingen,
+      // ikke antall). Kun ekte møter teller.
+      const erStamNaa = !!(isMeeting && action.scenarioId && state.stamkunder[action.scenarioId]?.erStamkunde)
+      const revenueEff = erStamNaa ? Math.round(revenue * BALANCE.stamkunder.kjopsBonusFaktor) : revenue
+      // Oppdater kundens minne: utfall fra rykte-delta (>0 fornøyd, <0 misfornøyd,
+      // ellers nøytralt). 2+ fornøyde utfall → stamkunde. Gjenbruker rykte-delta-
+      // signalet (samme som 💚-fornøyd-badgen), ikke et nytt utfallslager.
+      const stamkunder = (isMeeting && action.scenarioId)
+        ? (() => {
+            const cur = state.stamkunder[action.scenarioId] ?? { antallMoter: 0, fornoydeUtfall: 0, sisteUtfall: 'noytral' as const, erStamkunde: false }
+            const utfall = action.reputationDelta > 0 ? 'fornoyd' as const : action.reputationDelta < 0 ? 'misfornoyd' as const : 'noytral' as const
+            const fornoydeUtfall = cur.fornoydeUtfall + (utfall === 'fornoyd' ? 1 : 0)
+            return {
+              ...state.stamkunder,
+              [action.scenarioId]: {
+                antallMoter: cur.antallMoter + 1, fornoydeUtfall, sisteUtfall: utfall,
+                erStamkunde: fornoydeUtfall >= BALANCE.stamkunder.fornoydeForStamkunde,
+              },
+            }
+          })()
+        : state.stamkunder
+
       // SPILLKLOKKE: er DETTE det ekte møtet? Marker det spawnede møtet som done
       // og fjern aktiv-flagget (bakgrunnssalget dryppes per tick, IKKE her).
       // Per-produkt møte-salg logges i dayProductStats.
@@ -685,8 +710,10 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         products,
-        money: state.money + revenue - Math.max(0, action.cost ?? 0),
+        money: state.money + revenueEff - Math.max(0, action.cost ?? 0),
         reputation,
+        stamkunder,
+        sisteMoteKundeId: (isMeeting && action.scenarioId) ? action.scenarioId : state.sisteMoteKundeId,
         xp: newXp,
         level: newLevel,
         xpToNextLevel: xpToNext,
@@ -700,7 +727,7 @@ function reducer(state: GameState, action: Action): GameState {
         dayStats: inDay ? {
           ...state.dayStats,
           soldStk: state.dayStats.soldStk + soldStk,
-          soldKr: state.dayStats.soldKr + revenue,
+          soldKr: state.dayStats.soldKr + revenueEff,
           varekostKr: state.dayStats.varekostKr + varekost,
           reputationDelta: state.dayStats.reputationDelta + action.reputationDelta,
           xpEarned: state.dayStats.xpEarned + action.xpEarned,
@@ -1581,6 +1608,23 @@ function reducer(state: GameState, action: Action): GameState {
         ? { ...state, espenSpor: { ...state.espenSpor, aktivt: null, sisteSvar: null } }
         : state
 
+    // ── KROK 2 — STAMKUNDER (dev) ────────────────────────────────────────────
+    case 'DEV_GJOR_STAMKUNDE': {
+      const id = state.sisteMoteKundeId ?? 'den-usikre'   // fallback = Maren (gjenkjenning finnes)
+      const cur = state.stamkunder[id]
+      return {
+        ...state,
+        stamkunder: {
+          ...state.stamkunder,
+          [id]: {
+            antallMoter: Math.max(2, (cur?.antallMoter ?? 0) + 1),
+            fornoydeUtfall: Math.max(BALANCE.stamkunder.fornoydeForStamkunde, (cur?.fornoydeUtfall ?? 0)),
+            sisteUtfall: 'fornoyd', erStamkunde: true,
+          },
+        },
+      }
+    }
+
     case 'SET_TUTORIAL_STEP':
       return { ...state, tutorialStep: action.step }
 
@@ -1665,7 +1709,15 @@ function reducer(state: GameState, action: Action): GameState {
         DAY_CONFIG.scenarioMix,
       ).map(s => s.id)
       const poolIds = basePool.filter(id => !TURIST_SCENARIO_IDS.includes(id))
-      const dayMeetings = planleggMoter(moterForDag(state.dayNumber), poolIds, (Math.imul(seed, 2654435761)) >>> 0)
+      // KROK 2 — STAMKUNDER: vekt dagens kundemiks. Stamkunder opp, «misfornøyd
+      // sist» ned. Tomt (fersk kafé) ⇒ undefined ⇒ uendret (byte-identisk) miks.
+      const stamVekter: Record<string, number> = {}
+      for (const [id, sk] of Object.entries(state.stamkunder)) {
+        stamVekter[id] = sk.erStamkunde ? BALANCE.stamkunder.vektFaktor
+          : sk.sisteUtfall === 'misfornoyd' ? BALANCE.stamkunder.vektMisfornoyd : 1
+      }
+      const harVekter = Object.values(stamVekter).some(v => v !== 1)
+      const dayMeetings = planleggMoter(moterForDag(state.dayNumber), poolIds, (Math.imul(seed, 2654435761)) >>> 0, harVekter ? stamVekter : undefined)
 
       return {
         ...state,

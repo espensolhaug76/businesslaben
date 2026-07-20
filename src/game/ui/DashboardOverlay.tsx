@@ -1068,6 +1068,44 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
           </div>
         )}
       </div>
+
+      {/* KROK 2 — STAMKUNDER: enkel oversikt (navn + status som tekstlabel + besøk).
+          Ingen scores/målere. */}
+      <StamkundeOversikt />
+    </div>
+  )
+}
+
+// ─── KROK 2 — Stamkunde-oversikt (Målgruppe-fanen) ────────────────────────────
+function StamkundeOversikt() {
+  const { state } = useGame()
+  const rader = Object.entries(state.stamkunder)
+    .filter(([, k]) => k.antallMoter >= 1)
+    .map(([id, k]) => ({ navn: SCENARIOS.find(s => s.id === id)?.customerName ?? id, ...k }))
+    .sort((a, b) => (b.erStamkunde ? 1 : 0) - (a.erStamkunde ? 1 : 0) || b.antallMoter - a.antallMoter)
+  if (!rader.length) return null
+  return (
+    <div style={{ marginTop: '1.25rem' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>
+        STAMKUNDER — KJENTE FJES
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        {rader.map(r => {
+          // Fargeblind-trygt: alltid en TEKSTLABEL, aldri kun farge.
+          const label = r.erStamkunde ? 'Stamkunde' : r.sisteUtfall === 'misfornoyd' ? 'Misfornøyd sist' : 'Kjenner deg'
+          const farge = r.erStamkunde ? '#2dd4bf' : r.sisteUtfall === 'misfornoyd' ? '#f59e0b' : '#94a3b8'
+          const ikon = r.erStamkunde ? '💚' : r.sisteUtfall === 'misfornoyd' ? '💬' : '👋'
+          return (
+            <div key={r.navn} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '0.5rem 0.8rem' }}>
+              <span style={{ fontSize: 13, color: '#f1f5f9', fontWeight: 600 }}>{ikon} {r.navn}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: farge }}>{label}</span>
+                <span style={{ fontSize: 11, color: '#64748b' }}>{r.antallMoter} besøk</span>
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

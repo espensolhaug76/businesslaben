@@ -5,6 +5,7 @@ import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, MENTOR_INTRO } from '../d
 import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
 import { kanalById, kanalTreffISegmenter } from '../data/kampanje'
+import { getScenario } from '../sales/scenarios'
 import type { GameState } from '../types'
 
 // ─── LÆRINGSLAGET — mentoren (Espen) ──────────────────────────────────────────
@@ -73,6 +74,8 @@ function oppfylt(id: string, s: GameState): boolean {
     case 'forste_bestilling_levert': return s.lastDelivery != null
     // KROK 7 — DEN LEVENDE INNBOKSEN: første ULESTE quest-e-post med svarfrist.
     case 'forste_epost_frist': return s.messages.some(m => m.epost != null && m.fristAbsDag != null && m.epostStatus === 'ubesvart' && !m.read)
+    // KROK 2 — STAMKUNDER: første gang en kunde blir stamkunde.
+    case 'stamkunde_forste': return Object.values(s.stamkunder).some(k => k.erStamkunde)
     case 'forste_laan': return s.loans.length > 0
     case 'forste_manedsoppgjor': return s.lastMonthSettlement != null
     case 'forste_eierlonn': return s.lastMonthSettlement != null
@@ -117,6 +120,12 @@ const RISIKO_RANG: Record<string, number> = { lav: 1, middels: 2, høy: 3 }
  *  Faller tilbake på den statiske teksten for andre id-er. */
 function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
   const kr = (n: number) => `${Math.round(n).toLocaleString('nb-NO')} kr`
+  // KROK 2 — STAMKUNDER: navngi den første kunden som ble stamkunde.
+  if (id === 'stamkunde_forste') {
+    const entry = Object.entries(s.stamkunder).find(([, k]) => k.erStamkunde)
+    const navn = entry ? (getScenario(entry[0])?.customerName ?? 'En kunde') : 'En kunde'
+    return `Se på det — ${navn} er blitt en fast gjest! Når en kunde kommer igjen og igjen, har du en [[MKT_027|stamkunde]]. Gode møter bygger lojalitet — da handler folk litt mer og anbefaler deg videre. Hva tror du fikk ${navn} til å komme tilbake?`
+  }
   // DEL 7 — prisingsmentorer (dag-/vare-scopede id-er).
   if (id.startsWith('mangler_pris_apning|')) {
     return 'Du har varer i disken uten pris — dem får du ikke solgt før du prissetter dem i Priser-fanen. Bruk [[MKT_048|kalkylen]]: innkjøpspris + [[ECO_011|påslag]].'

@@ -132,7 +132,7 @@ export function moterForDag(dayNumber: number): number {
 /** Planlegg dagens kundemøter på klokkeslett (minutter siden 09:00), spredt
  *  jevnt mellom moteForste og moteSiste med lett seed-jitter. Scenariene
  *  trekkes UTEN gjentakelse til poolen er tømt. Deterministisk per dag. */
-export function planleggMoter(antall: number, scenarioIds: string[], seed: number): ScheduledMeeting[] {
+export function planleggMoter(antall: number, scenarioIds: string[], seed: number, vekter?: Record<string, number>): ScheduledMeeting[] {
   const apne = BALANCE.klokke.apneMinutt
   const forste = BALANCE.moteForste - apne // minutter siden åpning
   const siste = BALANCE.moteSiste - apne
@@ -143,8 +143,23 @@ export function planleggMoter(antall: number, scenarioIds: string[], seed: numbe
   let s = seed >>> 0
   const pool: string[] = []
   const refill = () => {
-    const rest = [...scenarioIds]
-    while (rest.length) { s = nextSeed(s); pool.push(rest.splice(Math.floor(rand01(s) * rest.length), 1)[0]!) }
+    if (vekter) {
+      // KROK 2 — VEKTET uten gjentakelse (Efraimidis–Spirakis): nøkkel =
+      // rand^(1/vekt), sortert synkende → høyere vekt trekkes tidligere (og havner
+      // oftere blant dagens få møter). Deterministisk. Stamkunder vektes opp,
+      // «misfornøyd sist» ned — men hver kunde er med maks én gang per runde
+      // (aldri dobbeltbooket, aldri helt utelatt).
+      const nokler = scenarioIds.map(id => {
+        s = nextSeed(s)
+        const w = Math.max(0.01, vekter[id] ?? 1)
+        return { id, key: Math.pow(rand01(s), 1 / w) }
+      })
+      nokler.sort((a, b) => b.key - a.key)
+      for (const n of nokler) pool.push(n.id)
+    } else {
+      const rest = [...scenarioIds]
+      while (rest.length) { s = nextSeed(s); pool.push(rest.splice(Math.floor(rand01(s) * rest.length), 1)[0]!) }
+    }
   }
   if (scenarioIds.length) refill()
 

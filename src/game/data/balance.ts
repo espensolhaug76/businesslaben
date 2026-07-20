@@ -271,4 +271,19 @@ export const BALANCE = {
      *  spilldager. */
     cooldownDagerVedFeil: 3,
   },
+
+  /** KROK 2 — STAMKUNDER (docs/ENGASJEMENT.md). Scenariokunder som husker eleven:
+   *  gode møter → kommer igjen og handler litt mer; dårlige → kjøligere/sjeldnere
+   *  (men aldri helt borte — service recovery). Konsekvens, aldri moralisering.
+   *  ALT tunbart. */
+  stamkunder: {
+    /** Antall FORNØYDE utfall (positiv rykte-delta) før kunden blir stamkunde. */
+    fornoydeForStamkunde: 2,
+    /** Stamkunder vektes OPP i dagens kundemiks. */
+    vektFaktor: 2,
+    /** Kunder med «misfornøyd sist» vektes NED (men uteblir aldri helt). */
+    vektMisfornoyd: 0.5,
+    /** Stamkunder handler litt mer — påslag på scenariobetalingen (kr, ikke antall). */
+    kjopsBonusFaktor: 1.2,
+  },
 }

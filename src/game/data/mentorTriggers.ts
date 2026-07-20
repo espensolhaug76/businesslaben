@@ -192,6 +192,13 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Du har fått post med en frist i 📬 Innboksen. Les den før fristen går ut — svarer du ikke i tide, mister du muligheten (eller en kunde). En kundebestilling er salg gjennom en ny [[MKT_006|distribusjonskanal]]; et tilbud må du regne på før du sier ja.',
   },
 
+  // ── KROK 2: STAMKUNDER (docs/ENGASJEMENT.md) ────────────────────────────────
+  {
+    id: 'stamkunde_forste',
+    betingelse: 'Første gang en kunde blir stamkunde (2+ fornøyde møter) — dynamisk melding navngir kunden',
+    melding: 'En av kundene dine kommer stadig igjen — du har fått en stamkunde! Gode møter bygger lojalitet.',
+  },
+
   // ── FANE-TRIGGERE (kontekstbundne) ──────────────────────────────────────────
   // Én per dashbord-fane (`fane`-feltet), første besøk. Vises KUN mens fanen er
   // aktiv (mentor:fane-kanalen i Mentor.tsx), re-armes hvis de ikke rekker frem.

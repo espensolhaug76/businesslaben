@@ -314,11 +314,17 @@ function GameContent() {
               </button>
             ))}
           </div>
-          {/* KROK 6 dev: still neste Espen spør-spørsmål nå (bypasser dagstaket). */}
-          <button onClick={() => dispatch({ type: 'STILL_ESPEN_SPOR', nivaa: klasseNivaa, aktiveTemaIds: Object.entries(aktiveTemaer).filter(([, v]) => v?.aktiv).map(([k]) => k), dev: true })}
-            style={{ background: 'rgba(168,85,247,0.18)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#d8b4fe', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-            🎓 Still neste spørsmål nå
-          </button>
+          {/* KROK 6/2 dev: still neste spørsmål + gjør siste møtte kunde til stamkunde. */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => dispatch({ type: 'STILL_ESPEN_SPOR', nivaa: klasseNivaa, aktiveTemaIds: Object.entries(aktiveTemaer).filter(([, v]) => v?.aktiv).map(([k]) => k), dev: true })}
+              style={{ background: 'rgba(168,85,247,0.18)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#d8b4fe', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+              🎓 Still neste spørsmål nå
+            </button>
+            <button onClick={() => dispatch({ type: 'DEV_GJOR_STAMKUNDE' })}
+              style={{ background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.45)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#5eead4', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+              👋 Gjør siste kunde til stamkunde
+            </button>
+          </div>
           <button
             onClick={() => { setSimOpen(true); setOverlay(true) }}
             title="Dev: gammel PEST-månedssimulering (dagssyklusen eier månedsrullen)"

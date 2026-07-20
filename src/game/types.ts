@@ -765,6 +765,9 @@ export interface GameState {
     sisteUtfall: 'fornoyd' | 'noytral' | 'misfornoyd'
     erStamkunde: boolean
   }>
+  /** Siste kunde (scenario-id) et EKTE møte ble løst med — dev-knappen «gjør til
+   *  stamkunde» virker på denne. Transient (ikke persistert). */
+  sisteMoteKundeId: string | null
 
   // ── TEMA 15 Reiseliv og vertskap (kun i bruk når temaet er aktivt) ──
   /** Aktiv/siste turistsesong (null = aldri startet). Persistert. */
