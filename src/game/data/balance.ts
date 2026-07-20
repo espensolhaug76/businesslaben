@@ -226,4 +226,30 @@ export const BALANCE = {
       fanfareVolum: 0.16,
     },
   },
+
+  /** KROK 7 — DEN LEVENDE INNBOKSEN (docs/ENGASJEMENT.md). Seedet e-post-motor:
+   *  taket (VG1 skal ikke drukne), sannsynlighetsvekter for dagsantall, andeler
+   *  villedende/overprisede tilbud, og mkf-boostens styrke. ALT tunbart her. */
+  innboks: {
+    /** Tak på samtidige UBESVARTE quest-e-poster (drukne-vern). */
+    maksAktiveUbesvart: 3,
+    /** Seedet dagsantall (0/1/2 nye per dag): P(0), P(1), resten → 2. Bevisst
+     *  lavt så en vanlig dag gir 0–1 (1–3/dag når flere ligger uåpnet). */
+    sjanseIngen: 0.45,
+    sjanseEn: 0.40,
+    /** Andel leverandørtilbud som er VILLEDENDE (oppblåst listepris → «rabatten»
+     *  er egentlig dyrere enn normal innkjøpspris). Subtile signaler, aldri åpenbart. */
+    leverandorLureriAndel: 0.35,
+    /** Andel markedsføringstilbud som er OVERPRISET (dobbel pris for samme løft). */
+    mkfOverprisAndel: 0.40,
+    mkf: {
+      /** Maks trafikkløft (faktor − 1) et mkf-tilbud gir ved FULL treff i egen
+       *  målgruppe. Dårlig kanalvalg → svakt (ikke 0) løft. Tidsavgrenset. */
+      maksLoft: 0.35,
+    },
+    /** Rykte-utslag: skuffet kunde (akseptert bestilling som ikke ble oppfylt) vs.
+     *  vellykket levering. Fortegn + tekst i UI, aldri kun farge. */
+    ryktSviktetLevering: -6,
+    ryktVellykketLevering: 2,
+  },
 }

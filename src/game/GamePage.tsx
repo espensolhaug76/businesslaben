@@ -291,6 +291,17 @@ function GameContent() {
               ⏩ Spol til sesongslutt
             </button>
           </div>
+          {/* KROK 7 dev: send test-e-poster + tving frister/leveranser til forfall. */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => dispatch({ type: 'DEV_SEND_TEST_EPOSTER' })}
+              style={{ background: 'rgba(168,85,247,0.18)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#d8b4fe', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+              ⏩ Send test-e-post av hver type
+            </button>
+            <button onClick={() => dispatch({ type: 'DEV_SPOL_TIL_FRIST' })}
+              style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.35)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#d8b4fe', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+              ⏩ Spol til frist
+            </button>
+          </div>
           <button
             onClick={() => { setSimOpen(true); setOverlay(true) }}
             title="Dev: gammel PEST-månedssimulering (dagssyklusen eier månedsrullen)"

@@ -15,6 +15,8 @@ import { provisjonKr, byTilbudById } from '../../src/game/data/bykatalog'
 import { BALANCE } from '../../src/game/data/balance'
 import { beregnPakke, velgProfil, EGEN_KAFE_ID, velgTuristkontorScenario, velgByhotellScenario } from '../../src/game/data/reiseliv'
 import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS } from '../../src/game/sales/scenarios'
+import { bestillingBetaling, tilbudsprisPerEnhet, leverandorNettoBesparelse, epostAbsDag, type KundebestillingPayload, type LeverandortilbudPayload } from '../../src/game/data/innboksEpost'
+import type { InboxMessage } from '../../src/game/types'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
 // Spiller byspillet (/game) ende til ende og asserter på state + DOM ved hvert
@@ -927,6 +929,103 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(s.dayStats.bakgrunnKr, 'den prisede varen selger (bakgrunn-kr > 0)').toBeGreaterThan(0)
     expect(s.dayStats.manglerPrisStk, 'INGEN «mangler pris»-tap for den prisede varen').toBe(0)
     ctx.ok(`Priser-fanen UI: coffee 0 → 50 kr (input→blur + Lagre), solgte ${s.dayStats.bakgrunnStk} stk (${Math.round(s.dayStats.bakgrunnKr)} kr) etter ${tikk} tikk, mangler-pris-tap: 0`)
+  })
+
+  // ── STEG 21 — KROK 7: DEN LEVENDE INNBOKSEN (quest-e-poster) ────────────────
+  // Verifiserer de tre kjernemekanikkene mot delt fasit (innboksEpost.ts):
+  //   A) seedet bestilling → aksept → levert → betaling == fasit
+  //   B) akseptert bestilling uten nok lager → skuffet kunde (sviktet + rykte ned)
+  //   C) dårlig (villedende) leverandørtilbud → aksept gir NEGATIVT nettoregnskap
+  // Tid fremskyndes via DEV_SPOL_TIL_FRIST (tvinger frist/levering til forfall NÅ
+  // og resolverer — samme sveip som dagstart), så steget er raskt + deterministisk.
+  const lesMsgs = async (): Promise<InboxMessage[]> =>
+    page.evaluate(() => (window.__GAME_STATE__ as unknown as { messages: InboxMessage[] }).messages)
+  // Status på en quest-e-post (SpillState-typen speiler ikke epost-feltene).
+  const epostStatus = (s: SpillState, id: string): string | undefined =>
+    (s.messages.find(m => m.id === id) as unknown as { epostStatus?: string } | undefined)?.epostStatus
+
+  await steg(page, rapport, 21, 'Innboksen: bestilling levert (betaling==fasit), sviktet levering (skuffet kunde), dårlig leverandørtilbud (negativt netto)', async ctx => {
+    // ── A) Bestilling levert → betaling == fasit ──
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'frisk boot for steg 21A')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 300 }] })
+    await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager coffee (A)')
+    // Pris coffee (kundebestilling velger prisede varer + betaling regnes av pris).
+    let prods = (await lesState(page)).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: 50 } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+    await ventState(page, s => s.products.find(p => p.id === 'coffee')!.retailPrice === 50, 'coffee priset 50 (A)')
+
+    await dispatch(page, { type: 'DEV_SEND_TEST_EPOSTER' })
+    await ventState(page, s => s.messages.some(m => m.type === 'kundebestilling'), 'test-e-poster injisert (A)')
+    const kb = (await lesMsgs()).find(m => m.type === 'kundebestilling')!
+    const kbPayload = kb.epost as KundebestillingPayload
+    const sBefore = await lesState(page)
+    const coffeeStockFor = sBefore.products.find(p => p.id === 'coffee')!.stock
+    const bestiltStk = kbPayload.varer.reduce((n, v) => n + v.qty, 0)
+    const fasitBetaling = bestillingBetaling(kbPayload, sBefore.products as never)
+    const moneyFor = sBefore.money
+
+    await dispatch(page, { type: 'ACCEPT_KUNDEBESTILLING', messageId: kb.id, mengderabatt: 0 })
+    await ventState(page, s => epostStatus(s, kb.id) === 'akseptert', 'bestilling akseptert (A)')
+    await dispatch(page, { type: 'DEV_SPOL_TIL_FRIST' })
+    // Poll til leveringen er resolvert i speilet (unngå å lese før React committer).
+    await ventState(page, s => epostStatus(s, kb.id) === 'levert', 'bestilling levert (A)')
+    const sA = await lesState(page)
+    expect(sA.money - moneyFor, `betaling == fasit (${fasitBetaling} kr)`).toBe(fasitBetaling)
+    expect(coffeeStockFor - sA.products.find(p => p.id === 'coffee')!.stock, `lager trukket ${bestiltStk} stk`).toBe(bestiltStk)
+    ctx.ok(`A: bestilling levert — betalt ${fasitBetaling} kr (== fasit), lager −${bestiltStk} stk`)
+
+    // ── B) Sviktet levering → skuffet kunde (rykte ned) ──
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'frisk boot for steg 21B')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 4 }] })  // for lite til bestillingen (8–16)
+    await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager coffee (B, lavt)')
+    prods = (await lesState(page)).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: 50 } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+    await ventState(page, s => s.products.find(p => p.id === 'coffee')!.retailPrice === 50, 'coffee priset 50 (B)')
+
+    await dispatch(page, { type: 'DEV_SEND_TEST_EPOSTER' })
+    await ventState(page, s => s.messages.some(m => m.type === 'kundebestilling'), 'test-e-poster injisert (B)')
+    const kbB = (await lesMsgs()).find(m => m.type === 'kundebestilling')!
+    const sB0 = await lesState(page)
+    const repFor = sB0.reputation
+    const moneyForB = sB0.money
+    await dispatch(page, { type: 'ACCEPT_KUNDEBESTILLING', messageId: kbB.id, mengderabatt: 0 })
+    await ventState(page, s => epostStatus(s, kbB.id) === 'akseptert', 'bestilling akseptert (B)')
+    await dispatch(page, { type: 'DEV_SPOL_TIL_FRIST' })
+    await ventState(page, s => epostStatus(s, kbB.id) === 'sviktet', 'bestilling sviktet (B)')
+    const sB = await lesState(page)
+    expect(sB.reputation, `skuffet kunde → rykte ned (${BALANCE.innboks.ryktSviktetLevering})`).toBe(Math.max(0, repFor + BALANCE.innboks.ryktSviktetLevering))
+    expect(sB.money, 'ingen betaling ved sviktet levering').toBe(moneyForB)
+    ctx.ok(`B: sviktet levering — rykte ${repFor} → ${sB.reputation}, ingen betaling`)
+
+    // ── C) Dårlig (villedende) leverandørtilbud → negativt nettoregnskap ──
+    const coffeeC = sB.products.find(p => p.id === 'coffee')!
+    const normal = coffeeC.costPrice
+    const rabatt = 15
+    const listepris = Math.ceil((normal / (1 - rabatt / 100)) * 1.3)   // oppblåst → tilbudspris > normal
+    const naaAbs = epostAbsDag(sB.currentYear, sB.currentMonth, sB.dayNumber)
+    const lureMsg: InboxMessage = {
+      id: 'test_lure_leverandor', type: 'leverandortilbud',
+      title: '🏷️ Testtilbud (villedende)', body: 'test', date: 'test', read: false,
+      avsender: 'Best Deal Grossist', fristAbsDag: naaAbs + 2, epostStatus: 'ubesvart',
+      epost: { kind: 'leverandortilbud', productId: 'coffee', navn: coffeeC.name, antall: 40, listeprisPerEnhet: listepris, rabattProsent: rabatt, erLureri: true, normalKostPerEnhet: normal },
+    }
+    const lurePayload = lureMsg.epost as LeverandortilbudPayload
+    const netto = leverandorNettoBesparelse(lurePayload)
+    const total = tilbudsprisPerEnhet(lurePayload) * 40
+    expect(netto, 'villedende tilbud har NEGATIVT nettoregnskap (fasit)').toBeLessThan(0)
+    await dispatch(page, { type: 'ADD_MESSAGE', message: lureMsg })
+    await ventState(page, s => s.messages.some(m => m.id === lureMsg.id), 'villedende tilbud lagt i innboks (C)')
+    const moneyForC = (await lesState(page)).money
+    await dispatch(page, { type: 'ACCEPT_LEVERANDORTILBUD', messageId: lureMsg.id })
+    await ventState(page, s => epostStatus(s, lureMsg.id) === 'akseptert', 'leverandørtilbud akseptert (C)')
+    const sC = await lesState(page)
+    expect(moneyForC - sC.money, `betalte det rabatterte innkjøpet (${total} kr)`).toBe(total)
+    expect(sC.incomingOrders.some(o => o.productId === 'coffee' && o.qty === 40), 'rabattert innkjøp på vei til lager').toBe(true)
+    ctx.ok(`C: villedende tilbud akseptert — netto ${netto} kr (negativt), betalte ${total} kr`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

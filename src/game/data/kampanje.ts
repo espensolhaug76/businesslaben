@@ -54,14 +54,21 @@ export const SEGMENT_TIL_IPSOS: Record<string, IpsosBucket[]> = {
   '60+':   ['60+'],
 }
 
-/** Kanalens gjennomsnittlige treff (%) i elevens valgte målgruppe-segmenter.
- *  Tom målgruppe → snitt over ALLE buckets (nøytralt). */
-export function kanalTreffISegmenter(kanal: KanalDef, segmenter: string[]): number {
+/** Et treff-kart (%) sitt gjennomsnitt i elevens valgte målgruppe-segmenter.
+ *  Tom målgruppe → snitt over ALLE buckets (nøytralt). Delt av kampanjen OG
+ *  markedsføringstilbudene i innboksen (Krok 7d) — samme skjulte kanal×målgruppe-
+ *  fasit. */
+export function treffISegmenter(treff: Record<IpsosBucket, number>, segmenter: string[]): number {
   const buckets = segmenter.length
     ? [...new Set(segmenter.flatMap(s => SEGMENT_TIL_IPSOS[s] ?? []))]
     : IPSOS_BUCKETS
   if (!buckets.length) return 0
-  return buckets.reduce((a, b) => a + kanal.treff[b], 0) / buckets.length
+  return buckets.reduce((a, b) => a + treff[b], 0) / buckets.length
+}
+
+/** Kanalens gjennomsnittlige treff (%) i elevens valgte målgruppe-segmenter. */
+export function kanalTreffISegmenter(kanal: KanalDef, segmenter: string[]): number {
+  return treffISegmenter(kanal.treff, segmenter)
 }
 
 // ── Kampanjekonfig + effektmodell (DEL 4/5 — delt fasit) ─────────────────────

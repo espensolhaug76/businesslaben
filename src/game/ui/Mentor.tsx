@@ -71,6 +71,8 @@ function oppfylt(id: string, s: GameState): boolean {
   switch (id) {
     case 'forste_apning': return s.dayPhase === 'åpen'
     case 'forste_bestilling_levert': return s.lastDelivery != null
+    // KROK 7 — DEN LEVENDE INNBOKSEN: første ULESTE quest-e-post med svarfrist.
+    case 'forste_epost_frist': return s.messages.some(m => m.epost != null && m.fristAbsDag != null && m.epostStatus === 'ubesvart' && !m.read)
     case 'forste_laan': return s.loans.length > 0
     case 'forste_manedsoppgjor': return s.lastMonthSettlement != null
     case 'forste_eierlonn': return s.lastMonthSettlement != null

@@ -2061,6 +2061,126 @@ Full URL (dev-server 5173): **`http://localhost:5173/game?skip=1`**
 - **Neste kroker (ENGASJEMENT.md byggerekkefølge #2–5):** Espen spør (Krok 6),
   Bestillinger (Krok 7a), Stamkunder (Krok 2), Klassens gate V1 (Krok 1).
 
+## 39. ENGASJEMENT — KROK 7: DEN LEVENDE INNBOKSEN (7a + 7b + 7d)
+
+> **Status: BYGGET på gren `spor-a/engasjement-innboks` (fra main).** `tsc -b` +
+> `vite build` + `npm run spilltest` **GRØNN 21/21** (nytt steg 21). **IKKE
+> merget** — main urørt, avventer Espens Chrome-validering (CLAUDE.md-regel:
+> aldri push/merge før manuell godkjenning). Referansedokument:
+> `docs/ENGASJEMENT.md` (Krok 7 + rammene + distribusjonstrappa). **7c Lokalavisen
+> er UTSATT** (krever stamkunder/besøk som kilder — Krok 2/6 må bygges først).
+> Rammene som gjelder: seedet deterministisk, tunbart tak (1–3/dag, VG1 skal ikke
+> drukne), hver e-post er noe å GJØRE eller noe som SKJEDDE, mentor varsler ulest
+> post m/frist, fortegn+tekst (aldri kun farge — Espen er fargeblind), ALDRI fasit
+> underveis (brannalarm-modellen: beslutning først, sannheten etterpå).
+
+**Arkitektur.** Quest-e-postene er førsteklasses `InboxMessage` (nye typer
+`kundebestilling`/`leverandortilbud`/`mkftilbud` + valgfrie felt `avsender`,
+`fristAbsDag`, `epostStatus`, `epost`-nyttelast, `epostRefleksjon`) — de flyter
+gjennom eksisterende ulest-teller, innboks-UI og mentor-badge. All logikk
+(generering/utløp/levering/effekt) i reduceren; DATA + rene kalkyler + seedede
+maler i ny `src/game/data/innboksEpost.ts`. Alt tunbart i `BALANCE.innboks`.
+
+**DEL 1 — e-post-motoren.** Seedet dagsgenerering i `START_NEW_DAY`
+(`genererDagensEposter`, PRNG fra `dagSeed`): 0–2 nye e-poster/dag (vektet lavt:
+P(0)=0.45, P(1)=0.40), aldri over taket `maksAktiveUbesvart=3` aktive ubesvarte.
+Utløp: `sveipEposter` resolverer forfalte frister ved dagstart — utløpt svarfrist
+= `utlopt` med refleksjon (tapt mulighet), ALDRI stille forsvinning. Frist-chip i
+innboks-headeren («⏰ Svarfrist: om N dager», gul ≤1 dag — tekst, ikke bare farge).
+
+**DEL 2 — 7a Kundebestillinger (quest, distribusjonstrappas trinn 2).** «Sett av
+X til [anledning] — henter om N dager.» Aksept = forpliktelse fram i tid
+(`epostStatus: akseptert`); levering skjer automatisk på leveringsdagen (samme
+`sveipEposter` som dagstart): nok lager → betaling (Σ qty×retailPrice, minus
+elevens valgte **mengderabatt** 0/10/15 %) + fornøyd kunde (+2 rykte); for lite
+lager → `sviktet` = skuffet kunde (−6 rykte, ingen betaling). VG2: skriftlig
+pristilbud-fritekst lagres på payloaden (vurderingsspor). Dette er «salg utenom
+disk» — bestillingen åpner en ny **distribusjonskanal** (trinn 2).
+
+**DEL 3 — 7b Leverandørtilbud (frist-beslutning).** «−R % på [vare] ved kjøp over
+N enheter.» Regnestykket er SKJULT til etter beslutningen: `tilbudsprisPerEnhet`
+vs. elevens normale `costPrice`. ~35 % (`leverandorLureriAndel`) er **villedende**
+(`erLureri`): rabatten regnes fra en oppblåst listepris så tilbudsprisen ender
+OVER normal innkjøpspris — subtile signaler (ukjent avsender fra en egen
+«lure»-liste, «Kun i dag — svar raskt!»), aldri åpenbart (forbereder personvern-
+temaets phishing). Aksept → rabattert innkjøp i leveringspipelinen (ankommer neste
+dagstart, samme som `ORDER_PRODUCT`). Post-hoc refleksjon avslører nettoregnskapet
+(«du sparte X» / «du betalte X for mye — sjekk alltid om rabatten er reell»).
+
+**DEL 4 — 7d Markedsføringstilbud (kobler Tema 8).** Annonseselger (Byposten,
+lokalavis 40+), influenser (matblogger 8 000 følgere, 20–35), sponsor
+(skolerevyen). Hvert har SKJULT kanal×målgruppe-treff — GJENBRUKER kampanjens
+`treffISegmenter` (refaktorert ut av `kanalTreffISegmenter` i `kampanje.ts`, samme
+fasit). Eleven ser ALDRI treff-tallet før beslutning; ~40 %
+(`mkfOverprisAndel`) er overpriset (dobbel pris, samme løft). Aksept → tidsavgrenset
+`mkfBoost` {faktor, sluttAbsDag} som løfter bakgrunnstrafikken i `OPEN_DAY` (som
+kampanjen), utløper i `START_NEW_DAY`. Post-hoc refleksjon leser treff vs. egen
+målgruppe («traff målgruppa godt/delvis/dårlig — X % daglig treff») + VG2-vinkelen
+«betalt omtale SKAL merkes (markedsføringsloven)» på influenser-tilbud.
+
+**DEL 5 — glossary + mentor + dev + spilltest.**
+- **Mentor-hendelse** `forste_epost_frist` (kø + peker, MAKS én gang): fyrer ved
+  første ULESTE quest-e-post med svarfrist. Token `[[MKT_006|distribusjonskanal]]`.
+- **Dev (?dev=1, GamePage):** «⏩ Send test-e-post av hver type»
+  (`DEV_SEND_TEST_EPOSTER`) + «⏩ Spol til frist» (`DEV_SPOL_TIL_FRIST` — tvinger
+  alle aktive frister/leveranser til forfall NÅ og resolverer dem).
+- **Spilltest steg 21 (21/21):** A) seedet bestilling → aksept → levert →
+  betaling **== fasit** (`bestillingBetaling`, 600 kr) + lager −12 stk; B) akseptert
+  bestilling uten nok lager → **sviktet** + rykte 50→44, ingen betaling; C)
+  villedende leverandørtilbud → aksept gir **negativt nettoregnskap** (−200 kr,
+  `leverandorNettoBesparelse` < 0) + betalt 760 kr + innkjøp på vei til lager.
+  (Fallgruve løst: test-broens `__GAME_STATE__`-speil oppdateres i en effekt ETTER
+  commit — les via `ventState`-polling på `epostStatus`, aldri bart `lesState` rett
+  etter `dispatch`, ellers leses stale speil.)
+
+### Glossary-FLAGG (sjekket, IKKE diktet — CLAUDE.md)
+Fant + brukt som token: **MKT_006 Distribusjonskanal**, **MKT_035
+Influencer-markedsføring**. **MANGLER i `glossary.json`** (ikke oppfunnet — Espen
+avgjør om de skal legges til): **mengderabatt** (kvantumsrabatt), **pristilbud**,
+**betalt omtale**. Disse brukes i UI-tekst/refleksjon uten token inntil de ev.
+legges inn (Espen-godkjent, som ECO_035-mønsteret i pkt. 35).
+
+### Datamodell-forenkling (flagg)
+Kundeleveransens betaling legges direkte på `money` ved dagstart (utenom
+dagsoppgjørets P&L), og de leverte varenes varekost utgiftsføres ikke i
+måneds-P&L (kun lager-uttrekk). Bevisst VG1-forenkling for engasjements-kroken —
+kan kobles inn i dagsresultatet senere om Espen vil ha full regnskapsintegritet.
+
+### Chrome-sjekkliste (Espen validerer)
+Full URL (dev-server 5173): **`http://localhost:5173/game?skip=1`**
+1. Lei et lokale, legg åpningsbestilling, still ut disk. Bruk **?dev=1** →
+   **`http://localhost:5173/game?dev=1&skip=1`** og klikk **«⏩ Send test-e-post av
+   hver type»** (nederst) → 3 e-poster i 📬 Innboksen (📋 bestilling, 🏷️ leverandør,
+   📣 markedsføring), og **Espen-mentoren varsler** «post med en frist».
+2. **📋 Bestilling:** åpne den → se varelinje + «Betaling ved dine priser», velg
+   **mengderabatt** (Ingen/10/15 %) — betalingen oppdateres, valgfritt skriftlig
+   pristilbud (VG2). «Ja, ta bestillingen» → **⏰-frist-chip** + status «✅ Takket
+   ja». Klikk **«⏩ Spol til frist»** → med nok lager: «📦 Levert» + betaling i kassa
+   + refleksjon; med for lite lager (tøm disken først): «⚠️ Ikke oppfylt» + skuffet
+   kunde (rykte ned).
+3. **🏷️ Leverandørtilbud:** åpne → «Ja, kjøp for X kr» (regnestykket er skjult).
+   Etterpå: status «✅ Takket ja» + **refleksjon** som avslører om det lønte seg
+   (villedende tilbud: «DYRERE enn din normale … du betalte X for mye»). Innkjøpet
+   dukker opp i Produkter → «Underveis».
+4. **📣 Markedsføringstilbud:** velg en målgruppe i Målgruppe-fanen først. «Ja, kjøp
+   plassen» → etterpå **refleksjon** «traff målgruppa godt/delvis/dårlig (X %)».
+   Åpne en dag → **trafikken løftes** mens boosten varer.
+5. **Frist utløper uten svar:** send test-e-poster, la dem ligge ULEST, «⏩ Spol
+   til frist» → «⌛ Frist utløpt» + «tapt mulighet» (ingen stille forsvinning).
+6. **Taket:** flere «Send test»-klikk stabler ikke opp mer enn 3 aktive ubesvarte
+   av gangen i vanlig dagsgenerering (dev-knappen kan overstige for testing).
+
+### Åpen oppfølging / flagg
+- **7c Lokalavisen** venter på stamkunder/besøk (Krok 2/6) som kilder — bygges når
+  de finnes.
+- **VG1/VG2-nivå:** det finnes ikke en GLOBAL VG1/VG2-flagg utenfor et aktivt tema,
+  så VG2-tilleggene (pristilbud-felt, betalt-omtale-vinkel) vises for ALLE (valgfrie
+  for VG1). Bind til nivå om et globalt nivå innføres.
+- **Persistens:** `mkfBoost` persisteres i `BUDSJETT_KEY` (samme reload-overlevelse
+  som kampanje/turistsesong). Selve quest-e-postene ligger i `state.messages` som
+  IKKE persisteres på reload (samme som dagens hotellavtale/pakke-forespørsler) —
+  konsistent med eksisterende innboks, ikke en ny begrensning.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Løpende markedsføring (`BALANCE.kampanje.lopende`) — SATT (pkt. 34→35):** pkt.

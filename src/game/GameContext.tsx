@@ -26,6 +26,12 @@ import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
 import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS } from './sales/scenarios'
 import { beregnPakke, velgProfil, BESOKSPROFILER, velgPakkeForesporsler } from './data/reiseliv'
+import {
+  genererDagensEposter, aktiveUbesvarte, byggTestEposter,
+  bestillingBetaling, bestillingKanOppfylles, leverandorNettoBesparelse, tilbudsprisPerEnhet,
+  mkfFaktor, mkfTreffProsent,
+  type KundebestillingPayload, type LeverandortilbudPayload, type MkftilbudPayload,
+} from './data/innboksEpost'
 
 // Tom dagsstatistikk (BAKGRUNNSSALG-feltene inkludert) — brukt av initialState,
 // OPEN_DAY (nullstilling).
@@ -247,6 +253,7 @@ const initialState: GameState = {
   budsjettOppgjorHint: null,
   kampanje: { aktiv: null, historikk: [], visRapportFor: null },
   prisendretDag: {},
+  mkfBoost: null,
   turistsesong: null,
   hotellavtale: 'ingen',
   opplevByenPameldt: false,
@@ -307,6 +314,20 @@ type Action =
   // Spor C: registrer formidlingsprovisjon fra en booking i hotell-lobbyen.
   | { type: 'REGISTRER_PROVISJON'; kr: number; tilbudNavn: string }
   | { type: 'READ_MESSAGE'; id: string }
+  // ── KROK 7 — DEN LEVENDE INNBOKSEN (docs/ENGASJEMENT.md) ──
+  /** 7a: takk ja til en kundebestilling (forplikt fram i tid). mengderabatt 0..1
+   *  eleven gir; pristilbud = VG2 skriftlig fritekst (vurderingsspor). */
+  | { type: 'ACCEPT_KUNDEBESTILLING'; messageId: string; mengderabatt: number; pristilbud?: string }
+  /** 7b: takk ja til et leverandørtilbud (rabattert innkjøp på vei til lager). */
+  | { type: 'ACCEPT_LEVERANDORTILBUD'; messageId: string }
+  /** 7d: takk ja til et markedsføringstilbud (tidsavgrenset trafikkboost). */
+  | { type: 'ACCEPT_MKFTILBUD'; messageId: string }
+  /** Takk nei til et quest-tilbud (bevisst avslag — ingen konsekvens). */
+  | { type: 'DECLINE_EPOST'; messageId: string }
+  /** Dev (?dev=1): injiser én test-e-post av hver type nå. */
+  | { type: 'DEV_SEND_TEST_EPOSTER' }
+  /** Dev (?dev=1): spol alle aktive quest-frister til «i går» (tving utløp/levering). */
+  | { type: 'DEV_SPOL_TIL_FRIST' }
   | { type: 'SET_TUTORIAL_STEP'; step: number }
   | { type: 'SET_P1_COMPLETE' }
   | { type: 'SET_P2_COMPLETE' }
@@ -388,6 +409,54 @@ function calcPlanQuality(state: GameState): number {
 /** Monoton absolutt spilldag (dayNumber nullstilles hver måned). */
 function absDag(year: number, month: number, dayNumber: number): number {
   return ((year - 1) * 12 + (month - 1)) * DAY_CONFIG.daysPerMonth + dayNumber
+}
+
+// ─── KROK 7 — DEN LEVENDE INNBOKSEN — reducer-hjelper ────────────────────────
+/** Resolver forfalte quest-e-poster ved en gitt absolutt dag: utløpte frister
+ *  (tapt mulighet — aldri stille forsvinning) og forfalte kundeleveranser (nok
+ *  lager → betaling + fornøyd kunde, ellers skuffet kunde). Ren funksjon; brukes
+ *  av START_NEW_DAY (dagstart) og dev-spol. Refleksjon settes FØRST her (etter
+ *  utfallet) — aldri fasit før beslutningen. */
+function sveipEposter(
+  messages: InboxMessage[], produkter: Product[], absNaa: number,
+): { messages: InboxMessage[]; produkter: Product[]; moneyDelta: number; reputationDelta: number } {
+  let moneyDelta = 0
+  let reputationDelta = 0
+  let prod = produkter
+  const K = BALANCE.innboks
+  const out = messages.map(m => {
+    if (!m.epost) return m
+    // Utløpt svarfrist (fremdeles ubesvart) → tapt mulighet.
+    if (m.epostStatus === 'ubesvart' && m.fristAbsDag != null && m.fristAbsDag < absNaa) {
+      const refleksjon = m.epost.kind === 'kundebestilling'
+        ? 'Fristen gikk ut uten svar — kunden fant en annen. Tapt mulighet (salg utenom disk).'
+        : 'Fristen gikk ut uten svar — tilbudet er ikke lenger gyldig.'
+      return { ...m, epostStatus: 'utlopt' as const, read: true, epostRefleksjon: refleksjon }
+    }
+    // Forfalt kundeleveranse (akseptert bestilling) → betaling eller skuffet kunde.
+    if (m.epostStatus === 'akseptert' && m.epost.kind === 'kundebestilling') {
+      const p = m.epost
+      if (p.leveringAbsDag <= absNaa) {
+        if (bestillingKanOppfylles(p, prod)) {
+          const betaling = bestillingBetaling(p, prod)
+          const trekk = new Map<string, number>()
+          for (const v of p.varer) trekk.set(v.productId, (trekk.get(v.productId) ?? 0) + v.qty)
+          prod = prod.map(x => trekk.has(x.id) ? { ...x, stock: x.stock - (trekk.get(x.id) ?? 0) } : x)
+          moneyDelta += betaling
+          reputationDelta += K.ryktVellykketLevering
+          const varelinje = p.varer.map(v => `${v.qty} ${v.navn.toLowerCase()}`).join(' + ')
+          const rabattTekst = p.mengderabatt ? ` (etter ${Math.round(p.mengderabatt * 100)} % mengderabatt)` : ''
+          return { ...m, epostStatus: 'levert' as const, read: true,
+            epostRefleksjon: `Levert ${varelinje} — betalt ${betaling} kr${rabattTekst}. Fornøyd kunde (+${K.ryktVellykketLevering} rykte).` }
+        }
+        reputationDelta += K.ryktSviktetLevering
+        return { ...m, epostStatus: 'sviktet' as const, read: true,
+          epostRefleksjon: `For lite på lager på leveringsdagen — kunden ble skuffet og dro tomhendt (${K.ryktSviktetLevering} rykte). Neste gang: sikre nok varer i forkant.` }
+      }
+    }
+    return m
+  })
+  return { messages: out, produkter: prod, moneyDelta, reputationDelta }
 }
 
 /** TEMA 15 — er turistsesongen aktiv PÅ en gitt absolutt dag? (startet, og
@@ -1331,6 +1400,113 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, messages, unreadCount }
     }
 
+    // ── KROK 7 — DEN LEVENDE INNBOKSEN (docs/ENGASJEMENT.md) ──────────────────
+    case 'ACCEPT_KUNDEBESTILLING': {
+      // 7a: forpliktelse fram i tid. Ingen betaling nå — levering (og betaling
+      // eller skuffet kunde) skjer på leveringsdagen (START_NEW_DAY-sveipet).
+      const msg = state.messages.find(m => m.id === action.messageId)
+      if (!msg || msg.epost?.kind !== 'kundebestilling' || msg.epostStatus !== 'ubesvart') return state
+      const rabatt = Math.max(0, Math.min(0.5, action.mengderabatt))
+      const payload: KundebestillingPayload = { ...msg.epost, mengderabatt: rabatt, pristilbud: action.pristilbud }
+      const antallStk = payload.varer.reduce((s, v) => s + v.qty, 0)
+      const messages = state.messages.map(m => m.id === action.messageId
+        ? { ...m, read: true, epostStatus: 'akseptert' as const, epost: payload,
+            epostRefleksjon: `Du forpliktet deg til å levere ${antallStk} stk ${payload.leveringTekst}. Sørg for nok på lager til da — mangler du varer, blir kunden skuffet.` }
+        : m)
+      return { ...state, messages, unreadCount: messages.filter(m => !m.read).length }
+    }
+
+    case 'ACCEPT_LEVERANDORTILBUD': {
+      // 7b: rabattert innkjøp på vei til lager (samme leveringspipeline som ORDER_PRODUCT).
+      const msg = state.messages.find(m => m.id === action.messageId)
+      if (!msg || msg.epost?.kind !== 'leverandortilbud' || msg.epostStatus !== 'ubesvart') return state
+      const p: LeverandortilbudPayload = msg.epost
+      const enhetspris = tilbudsprisPerEnhet(p)
+      const totalCost = enhetspris * p.antall
+      if (state.money < totalCost) return state
+      const raaAnkomst = state.dayNumber + DAY_CONFIG.leadTimeDays
+      const ankomstDag = ((raaAnkomst - 1) % DAY_CONFIG.daysPerMonth) + 1
+      const ankomstAbsDag = absDag(state.currentYear, state.currentMonth, state.dayNumber + DAY_CONFIG.leadTimeDays)
+      // Tilbudet gjelder alltid en vare eleven allerede fører (generert fra
+      // sortimentet) — ingen føring nødvendig; leveringen legges på eksisterende lager.
+      const mergeIdx = state.incomingOrders.findIndex(o => o.productId === p.productId && o.ankomstDag === ankomstDag)
+      const order: Bestilling = { productId: p.productId, qty: p.antall, bestiltDag: state.dayNumber, ankomstDag, costKr: totalCost }
+      const incomingOrders = mergeIdx >= 0
+        ? state.incomingOrders.map((o, i) => i === mergeIdx ? { ...o, qty: o.qty + order.qty, costKr: o.costKr + order.costKr } : o)
+        : [...state.incomingOrders, order]
+      // Post-hoc refleksjon (etter beslutning): regnestykket avsløres nå.
+      const netto = leverandorNettoBesparelse(p)
+      const refleksjon = netto >= 0
+        ? `Regnestykket: ${enhetspris} kr/stk mot din normale ${p.normalKostPerEnhet} kr/stk → du sparte ${netto} kr på ${p.antall} enheter.`
+        : `Regnestykket: ${enhetspris} kr/stk er faktisk DYRERE enn din normale ${p.normalKostPerEnhet} kr/stk — «rabatten» var regnet fra en oppblåst listepris. Du betalte ${-netto} kr for mye. Sjekk alltid om rabatten er reell.`
+      const messages = state.messages.map(m => m.id === action.messageId
+        ? { ...m, read: true, epostStatus: 'akseptert' as const, epost: { ...p, ankomstAbsDag }, epostRefleksjon: refleksjon }
+        : m)
+      return { ...state, money: state.money - totalCost, incomingOrders, messages, unreadCount: messages.filter(m => !m.read).length }
+    }
+
+    case 'ACCEPT_MKFTILBUD': {
+      // 7d: tidsavgrenset trafikkboost via kampanjens skjulte kanal×målgruppe-treff.
+      const msg = state.messages.find(m => m.id === action.messageId)
+      if (!msg || msg.epost?.kind !== 'mkftilbud' || msg.epostStatus !== 'ubesvart') return state
+      const p: MkftilbudPayload = msg.epost
+      if (state.money < p.kostnad) return state
+      const segmenter = state.targetAudience.ageGroups
+      const faktor = mkfFaktor(p, segmenter)
+      const treff = mkfTreffProsent(p, segmenter)
+      const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      // Post-hoc refleksjon: treff i EGEN målgruppe avsløres først nå.
+      const treffVurdering = treff >= 40 ? 'traff målgruppa godt' : treff >= 20 ? 'traff målgruppa delvis' : 'traff målgruppa dårlig'
+      const merke = p.merkekrav ? ' Husk: betalt omtale SKAL merkes som reklame (markedsføringsloven).' : ''
+      const refleksjon = `Kanalen ${treffVurdering} (${treff} % daglig treff i din valgte målgruppe). Løft ≈ +${Math.round((faktor - 1) * 100)} % trafikk i ${p.varighetDager} dager for ${p.kostnad} kr.${merke}`
+      const messages = state.messages.map(m => m.id === action.messageId
+        ? { ...m, read: true, epostStatus: 'akseptert' as const, epostRefleksjon: refleksjon }
+        : m)
+      return {
+        ...state,
+        money: state.money - p.kostnad,
+        mkfBoost: { faktor, sluttAbsDag: naa + p.varighetDager, kanalNavn: p.kanalNavn },
+        messages, unreadCount: messages.filter(m => !m.read).length,
+      }
+    }
+
+    case 'DECLINE_EPOST': {
+      const msg = state.messages.find(m => m.id === action.messageId)
+      if (!msg || !msg.epost || msg.epostStatus !== 'ubesvart') return state
+      const messages = state.messages.map(m => m.id === action.messageId
+        ? { ...m, read: true, epostStatus: 'avslatt' as const, epostRefleksjon: 'Du takket nei. Ingen forpliktelse — noen ganger er det riktige svaret nei.' }
+        : m)
+      return { ...state, messages, unreadCount: messages.filter(m => !m.read).length }
+    }
+
+    case 'DEV_SEND_TEST_EPOSTER': {
+      const nye = byggTestEposter(state.products, state.dayNumber, state.currentMonth, state.currentYear)
+      const messages = [...state.messages, ...nye]
+      return { ...state, messages, unreadCount: messages.filter(m => !m.read).length }
+    }
+
+    case 'DEV_SPOL_TIL_FRIST': {
+      // Tving alle aktive quest-frister/leveranser til å forfalle NÅ, og resolver
+      // dem umiddelbart (samme sveip som dagstart) — så dev kan se konsekvensen.
+      const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      const forfalt = state.messages.map(m => {
+        if (!m.epost) return m
+        if (m.epostStatus === 'ubesvart') return { ...m, fristAbsDag: naa - 1 }
+        if (m.epostStatus === 'akseptert' && m.epost.kind === 'kundebestilling')
+          return { ...m, epost: { ...m.epost, leveringAbsDag: naa } }
+        return m
+      })
+      const sveip = sveipEposter(forfalt, state.products, naa)
+      return {
+        ...state,
+        messages: sveip.messages,
+        products: sveip.produkter,
+        money: state.money + sveip.moneyDelta,
+        reputation: Math.max(0, Math.min(100, state.reputation + sveip.reputationDelta)),
+        unreadCount: sveip.messages.filter(m => !m.read).length,
+      }
+    }
+
     case 'SET_TUTORIAL_STEP':
       return { ...state, tutorialStep: action.step }
 
@@ -1382,6 +1558,12 @@ function reducer(state: GameState, action: Action): GameState {
       // TEMA 8: aktiv kampanje løfter trafikken med sin (låste) faktor.
       const kampAktiv = state.kampanje.aktiv && state.kampanje.aktiv.dagerKjort < state.kampanje.aktiv.varighet
       let kunder = kampAktiv ? Math.round(baseKunder * state.kampanje.aktiv!.faktor) : baseKunder
+      // KROK 7d: akseptert markedsføringstilbud gir et tidsavgrenset trafikkløft
+      // (samme skjulte kanal×målgruppe-treff som kampanjen). Gjelder t.o.m. sluttAbsDag.
+      const idagAbs = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      if (state.mkfBoost && state.mkfBoost.sluttAbsDag >= idagAbs) {
+        kunder = Math.round(kunder * state.mkfBoost.faktor)
+      }
       // TEMA 15: turistsesong løfter trafikken (+ hotellavtale-bonus ved aksept)
       // og setter turistandel/vare-vekt for bakgrunnssalget (deterministisk snapshot).
       const sesong = turistsesongAktiv(state)
@@ -1700,6 +1882,22 @@ function reducer(state: GameState, action: Action): GameState {
       // rapport-fasen (APPLY_MONTH_RESULT) er en egen, urørt flyt.
       const nextMonth = state.currentMonth + 1
       const isYearEnd = nextMonth > 12
+      const newMonth = rollsMonth ? (isYearEnd ? 1 : nextMonth) : state.currentMonth
+      const newYear = rollsMonth && isYearEnd ? state.currentYear + 1 : state.currentYear
+      const newAbsDag = absDag(newYear, newMonth, newDayNumber)
+
+      // KROK 7 — DEN LEVENDE INNBOKSEN: (1) resolver forfalte quest-e-poster på
+      // den nye dagen — utløpte frister + kundeleveranser (mot det NYLIG leverte
+      // lageret, så en morgenbestilling rekker leveringen); (2) seedet generering
+      // av dagens nye e-poster mot taket; (3) utløp av mkf-boost. Deterministisk.
+      const sveip = sveipEposter(state.messages, deliveredProducts, newAbsDag)
+      deliveredProducts = sveip.produkter
+      const nyeEposter = state.rentedLocationId
+        ? genererDagensEposter(deliveredProducts, newDayNumber, newMonth, newYear, aktiveUbesvarte(sveip.messages))
+        : []
+      const epostMessages = [...sveip.messages, ...nyeEposter]
+      const nyRep = Math.max(0, Math.min(100, state.reputation + sveip.reputationDelta))
+      const mkfBoost = state.mkfBoost && state.mkfBoost.sluttAbsDag >= newAbsDag ? state.mkfBoost : null
 
       // ØKONOMI-SAMLING (DEL 2) + LÅNEAVDRAG: ved MÅNEDSRULL bygges et
       // månedsoppgjør fra månedens dagsresultater, og de faste kostnadene +
@@ -1710,7 +1908,7 @@ function reducer(state: GameState, action: Action): GameState {
       // rente/avdrag-splitten. Nedbetalt lån (restgjeld 0) fjernes og slutter å
       // trekke. Dagsresultatet dekker allerede varekost/svinn, så månedsresultat
       // = sum(dagsresultat) − faste − (rente + avdrag).
-      let money = state.money
+      let money = state.money + sveip.moneyDelta   // KROK 7: kundeleveranse-betaling
       let settlement: MonthSettlement | null = state.lastMonthSettlement
       let loans = state.loans
       let monthlyLoanPayment = state.monthlyLoanPayment
@@ -1729,7 +1927,7 @@ function reducer(state: GameState, action: Action): GameState {
         loans = amort.loans
         monthlyLoanPayment = amort.loans.reduce((s, l) => s + l.monthlyPayment, 0)
         totalDebt = amort.loans.reduce((s, l) => s + l.remainingBalance, 0)
-        money = state.money - fasteKostnader - amort.betaling
+        money = money - fasteKostnader - amort.betaling   // behold KROK 7-betalingen
         settlement = {
           month: state.currentMonth, year: state.currentYear,
           inntekt, kostnadslinjer, fasteKostnader,
@@ -1772,8 +1970,14 @@ function reducer(state: GameState, action: Action): GameState {
         incomingOrders: stillPending,
         lastDelivery: deliveryLines.length > 0 ? { dayNumber: newDayNumber, lines: deliveryLines } : null,
         dayNumber: newDayNumber,
-        currentMonth: rollsMonth ? (isYearEnd ? 1 : nextMonth) : state.currentMonth,
-        currentYear: rollsMonth && isYearEnd ? state.currentYear + 1 : state.currentYear,
+        currentMonth: newMonth,
+        currentYear: newYear,
+        // KROK 7 — DEN LEVENDE INNBOKSEN: resolverte + nygenererte quest-e-poster,
+        // rykte etter kundeleveranser, og ev. utløpt mkf-boost.
+        messages: epostMessages,
+        unreadCount: epostMessages.filter(m => !m.read).length,
+        reputation: nyRep,
+        mkfBoost,
         dayPhase: 'stengt',
         meetingsToday: 0,
         lastDayResult: null,
@@ -1867,6 +2071,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const v = JSON.parse(raw)
         s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall,
           kampanje: v.kampanje ?? s.kampanje, prisendretDag: v.prisendretDag ?? s.prisendretDag,
+          mkfBoost: v.mkfBoost ?? s.mkfBoost,
           turistsesong: v.turistsesong ?? s.turistsesong, hotellavtale: v.hotellavtale ?? s.hotellavtale,
           opplevByenPameldt: v.opplevByenPameldt ?? s.opplevByenPameldt, reiselivPakke: v.reiselivPakke ?? s.reiselivPakke }
       }
@@ -1877,8 +2082,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
   useEffect(() => {
-    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt, reiselivPakke: state.reiselivPakke })) } catch { /* ignore */ }
-  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.turistsesong, state.hotellavtale, state.opplevByenPameldt, state.reiselivPakke])
+    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, mkfBoost: state.mkfBoost, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt, reiselivPakke: state.reiselivPakke })) } catch { /* ignore */ }
+  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.mkfBoost, state.turistsesong, state.hotellavtale, state.opplevByenPameldt, state.reiselivPakke])
 
   // TEST-BRO (KUN DEV): speil hele spilltilstanden + dispatch på window, så det
   // automatiserte spilltest-løpet (Playwright — se docs/SPILLTESTER.md) kan LESE

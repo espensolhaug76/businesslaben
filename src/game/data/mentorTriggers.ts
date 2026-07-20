@@ -185,6 +185,13 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'Du satte ned prisen på en vare som ikke hadde hatt ordinær pris lenge nok. Hvorfor tror du loven krever en ekte førpris før et tilbud?',
   },
 
+  // ── KROK 7: DEN LEVENDE INNBOKSEN (docs/ENGASJEMENT.md) ─────────────────────
+  {
+    id: 'forste_epost_frist',
+    betingelse: 'Første gang en quest-e-post med svarfrist ligger ulest i innboksen',
+    melding: 'Du har fått post med en frist i 📬 Innboksen. Les den før fristen går ut — svarer du ikke i tide, mister du muligheten (eller en kunde). En kundebestilling er salg gjennom en ny [[MKT_006|distribusjonskanal]]; et tilbud må du regne på før du sier ja.',
+  },
+
   // ── FANE-TRIGGERE (kontekstbundne) ──────────────────────────────────────────
   // Én per dashbord-fane (`fane`-feltet), første besøk. Vises KUN mens fanen er
   // aktiv (mentor:fane-kanalen i Mentor.tsx), re-armes hvis de ikke rekker frem.

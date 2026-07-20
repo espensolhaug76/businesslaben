@@ -25,9 +25,13 @@ import {
   KANALER, kanalDagspris, kanalById, kampanjeKostnad, KAMPANJE_HUB, KOMMUNIKASJONSKANALER_RUTE,
   type KampanjeKanalValg,
 } from '../data/kampanje'
+import {
+  tilbudsprisPerEnhet, bestillingGrunnbetaling, epostAbsDag,
+  type KundebestillingPayload, type LeverandortilbudPayload, type MkftilbudPayload,
+} from '../data/innboksEpost'
 import MarkedsplanOppsummering from './MarkedsplanOppsummering'
 import { aktiveFunksjoner, evaluerRefleksjon, oppgaveRefleksjoner } from '../data/orgRefleksjon'
-import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift } from '../types'
+import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift, InboxMessage } from '../types'
 import type { Loan } from '../types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
@@ -3251,6 +3255,7 @@ function InnboksTab() {
     mentor: '🧑‍🏫', pest_event: '📰', game_event: '🚀', beredskap: '🦺',
     customer_complaint: '😤', supplier: '📦', teacher_task: '📚', kampanje: '⚖️',
     hotellavtale: '🏨', pakkeforesporsel: '📧',
+    kundebestilling: '📋', leverandortilbud: '🏷️', mkftilbud: '📣',
   }
 
   if (msgs.length === 0) {
@@ -3303,7 +3308,15 @@ function InnboksTab() {
                     {msg.title}
                     {!msg.read && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', flexShrink: 0, display: 'inline-block' }} />}
                   </div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>{msg.date}</div>
+                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                    {msg.date}
+                    {msg.epostStatus === 'ubesvart' && msg.fristAbsDag != null && (() => {
+                      const naa = epostAbsDag(state.currentYear, state.currentMonth, state.dayNumber)
+                      const igjen = msg.fristAbsDag - naa
+                      const tekst = igjen <= 0 ? 'Svarfrist: i dag!' : igjen === 1 ? 'Svarfrist: i morgen' : `Svarfrist: om ${igjen} dager`
+                      return <span style={{ marginLeft: 8, color: igjen <= 1 ? '#f59e0b' : '#94a3b8', fontWeight: 700 }}>⏰ {tekst}</span>
+                    })()}
+                  </div>
                 </div>
                 <span style={{ color: '#64748b', fontSize: 12 }}>{isOpen ? '▲' : '▼'}</span>
               </button>
@@ -3370,6 +3383,10 @@ function InnboksTab() {
                     </button>
                   )}
 
+                  {/* KROK 7 — DEN LEVENDE INNBOKSEN: quest-e-poster (bestilling/
+                      leverandør-/markedsføringstilbud) med beslutning + refleksjon. */}
+                  {msg.epost && <EpostQuestBlokk msg={msg} />}
+
                   {/* TEMA 1 — brannalarm som rekkefølge-øvelse, deretter utfall + sammenligning */}
                   {msg.type === 'beredskap' && (
                     (state.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0 ? (
@@ -3414,6 +3431,148 @@ function InnboksTab() {
       {pakkeReq && (
         <Pakkebygger profil={pakkeReq.profil} foresporselTittel={pakkeReq.tittel} onLukk={() => setPakkeReq(null)} />
       )}
+    </div>
+  )
+}
+
+// ── KROK 7 — DEN LEVENDE INNBOKSEN: quest-e-post-blokk ────────────────────────
+// Beslutning FØRST (ja/nei med tydelig konsekvens), refleksjon ETTER — aldri
+// fasit før valget (brannalarm-modellen). Fortegn + tekst, aldri kun farge.
+const EPOST_STATUS: Record<string, { ikon: string; tekst: string; farge: string }> = {
+  akseptert: { ikon: '✅', tekst: 'Takket ja', farge: '#22c55e' },
+  avslatt:   { ikon: '✋', tekst: 'Takket nei', farge: '#94a3b8' },
+  levert:    { ikon: '📦', tekst: 'Levert', farge: '#22c55e' },
+  sviktet:   { ikon: '⚠️', tekst: 'Ikke oppfylt', farge: '#f59e0b' },
+  utlopt:    { ikon: '⌛', tekst: 'Frist utløpt', farge: '#ef4444' },
+}
+
+function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
+  const { state, dispatch } = useGame()
+  const p = msg.epost!
+  const [rabatt, setRabatt] = useState(0)
+  const [pristilbud, setPristilbud] = useState('')
+  const ubesvart = msg.epostStatus === 'ubesvart'
+
+  const knappJa = {
+    background: 'linear-gradient(135deg,#22c55e,#16a34a)', border: 'none', borderRadius: 99,
+    padding: '0.5rem 1.1rem', color: '#06210f', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+  } as const
+  const knappNei = {
+    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 99,
+    padding: '0.5rem 1.1rem', color: '#cbd5e1', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+  } as const
+
+  // ── Etter beslutning: status-pille + refleksjon ──
+  if (!ubesvart) {
+    const st = EPOST_STATUS[msg.epostStatus ?? '']
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {st && (
+          <span style={{ alignSelf: 'flex-start', background: `${st.farge}1a`, border: `1px solid ${st.farge}55`, color: st.farge, borderRadius: 99, padding: '2px 12px', fontSize: 12, fontWeight: 800 }}>
+            {st.ikon} {st.tekst}
+          </span>
+        )}
+        {msg.epostRefleksjon && (
+          <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.6, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
+            🧑‍🏫 {msg.epostRefleksjon}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── 7a KUNDEBESTILLING ──
+  if (p.kind === 'kundebestilling') {
+    const kb = p as KundebestillingPayload
+    const grunn = bestillingGrunnbetaling(kb, state.products)
+    const betaling = Math.round(grunn * (1 - rabatt))
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, padding: '0.6rem 0.8rem', fontSize: 12.5, color: '#cbd5e1' }}>
+          <div style={{ fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>Bestillingen:</div>
+          {kb.varer.map((v, i) => (
+            <div key={i}>· {v.qty} {v.navn} — leveres {kb.leveringTekst}</div>
+          ))}
+          <div style={{ marginTop: 6, color: '#94a3b8' }}>Betaling ved dine priser: <strong style={{ color: '#f1f5f9' }}>{grunn.toLocaleString('nb-NO')} kr</strong></div>
+          <div style={{ marginTop: 2, color: '#94a3b8', fontSize: 11 }}>Du må ha nok på lager på leveringsdagen — bestill i forkant om du mangler.</div>
+        </div>
+
+        {/* Mengderabatt eleven avgjør */}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>Vil du gi mengderabatt?</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[0, 0.10, 0.15].map(r => (
+              <button key={r} onClick={() => setRabatt(r)}
+                style={{ background: rabatt === r ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${rabatt === r ? '#38bdf8' : 'rgba(255,255,255,0.12)'}`, borderRadius: 8, padding: '0.35rem 0.7rem', color: '#f1f5f9', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {r === 0 ? 'Ingen' : `${Math.round(r * 100)} %`}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Betaling: <strong style={{ color: '#f1f5f9' }}>{betaling.toLocaleString('nb-NO')} kr</strong> — rabatt bygger kunderelasjon, men koster margin.</div>
+        </div>
+
+        {/* VG2: skriftlig pristilbud (vurderingsspor) */}
+        <div>
+          <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Skriftlig pristilbud til kunden (valgfritt):</label>
+          <textarea value={pristilbud} onChange={e => setPristilbud(e.target.value)} rows={2}
+            placeholder="F.eks. «12 boller + kaffe, samlet 540 kr, levert fredag kl. 10.»"
+            style={{ width: '100%', marginTop: 4, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '0.45rem 0.6rem', color: '#f1f5f9', fontSize: 12, fontFamily: 'inherit', resize: 'vertical' }} />
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={knappJa} onClick={() => { kassePling(); dispatch({ type: 'ACCEPT_KUNDEBESTILLING', messageId: msg.id, mengderabatt: rabatt, pristilbud: pristilbud.trim() || undefined }) }}>
+            Ja, ta bestillingen
+          </button>
+          <button style={knappNei} onClick={() => dispatch({ type: 'DECLINE_EPOST', messageId: msg.id })}>Nei takk</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── 7b LEVERANDØRTILBUD ──
+  if (p.kind === 'leverandortilbud') {
+    const lt = p as LeverandortilbudPayload
+    const enhet = tilbudsprisPerEnhet(lt)
+    const total = enhet * lt.antall
+    const raakraft = state.money < total
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, padding: '0.6rem 0.8rem', fontSize: 12.5, color: '#cbd5e1' }}>
+          <div>Kjøp <strong style={{ color: '#f1f5f9' }}>{lt.antall} × {lt.navn}</strong></div>
+          <div style={{ marginTop: 4 }}>Tilbudspris: <strong style={{ color: '#f1f5f9' }}>{enhet} kr/stk</strong> ({lt.rabattProsent} % av {lt.listeprisPerEnhet} kr listepris)</div>
+          <div style={{ marginTop: 2, color: '#94a3b8' }}>Totalt: {total.toLocaleString('nb-NO')} kr</div>
+          <div style={{ marginTop: 6, color: '#94a3b8', fontSize: 11 }}>💡 Lønner det seg? Sammenlign tilbudsprisen med det du normalt betaler per enhet.</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button style={{ ...knappJa, opacity: raakraft ? 0.5 : 1, cursor: raakraft ? 'not-allowed' : 'pointer' }} disabled={raakraft}
+            onClick={() => { if (!raakraft) { kassePling(); dispatch({ type: 'ACCEPT_LEVERANDORTILBUD', messageId: msg.id }) } }}>
+            Ja, kjøp for {total.toLocaleString('nb-NO')} kr
+          </button>
+          <button style={knappNei} onClick={() => dispatch({ type: 'DECLINE_EPOST', messageId: msg.id })}>Nei takk</button>
+          {raakraft && <span style={{ fontSize: 11, color: '#ef4444' }}>Ikke nok penger i kassa</span>}
+        </div>
+      </div>
+    )
+  }
+
+  // ── 7d MARKEDSFØRINGSTILBUD ──
+  const mt = p as MkftilbudPayload
+  const raakraft = state.money < mt.kostnad
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, padding: '0.6rem 0.8rem', fontSize: 12.5, color: '#cbd5e1' }}>
+        <div><strong style={{ color: '#f1f5f9' }}>{mt.kanalNavn}</strong> — {mt.tilbyder}</div>
+        <div style={{ marginTop: 4 }}>Pris: <strong style={{ color: '#f1f5f9' }}>{mt.kostnad.toLocaleString('nb-NO')} kr</strong> for {mt.varighetDager} dager</div>
+        <div style={{ marginTop: 6, color: '#94a3b8', fontSize: 11 }}>💡 Når denne kanalen DIN målgruppe? Sjekk hvem kanalen treffer før du betaler.</div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button style={{ ...knappJa, opacity: raakraft ? 0.5 : 1, cursor: raakraft ? 'not-allowed' : 'pointer' }} disabled={raakraft}
+          onClick={() => { if (!raakraft) { kassePling(); dispatch({ type: 'ACCEPT_MKFTILBUD', messageId: msg.id }) } }}>
+          Ja, kjøp plassen
+        </button>
+        <button style={knappNei} onClick={() => dispatch({ type: 'DECLINE_EPOST', messageId: msg.id })}>Nei takk</button>
+        {raakraft && <span style={{ fontSize: 11, color: '#ef4444' }}>Ikke nok penger i kassa</span>}
+      </div>
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import type { RisikoRad, BrannalarmKvalitet, BrannovelseForsok } from './data/beredskap'
 import type { BudsjettState, NokkeltallSvar } from './data/budsjett'
 import type { KampanjeState } from './data/kampanje'
+import type { EpostPayload, EpostStatus } from './data/innboksEpost'
 
 export type Industry = 'cafe' | 'fashion' | 'tech' | 'sports'
 export type LocationZone = 'utkant' | 'hovedgata' | 'gagata'
@@ -275,6 +276,8 @@ export interface PestEvent {
 export interface InboxMessage {
   id: string
   type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event' | 'beredskap' | 'kampanje' | 'hotellavtale' | 'pakkeforesporsel'
+    // KROK 7 — DEN LEVENDE INNBOKSEN (docs/ENGASJEMENT.md): quest-bærende e-poster.
+    | 'kundebestilling' | 'leverandortilbud' | 'mkftilbud'
   title: string
   body: string
   date: string
@@ -289,6 +292,18 @@ export interface InboxMessage {
    *  forespørselen mapper til (BESOKSPROFILER). «Svar med en pakke» åpner
    *  pakkebyggeren mot denne profilen. */
   pakkeProfilId?: string
+  // ── KROK 7 quest-felt (kun satt på quest-e-post-typene over) ──────────────
+  /** Avsender (kunde/leverandør/annonseselger). */
+  avsender?: string
+  /** Absolutt spilldag svarfristen løper ut (driver mentor-badgen «ulest m/frist»
+   *  og utløps-sveipet i START_NEW_DAY). */
+  fristAbsDag?: number
+  /** Quest-livsløpet (adskilt fra `read`). Se EpostStatus. */
+  epostStatus?: EpostStatus
+  /** Type-spesifikk quest-nyttelast (diskriminert på `kind`). */
+  epost?: EpostPayload
+  /** Utfall-/refleksjonslinje satt ETTER beslutning/levering (aldri fasit før). */
+  epostRefleksjon?: string
 }
 
 // ── Business Model Canvas ─────────────────────────────────────────────────────
@@ -715,6 +730,12 @@ export interface GameState {
   /** Absolutt spilldag da produktets retailPrice sist ble AKTIVT endret av eleven
    *  (førpris-regelen). Mangler = etablert pris (aldri endret). Persistert. */
   prisendretDag: Record<string, number>
+
+  // ── KROK 7d — akseptert markedsføringstilbud (docs/ENGASJEMENT.md) ──
+  /** Aktiv, tidsavgrenset trafikkboost fra et akseptert mkf-tilbud i innboksen.
+   *  Løfter bakgrunnstrafikken (som kampanjen) til og med `sluttAbsDag`. Null =
+   *  ingen aktiv boost. Persistert. */
+  mkfBoost: { faktor: number; sluttAbsDag: number; kanalNavn: string } | null
 
   // ── TEMA 15 Reiseliv og vertskap (kun i bruk når temaet er aktivt) ──
   /** Aktiv/siste turistsesong (null = aldri startet). Persistert. */
