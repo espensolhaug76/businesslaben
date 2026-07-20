@@ -553,6 +553,10 @@ export interface GameState {
     xpEarned: number
     /** Minst ett salgsforsøk i dag traff en utsolgt vare (møte eller bakgrunn). */
     stockoutHappened: boolean
+    /** KROK 4 (game feel): siste FORNØYDE kundemøte (positiv rykte-delta) —
+     *  `minutt` = dayMinute da det skjedde, så dagspulsen kan vise en transient
+     *  💚-badge som fader når klokka går videre. */
+    sisteMoteFornoyd?: { minutt: number } | null
   }
   /** Dagens bakgrunnssalg-plan (BAKGRUNNSSALG) — beregnet ved OPEN_DAY, tappet
    *  løpende per klokke-tick. Null utenom en handledag. */

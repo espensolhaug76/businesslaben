@@ -9,6 +9,7 @@ import { tileCount, trauCols } from './MonterScene'
 import { useGame, turistsesongInfo } from '../GameContext'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
 import { BALANCE } from '../data/balance'
+import './cityAnim.css'
 import { dagSeed } from '../data/backgroundSales'
 import { velgAmbientTurister } from '../data/reiseliv'
 
@@ -359,6 +360,8 @@ export default function InteriorView({ districtId, lokaleId }: {
           fontSize: 13, fontWeight: 700, fontFamily: "'Outfit', sans-serif",
           maxWidth: 520, boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
         }}>
+          {/* KROK 4 — eska glir inn ved dagstart (én gang, varighet fra balance). */}
+          <span className="leveranse-glid" style={{ fontSize: 18, animationDuration: `${BALANCE.gamefeel.leveranseAnimMs}ms` }}>📦</span>
           <span>
             {ACTIVE_DEF.forsyning.klarMelding(state.lastDelivery.lines.map(l => `${l.qty} × ${l.name}`).join(', '))}
           </span>

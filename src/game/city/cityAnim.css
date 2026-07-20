@@ -53,3 +53,15 @@
   animation: pin-pulse 2.4s ease-in-out infinite;
   transform-origin: 50% 100%;
 }
+
+/* KROK 4 (game feel) — leveranse-eska glir inn ved dagstart (kjøres ÉN gang;
+   varigheten settes inline fra balance.gamefeel.leveranseAnimMs). */
+@keyframes leveranse-glid {
+  0%   { transform: translateX(-52px) rotate(-9deg); opacity: 0; }
+  55%  { transform: translateX(5px)  rotate(3deg);  opacity: 1; }
+  100% { transform: translateX(0)    rotate(0);     opacity: 1; }
+}
+.leveranse-glid { animation-name: leveranse-glid; animation-timing-function: ease-out; animation-fill-mode: both; display: inline-block; }
+@media (prefers-reduced-motion: reduce) {
+  .leveranse-glid { animation: none; }
+}

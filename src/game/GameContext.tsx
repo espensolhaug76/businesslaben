@@ -625,6 +625,9 @@ function reducer(state: GameState, action: Action): GameState {
           reputationDelta: state.dayStats.reputationDelta + action.reputationDelta,
           xpEarned: state.dayStats.xpEarned + action.xpEarned,
           stockoutHappened: state.dayStats.stockoutHappened || stockoutNow,
+          // KROK 4: et FORNØYD kundemøte (positiv rykte-delta) → 💚 i dagspulsen.
+          sisteMoteFornoyd: (isMeeting && action.reputationDelta > 0)
+            ? { minutt: state.dayMinute } : state.dayStats.sisteMoteFornoyd,
         } : state.dayStats,
       }
     }

@@ -94,6 +94,16 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
             </span>
           </div>
         )}
+        {/* KROK 4 — 💚 fornøyd kundemøte (transient, fader når klokka går videre).
+            Emoji + TEKST, aldri kun farge. */}
+        {state.dayStats.sisteMoteFornoyd &&
+          (state.dayMinute - state.dayStats.sisteMoteFornoyd.minutt) < BALANCE.gamefeel.fornoydBadgeMinutt && (
+          <motion.div key={state.dayStats.sisteMoteFornoyd.minutt} initial={{ opacity: 0, y: -6, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} style={{ textAlign: 'center' }}>
+            <span style={{ display: 'inline-block', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.5)', borderRadius: 99, padding: '3px 12px', fontSize: 12, fontWeight: 800, color: '#4ade80' }}>
+              💚 Fornøyd kunde!
+            </span>
+          </motion.div>
+        )}
 
         {/* Klokke + fremdrift */}
         <div style={{ textAlign: 'center' }}>
