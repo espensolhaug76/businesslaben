@@ -1979,6 +1979,61 @@ alt). Kafé-ambient-kommentaren i balance.ts oppdatert.
   (ett resultatkort om gangen) — bevisst enkelt; vurder egen slot per forespørsel
   hvis Espen vil ha flere parallelle.
 
+## 38. ENGASJEMENT — KROK 4 GAME FEEL-PAKKEN (ENGASJEMENTSLAGET v2)
+
+> **Status: bygget, IKKE merget — Espen validerer i Chrome.** Gren
+> `spor-a/engasjement-gamefeel` (fra main @ afaf2d8). `tsc -b` + `vite build` +
+> `npm run spilltest` (**19/19**, lyd + animasjoner AV/snap i headless) grønn.
+> Referansedokument: `docs/ENGASJEMENT.md` (DEL 0). Rammene der gjelder: ingen
+> XP/poeng for klikking, alt seedet deterministisk, kosmetikk gir aldri fordel,
+> fortegn+tekst (aldri kun farge/emoji). Alt tunbart i `balance.ts.gamefeel`.
+
+**DEL 1a — Lyd (Web Audio, syntetisert; ingen eksterne ressurser).**
+`gamefeel/lyd.ts`: kasse-pling ved hvert bakgrunnssalg (dempet, maks 1/sek via
+cooldown), kort oppgjørs-fanfare KUN ved positivt dagsresultat. Global 🔊/🔇-
+bryter i HUD (localStorage, default PÅ). **ALLTID av i headless/spilltest**
+(`navigator.webdriver`). AudioContext armes ved første brukergest (autoplay).
+`gamefeel/GameFeelAudio.tsx` (rendrer ingenting) lytter på state — reduceren
+forblir ren.
+
+**DEL 1b — Animerte tall.** `gamefeel/useAnimatedNumber.ts` (easeOutCubic):
+HUD-kassa teller mykt opp/ned ved endring; dagsoppgjørets sluttsum teller opp
+(`useCountUp`). Snapper øyeblikkelig i headless + `prefers-reduced-motion`.
+
+**DEL 1c — Dagsoppgjør som seremoni.** 2-sek oppsummeringskort «Dag X: N kunder ·
+[seedet høydepunkt]» FØR talloppsettet; klikk hopper over (per-dag, ikke replay).
+Høydepunktet er deterministisk: 🌟 beste dag denne uka / 🍃 rolig dag / seedet
+nøytral linje.
+
+**DEL 1d — Mikro-animasjoner.** 📦-leveranse-eska glir inn ved dagstart (CSS
+`leveranse-glid`, én gang, av ved reduced-motion) på «ferske varer klare»-pilla i
+kaféinteriøret. Fornøyd kundemøte (positiv rykte-delta) → transient 💚-badge i
+dagspulsen som fader (ny `dayStats.sisteMoteFornoyd`).
+
+### Chrome-sjekkliste (Espen validerer)
+Full URL (dev-server 5173): **`http://localhost:5173/game?skip=1`**
+1. **Lyd på/av:** 🔊-knappen i HUD (ved siden av 🔔/💻). Default på; klikk → 🔇.
+2. Leie et lokale (sentrum «TIL LEIE»), legg åpningsbestilling, **åpne en dag** →
+   under dagen: kasse-**pling** ved bakgrunnssalg (maks ett i sekundet, dempet),
+   og **💰-kassa i HUD teller** mykt når penger kommer inn.
+3. Spill et kundemøte og velg gode svar → **💚 Fornøyd kunde!**-badge i dagspulsen
+   (fader etterpå).
+4. **Steng dagen** → **seremonikort** «Dag X: N kunder · [høydepunkt]» i 2 sek
+   (klikk hopper over) → tallene, **sluttsummen teller opp**, og ved **positivt**
+   resultat en kort **fanfare** (negativt = ingen lyd).
+5. **Start ny dag** med en leveranse ventende → **📦-eska glir inn** i «ferske
+   varer klare»-pilla i kaféen.
+6. Skru på «Redusert bevegelse» i OS → animasjoner snapper (tallene bare bytter).
+
+### Åpen oppfølging / flagg
+- **Lyd-syntesen** (pling/fanfare) er enkle oscillator-toner — Espen sier ifra om
+  han vil ha annen karakter (volum/tonehøyde er tunbart i `balance.ts.gamefeel.lyd`).
+- **«Ved døra»:** leveranse-eska glir inn på leveranse-pilla (toppmidtstilt), ikke
+  bundet til en tracet dør-sone. Kan bindes til interiørets dør senere (?dev-trace)
+  om ønsket.
+- **Neste kroker (ENGASJEMENT.md byggerekkefølge #2–5):** Espen spør (Krok 6),
+  Bestillinger (Krok 7a), Stamkunder (Krok 2), Klassens gate V1 (Krok 1).
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Løpende markedsføring (`BALANCE.kampanje.lopende`) — SATT (pkt. 34→35):** pkt.
