@@ -39,17 +39,20 @@ export interface ByTilbud {
   kategori: ByKategori
   /** DEL 4b: kan hotellet booke det for gjesten? Hotellets egne tilbud = false. */
   bookbar: boolean
-  /** DEL 4b: formidlingsprovisjon i % (tunbar; 10–20 % variasjon MELLOM tilbydere
-   *  — noen gir mer enn andre, det er poenget). Hotellets egne tilbud + gratis/
-   *  ikke-bookbare = 0. */
+  /** DEL 4b: AVTALT provisjonssats i % — en FERDIGFORHANDLET avtale (eleven
+   *  forhandler ikke, den bruker satsen). Variasjon MELLOM tilbydere (ca. 8–20 %
+   *  — noen gir mer enn andre, det er poenget: den høyeste er sjelden best for
+   *  gjesten). Hotellets egne tilbud + gratis/ikke-bookbare = 0. */
   provisjonsProsent: number
   /** Grov pris i kr (for provisjonsberegning + «koster N kr»-følelse). */
   pris: number
 }
 
-// Provisjon MELLOM tilbydere varierer bevisst (10–20 %). Fjellstien/torghandelen/
-// akebakken er GRATIS/ikke-bookbare (provisjon 0) — de er ofte BEST for gjesten,
-// men gir hotellet ingenting: kjernen i provisjons-spenningen (DEL 4b c).
+// Avtalt sats MELLOM tilbydere varierer bevisst (ca. 8–20 %) — ferdigforhandlede
+// avtaler eleven BRUKER (ikke forhandler; «Hotellets avtaler»-visningen gjør dem
+// åpne). Fjellstien/torghandelen/akebakken er GRATIS/ikke-bookbare (provisjon 0)
+// — ofte BEST for gjesten, men gir hotellet ingenting: kjernen i provisjons-
+// spenningen (DEL 4b c).
 export const BYKATALOG: ByTilbud[] = [
   // ── Aktiviteter (bookbare der det gir mening) ──────────────────────────────
   { id: 'utsiktspunktet', navn: 'Utsiktsheisen', beskrivelse: 'Stolheis opp til byfjellets topp med utsikt over hele dalen.',

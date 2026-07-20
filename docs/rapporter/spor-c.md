@@ -362,3 +362,55 @@ Anbefaling: pek den låste byhotell-hotspoten til lobby-scenen
 (`/game/d/stasjonsomradet/hotell-lobby`) — scenen er den rikere «gjest kommer inn,
 klikk = møte»-opplevelsen — og vurder om Tema 15s byhotell-scenarier skal flyttes
 inn i lobby-motoren. Rørte IKKE Tema 15s panel i denne runden (egen beslutning).
+
+---
+
+## DEL 8 — Forenkling: forhandling → ferdigforhandlede avtaler (2026-07-20)
+
+**Espens beslutning:** den frittstående «Gjestepakke-forhandlingen» i lobbyen
+(DEL 3) er **strøket helt**. Hotellet har FERDIGFORHANDLEDE avtaler — eleven
+**bruker** dem, forhandler ikke. Dette speiler skolepraksis: pakker settes sammen
+av allerede forhandlede avtaler, ikke ved at eleven forhandler hver enkelt.
+
+**Endringer:**
+- **Slettet** `GjestepakkeOverlay.tsx` + `gjestepakkeForhandling.ts`. Med det
+  forsvant også STOPP-porten (den var blokkert på NB-generering av `hotellsjef.png`
+  — ikke lenger nødvendig).
+- **`bykatalog.ts`:** `provisjonsProsent` reframet som **avtalt sats** (ferdig-
+  forhandlet avtale). Verdiene uendret — variasjon mellom tilbydere (ca. 8–20 %):
+  Gårdsbesøket 8 %, Klatreparken/Bryggeriet/Elvepadlingen 18 %, Kanefart 20 %.
+- **Ny lesevisning «🤝 Hotellets avtaler»** (`HotellAvtalerOverlay.tsx`): enkel
+  liste over byens tilbydere med avtalt provisjon per partner, sortert høyest sats
+  først, + en «gratis for gjesten (0 %)»-seksjon. **Poenget:** åpne satser gjør
+  anbefalings-dilemmaet i «Innsjekket» synlig — den høyeste satsen (Klatreparken
+  18 %) er sjelden det beste for gjesten (Gårdsbesøket 8 % passer familien). Fagord
+  `provisjon` (LED_004) + `vertskap` (KULT_003) klikkbare.
+- **Lobbyen:** senter-figuren er nå en **gjest** (seedet turist-sprite, ikke en
+  hotellsjef) — klikk (eller «Møt en gjest») starter et gjestescenario. Egen knapp
+  «🤝 Hotellets avtaler» åpner lesevisningen.
+- **Tema 15s café-side urørt:** `SET_HOTELLAVTALE` + gjestepakke-innboksen i
+  `GameContext`/`DistrictView`/`TuristkontorPanel` gjelder KAFÉENS innmelding i
+  hotellets pakke og lever sitt eget liv. Kun MIN lobby-forhandling ble strøket.
+
+**B2B-forhandling = mulig VG2-utvidelse (BRANSJE4-planen), bevisst utelatt nå.**
+Prinsippbasert forhandling (BATNA, interesser vs. posisjoner) hører hjemme i VG2s
+kommunikasjonsfag; en interaktiv forhandlings-motor i byhotellet er en naturlig
+utvidelse når bransje 4 bygges via autonom-pipelinen — men holdt UTE av dette
+sporet for å holde vertskaps-mekanikken enkel (bruk, ikke forhandle).
+
+### Gjest-velger i kalibreringspanelet
+
+`?dev=1`-panelet manglet en måte å kalibrere mot annet enn dagens seedede gjest.
+Lagt til **GJEST-SPRITE (møtepunkt)**-velger (samme mønster som kassevyens
+🎚️-velger): `auto` (seedet) + knapp per turist-sprite (kart, kamera, familie, par,
+eldre-stokk, backpacker, eldrepar). Setter HVILKEN SOM HELST sprite på møtepunktet
+så Espen kan verifisere at den DELTE `LOBBY_*`-basen tåler alle høyder/bredder.
+Avvik løses med per-sprite offset kun om nødvendig (kassevy-mønsteret) — foreløpig
+er basen én verdi for alle.
+
+**Chrome-validering (Espen):** `…/hotell-lobby?dev=1`
+1. Senter-gjesten rendrer (ekte turist-sprite bak disken, lår-og-opp).
+2. **Gjest-velgeren** (panel h.): bytt gjennom alle 7 — sjekk at basen holder.
+3. **«🤝 Hotellets avtaler»**: lista stemmer, satsene åpne, fagord klikkbare.
+4. **«Møt en gjest»** / klikk gjesten → de 4 scenariene (uendret).
+5. Ingen spor av forhandlingen igjen (strøket).

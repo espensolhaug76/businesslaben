@@ -3,43 +3,42 @@ import { useNavigate } from 'react-router-dom'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import { useGame } from '../GameContext'
-import { erTuristsesong, velgAmbientTurister, lobbySeed } from './lobbyAmbient'
-import GjestepakkeOverlay from './GjestepakkeOverlay'
+import { erTuristsesong, velgAmbientTurister, lobbySeed, AMBIENT_TURIST_SPRITER } from './lobbyAmbient'
+import HotellAvtalerOverlay from './HotellAvtalerOverlay'
 import HotellGjestOverlay from './HotellGjestOverlay'
 import { velgGjestescenario, GJESTESCENARIER } from './hotellGjest'
 
-// ── LobbyView — Byhotellets lobby (B2B-møtescene) ────────────────────────────
+// ── LobbyView — Byhotellets lobby (vertskapsarena) ───────────────────────────
 // Spor C DEL 2. Bygget etter kaféens KASSEVY-MØNSTER (InteriorView): cover-stage
-// med lobby-bildet, en HOTELLSJEF-sprite forankret på et MØTEPUNKT bak
+// med lobby-bildet, en GJEST-sprite forankret på et MØTEPUNKT bak
 // resepsjonsdisken, og et FORGRUNNS-DISK-LAG (samme bilde klippet til båndet
 // under OCCLUDE-linja) som okkluderer underkroppen.
 //
 // FORSKJELL fra kaféen (Espens føring, DEL 1): resepsjonsdisken er LAV
 // (overkant ~72 % av bildehøyden). OCCLUDE-linja traces langs diskens overkant,
-// og hotellsjefen skal være synlig fra ca. LÅRENE og opp (mer synlig enn
+// og gjesten skal være synlig fra ca. LÅRENE og opp (mer synlig enn
 // kaféens kundemodell) → forankringen (THIGH_FRAC) sitter lavere på spriten enn
 // kaféens WAIST_FRAC.
 //
-// IKKE en drivbar bransje — en frittstående møtescene (bransje 4 kommer senere
-// via autonom-pipelinen). DEL 3 legger til hotellsjef-sprite + Gjestepakke-
-// scenarioet (kobles DEFENSIVT til hotellavtale-state når reiseliv merges).
+// IKKE en drivbar bransje — en frittstående vertskapsscene (bransje 4 kommer
+// senere via autonom-pipelinen). Interaksjonen: en gjest står ved resepsjonen —
+// klikk (eller «Møt en gjest») starter et gjestescenario. «Hotellets avtaler»
+// viser byens ferdigforhandlede provisjonssatser (leseinnsikt, ingen forhandling
+// — den strøkne B2B-forhandlingen er en mulig VG2-utvidelse, se docs/rapporter).
 //
-// ?dev=1: kalibreringspanel (slidere) — Espen drar disk-kanten + hotellsjefen på
-// plass; verdiene logges til konsollen for permanent låsing i konstantene under.
+// ?dev=1: kalibreringspanel (slidere) — Espen drar disk-kanten + gjesten på
+// plass; en gjest-VELGER (alle turist-sprites) lar basen verifiseres mot alle
+// høyder/bredder. Verdiene logges til konsollen for permanent låsing under.
 
 const LOBBY_IMG = '/assets/raw/hotell-lobby-pilot-1.png'
 const SCENE_W = 1376
 const SCENE_H = 768
 const ASPECT = SCENE_W / SCENE_H
 
-// Hotellsjef-sprite (DEL 3, NB-generert). Er den ikke generert ennå, faller vi
-// tilbake til en EKTE turist-sprite som STAND-IN (kommer inn med Tema 15-mergen,
-// public/assets/raw/customers/) — ikke en silhuett-sirkel — så scenen viser en
-// FAKTISK person og ANCHOR/SCALE kan førstepass-kalibreres mot ekte sprite-
-// proporsjoner. Espen bytter til hotellsjef.png (og finkalibrerer) når den er
-// generert. Silhuetten er siste utvei hvis også stand-in mangler.
-const SJEF_SPRITE = '/assets/raw/hotellsjef.png'
-const SJEF_STANDIN = '/assets/raw/customers/turist-kart.png'
+// Gjesten ved resepsjonen er en EKTE turist-sprite (public/assets/raw/customers/,
+// inne med Tema 15-mergen). Hvilken vises roterer seedet per dag (samme kilde som
+// ambient-gjestene). Silhuett er siste utvei hvis en sprite-fil mangler (404).
+// I ?dev=1 kan gjest-velgeren overstyre spriten for kalibrering mot alle høyder.
 
 // ── Start-verdier (førstepasning via skjermbilde-løkka — Espen LÅSER i ?dev=1) ─
 /** Diskens overkant i % av stage-høyden ved venstre/høyre kant — to punkter
@@ -47,13 +46,14 @@ const SJEF_STANDIN = '/assets/raw/customers/turist-kart.png'
  *  rette linja mellom punktene (clip-path polygon). Disken er LAV (~72 %). */
 const DEFAULT_OCCLUDE_Y_LEFT = 72
 const DEFAULT_OCCLUDE_Y_RIGHT = 72
-/** Hotellsjefens senter-x i % av stage-bredden (møtepunkt bak disken). */
+/** Gjestens senter-x i % av stage-bredden (møtepunkt bak disken). */
 const DEFAULT_CENTER_X = 50
 /** Møtepunktets y i % (der forankringslinja — lårene — møter diskkanten). */
 const DEFAULT_ANCHOR_Y = 72
-/** Sprite-høyde som andel av stage-høyden. Førstepass mot EKTE turist-sprite
- *  (aspect ~0,4, hel stående figur) — litt lavere enn silhuett-førstepasset så
- *  hodet får luft under pendlene. Espen finkalibrerer mot ekte hotellsjef-sprite. */
+/** Sprite-høyde som andel av stage-høyden. Delt base for alle turist-sprites
+ *  (aspect ~0,4, hel stående figur) — hodet får luft under pendlene. Verifiser i
+ *  ?dev=1 at basen tåler alle sprites (gjest-velgeren); avvik løses per-sprite
+ *  kun om nødvendig (kassevy-mønsteret). */
 const DEFAULT_SCALE = 0.82
 /** Hvor på spriten forankringen sitter (andel fra toppen). LÅR (≈ 0,64) — så
  *  figuren er synlig fra lårene og opp, resten skjules bak disken. */
@@ -75,15 +75,17 @@ export default function LobbyView({ districtId }: { districtId: string }) {
   const navigate = useNavigate()
   const { state } = useGame()
   const [imgFailed, setImgFailed] = useState(false)
-  const [sjefFailed, setSjefFailed] = useState(false)       // hotellsjef.png mangler
-  const [standinFailed, setStandinFailed] = useState(false) // turist-stand-in mangler også
+  const [senterFeil, setSenterFeil] = useState<Record<string, boolean>>({}) // gjest-sprite 404 (per id)
   const [hover, setHover] = useState(false)
   // Ambient-gjester vises i turistsesong. ?dev=1: tving dem frem for kalibrering
   // (på main finnes verken sesong-state eller turist-sprites — se lobbyAmbient.ts).
   const [devGuests, setDevGuests] = useState(false)
   const [gjestFeil, setGjestFeil] = useState<Record<string, boolean>>({})
-  // DEL 3: «Gjestepakke-forhandlingen» — åpnes ved klikk på hotellsjefen.
-  const [forhandlingOpen, setForhandlingOpen] = useState(false)
+  // ?dev=1 gjest-VELGER: overstyr hvilken turist-sprite som står på møtepunktet
+  // (''=auto/seedet) så basen kan verifiseres mot alle høyder/bredder.
+  const [devSpriteId, setDevSpriteId] = useState<string>('')
+  // «Hotellets avtaler» — leseinnsikt i byens ferdigforhandlede provisjonssatser.
+  const [avtalerOpen, setAvtalerOpen] = useState(false)
   // DEL 5/6: «Møt en gjest» — seedet rotasjon av gjestescenariene (sesong-gatet:
   // Innsjekket/Umulige kun i turistsesong, Klagen/Mersalget hele året).
   const [gjestId, setGjestId] = useState<string | null>(null)
@@ -96,6 +98,11 @@ export default function LobbyView({ districtId }: { districtId: string }) {
   }
   const visGjester = erTuristsesong(state) || (IS_DEV_COORDS && devGuests)
   const gjester = visGjester ? velgAmbientTurister(lobbySeed(state), GJEST_SLOTS.length) : []
+  // Gjesten ved resepsjonen (møtepunkt): seedet per dag (offset fra ambient-seed
+  // så den ikke nødvendigvis matcher en peis-gjest). ?dev=1-velgeren overstyrer.
+  const seedetGjest = velgAmbientTurister((lobbySeed(state) + 101) >>> 0, 1)[0]
+  const devValgtGjest = devSpriteId ? AMBIENT_TURIST_SPRITER.find(t => t.id === devSpriteId) : undefined
+  const senterGjest = (IS_DEV_COORDS && devValgtGjest) ? devValgtGjest : seedetGjest
 
   // Live-kalibrerbare konstanter (slidere ved ?dev=1). Init fra localStorage-
   // utkast så kalibrering overlever reload (samme mønster som InteriorView).
@@ -138,6 +145,16 @@ export default function LobbyView({ districtId }: { districtId: string }) {
           }}>
           🛎️ Møt en gjest
         </button>
+        {/* «Hotellets avtaler» — leseinnsikt i byens ferdigforhandlede satser. */}
+        <button onClick={() => setAvtalerOpen(true)}
+          title="Se byens ferdigforhandlede provisjonssatser"
+          style={{
+            background: 'rgba(10,14,26,0.85)', border: '1px solid rgba(56,189,248,0.4)', borderRadius: 99,
+            padding: '0.55rem 1.2rem', color: '#7dd3fc', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+            fontFamily: "'Outfit', sans-serif",
+          }}>
+          🤝 Hotellets avtaler
+        </button>
         {/* ?dev=1: start et BESTEMT scenario (omgår sesong-gating) — for test +
             demo før reiseliv/turistsesong finnes på main. */}
         {IS_DEV_COORDS && (
@@ -171,14 +188,14 @@ export default function LobbyView({ districtId }: { districtId: string }) {
           }}>Lobby-bilde mangler<br />({LOBBY_IMG})</div>
         )}
 
-        {/* HOTELLSJEF (z=10) — forankret på lårlinja bak disken. Underkroppen
-            strekker seg under OCCLUDE-linja og skjules av forgrunns-laget.
-            Klikk starter møtescenarioet (DEL 3 — wires når scenarioet finnes). */}
+        {/* GJEST VED RESEPSJONEN (z=10) — forankret på lårlinja bak disken.
+            Underkroppen strekker seg under OCCLUDE-linja og skjules av
+            forgrunns-laget. Klikk (eller «Møt en gjest») starter et gjestescenario. */}
         <div
-          onClick={() => setForhandlingOpen(true)}
+          onClick={moetEnGjest}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
-          title="Snakk med hotellsjefen"
+          title="Ta imot gjesten i resepsjonen"
           style={{
             position: 'absolute', left: `${centerX}%`, top: `${anchorY}%`,
             height: `${scale * 100}%`, width: 'auto',
@@ -186,22 +203,23 @@ export default function LobbyView({ districtId }: { districtId: string }) {
             cursor: 'pointer', zIndex: 10,
           }}
         >
-          {!standinFailed ? (
-            // 3-nivås fallback: hotellsjef.png → EKTE turist-sprite (stand-in) →
-            // silhuett. onError kaskaderer nedover uten brukket bilde.
+          {senterGjest && !senterFeil[senterGjest.id] ? (
+            // Ekte turist-sprite (seedet, eller ?dev=1-valgt). onError → silhuett.
             <img
-              src={!sjefFailed ? SJEF_SPRITE : SJEF_STANDIN}
-              alt={!sjefFailed ? 'Hotellsjef' : 'Hotellsjef (stand-in — ekte sprite ikke generert)'}
+              key={senterGjest.id}
+              src={senterGjest.fil}
+              alt="Gjest ved resepsjonen"
               draggable={false}
-              onError={() => (!sjefFailed ? setSjefFailed(true) : setStandinFailed(true))}
+              onError={() => setSenterFeil(f => ({ ...f, [senterGjest.id]: true }))}
               style={{
                 height: '100%', width: 'auto', display: 'block', userSelect: 'none',
+                objectFit: 'contain',
                 filter: hover ? 'drop-shadow(0 0 10px rgba(192,132,252,0.9)) drop-shadow(0 6px 10px rgba(0,0,0,0.5))' : 'drop-shadow(0 6px 10px rgba(0,0,0,0.5))',
                 transition: 'filter 0.15s',
               }} />
           ) : (
-            // Siste utvei (også stand-in mangler): nøytral voksen-silhuett.
-            <div aria-label="Hotellsjef (ingen sprite tilgjengelig)"
+            // Siste utvei (sprite-fil mangler): nøytral voksen-silhuett.
+            <div aria-label="Gjest (ingen sprite tilgjengelig)"
               style={{ height: '100%', aspectRatio: '0.62', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
                        filter: hover ? 'drop-shadow(0 0 10px rgba(192,132,252,0.9))' : 'drop-shadow(0 6px 10px rgba(0,0,0,0.5))' }}>
               <svg viewBox="0 0 100 160" style={{ height: '100%', width: 'auto', display: 'block' }} aria-hidden>
@@ -266,6 +284,17 @@ export default function LobbyView({ districtId }: { districtId: string }) {
             <Slider label="CENTER_X" value={centerX} min={0} max={100} step={0.5} onChange={v => upd(setCenterX, 'LOBBY_CENTER_X', v)} fmt={v => v.toFixed(1)} />
             <Slider label="ANCHOR_Y (lårlinje)" value={anchorY} min={40} max={95} step={0.5} onChange={v => upd(setAnchorY, 'LOBBY_ANCHOR_Y', v)} fmt={v => v.toFixed(1)} />
             <Slider label="SCALE" value={scale} min={0.4} max={1.8} step={0.02} onChange={v => upd(setScale, 'LOBBY_SCALE', v)} fmt={v => v.toFixed(2)} />
+
+            {/* Gjest-VELGER — sett HVILKEN SOM HELST turist-sprite på møtepunktet
+                for å verifisere at den delte basen tåler alle høyder/bredder. */}
+            <div style={{ fontSize: 10, fontFamily: 'monospace', color: '#94a3b8', margin: '6px 0 3px' }}>GJEST-SPRITE (møtepunkt)</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+              <SpriteKnapp label="auto" aktiv={devSpriteId === ''} onKlikk={() => setDevSpriteId('')} />
+              {AMBIENT_TURIST_SPRITER.map(t => (
+                <SpriteKnapp key={t.id} label={t.id.replace('turist-', '')} aktiv={devSpriteId === t.id} onKlikk={() => setDevSpriteId(t.id)} />
+              ))}
+            </div>
+
             <button onClick={() => setDevGuests(g => !g)}
               style={{
                 width: '100%', margin: '4px 0 6px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
@@ -276,7 +305,7 @@ export default function LobbyView({ districtId }: { districtId: string }) {
               {devGuests ? '🧳 Ambient-gjester: PÅ (dev-tvang)' : '🧳 Vis ambient-gjester (dev)'}
             </button>
             <div style={{ fontSize: 10, color: '#64748b', marginTop: 4, lineHeight: 1.4 }}>
-              Verdiene logges i konsollen ved hver endring. Sjefen skal være synlig fra lårene og opp, disklinja langs diskens overkant. Meld tilbake, så låser jeg dem i LobbyView.tsx.
+              Verdiene logges i konsollen ved hver endring. Gjesten skal være synlig fra lårene og opp, disklinja langs diskens overkant. Bytt gjest-sprite over for å sjekke at basen tåler alle. Meld tilbake, så låser jeg dem i LobbyView.tsx.
             </div>
           </div>
         </div>
@@ -288,14 +317,28 @@ export default function LobbyView({ districtId }: { districtId: string }) {
         background: 'rgba(10,14,26,0.85)', border: '1px solid rgba(255,255,255,0.12)',
         borderRadius: 12, padding: '0.4rem 1rem', color: '#f1f5f9', zIndex: 80, fontSize: 13, whiteSpace: 'nowrap',
       }}>
-        🏨 Byhotellet — lobby (B2B-møtescene){IS_DEV_COORDS ? ' · kalibrering aktiv (panel øverst høyre)' : ''}
+        🏨 Byhotellet — lobby (vertskapsscene){IS_DEV_COORDS ? ' · kalibrering aktiv (panel øverst høyre)' : ''}
       </div>
 
-      {/* DEL 3: «Gjestepakke-forhandlingen» — åpnes ved klikk på hotellsjefen. */}
-      <GjestepakkeOverlay open={forhandlingOpen} onClose={() => setForhandlingOpen(false)} />
+      {/* «Hotellets avtaler» — leseinnsikt i byens ferdigforhandlede satser. */}
+      <HotellAvtalerOverlay open={avtalerOpen} onClose={() => setAvtalerOpen(false)} />
       {/* DEL 5/6: gjestescenariene — «Møt en gjest». */}
       <HotellGjestOverlay scenarioId={gjestId} open={!!gjestId} onClose={() => setGjestId(null)} />
     </div>
+  )
+}
+
+function SpriteKnapp({ label, aktiv, onKlikk }: { label: string; aktiv: boolean; onKlikk: () => void }) {
+  return (
+    <button onClick={onKlikk}
+      style={{
+        cursor: 'pointer', fontFamily: 'monospace', fontSize: 10, fontWeight: 700,
+        background: aktiv ? 'rgba(192,132,252,0.2)' : 'rgba(255,255,255,0.05)',
+        border: `1px solid ${aktiv ? '#c084fc' : 'rgba(255,255,255,0.15)'}`,
+        borderRadius: 6, padding: '3px 7px', color: aktiv ? '#e9d5ff' : '#94a3b8',
+      }}>
+      {label}
+    </button>
   )
 }
 
