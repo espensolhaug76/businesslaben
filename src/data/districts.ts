@@ -365,7 +365,12 @@ export const INTERIOR_AMBIENT_TURIST_SLOTS: [number, number, number, number][] =
  *  LAV i bildet, så mesteparten av gjesten er synlig). PLACEHOLDER — Espen
  *  kalibrerer med ?dev=1-sliders i scenen og låser verdiene her. */
 export const TURISTKONTOR_GJEST_CAL: { scale: number; centerX: number; waistY: number } = { scale: 0.62, centerX: 50, waistY: 58 }
-export const TURISTKONTOR_OCCLUDE_Y: number = 74
+/** Forgrunns-disk-linja er SKRÅ (disken er fotografert i perspektiv): `left` =
+ *  klippehøyde ved bildets venstrekant (x=0 %), `right` = ved høyrekant (x=100 %).
+ *  En kopi av interiøret under denne linja re-tegnes over gjestens underkropp, så
+ *  gjesten forsvinner naturlig bak den skrå disken. PLACEHOLDER — Espen kalibrerer
+ *  begge med ?dev=1-sliderne. */
+export const TURISTKONTOR_OCCLUDE: { left: number; right: number } = { left: 74, right: 74 }
 
 /** Disk-monterens utstillingsflate (INTERIØR-NIVÅ) — prosent av interiørbildet
  *  [x, y, b, h]. Andre flate for vareeksponering (fixtureId='monter');

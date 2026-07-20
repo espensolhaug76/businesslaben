@@ -1939,8 +1939,12 @@ alt). Kafé-ambient-kommentaren i balance.ts oppdatert.
 5. «← Stasjonen» tilbake.
 
 ### Åpen oppfølging / flagg
-- **Gjest-cal + occludeY er PLACEHOLDER** — venter Espens ?dev-kalibrering + lås
-  i `districts.ts` (`TURISTKONTOR_GJEST_CAL` / `_OCCLUDE_Y`).
+- **Gjest-cal + SKRÅ forgrunnslinje er PLACEHOLDER** — venter Espens ?dev-
+  kalibrering + lås i `districts.ts` (`TURISTKONTOR_GJEST_CAL` +
+  `TURISTKONTOR_OCCLUDE {left,right}`). Disken er fotografert i PERSPEKTIV, så
+  forgrunns-klippet er nå en SKRÅ linje (occ.L = venstrekant, occ.R = høyrekant;
+  `clipPath: polygon(0 occ.L, 100% occ.R, …)`, samme mønster som kassevyens
+  `occludeYLeft/Right`). To sliders i ?dev-panelet, verdiene logges for innliming.
 - **BUGFIX 1 (tom disk i dev):** dev-dyplenke starter ingen sesong → ingen gjest.
   Nå viser scenen ALLTID en kalibrerings-gjest i ?dev=1, med en **gjest-velger**
   (‹/›) gjennom alle 7 turist-sprites (`TURIST_SPRITER`).

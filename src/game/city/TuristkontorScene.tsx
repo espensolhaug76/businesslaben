@@ -6,7 +6,7 @@ import { IS_DEV_COORDS } from './DevCoordHelper'
 import { getScenario } from '../sales/scenarios'
 import { velgTuristkontorScenario, TURIST_SPRITER } from '../data/reiseliv'
 import { dagSeed } from '../data/backgroundSales'
-import { TURISTKONTOR_GJEST_CAL, TURISTKONTOR_OCCLUDE_Y } from '../../data/districts'
+import { TURISTKONTOR_GJEST_CAL, TURISTKONTOR_OCCLUDE } from '../../data/districts'
 import Pakkebygger from '../ui/Pakkebygger'
 
 // ── TuristkontorScene (TEMA 15 — ROM, ikke panel) ────────────────────────────
@@ -52,7 +52,7 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
   // Kalibrering (dev): livevis fra districts-verdiene, justerbar med ?dev=1-
   // sliders; verdiene logges for innliming i districts.ts.
   const [cal, setCal] = useState(TURISTKONTOR_GJEST_CAL)
-  const [occludeY, setOccludeY] = useState(TURISTKONTOR_OCCLUDE_Y)
+  const [occ, setOcc] = useState(TURISTKONTOR_OCCLUDE)   // skrå forgrunnslinje {left,right}
 
   function motGjest() {
     if (!scenario) return
@@ -136,7 +136,8 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
             src={INTERIOR_IMG} alt="" aria-hidden draggable={false}
             style={{
               position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block',
-              clipPath: `polygon(0% ${occludeY}%, 100% ${occludeY}%, 100% 100%, 0% 100%)`,
+              // SKRÅ klippelinje: venstre kant på occ.left %, høyre kant på occ.right %.
+              clipPath: `polygon(0% ${occ.left}%, 100% ${occ.right}%, 100% 100%, 0% 100%)`,
               zIndex: 20, pointerEvents: 'none', userSelect: 'none',
             }}
           />
@@ -207,8 +208,9 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
         </div>
       )}
 
-      {/* ?dev=1: kalibrer gjest-sprite + forgrunnslinje. Verdiene logges for
-          innliming i districts.ts (TURISTKONTOR_GJEST_CAL / _OCCLUDE_Y). */}
+      {/* ?dev=1: kalibrer gjest-sprite + SKRÅ forgrunnslinje (occ.L/occ.R).
+          Verdiene logges for innliming i districts.ts (TURISTKONTOR_GJEST_CAL /
+          TURISTKONTOR_OCCLUDE). */}
       {IS_DEV_COORDS && (
         <div style={{
           position: 'fixed', top: 64, right: 16, zIndex: 300, width: 210,
@@ -227,22 +229,25 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
           </div>
           <div style={{ fontSize: 10, color: '#64748b', textAlign: 'center' }}>{(((devGjestIdx % TURIST_SPRITER.length) + TURIST_SPRITER.length) % TURIST_SPRITER.length) + 1}/{TURIST_SPRITER.length}</div>
           <CalSlider label="scale" value={cal.scale} min={0.2} max={1.5} step={0.01}
-            onChange={v => { const n = { ...cal, scale: v }; setCal(n); logCal(n, occludeY) }} />
+            onChange={v => { const n = { ...cal, scale: v }; setCal(n); logCal(n, occ) }} />
           <CalSlider label="centerX" value={cal.centerX} min={0} max={100} step={0.5}
-            onChange={v => { const n = { ...cal, centerX: v }; setCal(n); logCal(n, occludeY) }} />
+            onChange={v => { const n = { ...cal, centerX: v }; setCal(n); logCal(n, occ) }} />
           <CalSlider label="waistY" value={cal.waistY} min={0} max={100} step={0.5}
-            onChange={v => { const n = { ...cal, waistY: v }; setCal(n); logCal(n, occludeY) }} />
-          <CalSlider label="occludeY" value={occludeY} min={0} max={100} step={0.5}
-            onChange={v => { setOccludeY(v); logCal(cal, v) }} />
+            onChange={v => { const n = { ...cal, waistY: v }; setCal(n); logCal(n, occ) }} />
+          {/* SKRÅ forgrunnslinje: venstre + høyre klippehøyde (disken i perspektiv). */}
+          <CalSlider label="occ.L" value={occ.left} min={0} max={100} step={0.5}
+            onChange={v => { const n = { ...occ, left: v }; setOcc(n); logCal(cal, n) }} />
+          <CalSlider label="occ.R" value={occ.right} min={0} max={100} step={0.5}
+            onChange={v => { const n = { ...occ, right: v }; setOcc(n); logCal(cal, n) }} />
         </div>
       )}
     </div>
   )
 }
 
-function logCal(cal: { scale: number; centerX: number; waistY: number }, occludeY: number) {
+function logCal(cal: { scale: number; centerX: number; waistY: number }, occ: { left: number; right: number }) {
   // eslint-disable-next-line no-console
-  console.log(`[TuristkontorScene] lim inn i districts.ts:\n  TURISTKONTOR_GJEST_CAL = { scale: ${cal.scale}, centerX: ${cal.centerX}, waistY: ${cal.waistY} }\n  TURISTKONTOR_OCCLUDE_Y = ${occludeY}`)
+  console.log(`[TuristkontorScene] lim inn i districts.ts:\n  TURISTKONTOR_GJEST_CAL = { scale: ${cal.scale}, centerX: ${cal.centerX}, waistY: ${cal.waistY} }\n  TURISTKONTOR_OCCLUDE = { left: ${occ.left}, right: ${occ.right} }`)
 }
 
 const velgerBtn: React.CSSProperties = {
