@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useGame, useAktiveTemaer, turistsesongInfo } from '../GameContext'
+import { useGame, useAktiveTemaer } from '../GameContext'
 import { getDistrict, KUNDESKALA, KUNDESTIER, LOKALER, NO_GO, STASJON_REISELIV_HOTSPOTS, lokaleRent, type District, type Lokale } from '../../data/districts'
-import { velgByhotellScenario } from '../data/reiseliv'
-import { dagSeed } from '../data/backgroundSales'
 import CustomerFlow from './CustomerFlow'
 import DevCoordHelper, { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Target, type DrawZone } from './ZoneTracer'
@@ -40,8 +38,7 @@ export default function DistrictView({
   const reduced = useReducedMotion()
   // Zoom-overgang inn mot eget lokale før navigasjon til StorefrontView.
   const [zoomOrigin, setZoomOrigin] = useState<[number, number] | null>(null)
-  const [byhotellAapen, setByhotellAapen] = useState(false)           // TEMA 15 DEL 5
-  // Turistkontoret er nå en ROM-scene (naviger inn), ikke et panel.
+  // Turistkontoret + byhotellet er nå ROM-scener (naviger inn), ikke paneler.
   const [, setRev] = useState(0)   // re-render når sone-traceren skriver (?dev=1)
 
   if (!district) {
@@ -109,21 +106,8 @@ export default function DistrictView({
             skala={KUNDESKALA[district.id]}
           />
         )}
-        {/* Spor C (?dev=1): inngang til Byhotellets lobby (B2B-møtescene).
-            Dev-affordance FØR hotell-hotspoten er tracet/låst — Espen erstatter
-            denne knappen med en usynlig hotspot-klikkflate over hotellbygget
-            (samme mønster som lokalene over) når han låser koordinatene. */}
-        {IS_DEV_COORDS && district.id === 'stasjonsomradet' && (
-          <button
-            onClick={() => navigate(`/game/d/${district.id}/hotell-lobby`)}
-            style={{
-              position: 'absolute', left: '50%', top: '18%', transform: 'translate(-50%,-50%)',
-              zIndex: 6, cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
-              background: 'rgba(192,132,252,0.18)', border: '1px solid #c084fc',
-              borderRadius: 8, padding: '5px 11px', color: '#e9d5ff', fontSize: 12, fontWeight: 800,
-            }}
-          >🏨 Hotell-lobby (dev)</button>
-        )}
+        {/* Spor C: Byhotellets lobby nås nå via den TRACEDE byhotell-hotspoten
+            under (klikk → /hotell-lobby) — dev-stedfortrederknappen er fjernet. */}
         {lokaler.map(l => {
           const [x, y, w, h] = l.rect
           const mine = state.rentedLocationId === l.id
@@ -192,7 +176,7 @@ export default function DistrictView({
               return (
                 <div key={key}>
                   <div
-                    onClick={() => (erKontor ? navigate(`/game/d/${district.id}/turistkontor`) : setByhotellAapen(true))}
+                    onClick={() => navigate(`/game/d/${district.id}/${erKontor ? 'turistkontor' : 'hotell-lobby'}`)}
                     title={erKontor ? 'Turistkontoret' : 'Byhotellet'}
                     style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`, cursor: 'pointer', borderRadius: 6, zIndex: 3, outline: '1px solid rgba(56,189,248,0)', transition: 'outline 0.15s, background 0.15s' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(56,189,248,0.12)'; (e.currentTarget as HTMLDivElement).style.outline = '1px solid rgba(56,189,248,0.6)' }}
@@ -227,73 +211,14 @@ export default function DistrictView({
         </div>
       </div>
 
-      {byhotellAapen && <ByhotellStatus onLukk={() => setByhotellAapen(false)} />}
     </div>
   )
 }
 
-// ── TEMA 15: byhotell-status (klikk på hotell-hotspoten) ──────────────────────
-/** Viser avtalestatus; ligger en ULEST gjestepakke-hendelse i innboksen, kan
- *  eleven svare direkte herfra (samme effekt som i innboksen). */
-function ByhotellStatus({ onLukk }: { onLukk: () => void }) {
-  const { state, dispatch } = useGame()
-  const pending = state.messages.find(m => m.type === 'hotellavtale')
-  const sesong = turistsesongInfo(state)
-  const svar = (valg: 'aksepter' | 'avslaa') => {
-    if (pending) dispatch({ type: 'RESOLVE_GAME_EVENT', eventId: 'hotellavtale', choiceId: valg, messageId: pending.id })
-    onLukk()
-  }
-  // Bølge 3 v3 — «møt en gjest»: start ett hotell-scenario (Kulturmøtet /
-  // Tax-free) med dialogkort-UI. Defensivt mot spor-c/hotell-lobby: når lobbyen
-  // merges flyttes møtene inn i lobby-scenen; til da kjøres de herfra.
-  const [motNr, setMotNr] = useState(0)
-  const motGjest = () => {
-    const seed = dagSeed(state.dayNumber, state.currentMonth, state.currentYear) + motNr
-    setMotNr(n => n + 1)
-    window.dispatchEvent(new CustomEvent('game:openScenario', { detail: { scenarioId: velgByhotellScenario(seed) } }))
-    onLukk()
-  }
-  const statusTekst = state.hotellavtale === 'akseptert'
-    ? '✓ Avtale aktiv: byhotellet sender gjester til deg gjennom sesongen, mot en andel av det pakkegjestene handler for.'
-    : state.hotellavtale === 'avslatt'
-      ? 'Du takket nei til gjestepakken. Du beholder full margin, men får ingen ekstra gjestestrøm fra hotellet.'
-      : 'Ingen avtale med byhotellet ennå.'
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: "'Outfit', sans-serif" }}>
-      <div style={{ background: 'rgba(15,23,42,0.98)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '1.4rem', padding: '1.6rem', maxWidth: 440, width: '100%', color: '#f1f5f9' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-          <div style={{ fontSize: 18, fontWeight: 900 }}>🏨 Byhotellet</div>
-          <button onClick={onLukk} aria-label="Lukk" style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer' }}>×</button>
-        </div>
-        {pending ? (
-          <>
-            <p style={{ fontSize: 13.5, lineHeight: 1.55, color: '#cbd5e1', margin: '0 0 1rem' }}>{pending.body}</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => svar('aksepter')} style={{ flex: 1, background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)', border: 'none', borderRadius: 99, padding: '0.6rem', color: '#0b1120', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Ja, vi er med</button>
-              <button onClick={() => svar('avslaa')} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 99, padding: '0.6rem', color: '#cbd5e1', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Nei takk</button>
-            </div>
-          </>
-        ) : (
-          <p style={{ fontSize: 13.5, lineHeight: 1.55, color: '#cbd5e1', margin: 0 }}>{statusTekst}</p>
-        )}
-
-        {/* Bølge 3 v3 — «Møt en gjest»: hotell-scenariene (Kulturmøtet / Tax-free)
-            kjøres fra hotspoten inntil spor-c/hotell-lobby merges. Kun i sesong. */}
-        {sesong?.aktiv && !pending && (
-          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <p style={{ fontSize: 12.5, lineHeight: 1.55, color: '#94a3b8', margin: '0 0 0.7rem' }}>
-              En hotellgjest er i lobbyen og lurer på noe. Øv deg som vertskap.
-            </p>
-            <button onClick={motGjest}
-              style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', border: 'none', borderRadius: 99, padding: '0.55rem 1.3rem', color: '#0b1120', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>
-              👋 Møt en gjest
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+// TEMA 15: byhotell-status-panelet er FJERNET — byhotell-hotspoten navigerer nå
+// INN i Spor C-lobbyen (/hotell-lobby). Hotellavtalen (gjestepakke) besvares
+// fortsatt via innbokshendelsen. Hotell-scenariene (Kulturmøtet/Tax-free) ligger
+// i data (velgByhotellScenario) men uten egen inngang her — lobbyen er B2B-arenaen.
 
 // ── Felles småkomponenter ─────────────────────────────────────────────────────
 

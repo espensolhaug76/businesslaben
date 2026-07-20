@@ -796,37 +796,31 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
 
   // ── STEG 17 — DEV-DYPLENKE: /game/d/stasjonsomradet?dev=1 må vise stasjons-
   //    bydelen med hotspot-labels + tracer, ALDRI bransjevelgeren ─────────────
-  await steg(page, rapport, 17, 'Dev-dyplenke: /game/d/stasjonsomradet?dev=1 viser stasjonsbydelen (hotspot-labels + sone-tracer), aldri bransjevelgeren', async ctx => {
+  await steg(page, rapport, 17, 'Stasjons-hotspots (?dev=1): labels + tracer, ingen TIL LEIE/bransjevelger, tracer AV → turistkontor til rom-scenen, byhotell til hotell-lobbyen', async ctx => {
     // Fersk navigasjon UTEN ?skip — spilltilstand overlever ikke reload, så uten
-    // fiksen står phase='startup' → bransjevelger. Dyplenke-seedingen skal starte
-    // et engangsspill så scenen rendres.
+    // dyplenke-seedingen står phase='startup' → bransjevelger.
     await page.goto('/game/d/stasjonsomradet?dev=1')
     await ventState(page, s => s.phase !== 'startup', 'dev-dyplenke seedet engangsspill (ikke startup)')
     await page.waitForTimeout(400)
     const body = await page.textContent('body') ?? ''
     expect(body.includes('Velg din bransje'), 'ALDRI bransjevelgeren på dev-dyplenke').toBe(false)
-    // «Turistkontoret»/«Byhotellet» (stor forbokstav + -et) = spillets hotspot-
-    // labels (tracerens knapper er «turistkontor»/«byhotell», små bokstaver).
     expect(body.includes('Turistkontoret'), '«🧳 Turistkontoret»-label rendres på recten').toBe(true)
     expect(body.includes('Byhotellet'), '«🏨 Byhotellet»-label rendres på recten').toBe(true)
     expect(body.includes('Sone-tracer'), 'sone-traceren (ZoneTracer) er montert').toBe(true)
-    // FIX B: etablering ikke åpnet på stasjonen → ingen TIL LEIE-skilt.
     expect((body.match(/TIL LEIE/g) ?? []).length, 'ingen TIL LEIE-skilt på stasjonen (visLedigeLokaler:false)').toBe(0)
-    // FIX A: sone-traceren er default AV (klikk går gjennom) → hotspot-klikk
-    // virker i ?dev=1 (traceren blokkerer ikke lenger). Turistkontoret er nå en
-    // ROM-scene: klikk NAVIGERER inn (/turistkontor), ikke panel.
     expect(body.includes('Tracer AV'), 'tracer default AV (klikk virker)').toBe(true)
+    // Byhotell-hotspoten navigerer INN i Spor C-lobbyen (samme mønster som turistkontor).
+    await page.locator('[title="Byhotellet"]').click({ force: true })
+    await page.waitForURL(/\/hotell-lobby$/, { timeout: 4000 })
+    expect(page.url().endsWith('/hotell-lobby'), 'byhotell-klikk navigerer inn i hotell-lobbyen').toBe(true)
+    // Turistkontor-hotspoten navigerer INN i rom-scenen.
+    await page.goto('/game/d/stasjonsomradet?dev=1')
+    await ventState(page, s => s.phase !== 'startup', 'stasjonen igjen')
+    await page.waitForTimeout(400)
     await page.locator('[title="Turistkontoret"]').click({ force: true })
     await page.waitForURL(/\/turistkontor$/, { timeout: 4000 })
     expect(page.url().endsWith('/turistkontor'), 'turistkontor-klikk navigerer inn i rom-scenen').toBe(true)
-    // I ?dev=1 skal scenen ALLTID vise en kalibrerings-gjest ved disken (uansett
-    // sesong) + gjest-velgeren — ellers har Espen ingen å kalibrere.
-    await page.waitForTimeout(500)
-    const devGjest = await page.locator('img[src*="/customers/turist-"]').count()
-    expect(devGjest, 'kalibrerings-gjest vises ved disken i ?dev=1 (uten sesong)').toBeGreaterThan(0)
-    const bodyScene = await page.textContent('body') ?? ''
-    expect(bodyScene.includes('Gjest-kalibrering'), 'gjest-kalibreringspanelet (m/ gjest-velger) er oppe').toBe(true)
-    ctx.ok('?dev=1 (uten ?skip) → stasjonsbydelen (labels + tracer, INGEN TIL LEIE, tracer AV) → turistkontor-klikk inn i rom-scenen med kalibrerings-gjest + gjest-velger, ingen bransjevelger')
+    ctx.ok('?dev=1 → stasjonsbydelen (labels + tracer, INGEN TIL LEIE, tracer AV); byhotell → /hotell-lobby, turistkontor → /turistkontor, ingen bransjevelger')
   })
   // ── STEG 18 — Hotell-lobby: booking → provisjon (match == fasit, feilmatch == 0)
   await steg(page, rapport, 18, 'Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen', async ctx => {
@@ -860,6 +854,36 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     const etterFeil = (await lesState(page)).hotellProvisjon
     expect(etterFeil, 'feilmatch → INGEN ny provisjon (gjesten takket nei)').toBe(etterMatch)
     ctx.ok(`feilmatch (Bryggeriomvisningen): provisjon uendret (${etterFeil} kr) — ingen booking`)
+  })
+
+  // ── STEG 19 — TURISTKONTOR-ROM-SCENEN: kalibrerings-gjest ved disken + velger ──
+  await steg(page, rapport, 19, 'Turistkontor-scene (?dev=1): kalibrerings-gjest DEKODER + rendrer ved disken, gjest-velger blar gjennom sprites', async ctx => {
+    // Dyplenke rett til scenen (?dev=1 seeder engangsspill). I dev vises ALLTID
+    // en kalibrerings-gjest (uansett sesong) med gjest-velger.
+    await page.goto('/game/d/stasjonsomradet/turistkontor?dev=1')
+    await ventState(page, s => s.phase !== 'startup', 'turistkontor-scenen lastet (ikke startup)')
+    await page.waitForTimeout(600)
+    const body = await page.textContent('body') ?? ''
+    expect(body.includes('Velg din bransje'), 'ALDRI bransjevelgeren').toBe(false)
+    expect(body.includes('Gjest-kalibrering'), 'gjest-kalibreringspanelet (m/ gjest-velger) er oppe').toBe(true)
+    // Gjesten skal ikke bare finnes i DOM, men faktisk DEKODE (naturalWidth>0) —
+    // en 404/brukket sprite har src men naturalWidth==0 (det lurte oss før).
+    const g1 = await page.evaluate(() => {
+      const img = [...document.querySelectorAll('img')].find(i => /customers\/turist-/.test(i.src))
+      return img ? { src: img.src.split('/').pop(), decoded: img.naturalWidth > 0 && img.complete } : null
+    })
+    expect(g1, 'en turist-sprite står ved disken').not.toBeNull()
+    expect(g1!.decoded, `gjest-sprite (${g1!.src}) DEKODER (naturalWidth>0)`).toBe(true)
+    // Gjest-velgeren blar til neste sprite (annen src, fortsatt dekodet).
+    await page.getByRole('button', { name: '›' }).click()
+    await page.waitForTimeout(400)
+    const g2 = await page.evaluate(() => {
+      const img = [...document.querySelectorAll('img')].find(i => /customers\/turist-/.test(i.src))
+      return img ? { src: img.src.split('/').pop(), decoded: img.naturalWidth > 0 && img.complete } : null
+    })
+    expect(g2!.src, 'velgeren byttet sprite').not.toBe(g1!.src)
+    expect(g2!.decoded, `neste gjest-sprite (${g2!.src}) DEKODER også`).toBe(true)
+    ctx.ok(`turistkontor-scene: gjest «${g1!.src}» dekoder ved disken; velger → «${g2!.src}» (også dekodet)`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
