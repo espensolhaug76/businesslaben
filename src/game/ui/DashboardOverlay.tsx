@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useGame, useErTemaAktivt, useTemaNivaa } from '../GameContext'
+import { useGame, useErTemaAktivt, useTemaNivaa, useKlasseNivaa } from '../GameContext'
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
 import { getIndustryDefinitionFor, getActiveIndustryDefinition } from '../data/industryDefinition'
 import WindowDisplayEditor from '../city/WindowDisplay'
@@ -3448,6 +3448,9 @@ const EPOST_STATUS: Record<string, { ikon: string; tekst: string; farge: string 
 
 function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
   const { state, dispatch } = useGame()
+  // DEL 0 — innboksen er ikke tema-bundet ⇒ det GLOBALE klassenivået styrer om
+  // VG2-tilleggene (skriftlig pristilbud, betalt-omtale-vinkelen) vises.
+  const erVg2 = useKlasseNivaa() === 'vg2'
   const p = msg.epost!
   const [rabatt, setRabatt] = useState(0)
   const [pristilbud, setPristilbud] = useState('')
@@ -3511,16 +3514,18 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Betaling: <strong style={{ color: '#f1f5f9' }}>{betaling.toLocaleString('nb-NO')} kr</strong> — rabatt bygger kunderelasjon, men koster margin.</div>
         </div>
 
-        {/* VG2: skriftlig pristilbud (vurderingsspor) */}
-        <div>
-          <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Skriftlig <Fagord id="SAL_004">pristilbud</Fagord> til kunden (valgfritt):</label>
-          <textarea value={pristilbud} onChange={e => setPristilbud(e.target.value)} rows={2}
-            placeholder="F.eks. «12 boller + kaffe, samlet 540 kr, levert fredag kl. 10.»"
-            style={{ width: '100%', marginTop: 4, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '0.45rem 0.6rem', color: '#f1f5f9', fontSize: 12, fontFamily: 'inherit', resize: 'vertical' }} />
-        </div>
+        {/* VG2 (globalt klassenivå): skriftlig pristilbud (vurderingsspor) */}
+        {erVg2 && (
+          <div>
+            <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Skriftlig <Fagord id="SAL_004">pristilbud</Fagord> til kunden (valgfritt):</label>
+            <textarea value={pristilbud} onChange={e => setPristilbud(e.target.value)} rows={2}
+              placeholder="F.eks. «12 boller + kaffe, samlet 540 kr, levert fredag kl. 10.»"
+              style={{ width: '100%', marginTop: 4, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '0.45rem 0.6rem', color: '#f1f5f9', fontSize: 12, fontFamily: 'inherit', resize: 'vertical' }} />
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button style={knappJa} onClick={() => { kassePling(); dispatch({ type: 'ACCEPT_KUNDEBESTILLING', messageId: msg.id, mengderabatt: rabatt, pristilbud: pristilbud.trim() || undefined }) }}>
+          <button style={knappJa} onClick={() => { kassePling(); dispatch({ type: 'ACCEPT_KUNDEBESTILLING', messageId: msg.id, mengderabatt: rabatt, pristilbud: erVg2 ? (pristilbud.trim() || undefined) : undefined }) }}>
             Ja, ta bestillingen
           </button>
           <button style={knappNei} onClick={() => dispatch({ type: 'DECLINE_EPOST', messageId: msg.id })}>Nei takk</button>
@@ -3564,13 +3569,13 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
         <div><strong style={{ color: '#f1f5f9' }}>{mt.kanalNavn}</strong> — {mt.tilbyder}</div>
         <div style={{ marginTop: 4 }}>Pris: <strong style={{ color: '#f1f5f9' }}>{mt.kostnad.toLocaleString('nb-NO')} kr</strong> for {mt.varighetDager} dager</div>
         <div style={{ marginTop: 6, color: '#94a3b8', fontSize: 11 }}>💡 Når denne kanalen DIN målgruppe? Sjekk hvem kanalen treffer før du betaler.</div>
-        {mt.merkekrav && (
+        {mt.merkekrav && erVg2 && (
           <div style={{ marginTop: 6, color: '#fbbf24', fontSize: 11 }}>⚖️ Dette er <Fagord id="JUS_008">betalt omtale</Fagord> — den må merkes som reklame.</div>
         )}
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <button style={{ ...knappJa, opacity: raakraft ? 0.5 : 1, cursor: raakraft ? 'not-allowed' : 'pointer' }} disabled={raakraft}
-          onClick={() => { if (!raakraft) { kassePling(); dispatch({ type: 'ACCEPT_MKFTILBUD', messageId: msg.id }) } }}>
+          onClick={() => { if (!raakraft) { kassePling(); dispatch({ type: 'ACCEPT_MKFTILBUD', messageId: msg.id, visMerkekrav: erVg2 }) } }}>
           Ja, kjøp plassen
         </button>
         <button style={knappNei} onClick={() => dispatch({ type: 'DECLINE_EPOST', messageId: msg.id })}>Nei takk</button>

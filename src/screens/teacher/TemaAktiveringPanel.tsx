@@ -11,6 +11,8 @@ export default function TemaAktiveringPanel() {
   // Aktiv klasse settes i Klasser-fanen (localStorage). Leses ved (re)mount.
   const [kode] = useState<string>(() => localStorage.getItem('teacher-classroom-code') ?? '')
   const [aktivering, setAktivering] = useState<Record<string, TemaAktivering>>({})
+  // DEL 0 — globalt klassenivå (VG1/VG2), søsternode til temaAktivering.
+  const [klasseNivaa, setKlasseNivaa] = useState<TemaNivaa>('vg1')
 
   useEffect(() => {
     if (!kode) return
@@ -19,11 +21,23 @@ export default function TemaAktiveringPanel() {
     })
   }, [kode])
 
+  useEffect(() => {
+    if (!kode) return
+    return onValue(ref(db, `klasser/${kode}/klasseNivaa`), snap => {
+      setKlasseNivaa(snap.val() === 'vg2' ? 'vg2' : 'vg1')
+    })
+  }, [kode])
+
   function skriv(temaId: string, verdi: TemaAktivering | null) {
     if (!kode) return
     const node = ref(db, `klasser/${kode}/temaAktivering/${temaId}`)
     // Skriv til RTDB; lokal state følger via onValue-abonnementet.
     if (verdi) set(node, verdi); else remove(node)
+  }
+
+  function skrivNivaa(n: TemaNivaa) {
+    if (!kode) return
+    set(ref(db, `klasser/${kode}/klasseNivaa`), n)   // lokal state følger via onValue
   }
 
   if (!kode) {
@@ -45,6 +59,32 @@ export default function TemaAktiveringPanel() {
         Slå temaer av/på for denne klassen og velg nivå. Endringen ses live i
         spillet for elever med samme klassekode.
       </p>
+
+      {/* DEL 0 — GLOBALT klassenivå: gjelder alt spillinnhold utenfor et aktivt
+          tema (f.eks. VG2-ekstrafeltene i innboksen). Innenfor et tema styrer
+          temaets eget nivå (over). */}
+      <div className="flex items-center justify-between gap-4 p-3 mb-4 rounded-xl border border-teal-200 bg-teal-50/50">
+        <div className="min-w-0">
+          <div className="font-medium text-gray-900 text-sm">Klassens nivå</div>
+          <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+            Gjelder alt utenom aktiverte temaer. VG2 viser ekstra oppgaver (f.eks.
+            skriftlig pristilbud og «betalt omtale skal merkes»).
+          </div>
+        </div>
+        <div className="flex rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
+          {(['vg1', 'vg2'] as TemaNivaa[]).map(n => (
+            <button
+              key={n}
+              onClick={() => skrivNivaa(n)}
+              className={`px-3 py-1 text-xs font-semibold uppercase transition-colors ${
+                klasseNivaa === n ? 'bg-teal-500 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-3">
         {TEMAER.map(tema => {

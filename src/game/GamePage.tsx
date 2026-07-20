@@ -65,7 +65,7 @@ function setOverlay(open: boolean) {
 }
 
 function GameContent() {
-  const { state, dispatch } = useGame()
+  const { state, dispatch, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev } = useGame()
   const navigate = useNavigate()
   const { districtId, lokaleId } = useParams<{ districtId?: string; lokaleId?: string }>()
   // Lokale-undernivåer via rute-suffiks: /inne = bak disken (kunde + salg),
@@ -301,6 +301,18 @@ function GameContent() {
               style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.35)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#d8b4fe', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
               ⏩ Spol til frist
             </button>
+          </div>
+          {/* DEL 0 dev: overstyr globalt klassenivå lokalt (VINNER over RTDB). */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700 }}>
+              Nivå: {klasseNivaa.toUpperCase()}{klasseNivaaDev ? ' (DEV)' : ''}
+            </span>
+            {(['vg1', 'vg2'] as const).map(n => (
+              <button key={n} onClick={() => setKlasseNivaaDev(klasseNivaaDev === n ? null : n)}
+                style={{ background: klasseNivaaDev === n ? 'rgba(250,204,21,0.25)' : 'rgba(250,204,21,0.08)', border: `1px solid ${klasseNivaaDev === n ? '#facc15' : 'rgba(250,204,21,0.35)'}`, borderRadius: 99, padding: '0.4rem 0.9rem', color: '#fde68a', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {n.toUpperCase()} <span style={{ opacity: 0.7 }}>DEV</span>
+              </button>
+            ))}
           </div>
           <button
             onClick={() => { setSimOpen(true); setOverlay(true) }}

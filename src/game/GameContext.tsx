@@ -321,7 +321,7 @@ type Action =
   /** 7b: takk ja til et leverandørtilbud (rabattert innkjøp på vei til lager). */
   | { type: 'ACCEPT_LEVERANDORTILBUD'; messageId: string }
   /** 7d: takk ja til et markedsføringstilbud (tidsavgrenset trafikkboost). */
-  | { type: 'ACCEPT_MKFTILBUD'; messageId: string }
+  | { type: 'ACCEPT_MKFTILBUD'; messageId: string; visMerkekrav?: boolean }
   /** Takk nei til et quest-tilbud (bevisst avslag — ingen konsekvens). */
   | { type: 'DECLINE_EPOST'; messageId: string }
   /** Dev (?dev=1): injiser én test-e-post av hver type nå. */
@@ -1457,7 +1457,9 @@ function reducer(state: GameState, action: Action): GameState {
       const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
       // Post-hoc refleksjon: treff i EGEN målgruppe avsløres først nå.
       const treffVurdering = treff >= 40 ? 'traff målgruppa godt' : treff >= 20 ? 'traff målgruppa delvis' : 'traff målgruppa dårlig'
-      const merke = p.merkekrav ? ' Husk: betalt omtale SKAL merkes som reklame (markedsføringsloven).' : ''
+      // DEL 0: betalt-omtale-vinkelen er et VG2-tillegg — UI sender visMerkekrav
+      // = (globalt nivå === vg2). VG1 ser ikke merkeplikt-refleksjonen.
+      const merke = (p.merkekrav && action.visMerkekrav) ? ' Husk: betalt omtale SKAL merkes som reklame (markedsføringsloven).' : ''
       const refleksjon = `Kanalen ${treffVurdering} (${treff} % daglig treff i din valgte målgruppe). Løft ≈ +${Math.round((faktor - 1) * 100)} % trafikk i ${p.varighetDager} dager for ${p.kostnad} kr.${merke}`
       const messages = state.messages.map(m => m.id === action.messageId
         ? { ...m, read: true, epostStatus: 'akseptert' as const, epostRefleksjon: refleksjon }
@@ -2031,6 +2033,13 @@ interface GameContextValue {
   /** Temaer læreren har aktivert for denne klassen (temaId → { aktiv, nivaa }).
    *  Fylles fra Firebase RTDB når klassekode finnes, ellers fra lokal fallback. */
   aktiveTemaer: Record<string, TemaAktivering>
+  /** DEL 0 — GLOBALT klassenivå (VG1/VG2), effektivt (dev-overstyring vinner).
+   *  Gjelder ALT innhold utenfor et aktivt tema; innenfor et tema overstyrer
+   *  temaets eget nivå (useTemaNivaa) dette — se useEffektivtNivaa. */
+  klasseNivaa: TemaNivaa
+  /** Dev-overstyring av klassenivå (?dev=1), null = ingen. */
+  klasseNivaaDev: TemaNivaa | null
+  setKlasseNivaaDev: (n: TemaNivaa | null) => void
 }
 
 const GameContext = createContext<GameContextValue | null>(null)
@@ -2051,6 +2060,25 @@ function lesTemaFallback(): Record<string, TemaAktivering> {
     if (raw) { const v = JSON.parse(raw); if (v && typeof v === 'object') return v as Record<string, TemaAktivering> }
   } catch { /* korrupt/utilgjengelig — tom */ }
   return {}
+}
+
+// DEL 0 — GLOBALT KLASSENIVÅ (VG1/VG2). Egen RTDB-node klasser/{kode}/klasseNivaa
+// (søster til temaAktivering). Uten klassekode: lokal fallback (default 'vg1').
+// Dev-overstyring (?dev=1) i en egen nøkkel som VINNER over RTDB/fallback, så
+// læreren kan teste begge nivåer lokalt uten en levende klasse.
+function lesKlasseNivaaFallback(): TemaNivaa {
+  try {
+    const raw = localStorage.getItem('klasse-nivaa-dev')
+    if (raw === 'vg1' || raw === 'vg2') return raw
+  } catch { /* utilgjengelig */ }
+  return 'vg1'
+}
+function lesKlasseNivaaDev(): TemaNivaa | null {
+  try {
+    const raw = localStorage.getItem('klasse-nivaa-dev-override')
+    if (raw === 'vg1' || raw === 'vg2') return raw
+  } catch { /* utilgjengelig */ }
+  return null
 }
 
 const BEREDSKAP_KEY = 'beredskap_state_v1'
@@ -2110,6 +2138,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // DEL 0 — GLOBALT KLASSENIVÅ: RTDB-verdi (eller fallback) + valgfri dev-overstyring.
+  const [klasseNivaaRaw, setKlasseNivaaRaw] = useState<TemaNivaa>(() => lesKlasseNivaaFallback())
+  const [klasseNivaaDev, setKlasseNivaaDevState] = useState<TemaNivaa | null>(() => lesKlasseNivaaDev())
+  useEffect(() => {
+    const kode = hentKlassekode()
+    if (!kode) { setKlasseNivaaRaw(lesKlasseNivaaFallback()); return }
+    return onValue(ref(db, `klasser/${kode}/klasseNivaa`), snap => {
+      const v = snap.val()
+      setKlasseNivaaRaw(v === 'vg2' ? 'vg2' : 'vg1')
+    })
+  }, [])
+  // Dev-bryter (?dev=1): overstyrer lokalt, persistert; null = ingen overstyring.
+  const setKlasseNivaaDev = (n: TemaNivaa | null) => {
+    try {
+      if (n) localStorage.setItem('klasse-nivaa-dev-override', n)
+      else localStorage.removeItem('klasse-nivaa-dev-override')
+    } catch { /* ignore */ }
+    setKlasseNivaaDevState(n)
+  }
+  const klasseNivaa: TemaNivaa = klasseNivaaDev ?? klasseNivaaRaw
+
   // TEMA 15: når læreren aktiverer reiseliv-temaet OG ingen sesong har startet
   // ennå, start turistsesongen. Kun ÉN auto-start (turistsesong != null etterpå);
   // dev-knappen kan restarte manuelt.
@@ -2119,7 +2168,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [aktiveTemaer, state.turistsesong])
 
-  return <GameContext.Provider value={{ state, dispatch, aktiveTemaer }}>{children}</GameContext.Provider>
+  return <GameContext.Provider value={{ state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev }}>{children}</GameContext.Provider>
 }
 
 export function useGame() {
@@ -2156,6 +2205,22 @@ export function useErTemaAktivt(temaId: string): boolean {
 export function useTemaNivaa(temaId: string): TemaNivaa | undefined {
   const t = useGame().aktiveTemaer[temaId]
   return t?.aktiv ? t.nivaa : undefined
+}
+/** DEL 0 — GLOBALT klassenivå (dev-overstyring vinner). Gjelder alt innhold som
+ *  ikke er bundet til et aktivt tema. */
+export function useKlasseNivaa(): TemaNivaa {
+  return useGame().klasseNivaa
+}
+/** DEL 0 — EFFEKTIVT nivå for et innholdsstykke. Presedens: er innholdet bundet
+ *  til et tema (temaId gitt OG temaet aktivt) styrer TEMAETS nivå; ellers gjelder
+ *  det globale klassenivået. */
+export function useEffektivtNivaa(temaId?: string): TemaNivaa {
+  const ctx = useGame()
+  if (temaId) {
+    const t = ctx.aktiveTemaer[temaId]
+    if (t?.aktiv) return t.nivaa
+  }
+  return ctx.klasseNivaa
 }
 
 // Re-export types for consumers
