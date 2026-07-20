@@ -2204,6 +2204,27 @@ Full URL (dev-server 5173): **`http://localhost:5173/game?skip=1`**
 - **C) CLAUDE.md-regel** om ugyldig klarsignal (over).
 - `tsc -b` + `vite build` + `npm run spilltest` **21/21** grønn. IKKE merget.
 
+### FIKS-RUNDE 3 (Espens Chrome-validering av `spor-a/innboks-fiks`)
+> **ROTÅRSAK til «14 min, ingen e-post»: IKKE en genereringsfeil.** Genereringen
+> fyrer ved `START_NEW_DAY` (dag 2+). Espen sto fast på DAG 1-oppgjøret fordi
+> `DayResultOverlay` KLIPPET et for høyt kort: ytre container hadde
+> `alignItems:center` + `overflowY:auto` — den kjente flexbox-feilen der et kort
+> høyere enn viewporten klippes øverst OG nederst, og scroll ikke når toppen. «▶
+> Start ny dag»-knappen (nederst) ble dermed uklikkbar → dagen avanserte aldri →
+> ingen dag-2-generering. Bekreftet mot Espens skjermbilde (oppgjøret slutter ved
+> «Mye ble kastet»-hintet; knappene ligger under folden).
+- **Kort-scroll fikset:** ytre container bruker nå `display:flex` UTEN
+  align/justify-center; kortet sentreres med `margin:auto` (sentrerer når det er
+  plass, lar HELE kortet skrolle når det er for høyt — standard modal-fiks). Gjelder
+  både seremoni- og oppgjørskortet. → «Start ny dag» alltid nåbar → dag ruller →
+  e-post genereres. (Spilltest-broen dispatcher START_NEW_DAY direkte, så 21/21 var
+  grønt selv med den visuelle feilen — dette er en ren layout-/nåbarhet-fiks som
+  Espen verifiserer i Chrome.)
+- **Drikkemeny-tavla:** produktet `tea` omdøpt `Te / Spesial` → **`Te`** (i
+  katalogen, så det slår gjennom overalt: tavle, Priser, Produkter). Menyfonten
+  redusert litt (tittel 18→16, linjer 15→13 px maks) så teksten får luft på tavla.
+- `tsc -b` + `vite build` + `npm run spilltest` **21/21** grønn. IKKE merget.
+
 ## Åpne TODO-er / flagg (les før du bygger videre)
 
 - **Løpende markedsføring (`BALANCE.kampanje.lopende`) — SATT (pkt. 34→35):** pkt.

@@ -589,7 +589,7 @@ export default function InteriorView({ districtId, lokaleId }: {
               }}
             >
               <div style={{
-                fontSize: 'clamp(11px, 1.6vw, 18px)', fontWeight: 700, whiteSpace: 'nowrap',
+                fontSize: 'clamp(10px, 1.35vw, 16px)', fontWeight: 700, whiteSpace: 'nowrap',
                 marginBottom: '0.15em', letterSpacing: '0.03em', textDecoration: 'underline',
                 textUnderlineOffset: '0.2em',
               }}>
@@ -597,7 +597,7 @@ export default function InteriorView({ districtId, lokaleId }: {
               </div>
               {shown.map(p => (
                 <div key={p.id} style={{
-                  fontSize: 'clamp(9px, 1.3vw, 15px)', whiteSpace: 'nowrap',
+                  fontSize: 'clamp(8px, 1.1vw, 13px)', whiteSpace: 'nowrap',
                   display: 'flex', alignItems: 'baseline', gap: '0.6em',
                 }}>
                   <span>{p.name}</span>
@@ -605,7 +605,7 @@ export default function InteriorView({ districtId, lokaleId }: {
                 </div>
               ))}
               {overflow && (
-                <div style={{ fontSize: 'clamp(9px, 1.2vw, 14px)', opacity: 0.75, whiteSpace: 'nowrap' }}>…og mer</div>
+                <div style={{ fontSize: 'clamp(8px, 1.0vw, 12px)', opacity: 0.75, whiteSpace: 'nowrap' }}>…og mer</div>
               )}
             </div>
           )

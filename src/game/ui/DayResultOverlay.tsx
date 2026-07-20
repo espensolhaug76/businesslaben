@@ -84,8 +84,13 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
       style={{
         position: 'fixed', inset: 0, zIndex: 260,
         background: 'rgba(0,0,0,0.82)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'Outfit', sans-serif", overflowY: 'auto', padding: '2rem',
+        // `display:flex` UTEN alignItems/justifyContent:center — sentreringen
+        // gjøres med `margin:auto` på kortet (under). Med alignItems:center KLIPPES
+        // et kort som er høyere enn viewporten øverst OG nederst, og overflow-scroll
+        // når ikke toppen (kjent flexbox-feil) — da ble «▶ Start ny dag» nederst
+        // uleselig/uklikkbar. margin:auto sentrerer når det er plass OG lar hele
+        // kortet skrolle når det er for høyt.
+        display: 'flex', fontFamily: "'Outfit', sans-serif", overflowY: 'auto', padding: '2rem 1rem',
       }}
     >
       {!seremoniFerdig ? (
@@ -99,7 +104,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           style={{
             background: 'rgba(15,23,42,0.98)', border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: '2rem', padding: '2.5rem 2.25rem', maxWidth: 420, width: '100%',
-            color: '#f1f5f9', textAlign: 'center', cursor: 'pointer',
+            color: '#f1f5f9', textAlign: 'center', cursor: 'pointer', margin: 'auto',
           }}
         >
           <div style={{ fontSize: 46 }}>🌙</div>
@@ -119,7 +124,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           background: 'rgba(15,23,42,0.98)',
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: '2rem', padding: '2.25rem',
-          maxWidth: 480, width: '100%', color: '#f1f5f9',
+          maxWidth: 480, width: '100%', color: '#f1f5f9', margin: 'auto',
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
