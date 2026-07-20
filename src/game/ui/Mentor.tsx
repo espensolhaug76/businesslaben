@@ -226,9 +226,12 @@ function renderMelding(melding: string): ReactNode {
 }
 
 export default function Mentor({ blocked }: { blocked: boolean }) {
-  const { state, aktiveTemaer } = useGame()
+  const { state, aktiveTemaer, dispatch, klasseNivaa } = useGame()
   const [fired, setFired] = useState<Set<string>>(loadFired)
   const [queue, setQueue] = useState<string[]>([])          // HENDELSES-kø (peker/kø)
+  // KROK 6 — «Espen spør»: er det aktive spørsmålet avslørt (eleven klikket)?
+  // Hvert nytt spørsmål starter skjult bak peker-figuren (aldri avbrytende popup).
+  const [quizRevealed, setQuizRevealed] = useState(false)
   const [faneMsg, setFaneMsg] = useState<string | null>(null)  // KONTEKSTBUNDET fane-melding
   const [activeFane, setActiveFane] = useState<string | null>(null)
   const [failedImg, setFailedImg] = useState(false)
@@ -317,6 +320,38 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     }
   }, [state, fire])
 
+  // KROK 6 — «ESPEN SPØR» kadens. Reduceren gater (maks ett ubesvart, maksPerDag),
+  // så disse dispatchene er trygge å fyre ofte — de blir no-op når det ikke passer.
+  const aktiveTemaIds = Object.entries(aktiveTemaer).filter(([, v]) => v?.aktiv).map(([k]) => k)
+  const still = useCallback((kategoriHint: 'kalkyle' | 'drift' | 'malgruppe') => {
+    dispatch({ type: 'STILL_ESPEN_SPOR', nivaa: klasseNivaa, aktiveTemaIds, kategoriHint })
+  }, [dispatch, klasseNivaa, aktiveTemaIds])
+  // (1) Etter dagsoppgjøret (refleksjonsøyeblikk) → drift/kalkyle. Én gang per dag.
+  const spurtDagRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (state.dayPhase !== 'oppgjør') return
+    const dagKey = `${state.currentYear}-${state.currentMonth}-${state.dayNumber}`
+    if (spurtDagRef.current === dagKey) return
+    spurtDagRef.current = dagKey
+    still('drift')
+  }, [state.dayPhase, state.dayNumber, state.currentMonth, state.currentYear, still])
+  // (2) Etter (ny) prising i løpet av dagen → kalkyle.
+  const prisetRef = useRef(state.products.filter(p => p.retailPrice > 0).length)
+  useEffect(() => {
+    const priset = state.products.filter(p => p.retailPrice > 0).length
+    if (priset > prisetRef.current && priset > 0 && state.rentedLocationId) still('kalkyle')
+    prisetRef.current = priset
+  }, [state.products, state.rentedLocationId, still])
+  // (3) Etter målgruppevalg (flere segmenter valgt) → målgruppe.
+  const segRef = useRef(state.targetAudience.ageGroups.length)
+  useEffect(() => {
+    const n = state.targetAudience.ageGroups.length
+    if (n > segRef.current) still('malgruppe')
+    segRef.current = n
+  }, [state.targetAudience.ageGroups, still])
+  // Nytt spørsmål → skjul til eleven klikker figuren.
+  useEffect(() => { setQuizRevealed(false) }, [state.espenSpor.aktivt?.id])
+
   // KONTEKSTBUNDNE fane-triggere: dashbordet melder aktiv fane (eller null når
   // det lukkes). Fane-meldingen vises KUN mens den fanen er aktiv. Rekker den
   // ikke frem (ordbok/blokkert/aktiv hendelsesmelding ved fanebytte) blir den
@@ -341,25 +376,34 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     return () => window.removeEventListener('mentor:fane', h)
   }, [handleFane])
 
+  // KROK 6 — «Espen spør»: aktivt spørsmål har FORRANG over tekstbobler, men vises
+  // aldri av seg selv — det venter bak peker-figuren til eleven klikker.
+  const quizAktivt = state.espenSpor.aktivt
+  const quizSvar = state.espenSpor.sisteSvar
+  const quizPending = !!quizAktivt && !quizRevealed
+  const quizVises = !!quizAktivt && quizRevealed
+
   const hasQueued = queue.length > 0
   // KUN ÉN boble om gangen. En event-melding vises når køen ikke er tom, INGEN er
   // pauset (eleven lukket forrige), og den ikke er blokkert (eller er force-vist).
-  const eventVises = hasQueued && !paused && (!blocked || forceShow)
+  // Quiz-bobla har forrang, så tekstbobler holdes tilbake mens den vises.
+  const eventVises = hasQueued && !paused && (!blocked || forceShow) && !quizVises
   const eventId = eventVises ? queue[0]! : null
   const eventMelding = eventId ? dynamiskMentorMelding(eventId, state) : null
   eventShowingRef.current = !!eventMelding
   // Fane-melding: kun når INGEN event ligger i kø (så aldri to bobler), og ikke
-  // under ordbok/blokkering.
-  const faneMelding = (faneMsg && !ordbokOpen && !blocked && !hasQueued) ? mentorMelding(faneMsg) : null
+  // under ordbok/blokkering/quiz.
+  const faneMelding = (faneMsg && !ordbokOpen && !blocked && !hasQueued && !quizVises) ? mentorMelding(faneMsg) : null
   const melding = eventMelding ?? faneMelding     // én boble; hendelse har forrang
 
-  // VENTER: meldinger står i kø men ingen boble vises (pauset eller blokkert) ⇒
-  // figuren PEKER + «N»-badge; neste vises når eleven klikker figuren.
-  const venter = hasQueued && !eventMelding
-  const badge = venter ? queue.length : 0
+  // VENTER: meldinger/quiz står i kø men ingen boble vises ⇒ figuren PEKER +
+  // «N»-badge; neste vises når eleven klikker figuren.
+  const queueVenter = hasQueued && !eventMelding && !quizVises
+  const venter = queueVenter || quizPending
+  const badge = (queueVenter ? queue.length : 0) + (quizPending ? 1 : 0)
 
-  // Pose-prioritet: leser > nøytral (aktiv melding) > peker (venter i kø) > vanlig (hvile).
-  const poseKey: keyof typeof POSE = ordbokOpen ? 'leser' : melding ? 'noytral' : venter ? 'peker' : 'vanlig'
+  // Pose-prioritet: leser > nøytral (aktiv melding/quiz) > peker (venter) > vanlig.
+  const poseKey: keyof typeof POSE = ordbokOpen ? 'leser' : (melding || quizVises) ? 'noytral' : venter ? 'peker' : 'vanlig'
   const pose = POSE[poseKey]
   // Normaliser høyde + fotlinje (se POSE_JUSTERING): rendret canvashøyde så
   // synlig figur = MENTOR_FIGUR_HOYDE, og heng transparent bunnpadding under
@@ -380,8 +424,9 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
 
   function figureClick() {
     if (ordbokOpen) { setOrdbokOpen(false); return }
+    if (quizPending) { setQuizRevealed(true); return }             // Espen spør → vis spørsmålet
     if (venter) { setPaused(false); setForceShow(true); return }   // peker → vis neste kø-melding
-    if (melding) return                                            // aktiv melding vises alt
+    if (melding || quizVises) return                               // aktiv boble vises alt
     setOrdbokOpen(true)                                            // i ro → åpne ordboka
   }
 
@@ -456,6 +501,74 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
               <button onClick={dismiss} title="Lukk" style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 14, cursor: 'pointer', lineHeight: 1, padding: 0 }}>✕</button>
             </div>
             <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>{renderMelding(melding)}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* KROK 6 — «ESPEN SPØR»: interaktivt spørsmål i mentor-bobla. Beslutning
+          først (svarknapper), fasit + forklaring ETTER svar. Fortegn + tekst
+          («Riktig»/«Ikke helt»), aldri kun farge. */}
+      <AnimatePresence>
+        {quizVises && quizAktivt && (
+          <motion.div
+            key={`espen-spor-${quizAktivt.id}`}
+            initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
+            style={{
+              pointerEvents: 'auto', width: 320, maxWidth: 'calc(100vw - 120px)', marginBottom: 20,
+              background: 'rgba(12,17,29,0.98)', border: '1px solid rgba(168,85,247,0.5)',
+              borderRadius: '14px 14px 4px 14px', padding: '0.8rem 0.95rem',
+              color: '#e2e8f0', boxShadow: '0 10px 34px rgba(0,0,0,0.5)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: '#c084fc', letterSpacing: '0.05em' }}>🎓 ESPEN SPØR</span>
+              <button onClick={() => dispatch({ type: 'LUKK_ESPEN_SPOR' })} title="Lukk" style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 14, cursor: 'pointer', lineHeight: 1, padding: 0 }}>✕</button>
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 8, fontWeight: 600 }}>{renderMelding(quizAktivt.tekst)}</div>
+
+            {/* Svaralternativer — klikkbare før svar, annotert etter. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {quizAktivt.alternativer.map((alt, i) => {
+                const erRiktig = i === quizAktivt.riktigIndex
+                const erValgt = quizSvar?.valgtIndex === i
+                const svart = !!quizSvar
+                // Fargeblind-trygt: alltid en TEKSTETIKETT når svart, ikke bare farge.
+                const etikett = svart && erRiktig ? '  ✓ Riktig svar' : (svart && erValgt ? '  ✗ Ditt svar' : '')
+                const bg = !svart ? 'rgba(255,255,255,0.05)' : erRiktig ? 'rgba(34,197,94,0.14)' : erValgt ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)'
+                const bd = !svart ? 'rgba(255,255,255,0.14)' : erRiktig ? 'rgba(34,197,94,0.5)' : erValgt ? 'rgba(239,68,68,0.45)' : 'rgba(255,255,255,0.08)'
+                return (
+                  <button
+                    key={i}
+                    disabled={svart}
+                    onClick={() => { if (!svart) dispatch({ type: 'SVAR_ESPEN_SPOR', index: i }) }}
+                    style={{
+                      textAlign: 'left', background: bg, border: `1px solid ${bd}`, borderRadius: 8,
+                      padding: '0.45rem 0.6rem', color: '#f1f5f9', fontSize: 12.5, fontFamily: 'inherit',
+                      cursor: svart ? 'default' : 'pointer',
+                    }}
+                  >
+                    {alt}<span style={{ color: erRiktig ? '#4ade80' : '#fca5a5', fontWeight: 700 }}>{etikett}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Fasit + forklaring — ALLTID etter svar (aldri før). */}
+            {quizSvar && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 4, color: quizSvar.riktig ? '#4ade80' : '#fca5a5' }}>
+                  {quizSvar.riktig
+                    ? (quizSvar.belonning > 0 ? `✅ Riktig! Kunnskapsbonus +${quizSvar.belonning} kr` : '✅ Riktig! (dagens kunnskapsbonus er brukt opp)')
+                    : '❌ Ikke helt —'}
+                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.5, color: '#cbd5e1' }}>{renderMelding(quizAktivt.forklaring)}</div>
+                <button
+                  onClick={() => dispatch({ type: 'LUKK_ESPEN_SPOR' })}
+                  style={{ marginTop: 8, background: 'linear-gradient(135deg,#a855f7,#7c3aed)', border: 'none', borderRadius: 99, padding: '0.4rem 1.1rem', color: '#fff', fontWeight: 800, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Lukk
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

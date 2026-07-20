@@ -402,10 +402,12 @@ export interface DayResult {
   overprisProdukter: { navn: string; tapte: number; pris: number; marked: number }[]
   /** BEMANNING: bakgrunnskunder tapt til KØ (for lite kapasitet på vakt). */
   koKunder: number
-  /** salg (møter + bakgrunn) − varekost − svinn. */
+  /** salg (møter + bakgrunn) + kunnskapsbonus − varekost − svinn. */
   resultat: number
   reputationDelta: number
   xpEarned: number
+  /** KROK 6 — sum kunnskapsbonus (Espen spør) tjent i løpet av dagen. Del av P&L. */
+  kunnskapsbonusKr: number
   /** Minst én utsolgt-hendelse i dag (møte-delsalg ELLER tapt bakgrunnssalg). */
   stockoutHappened: boolean
   /** Stengt tidlig (før 17:00) ⇒ resterende bakgrunnskunder bortfalt. */
@@ -566,6 +568,8 @@ export interface GameState {
     koKunder: number
     reputationDelta: number
     xpEarned: number
+    /** KROK 6 — kunnskapsbonus (Espen spør) akkumulert i dag. Del av P&L. */
+    kunnskapsbonusKr: number
     /** Minst ett salgsforsøk i dag traff en utsolgt vare (møte eller bakgrunn). */
     stockoutHappened: boolean
     /** KROK 4 (game feel): siste FORNØYDE kundemøte (positiv rykte-delta) —
@@ -736,6 +740,31 @@ export interface GameState {
    *  Løfter bakgrunnstrafikken (som kampanjen) til og med `sluttAbsDag`. Null =
    *  ingen aktiv boost. Persistert. */
   mkfBoost: { faktor: number; sluttAbsDag: number; kanalNavn: string } | null
+
+  // ── KROK 6 — «Espen spør» (kunnskapsquiz via mentoren). Persistert. ──
+  espenSpor: {
+    /** Spørsmålet som ligger i mentor-køen nå (snapshot bygget ved STILL), null
+     *  når ingen. Vises interaktivt i mentor-bobla. */
+    aktivt: { id: string; kategori: string; tekst: string; alternativer: string[]; riktigIndex: number; forklaring: string; glossaryId?: string } | null
+    /** Elevens svar på det aktive spørsmålet (driver forklaring-visningen). */
+    sisteSvar: { valgtIndex: number; riktig: boolean; belonning: number } | null
+    /** Riktig besvarte spørsmål-id-er (stilles aldri igjen). */
+    besvarteIds: string[]
+    /** Feil-besvarte: id → absolutt spilldag de kan stilles igjen etter. */
+    feilCooldown: Record<string, number>
+    /** Spørsmål STILT i dag (mot maksPerDag) + samlet belønning i dag (mot taket). */
+    dagTeller: number
+    dagBelonning: number
+  }
+
+  // ── KROK 2 — Stamkunder (scenariokunder som HUSKER eleven). Persistert. ──
+  /** Nøkkel = scenario-id (= kundens id). Oppdateres når et kundemøte løses. */
+  stamkunder: Record<string, {
+    antallMoter: number
+    fornoydeUtfall: number
+    sisteUtfall: 'fornoyd' | 'noytral' | 'misfornoyd'
+    erStamkunde: boolean
+  }>
 
   // ── TEMA 15 Reiseliv og vertskap (kun i bruk når temaet er aktivt) ──
   /** Aktiv/siste turistsesong (null = aldri startet). Persistert. */

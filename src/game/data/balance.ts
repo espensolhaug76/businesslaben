@@ -252,4 +252,23 @@ export const BALANCE = {
     ryktSviktetLevering: -6,
     ryktVellykketLevering: 2,
   },
+
+  /** KROK 6 — «ESPEN SPØR» (docs/ENGASJEMENT.md). Kunnskapsquiz via mentoren:
+   *  liten pengebelønning for riktig svar, tak per dag. Belønningen ligger i P&L
+   *  (egen «Kunnskapsbonus»-linje i dagsoppgjøret), ikke utenom. ALT tunbart. */
+  espenSpor: {
+    /** Maks antall spørsmål mentoren STILLER av seg selv per dag (VG1 skal ikke
+     *  drukne). Dev-knappen kan overstige for testing. */
+    maksPerDag: 2,
+    /** Belønning for ett riktig svar. ~én god times drifts­margin (jf.
+     *  målbildet 3 000–5 000 kr/dag over 8 t) — merkbart, men aldri en snarvei
+     *  forbi selve driften. */
+    belonningKr: 200,
+    /** Tak på samlet kunnskapsbonus per dag. Ekstra riktige svar utover dette
+     *  gir forklaring, men 0 kr (3. spørsmål samme dag = 0 ekstra). */
+    maksBelonningPerDag: 400,
+    /** Feil svar koster ingenting; spørsmålet er tilbake i poolen etter så mange
+     *  spilldager. */
+    cooldownDagerVedFeil: 3,
+  },
 }

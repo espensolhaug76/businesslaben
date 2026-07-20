@@ -133,6 +133,10 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
           <SalgLinje ikon="🛎️" tittel={`Kundemøter: ${r.meetings}`} hoyre={formatKr(r.soldKr)} color="#22c55e" />
           <SalgLinje ikon="👥" tittel={`Øvrige kunder: ${r.bakgrunnKunder}`} hoyre={formatKr(r.bakgrunnKr)} color="#38bdf8" />
+          {/* KROK 6 — kunnskapsbonus (Espen spør) er inntekt i P&L, egen linje. */}
+          {r.kunnskapsbonusKr > 0 && (
+            <SalgLinje ikon="🎓" tittel="Kunnskapsbonus (Espen spør)" hoyre={formatKr(r.kunnskapsbonusKr)} color="#a855f7" />
+          )}
           {/* BEMANNING: tapte salg splittes på ÅRSAK. «Tomt lager» = varen var
               utsolgt (r.tapteSalgStk inkluderer stengt-tidlig-bortfall, som har
               egen linje under, så trekk det fra her). «Kø» = for lite kapasitet
@@ -199,7 +203,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           <div>
             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>RESULTAT (salg − varekost − svinn)</div>
             <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
-              {formatKr(r.soldKr + r.bakgrunnKr)} − {formatKr(r.varekostKr)} − {formatKr(r.svinnKr)}
+              {formatKr(r.soldKr + r.bakgrunnKr + r.kunnskapsbonusKr)} − {formatKr(r.varekostKr)} − {formatKr(r.svinnKr)}
             </div>
           </div>
           <div style={{ fontSize: 22, fontWeight: 900, color: resultColor }}>

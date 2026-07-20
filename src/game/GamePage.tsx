@@ -65,7 +65,7 @@ function setOverlay(open: boolean) {
 }
 
 function GameContent() {
-  const { state, dispatch, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev } = useGame()
+  const { state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev } = useGame()
   const navigate = useNavigate()
   const { districtId, lokaleId } = useParams<{ districtId?: string; lokaleId?: string }>()
   // Lokale-undernivåer via rute-suffiks: /inne = bak disken (kunde + salg),
@@ -314,6 +314,11 @@ function GameContent() {
               </button>
             ))}
           </div>
+          {/* KROK 6 dev: still neste Espen spør-spørsmål nå (bypasser dagstaket). */}
+          <button onClick={() => dispatch({ type: 'STILL_ESPEN_SPOR', nivaa: klasseNivaa, aktiveTemaIds: Object.entries(aktiveTemaer).filter(([, v]) => v?.aktiv).map(([k]) => k), dev: true })}
+            style={{ background: 'rgba(168,85,247,0.18)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#d8b4fe', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            🎓 Still neste spørsmål nå
+          </button>
           <button
             onClick={() => { setSimOpen(true); setOverlay(true) }}
             title="Dev: gammel PEST-månedssimulering (dagssyklusen eier månedsrullen)"

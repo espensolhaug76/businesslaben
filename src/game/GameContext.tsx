@@ -32,6 +32,7 @@ import {
   mkfFaktor, mkfTreffProsent,
   type KundebestillingPayload, type LeverandortilbudPayload, type MkftilbudPayload,
 } from './data/innboksEpost'
+import { finnKandidater, type EspenKategori, type EspenNivaa } from './data/espenSporsmal'
 
 // Tom dagsstatistikk (BAKGRUNNSSALG-feltene inkludert) — brukt av initialState,
 // OPEN_DAY (nullstilling).
@@ -40,7 +41,7 @@ const EMPTY_DAY_STATS = {
   bakgrunnKunder: 0, bakgrunnStk: 0, bakgrunnKr: 0, tapteSalgStk: 0, tapteSalgKr: 0,
   manglerPrisStk: 0, manglerPrisKr: 0, overprisStk: 0, overprisKr: 0,
   koKunder: 0,
-  reputationDelta: 0, xpEarned: 0, stockoutHappened: false,
+  reputationDelta: 0, xpEarned: 0, kunnskapsbonusKr: 0, stockoutHappened: false,
 }
 
 type ProductStats = Record<string, { navn: string; soldStk: number; svinnStk: number; tapteSalgStk: number; manglerPrisStk: number; overprisStk: number }>
@@ -254,6 +255,8 @@ const initialState: GameState = {
   kampanje: { aktiv: null, historikk: [], visRapportFor: null },
   prisendretDag: {},
   mkfBoost: null,
+  espenSpor: { aktivt: null, sisteSvar: null, besvarteIds: [], feilCooldown: {}, dagTeller: 0, dagBelonning: 0 },
+  stamkunder: {},
   turistsesong: null,
   hotellavtale: 'ingen',
   opplevByenPameldt: false,
@@ -328,6 +331,14 @@ type Action =
   | { type: 'DEV_SEND_TEST_EPOSTER' }
   /** Dev (?dev=1): spol alle aktive quest-frister til «i går» (tving utløp/levering). */
   | { type: 'DEV_SPOL_TIL_FRIST' }
+  // ── KROK 6 — «ESPEN SPØR» (docs/ENGASJEMENT.md) ──
+  /** Still neste kunnskapsspørsmål (mentor-køen). No-op hvis ett ligger ubesvart
+   *  eller dagens tak er nådd (dev overstyrer taket). nivaa/aktiveTemaIds fra UI. */
+  | { type: 'STILL_ESPEN_SPOR'; nivaa: EspenNivaa; aktiveTemaIds: string[]; kategoriHint?: EspenKategori; dev?: boolean }
+  /** Svar på det aktive spørsmålet (index i alternativer). */
+  | { type: 'SVAR_ESPEN_SPOR'; index: number }
+  /** Lukk spørsmålet etter at forklaringen er lest. */
+  | { type: 'LUKK_ESPEN_SPOR' }
   | { type: 'SET_TUTORIAL_STEP'; step: number }
   | { type: 'SET_P1_COMPLETE' }
   | { type: 'SET_P2_COMPLETE' }
@@ -1509,6 +1520,67 @@ function reducer(state: GameState, action: Action): GameState {
       }
     }
 
+    // ── KROK 6 — «ESPEN SPØR» (docs/ENGASJEMENT.md) ──────────────────────────
+    case 'STILL_ESPEN_SPOR': {
+      // Maks ett ubesvart om gangen; dagstaket gjelder auto-triggere (dev overstyrer).
+      if (state.espenSpor.aktivt) return state
+      if (!action.dev && state.espenSpor.dagTeller >= BALANCE.espenSpor.maksPerDag) return state
+      const absNaa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      const kandidater = finnKandidater(state, {
+        nivaa: action.nivaa, aktiveTemaIds: action.aktiveTemaIds,
+        besvarteIds: state.espenSpor.besvarteIds, feilCooldown: state.espenSpor.feilCooldown,
+        absDag: absNaa, kategoriHint: action.kategoriHint,
+      })
+      if (!kandidater.length) return state
+      // Seedet valg (deterministisk per dag/teller) — ingen Math.random.
+      const seed = (dagSeed(state.dayNumber, state.currentMonth, state.currentYear) ^ Math.imul(state.espenSpor.dagTeller + 1, 0x9e37)) >>> 0
+      const valgt = kandidater[seed % kandidater.length]
+      const bygget = valgt.bygg(state)
+      if (!bygget) return state
+      return {
+        ...state,
+        espenSpor: {
+          ...state.espenSpor,
+          aktivt: { id: valgt.id, kategori: valgt.kategori, glossaryId: valgt.glossaryId, ...bygget },
+          sisteSvar: null,
+          dagTeller: state.espenSpor.dagTeller + 1,
+        },
+      }
+    }
+
+    case 'SVAR_ESPEN_SPOR': {
+      const a = state.espenSpor.aktivt
+      if (!a || state.espenSpor.sisteSvar) return state   // ingen aktiv / alt besvart
+      const riktig = action.index === a.riktigIndex
+      const absNaa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      // Belønning: tunbar, men klemt mot dagens tak (3. riktige samme dag = 0).
+      const belonning = riktig
+        ? Math.max(0, Math.min(BALANCE.espenSpor.belonningKr, BALANCE.espenSpor.maksBelonningPerDag - state.espenSpor.dagBelonning))
+        : 0
+      const besvarteIds = riktig ? [...state.espenSpor.besvarteIds, a.id] : state.espenSpor.besvarteIds
+      const feilCooldown = riktig
+        ? state.espenSpor.feilCooldown
+        : { ...state.espenSpor.feilCooldown, [a.id]: absNaa + BALANCE.espenSpor.cooldownDagerVedFeil }
+      return {
+        ...state,
+        money: state.money + belonning,
+        // KROK 6: belønningen ligger i P&L — egen linje i dagsoppgjøret (CLOSE_DAY
+        // legger kunnskapsbonusKr inn i resultatet, akkurat som bakgrunnssalg).
+        dayStats: { ...state.dayStats, kunnskapsbonusKr: state.dayStats.kunnskapsbonusKr + belonning },
+        espenSpor: {
+          ...state.espenSpor,
+          sisteSvar: { valgtIndex: action.index, riktig, belonning },
+          besvarteIds, feilCooldown,
+          dagBelonning: state.espenSpor.dagBelonning + belonning,
+        },
+      }
+    }
+
+    case 'LUKK_ESPEN_SPOR':
+      return state.espenSpor.aktivt
+        ? { ...state, espenSpor: { ...state.espenSpor, aktivt: null, sisteSvar: null } }
+        : state
+
     case 'SET_TUTORIAL_STEP':
       return { ...state, tutorialStep: action.step }
 
@@ -1738,6 +1810,7 @@ function reducer(state: GameState, action: Action): GameState {
       const soldKr = state.dayStats.soldKr
       const varekostKr = state.dayStats.varekostKr
       const bakgrunnKr = state.dayStats.bakgrunnKr
+      const kunnskapsbonusKr = state.dayStats.kunnskapsbonusKr   // KROK 6 — del av P&L
       const tapteSalgStk = state.dayStats.tapteSalgStk + bortfallStk
       const tapteSalgKr = state.dayStats.tapteSalgKr + bortfallStk * avgRetail
 
@@ -1795,9 +1868,10 @@ function reducer(state: GameState, action: Action): GameState {
         overprisKr: state.dayStats.overprisKr,
         overprisProdukter,
         koKunder: state.dayStats.koKunder,
-        resultat: soldKr + bakgrunnKr - varekostKr - svinnKr,
+        resultat: soldKr + bakgrunnKr + kunnskapsbonusKr - varekostKr - svinnKr,
         reputationDelta: state.dayStats.reputationDelta,
         xpEarned: state.dayStats.xpEarned,
+        kunnskapsbonusKr,
         stockoutHappened: state.dayStats.stockoutHappened || tapteSalgStk > 0,
         stengtTidlig,
         bortfallStk,
@@ -1980,6 +2054,8 @@ function reducer(state: GameState, action: Action): GameState {
         unreadCount: epostMessages.filter(m => !m.read).length,
         reputation: nyRep,
         mkfBoost,
+        // KROK 6: nullstill dagens quiz-teller/belønning; lukk ev. uåpnet spørsmål.
+        espenSpor: { ...state.espenSpor, aktivt: null, sisteSvar: null, dagTeller: 0, dagBelonning: 0 },
         dayPhase: 'stengt',
         meetingsToday: 0,
         lastDayResult: null,
@@ -2100,6 +2176,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall,
           kampanje: v.kampanje ?? s.kampanje, prisendretDag: v.prisendretDag ?? s.prisendretDag,
           mkfBoost: v.mkfBoost ?? s.mkfBoost,
+          espenSpor: v.espenSpor ?? s.espenSpor, stamkunder: v.stamkunder ?? s.stamkunder,
           turistsesong: v.turistsesong ?? s.turistsesong, hotellavtale: v.hotellavtale ?? s.hotellavtale,
           opplevByenPameldt: v.opplevByenPameldt ?? s.opplevByenPameldt, reiselivPakke: v.reiselivPakke ?? s.reiselivPakke }
       }
@@ -2110,8 +2187,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
   useEffect(() => {
-    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, mkfBoost: state.mkfBoost, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt, reiselivPakke: state.reiselivPakke })) } catch { /* ignore */ }
-  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.mkfBoost, state.turistsesong, state.hotellavtale, state.opplevByenPameldt, state.reiselivPakke])
+    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, mkfBoost: state.mkfBoost, espenSpor: state.espenSpor, stamkunder: state.stamkunder, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt, reiselivPakke: state.reiselivPakke })) } catch { /* ignore */ }
+  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.mkfBoost, state.espenSpor, state.stamkunder, state.turistsesong, state.hotellavtale, state.opplevByenPameldt, state.reiselivPakke])
 
   // TEST-BRO (KUN DEV): speil hele spilltilstanden + dispatch på window, så det
   // automatiserte spilltest-løpet (Playwright — se docs/SPILLTESTER.md) kan LESE
