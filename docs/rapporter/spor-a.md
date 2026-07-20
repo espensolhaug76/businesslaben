@@ -1897,10 +1897,16 @@ avsløre fasiten.
 
 ## 37. TURISTKONTORET SOM ROM-SCENE (Espens designbeslutning)
 
-> **Status: bygget, IKKE merget — Espen validerer scenen.** Gren
-> `spor-a/turistkontor-scene` (fra main etter Tema 15-merge). `tsc -b` +
-> `vite build` + `npm run spilltest` (**17/17**) grønn. Turistkontoret er ikke
-> lenger et overlay-panel, men et ROM man går INN i (som kaféens /inne).
+> **Status: MERGET TIL MAIN (2026-07-20)** etter Espens Chrome-validering + låst
+> gjest-kalibrering. Gren `spor-a/turistkontor-scene` rebaset på Spor C
+> (hotell-lobbyen) og ff-merget til main; slettet (lokalt + origin). `tsc -b` +
+> `vite build` + `npm run spilltest` (**19/19**) grønn PÅ MAIN. Turistkontoret er
+> ikke lenger et overlay-panel, men et ROM man går INN i (som kaféens /inne).
+> **Byhotell-hotspoten** navigerer nå INN i Spor C-lobbyen (`/hotell-lobby`),
+> samme mønster; den gamle ByhotellStatus-overlayen er fjernet (hotellavtalen
+> besvares fortsatt via innboksen). Spilltest: steg 17 = stasjons-hotspots
+> (byhotell→lobby + turistkontor→scene), steg 18 = hotell-lobby (Spor C), steg 19
+> = turistkontor-scenen (gjest dekoder ved disken + velger).
 
 **DEL a — rom-scene + rute.** Ny rute `/game/d/:districtId/turistkontor` →
 `TuristkontorScene` (fullskjerm `turistkontor-interior.png`, aspect 1296/832,
