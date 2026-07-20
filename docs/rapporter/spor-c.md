@@ -414,3 +414,30 @@ er basen én verdi for alle.
 3. **«🤝 Hotellets avtaler»**: lista stemmer, satsene åpne, fagord klikkbare.
 4. **«Møt en gjest»** / klikk gjesten → de 4 scenariene (uendret).
 5. Ingen spor av forhandlingen igjen (strøket).
+
+---
+
+## SLUTTSTATUS — merget til main (2026-07-20)
+
+`spor-c/hotell-lobby` er **merget til `main`** (fast-forward, `1df9a6b → d8f4e13`)
+og pushet. Grenen slettet (lokal + origin).
+
+**Full spilltest kjørt ALENE på main: `npm run spilltest` = 18 PASS · 0 FAIL ·
+0 KJENT FEIL** (3,9 min, ingen andre CC-er aktive). Tema 15s steg 15–17 + hotell-
+steget (18) grønne:
+- Steg 18 (hotell-lobby): match (Gårdsbesøket) → `hotellProvisjon` 0 → 12 kr
+  (== fasit); feilmatch (Bryggeriomvisningen) → uendret (ingen booking). ✓
+
+Detaljer: `docs/rapporter/spilltest-siste.md`.
+
+**Levert i sporet (DEL 1–8):** hotell-lobby-interiør (NB-pilot, ✦ fjernet) ·
+`LobbyView`-scene (kassevy/okklusjon + møtepunkt) + rute + `?dev=1`-kalibrering ·
+ambient-gjester (defensiv sesong-kobling, nå aktiv) · `bykatalog.ts` (18 fiktive
+tilbud, delt datakilde) · 4 gjestescenarier + `HotellGjestOverlay` (booking/
+provisjon) · «Møt en gjest»-flyt · forenkling: forhandling → «Hotellets avtaler»
+(ferdigforhandlede satser) + gjest-velger i dev-panelet.
+
+**Åpne punkter (Espen):** (1) finkalibrering av `LOBBY_*` mot alle sprites via
+gjest-velgeren; (2) evt. peke Tema 15s låste «Byhotellet»-hotspot til lobby-ruta
+(`/game/d/stasjonsomradet/hotell-lobby`) — se DEL 7. (3) B2B-forhandling som
+VG2-utvidelse i BRANSJE4-planen (bevisst utelatt, se DEL 8).

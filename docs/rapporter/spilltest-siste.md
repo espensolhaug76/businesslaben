@@ -1,29 +1,30 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-07-19T18:19:51.740Z
+> Startet: 2026-07-20T07:40:02.822Z
 
-**Resultat: ✅ GRØNT** — 17 PASS · 0 FAIL · 0 KJENT FEIL (17 steg)
+**Resultat: ✅ GRØNT** — 18 PASS · 0 FAIL · 0 KJENT FEIL (18 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 1938 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 9387 |
-| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 649 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 238 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 14766 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 12325 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 3752 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 20887 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 7098 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 5225 |
-| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 14566 |
-| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 4109 |
-| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 7590 |
-| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 4939 |
-| 15 | Reiseliv: turistsesong i kaféen er kun økonomisk (trafikkløft + varevekt, INGEN turist-scenarier i pool) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 6978 |
-| 16 | Pakkebyggeren (treff == beregnPakke-fasit + kafé-trafikk) + reiselivs-inngangene (turistkontor/byhotell velger scenario + åpner dialogkort) | ✅ PASS | 6516 |
-| 17 | Dev-dyplenke: /game/d/stasjonsomradet?dev=1 viser stasjonsbydelen (hotspot-labels + sone-tracer), aldri bransjevelgeren | ✅ PASS | 4184 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 541 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 9941 |
+| 3 | Levering ved dagstart: varene på lager FØR åpning (dag 2) | ✅ PASS | 643 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 216 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 12840 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 8300 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 3245 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 20901 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 7282 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 10596 |
+| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 38723 |
+| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 15352 |
+| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 20170 |
+| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 9917 |
+| 15 | Reiseliv: turistsesong i kaféen er kun økonomisk (trafikkløft + varevekt, INGEN turist-scenarier i pool) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 7855 |
+| 16 | Pakkebyggeren (treff == beregnPakke-fasit + kafé-trafikk) + reiselivs-inngangene (turistkontor/byhotell velger scenario + åpner dialogkort) | ✅ PASS | 11289 |
+| 17 | Dev-dyplenke: /game/d/stasjonsomradet?dev=1 viser stasjonsbydelen (hotspot-labels + sone-tracer), aldri bransjevelgeren | ✅ PASS | 4592 |
+| 18 | Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen | ✅ PASS | 6610 |
 
 ## Detaljer per steg
 
@@ -58,7 +59,7 @@ Verifiserte tall/tilstander:
 - bakgrunnssalg etter 150 tikk (dayMinute 122): 1752 kr, 34 kunder
 - kundemøte startet: «likeverd»
 - kundemøtet spilt til slutt (meetingsToday=1)
-- auto-klokka tikket (dayMinute 124 → økte av seg selv)
+- auto-klokka tikket (dayMinute 125 → økte av seg selv)
 - dagsoppgjør: omsetning=1802 kr, varekost=558, svinn=0 kr (0 stk), tapt=125 stk
 - resultat=1244 kr summerer konsistent (salg+bakgrunn−varekost−svinn)
 
@@ -136,6 +137,12 @@ Verifiserte tall/tilstander:
 
 Verifiserte tall/tilstander:
 - ?dev=1 (uten ?skip) → stasjonsbydelen, labels + tracer synlige, INGEN TIL LEIE på stasjonen, tracer default AV → hotspot-klikk åpner panelet, ingen bransjevelger
+
+### ✅ Steg 18 — Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen
+
+Verifiserte tall/tilstander:
+- match (Gårdsbesøket): hotellProvisjon 0 → 12 kr (+12, == fasit)
+- feilmatch (Bryggeriomvisningen): provisjon uendret (12 kr) — ingen booking
 
 ## Notater
 
