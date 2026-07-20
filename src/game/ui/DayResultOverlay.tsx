@@ -1,8 +1,25 @@
 import { motion } from 'framer-motion'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Fagord from './Fagord'
 import { useGame } from '../GameContext'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
+import { BALANCE } from '../data/balance'
+import { useCountUp, gamefeelInstant } from '../gamefeel/useAnimatedNumber'
+import type { DayResult } from '../types'
+
+/** KROK 4 — seedet høydepunkt-linje til seremonikortet (deterministisk). Aldri
+ *  kun farge/emoji: hver linje har tekst. */
+function hoydepunktLinje(r: DayResult, history: DayResult[]): string {
+  const kunder = r.meetings + r.bakgrunnKunder
+  // «Beste dag denne uka»: siste ~6 handledager i inneværende måned (inkl. i dag,
+  // som CLOSE_DAY alt har lagt i history).
+  const uke = history.filter(d => d.month === r.month && d.year === r.year).slice(-6)
+  const besteUke = uke.length >= 2 && r.resultat > 0 && r.resultat >= Math.max(...uke.map(d => d.resultat))
+  if (besteUke) return '🌟 Beste dag denne uka!'
+  if (kunder > 0 && kunder < BALANCE.gamefeel.roligDagKunder) return '🍃 En rolig dag.'
+  const pool = ['☕ Butikken gikk sin gang.', '🚶 Jevn flyt gjennom dagen.', '🗓️ En helt vanlig handledag.']
+  return pool[(r.dayNumber + r.month) % pool.length]!
+}
 
 // ─── DAGSOPPGJØR (DEL 4, Dagssyklus) ──────────────────────────────────────────
 // Vises når dayPhase === 'oppgjør' (satt av CLOSE_DAY). Leser state direkte,
@@ -36,13 +53,30 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
   dashboardOpen: boolean
 }) {
   const { state, dispatch } = useGame()
-  if (state.dayPhase !== 'oppgjør' || !state.lastDayResult || dashboardOpen) return null
-
   const r = state.lastDayResult
+  const vis = state.dayPhase === 'oppgjør' && !!r && !dashboardOpen
+
+  // KROK 4 — DAGSOPPGJØR SOM SEREMONI: et 2-sekunders oppsummeringskort før
+  // talloppsettet. Klikk hopper over. Snapper forbi i headless/reduced-motion.
+  // Hooks MÅ kalles før guarden (rules of hooks) — bruk trygge fallbacks.
+  const instant = gamefeelInstant()
+  const dayKey = r ? `${r.year}-${r.month}-${r.dayNumber}` : null
+  const [seenDay, setSeenDay] = useState<string | null>(null)
+  const seremoniFerdig = instant || (!!dayKey && seenDay === dayKey)
+  useEffect(() => {
+    if (!vis || instant || !dayKey || seenDay === dayKey) return
+    const id = window.setTimeout(() => setSeenDay(dayKey), BALANCE.gamefeel.seremoniMs)
+    return () => window.clearTimeout(id)
+  }, [vis, instant, dayKey, seenDay])
+  const visResultat = useCountUp(r?.resultat ?? 0, BALANCE.gamefeel.tallAnimMs, vis && seremoniFerdig)
+
+  if (!vis || !r) return null
+
   const resultColor = r.resultat >= 0 ? '#22c55e' : '#ef4444'
   // Mot SAMLET omsetning (møter + bakgrunn) — ellers slår hintet ut på en dag
   // uten kundemøter (soldKr=0) selv med bittelite svinn.
   const highSvinn = r.svinnKr > 0 && r.svinnKr >= (r.soldKr + r.bakgrunnKr) * HIGH_SVINN_SHARE
+  const kunder = r.meetings + r.bakgrunnKunder
 
   return (
     <motion.div
@@ -54,6 +88,29 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
         fontFamily: "'Outfit', sans-serif", overflowY: 'auto', padding: '2rem',
       }}
     >
+      {!seremoniFerdig ? (
+        // SEREMONI-KORT (2 sek, klikk hopper over). «Dag X: N kunder · [høydepunkt]».
+        <motion.div
+          key="seremoni"
+          onClick={() => dayKey && setSeenDay(dayKey)}
+          initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', damping: 20 }}
+          title="Klikk for å se oppgjøret"
+          style={{
+            background: 'rgba(15,23,42,0.98)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '2rem', padding: '2.5rem 2.25rem', maxWidth: 420, width: '100%',
+            color: '#f1f5f9', textAlign: 'center', cursor: 'pointer',
+          }}
+        >
+          <div style={{ fontSize: 46 }}>🌙</div>
+          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 800, letterSpacing: '0.08em', margin: '0.5rem 0 0.2rem' }}>
+            DAG {r.dayNumber} · {MONTH_NAMES[r.month - 1].toUpperCase()}
+          </div>
+          <div style={{ fontSize: 30, fontWeight: 900, marginBottom: '0.3rem' }}>{kunder} kunder</div>
+          <div style={{ fontSize: 16, color: '#cbd5e1', fontWeight: 700 }}>{hoydepunktLinje(r, state.dayHistory)}</div>
+          <div style={{ fontSize: 11, color: '#475569', marginTop: '1.4rem' }}>Klikk for å se oppgjøret →</div>
+        </motion.div>
+      ) : (
       <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 30 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -146,7 +203,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
             </div>
           </div>
           <div style={{ fontSize: 22, fontWeight: 900, color: resultColor }}>
-            {r.resultat >= 0 ? '+' : ''}{formatKr(r.resultat)}
+            {r.resultat >= 0 ? '+' : ''}{formatKr(visResultat)}
           </div>
         </div>
 
@@ -221,6 +278,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           </button>
         </div>
       </motion.div>
+      )}
     </motion.div>
   )
 }
