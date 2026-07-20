@@ -57,7 +57,7 @@ export interface SpillState {
   monthlyPayroll: number
   marketingBudget: Record<string, number>
   businessPlan: { description: string; qualityScore: number; canvas: Record<string, string> }
-  dayStats: { soldKr: number; bakgrunnKr: number; bakgrunnKunder: number; tapteSalgKr: number }
+  dayStats: { soldKr: number; bakgrunnKr: number; bakgrunnKunder: number; bakgrunnStk: number; tapteSalgKr: number; manglerPrisStk: number }
   dayMeetings: { scenarioId: string; minutt: number; spawned: boolean }[]
   lastDayResult: unknown | null
   lastMonthSettlement: MonthSettlement | null

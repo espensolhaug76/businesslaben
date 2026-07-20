@@ -1981,9 +1981,9 @@ alt). Kafé-ambient-kommentaren i balance.ts oppdatert.
 
 ## 38. ENGASJEMENT — KROK 4 GAME FEEL-PAKKEN (ENGASJEMENTSLAGET v2)
 
-> **Status: bygget, IKKE merget — Espen validerer i Chrome.** Gren
+> **Status: bygget + fiks-runde, IKKE merget — Espen RE-validerer i Chrome.** Gren
 > `spor-a/engasjement-gamefeel` (fra main @ afaf2d8). `tsc -b` + `vite build` +
-> `npm run spilltest` (**19/19**, lyd + animasjoner AV/snap i headless) grønn.
+> `npm run spilltest` (**20/20**, lyd + animasjoner AV/snap i headless) grønn.
 > Referansedokument: `docs/ENGASJEMENT.md` (DEL 0). Rammene der gjelder: ingen
 > XP/poeng for klikking, alt seedet deterministisk, kosmetikk gir aldri fordel,
 > fortegn+tekst (aldri kun farge/emoji). Alt tunbart i `balance.ts.gamefeel`.
@@ -2010,6 +2010,27 @@ nøytral linje.
 kaféinteriøret. Fornøyd kundemøte (positiv rykte-delta) → transient 💚-badge i
 dagspulsen som fader (ny `dayStats.sisteMoteFornoyd`).
 
+### FIKS-RUNDE (Espen-funn under validering)
+1. **«Priser lagres ikke» — IKKE en grenregresjon (headless-verifisert).**
+   Reproduserte den EKTE Priser-fanen headless: input→«Lagre priser ✓» gir
+   `retailPrice` 0→50 og varen selger (bakgrunn-kr 550, mangler-pris-tap 0).
+   `DashboardOverlay` er byte-identisk med main (tom diff), så prismekanikken er
+   ikke rørt av grenen. ROTÅRSAK til Espens opplevelse: prisen ble bare committed
+   ved «Lagre»-KLIKKET (lå ellers i input-feltets lokale state — den «løsrevne
+   tallboksen»), og uten klikk-respons var det lett å tro den var lagret. **Fiks:
+   prisen auto-lagres nå ved BLUR** (forlat feltet → `SET_PRODUCTS`), i tillegg
+   til «Lagre priser». (Animerte tall er KUN visnings-tall — HUD/oppgjør — aldri
+   input-felt, per regelen.)
+2. **Bestill-kvittering (UX, Krok 4):** «Bestill»-klikk kvitterer nå («✓ Bestilt —
+   N stk, levering i morgen»), spiller kasse-pling, og ordrelinja i «Underveis»
+   vises umiddelbart.
+3. **Fanerekkefølge:** «Produkter» flyttet til RETT FØR «Priser» (varer før
+   prising). Produkter beholder markedsforing-fag (badge/farge urørt) — kun
+   rekkefølgen endret.
+- **Ny spilltest steg 20** (20/20): driver den EKTE Priser-fanen (input→blur +
+  Lagre) → pris persistert → varen selger. Steg 14 testet bare modellen via
+  test-broen; dette fanger en UI-regresjon.
+
 ### Chrome-sjekkliste (Espen validerer)
 Full URL (dev-server 5173): **`http://localhost:5173/game?skip=1`**
 1. **Lyd på/av:** 🔊-knappen i HUD (ved siden av 🔔/💻). Default på; klikk → 🔇.
@@ -2024,6 +2045,11 @@ Full URL (dev-server 5173): **`http://localhost:5173/game?skip=1`**
 5. **Start ny dag** med en leveranse ventende → **📦-eska glir inn** i «ferske
    varer klare»-pilla i kaféen.
 6. Skru på «Redusert bevegelse» i OS → animasjoner snapper (tallene bare bytter).
+7. **Prising (fiks):** i Priser-fanen — skriv en pris og **klikk ut av feltet**
+   (uten «Lagre») → prisen er lagret (varen slutter å vise «mangler pris» og selger).
+8. **Bestill (fiks):** Produkter-fanen — «Bestill» kvitterer «✓ Bestilt — N stk …»
+   + pling, og ordren dukker opp i «Underveis».
+9. **Fanerekkefølge (fiks):** Produkter ligger nå FØR Priser i dashbord-linja.
 
 ### Åpen oppfølging / flagg
 - **Lyd-syntesen** (pling/fanfare) er enkle oscillator-toner — Espen sier ifra om

@@ -13,6 +13,7 @@ import HmsTab from './HmsTab'
 import BrannalarmOvelse, { BrannalarmSammenligning } from './BrannalarmOvelse'
 import Pakkebygger from './Pakkebygger'
 import { BESOKSPROFILER, type Besoksprofil } from '../data/reiseliv'
+import { kassePling } from '../gamefeel/lyd'
 import { BRANNALARM } from '../data/beredskap'
 import { BALANCE } from '../data/balance'
 import { IS_DEV_COORDS } from '../city/DevCoordHelper'
@@ -58,16 +59,19 @@ const FAG_FARGER: Record<FagId, { navn: string; kort: string; farge: string }> =
   verktoy:          { navn: 'Verktøy',                      kort: 'V',   farge: '#64748b' }, // L≈114 · tverrgående, ikke ett fag
 }
 
-// Rekkefølgen her ER visningsrekkefølgen — sortert så hvert fag ligger samlet.
+// Rekkefølgen her ER visningsrekkefølgen. Fagene ligger stort sett samlet, MEN
+// «Produkter» er flyttet frem til RETT FØR «Priser» (Espens beslutning): man må
+// ha varer før man kan prise dem. Produkter beholder sitt markedsforing-fag
+// (badge/farge urørt) — kun rekkefølgen endres.
 const TABS: { id: Tab; label: string; emoji: string; fag: FagId; tema?: string }[] = [
   // ── Forretningsdrift ──
   { id: 'oversikt',        label: 'Oversikt',         emoji: '📊', fag: 'forretningsdrift' },
   { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋', fag: 'forretningsdrift' },
   { id: 'okonomi',         label: 'Økonomi',           emoji: '💰', fag: 'forretningsdrift' },
+  { id: 'produkter',       label: 'Produkter',         emoji: '📦', fag: 'markedsforing' }, // FØR Priser: varer før prising
   { id: 'priser',          label: 'Priser',            emoji: '🏷️', fag: 'forretningsdrift' }, // prising = kalkyle/lønnsomhet (Pris-P sekundært)
   // ── Markedsføring og innovasjon (markedsmiksens Produkt/Plass/Promosjon) ──
   { id: 'malgruppe',       label: 'Målgruppe',         emoji: '🎯', fag: 'markedsforing' },
-  { id: 'produkter',       label: 'Produkter',         emoji: '📦', fag: 'markedsforing' },
   { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍', fag: 'markedsforing' },
   { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢', fag: 'markedsforing' },
   { id: 'distribusjon',    label: 'Distribusjon',      emoji: '🚚', fag: 'markedsforing' }, // Plass-P (M-merke)
@@ -1747,6 +1751,9 @@ function ProdukterTab() {
   // IndustryCatalogItem.tiers i industries.ts). Én katalogvare = ett
   // costPrice/recommendedPrice, ikke tre å velge mellom.
   const [qtyById, setQtyById] = useState<Record<string, number>>({})
+  // KROK 4 (UX): transient «✓ Bestilt»-kvittering per vare.
+  const [sistBestilt, setSistBestilt] = useState<{ id: string; qty: number } | null>(null)
+  const bestiltTimer = useRef<number>(0)
 
   function setQty(id: string, qty: number) {
     setQtyById(prev => ({ ...prev, [id]: qty }))
@@ -1759,6 +1766,11 @@ function ProdukterTab() {
     if (!item) return
     const product = catalogToProduct(item)
     dispatch({ type: 'ORDER_PRODUCT', product, quantity: qty })
+    // KROK 4: kvittér — kort kvittering + pling, ordrelinja under vises umiddelbart.
+    kassePling()
+    setSistBestilt({ id, qty })
+    window.clearTimeout(bestiltTimer.current)
+    bestiltTimer.current = window.setTimeout(() => setSistBestilt(null), 2600)
   }
 
   // Navneoppslag for «Underveis» — bestillingen bærer kun productId; varen er
@@ -1932,9 +1944,15 @@ function ProdukterTab() {
                     fontFamily: 'inherit', whiteSpace: 'nowrap',
                   }}
                 >
-                  {canAfford ? '📦 Bestill' : '💸 Ikke råd'}
+                  {sistBestilt?.id === item.id ? '✓ Bestilt' : canAfford ? '📦 Bestill' : '💸 Ikke råd'}
                 </button>
               </div>
+              {/* KROK 4 — bestill-kvittering (transient). */}
+              {sistBestilt?.id === item.id && (
+                <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: '#4ade80' }}>
+                  ✓ Bestilt — {sistBestilt.qty} stk, levering i morgen (se «Underveis» under)
+                </div>
+              )}
             </div>
           )
         })}
@@ -1975,6 +1993,15 @@ function PriserTab() {
 
   function save() {
     dispatch({ type: 'SET_PRODUCTS', products })
+  }
+
+  // Persister prisen SÅ SNART eleven forlater feltet (blur) — ellers lå den
+  // typede verdien kun i lokal state til «Lagre priser»-klikket, som var lett å
+  // gå glipp av (varen viste «mangler pris» og solgte ikke). Bruker `neste` fordi
+  // setProducts er asynkron; vi committer verdien vi nettopp satte.
+  function persistBlur(id: string, price: number) {
+    const neste = products.map(p => p.id === id ? { ...p, retailPrice: Math.max(0, price) } : p)
+    dispatch({ type: 'SET_PRODUCTS', products: neste })
   }
 
   const researchedIds = new Set(state.priceResearch.purchasedProductIds)
@@ -2052,6 +2079,7 @@ function PriserTab() {
                   <input
                     type="number" min={0} step={1} value={p.retailPrice || ''} placeholder="sett pris"
                     onChange={e => setPrice(p.id, parseInt(e.target.value) || 0)}
+                    onBlur={e => persistBlur(p.id, parseInt(e.target.value) || 0)}
                     style={{
                       width: 100, textAlign: 'right', background: 'rgba(255,255,255,0.08)',
                       border: `1px solid ${p.retailPrice > 0 ? 'rgba(255,255,255,0.18)' : 'rgba(245,158,11,0.6)'}`, borderRadius: 6,

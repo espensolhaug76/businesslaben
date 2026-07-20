@@ -886,6 +886,49 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`turistkontor-scene: gjest «${g1!.src}» dekoder ved disken; velger → «${g2!.src}» (også dekodet)`)
   })
 
+  // ── STEG 20 — PRISSETTING VIA UI: elevsatt pris persisteres + varen selges ──
+  // Steg 14 tester prismodellen via test-broen (SET_PRODUCTS). Dette steget
+  // driver den EKTE Priser-fanen (input → blur/Lagre) så en UI-regresjon (prisen
+  // når ikke state, varen viser «mangler pris» og selger 0) fanges.
+  await steg(page, rapport, 20, 'Priser-fanen (UI): elevsatt pris persisteres (input→blur + Lagre) og den prisede varen selges', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'frisk boot for steg 20')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 200 }] })
+    await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager (coffee, upriset)')
+    expect((await lesState(page)).products.find(p => p.id === 'coffee')!.retailPrice, 'coffee starter upriset').toBe(0)
+
+    // Sett pris i den EKTE Priser-fanen: skriv i input-feltet + forlat feltet (blur).
+    await page.getByRole('button', { name: /Dashbord/ }).first().click()
+    await page.getByTestId('fane-priser').click()
+    const inp = page.locator('input[placeholder="sett pris"]').first()
+    await inp.fill('50')
+    await inp.blur()   // auto-lagre ved blur
+    await ventState(page, s => s.products.find(p => p.id === 'coffee')!.retailPrice === 50, 'pris persistert ved blur')
+    // «Lagre priser ✓» skal også fungere (idempotent).
+    await page.getByRole('button', { name: /Lagre priser/ }).click()
+    await page.waitForTimeout(200)
+    expect((await lesState(page)).products.find(p => p.id === 'coffee')!.retailPrice, 'elevsatt pris (50) persistert i state').toBe(50)
+
+    // Still ut coffee, åpne dag, tikk til bakgrunnssalget faktisk drypper inn
+    // (arrivals er probabilistiske per minutt; minutterPerTick=1 → tikk i loop
+    // som steg 5, stopp når omsetning > 0 eller et møte spawner). Dashbordet
+    // holdes åpent så auto-klokka står stille og vi driver TICK manuelt.
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'coffee' }] })
+    await dispatch(page, { type: 'OPEN_DAY' })
+    await ventState(page, s => s.dayPhase === 'åpen', 'dag åpen')
+    let s = await lesState(page)
+    let tikk = 0
+    while (s.dayStats.bakgrunnKr === 0 && !s.activeMeetingScenarioId && s.dayMinute < 420 && tikk < 600) {
+      await dispatchN(page, { type: 'TICK' }, 15)
+      s = await lesState(page)
+      tikk += 15
+    }
+    expect(s.dayStats.bakgrunnKr, 'den prisede varen selger (bakgrunn-kr > 0)').toBeGreaterThan(0)
+    expect(s.dayStats.manglerPrisStk, 'INGEN «mangler pris»-tap for den prisede varen').toBe(0)
+    ctx.ok(`Priser-fanen UI: coffee 0 → 50 kr (input→blur + Lagre), solgte ${s.dayStats.bakgrunnStk} stk (${Math.round(s.dayStats.bakgrunnKr)} kr) etter ${tikk} tikk, mangler-pris-tap: 0`)
+  })
+
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
   const { pass, fail, kjent } = skrivRapport(rapport, notater)
   expect(fail, `Reelle FAIL-steg (KJENT FEIL teller ikke): ${fail}. Se docs/rapporter/spilltest-siste.md`).toBe(0)
