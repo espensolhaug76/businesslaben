@@ -1818,6 +1818,39 @@
       "formula": null,
       "related_terms": ["Beredskapsplan"],
       "common_mistake": "Å bruke tid på å redde varer eller kassa i stedet for å få folk ut først — liv går alltid foran ting."
+    },
+    {
+      "id": "SAL_003",
+      "term": "Mengderabatt",
+      "category": "Salg",
+      "level": "VG1",
+      "definition": "Lavere pris per enhet når kunden kjøper mange.",
+      "example": "12 boller til 8 kr stk i stedet for 10 — mindre per bolle, men du selger flere og sikrer salget.",
+      "formula": null,
+      "related_terms": ["Pristilbud", "Dekningsbidrag"],
+      "common_mistake": "Å gi rabatt uten å regne — sjekk at totalen fortsatt dekker varekost og fortjeneste."
+    },
+    {
+      "id": "SAL_004",
+      "term": "Pristilbud",
+      "category": "Salg",
+      "level": "VG2",
+      "definition": "Et skriftlig, forpliktende forslag til pris på en leveranse, ofte med vilkår og frist.",
+      "example": "30 stk til 240 kr, levering fredag, gyldig 3 dager.",
+      "formula": null,
+      "related_terms": ["Mengderabatt", "Tapt salg"],
+      "common_mistake": "Å love pris muntlig uten vilkår — et tydelig tilbud beskytter både deg og kunden."
+    },
+    {
+      "id": "JUS_008",
+      "term": "Betalt omtale",
+      "category": "Jus",
+      "level": "VG1",
+      "definition": "Reklame der noen får betalt for å anbefale et produkt — og som derfor MÅ merkes som reklame.",
+      "example": "En blogger som får gratis varer for å omtale kaféen, skal skrive «reklame».",
+      "formula": null,
+      "related_terms": ["Influencer-markedsføring", "Markedsføringsloven"],
+      "common_mistake": "Å tro skjult betalt omtale virker bedre — umerket reklame er ulovlig og ødelegger tilliten."
     }
   ]
 }

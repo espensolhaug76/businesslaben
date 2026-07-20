@@ -3499,7 +3499,7 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
 
         {/* Mengderabatt eleven avgjør */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>Vil du gi mengderabatt?</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>Vil du gi <Fagord id="SAL_003">mengderabatt</Fagord>?</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {[0, 0.10, 0.15].map(r => (
               <button key={r} onClick={() => setRabatt(r)}
@@ -3513,7 +3513,7 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
 
         {/* VG2: skriftlig pristilbud (vurderingsspor) */}
         <div>
-          <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Skriftlig pristilbud til kunden (valgfritt):</label>
+          <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Skriftlig <Fagord id="SAL_004">pristilbud</Fagord> til kunden (valgfritt):</label>
           <textarea value={pristilbud} onChange={e => setPristilbud(e.target.value)} rows={2}
             placeholder="F.eks. «12 boller + kaffe, samlet 540 kr, levert fredag kl. 10.»"
             style={{ width: '100%', marginTop: 4, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '0.45rem 0.6rem', color: '#f1f5f9', fontSize: 12, fontFamily: 'inherit', resize: 'vertical' }} />
@@ -3564,6 +3564,9 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
         <div><strong style={{ color: '#f1f5f9' }}>{mt.kanalNavn}</strong> — {mt.tilbyder}</div>
         <div style={{ marginTop: 4 }}>Pris: <strong style={{ color: '#f1f5f9' }}>{mt.kostnad.toLocaleString('nb-NO')} kr</strong> for {mt.varighetDager} dager</div>
         <div style={{ marginTop: 6, color: '#94a3b8', fontSize: 11 }}>💡 Når denne kanalen DIN målgruppe? Sjekk hvem kanalen treffer før du betaler.</div>
+        {mt.merkekrav && (
+          <div style={{ marginTop: 6, color: '#fbbf24', fontSize: 11 }}>⚖️ Dette er <Fagord id="JUS_008">betalt omtale</Fagord> — den må merkes som reklame.</div>
+        )}
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <button style={{ ...knappJa, opacity: raakraft ? 0.5 : 1, cursor: raakraft ? 'not-allowed' : 'pointer' }} disabled={raakraft}
