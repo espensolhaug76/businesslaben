@@ -1940,7 +1940,12 @@ alt). Kafé-ambient-kommentaren i balance.ts oppdatert.
 
 ### Åpen oppfølging / flagg
 - **Gjest-cal + occludeY er PLACEHOLDER** — venter Espens ?dev-kalibrering + lås
-  i `districts.ts` (`TURISTKONTOR_GJEST_CAL` / `_OCCLUDE_Y`).
+  i `districts.ts` (`TURISTKONTOR_GJEST_CAL` / `_OCCLUDE_Y`). **BUGFIX:** i ?dev=1
+  uten aktiv sesong (dev-dyplenke starter ingen sesong) rendret ingen gjest, så
+  det var «ingen å kalibrere». Nå viser scenen ALLTID en kalibrerings-gjest i
+  ?dev=1, med en **gjest-velger** (‹/›) som blar gjennom alle 7 turist-sprites
+  (`TURIST_SPRITER`) så cal kan sjekkes mot alle høyder/bredder. I ekte spill
+  vises scenariets kunde i sesong (uendret). Vokta av spilltest steg 17.
 - **Rom-verktøylinja** er flytende knapper (ikke bundet til et fysisk element i
   bildet ennå). Å binde «pakke» til brosjyrestativet/disken som traced hotspot
   er en mulig polish (?dev-trace) — sagt ifra om ønsket.

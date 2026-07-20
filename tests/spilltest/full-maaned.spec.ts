@@ -819,7 +819,14 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await page.locator('[title="Turistkontoret"]').click({ force: true })
     await page.waitForURL(/\/turistkontor$/, { timeout: 4000 })
     expect(page.url().endsWith('/turistkontor'), 'turistkontor-klikk navigerer inn i rom-scenen').toBe(true)
-    ctx.ok('?dev=1 (uten ?skip) → stasjonsbydelen, labels + tracer synlige, INGEN TIL LEIE på stasjonen, tracer default AV → turistkontor-klikk navigerer inn i rom-scenen, ingen bransjevelger')
+    // I ?dev=1 skal scenen ALLTID vise en kalibrerings-gjest ved disken (uansett
+    // sesong) + gjest-velgeren — ellers har Espen ingen å kalibrere.
+    await page.waitForTimeout(500)
+    const devGjest = await page.locator('img[src*="/customers/turist-"]').count()
+    expect(devGjest, 'kalibrerings-gjest vises ved disken i ?dev=1 (uten sesong)').toBeGreaterThan(0)
+    const bodyScene = await page.textContent('body') ?? ''
+    expect(bodyScene.includes('Gjest-kalibrering'), 'gjest-kalibreringspanelet (m/ gjest-velger) er oppe').toBe(true)
+    ctx.ok('?dev=1 (uten ?skip) → stasjonsbydelen (labels + tracer, INGEN TIL LEIE, tracer AV) → turistkontor-klikk inn i rom-scenen med kalibrerings-gjest + gjest-velger, ingen bransjevelger')
   })
   // ── STEG 18 — Hotell-lobby: booking → provisjon (match == fasit, feilmatch == 0)
   await steg(page, rapport, 18, 'Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen', async ctx => {

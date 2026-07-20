@@ -4,7 +4,7 @@ import { useGame, turistsesongInfo, aktivBesoksprofil } from '../GameContext'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import { getScenario } from '../sales/scenarios'
-import { velgTuristkontorScenario } from '../data/reiseliv'
+import { velgTuristkontorScenario, TURIST_SPRITER } from '../data/reiseliv'
 import { dagSeed } from '../data/backgroundSales'
 import { TURISTKONTOR_GJEST_CAL, TURISTKONTOR_OCCLUDE_Y } from '../../data/districts'
 import Pakkebygger from '../ui/Pakkebygger'
@@ -28,17 +28,26 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
   const igjen = sesong?.aktiv ? Math.max(0, sesong.varighet - sesong.dag + 1) : 0
 
   // Dagens besøkende: seedet scenario (Språkbarrieren/Opplevelsen), sprite =
-  // scenariets egen kunde. Vises kun i sesong.
+  // scenariets egen kunde. Vises i sesong ved scene-innlasting.
   const seed = dagSeed(state.dayNumber, state.currentMonth, state.currentYear)
   const scenarioId = velgTuristkontorScenario(seed, state.opplevByenPameldt)
   const scenario = getScenario(scenarioId)
-  const gjestSynlig = !!sesong?.aktiv && !!scenario
 
   const [hover, setHover] = useState(false)
   const [imgFailed, setImgFailed] = useState(false)
   // UI-lag: pakkebyggeren + gjestepakke-innmelding åpnes fra rom-verktøylinja.
   const [overlay, setOverlay] = useState<'pakke' | 'gjestepakke' | null>(null)
   const profil = aktivBesoksprofil(state)
+
+  // GJEST-VELGER (?dev=1): i dev vises ALLTID en gjest ved disken for
+  // kalibrering (ellers har Espen ingen å kalibrere før en sesong er startet).
+  // Espen bytter sprite for å sjekke cal mot alle høyder/bredder. I ekte spill
+  // (ikke-dev) vises scenariets kunde, kun i sesong.
+  const [devGjestIdx, setDevGjestIdx] = useState(0)
+  const devGjest = TURIST_SPRITER[((devGjestIdx % TURIST_SPRITER.length) + TURIST_SPRITER.length) % TURIST_SPRITER.length]
+  const visGjest = IS_DEV_COORDS ? !!devGjest : (!!sesong?.aktiv && !!scenario)
+  const gjestFil = IS_DEV_COORDS ? devGjest?.fil : scenario?.sprite
+  const gjestNavn = IS_DEV_COORDS ? devGjest?.navn : scenario?.customerName
 
   // Kalibrering (dev): livevis fra districts-verdiene, justerbar med ?dev=1-
   // sliders; verdiene logges for innliming i districts.ts.
@@ -78,7 +87,7 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
         )}
 
         {/* BESØKENDE (z=10) — forankret på livet ved disken. */}
-        {gjestSynlig && scenario && (
+        {visGjest && gjestFil && (
           <div
             onClick={motGjest}
             onMouseEnter={() => setHover(true)}
@@ -92,7 +101,7 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
             }}
           >
             <img
-              src={scenario.sprite} alt={scenario.customerName} draggable={false}
+              src={gjestFil} alt={gjestNavn ?? ''} draggable={false}
               onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0' }}
               style={{
                 height: '100%', width: 'auto', display: 'block', userSelect: 'none',
@@ -202,6 +211,15 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
           borderRadius: 12, padding: '10px 12px', color: '#ffd24a', fontSize: 12, fontWeight: 700,
         }}>
           <div>🧭 Gjest-kalibrering</div>
+          {/* GJEST-VELGER: bytt sprite for å sjekke cal mot alle høyder/bredder. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '4px 6px' }}>
+            <button onClick={() => setDevGjestIdx(i => i - 1)} style={velgerBtn}>‹</button>
+            <div style={{ flex: 1, textAlign: 'center', fontSize: 11, color: '#cbd5e1', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {devGjest?.navn ?? '—'}
+            </div>
+            <button onClick={() => setDevGjestIdx(i => i + 1)} style={velgerBtn}>›</button>
+          </div>
+          <div style={{ fontSize: 10, color: '#64748b', textAlign: 'center' }}>{(((devGjestIdx % TURIST_SPRITER.length) + TURIST_SPRITER.length) % TURIST_SPRITER.length) + 1}/{TURIST_SPRITER.length}</div>
           <CalSlider label="scale" value={cal.scale} min={0.2} max={1.5} step={0.01}
             onChange={v => { const n = { ...cal, scale: v }; setCal(n); logCal(n, occludeY) }} />
           <CalSlider label="centerX" value={cal.centerX} min={0} max={100} step={0.5}
@@ -219,6 +237,12 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
 function logCal(cal: { scale: number; centerX: number; waistY: number }, occludeY: number) {
   // eslint-disable-next-line no-console
   console.log(`[TuristkontorScene] lim inn i districts.ts:\n  TURISTKONTOR_GJEST_CAL = { scale: ${cal.scale}, centerX: ${cal.centerX}, waistY: ${cal.waistY} }\n  TURISTKONTOR_OCCLUDE_Y = ${occludeY}`)
+}
+
+const velgerBtn: React.CSSProperties = {
+  background: 'rgba(255,210,74,0.14)', color: '#ffd24a', border: '1px solid #ffd24a55',
+  borderRadius: 6, width: 24, height: 24, cursor: 'pointer', fontSize: 15, fontWeight: 800,
+  lineHeight: 1, fontFamily: 'inherit', flexShrink: 0,
 }
 
 function CalSlider({ label, value, min, max, step, onChange }: {
