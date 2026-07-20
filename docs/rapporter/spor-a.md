@@ -1939,12 +1939,12 @@ alt). Kafé-ambient-kommentaren i balance.ts oppdatert.
 5. «← Stasjonen» tilbake.
 
 ### Åpen oppfølging / flagg
-- **Gjest-cal + SKRÅ forgrunnslinje er PLACEHOLDER** — venter Espens ?dev-
-  kalibrering + lås i `districts.ts` (`TURISTKONTOR_GJEST_CAL` +
-  `TURISTKONTOR_OCCLUDE {left,right}`). Disken er fotografert i PERSPEKTIV, så
-  forgrunns-klippet er nå en SKRÅ linje (occ.L = venstrekant, occ.R = høyrekant;
+- **Gjest-cal + SKRÅ forgrunnslinje — LÅST av Espen** (?dev=1, godkjent mot alle 7):
+  `TURISTKONTOR_GJEST_CAL = { scale: 0.44, centerX: 68, waistY: 61 }`,
+  `TURISTKONTOR_OCCLUDE = { left: 81.5, right: 61.5 }`. Disken er i PERSPEKTIV, så
+  forgrunns-klippet er en SKRÅ linje (occ.L = venstrekant, occ.R = høyrekant;
   `clipPath: polygon(0 occ.L, 100% occ.R, …)`, samme mønster som kassevyens
-  `occludeYLeft/Right`). To sliders i ?dev-panelet, verdiene logges for innliming.
+  `occludeYLeft/Right`). To ?dev-sliders logger verdiene.
 - **BUGFIX 1 (tom disk i dev):** dev-dyplenke starter ingen sesong → ingen gjest.
   Nå viser scenen ALLTID en kalibrerings-gjest i ?dev=1, med en **gjest-velger**
   (‹/›) gjennom alle 7 turist-sprites (`TURIST_SPRITER`).
@@ -1957,7 +1957,15 @@ alt). Kafé-ambient-kommentaren i balance.ts oppdatert.
   feil vises som brukket bilde). **Verifisert med skjermbilde-løkke — alle 7
   sprites rendrer synlig ved disken** (`docs/rapporter/bilder/turistkontor-gjest-
   velger-7sprites.png`), naturalWidth>0 + opacity 1 for hver. Vokta av steg 17.
-  → Espen bør **hard-refreshe** (Ctrl+Shift+R) for å tømme evt. cachede 404-er.
+- **Sti-buggen hos Espen = STALE VITE-SERVER (ikke kode):** hans `:5173`-server
+  returnerte `200 · 633 bytes · text/html` (SPA-index.html-fallback) for
+  `/assets/raw/customers/turist-*.png`, mens en FERSK vite fra samme filer ga
+  `200 · 139 KB · image/png`. Serveren var blitt forvirret etter at jeg gjorde
+  `git checkout`/rebase mellom grener MENS hans vite kjørte (filer byttes under
+  publicDir-watcheren). **HUSREGEL: etter checkout/rebase i et tre med kjørende
+  dev-server → RESTART serveren.** Løst ved server-restart. (onError/key-fiksen
+  var likevel riktig: den gjorde feilen SYNLIG som brukket bilde, som avslørte
+  633-byte-fallbacken.)
 - **Rom-verktøylinja** er flytende knapper (ikke bundet til et fysisk element i
   bildet ennå). Å binde «pakke» til brosjyrestativet/disken som traced hotspot
   er en mulig polish (?dev-trace) — sagt ifra om ønsket.
