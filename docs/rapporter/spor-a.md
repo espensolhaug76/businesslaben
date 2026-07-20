@@ -1981,9 +1981,10 @@ alt). Kafé-ambient-kommentaren i balance.ts oppdatert.
 
 ## 38. ENGASJEMENT — KROK 4 GAME FEEL-PAKKEN (ENGASJEMENTSLAGET v2)
 
-> **Status: bygget + fiks-runde, IKKE merget — Espen RE-validerer i Chrome.** Gren
-> `spor-a/engasjement-gamefeel` (fra main @ afaf2d8). `tsc -b` + `vite build` +
-> `npm run spilltest` (**20/20**, lyd + animasjoner AV/snap i headless) grønn.
+> **Status: MERGET TIL MAIN (2026-07-20)** etter Espens Chrome-validering + fiks-
+> runde. Gren `spor-a/engasjement-gamefeel` ff-merget til main og slettet (lokalt
+> + origin). `tsc -b` + `vite build` + `npm run spilltest` (**20/20**, lyd +
+> animasjoner AV/snap i headless) grønn PÅ MAIN.
 > Referansedokument: `docs/ENGASJEMENT.md` (DEL 0). Rammene der gjelder: ingen
 > XP/poeng for klikking, alt seedet deterministisk, kosmetikk gir aldri fordel,
 > fortegn+tekst (aldri kun farge/emoji). Alt tunbart i `balance.ts.gamefeel`.
