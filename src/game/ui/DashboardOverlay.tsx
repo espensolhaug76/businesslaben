@@ -95,7 +95,9 @@ const TABS: { id: Tab; label: string; emoji: string; fag: FagId; tema?: string; 
   { id: 'priser',          label: 'Priser',            emoji: '🏷️', fag: 'forretningsdrift', visFag: ['fd', 'm'] },
   // ── Markedsføring og innovasjon (markedsmiksens Produkt/Plass/Promosjon) ──
   { id: 'malgruppe',       label: 'Målgruppe',         emoji: '🎯', fag: 'markedsforing', visFag: ['m'] },
-  { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍', fag: 'markedsforing', visFag: ['m'] },
+  // Lokasjon er DELT FD+M: husleie + oppgraderingsinvestering (FD) i tillegg til
+  // Plass-P (M) → synlig hvis minst ett av FD/M er aktivt. (Badge/stripe = M primær.)
+  { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍', fag: 'markedsforing', visFag: ['fd', 'm'] },
   { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢', fag: 'markedsforing', visFag: ['m'] },
   { id: 'distribusjon',    label: 'Distribusjon',      emoji: '🚚', fag: 'markedsforing', visFag: ['m'] }, // Plass-P (M-merke)
   { id: 'utstilling',      label: 'Utstilling',        emoji: '🪟', fag: 'markedsforing', visFag: ['m'] },

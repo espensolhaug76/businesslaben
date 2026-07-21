@@ -1199,12 +1199,12 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await ventState(page, s => s.fagAktiv?.m === false, 'M av speilet til state')
 
     // (A) Faner: rene M-faner HELT borte; FD-faner + FD-delte + kjerne igjen.
-    // Personale (ren FD) og Forretningsplan (FD+M) STÅR fordi FD er på.
+    // Personale (ren FD), Forretningsplan + Lokasjon (FD+M) STÅR fordi FD er på.
     await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
-    for (const id of ['malgruppe', 'markedsforing', 'utstilling', 'distribusjon', 'lokasjon']) {
+    for (const id of ['malgruppe', 'markedsforing', 'utstilling', 'distribusjon']) {
       await expect(page.getByTestId(`fane-${id}`), `M-fane ${id} skjult`).toHaveCount(0)
     }
-    for (const id of ['oversikt', 'produkter', 'priser', 'okonomi', 'personale', 'forretningsplan', 'rapporter', 'innboks']) {
+    for (const id of ['oversikt', 'produkter', 'priser', 'okonomi', 'personale', 'forretningsplan', 'lokasjon', 'rapporter', 'innboks']) {
       await expect(page.getByTestId(`fane-${id}`), `${id} synlig`).toBeVisible()
     }
     await page.getByTestId('dashbord-lukk').click()
@@ -1350,12 +1350,21 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await page.getByTestId('dashbord-lukk').click()
     await nullstill(); await ventState(page, s => s.fagAktiv?.fd === true, 'FD tilbake')
 
-    // (B) M av (FD/KS på): Personale (FD) og Forretningsplan (FD-delen) STÅR.
+    // (B) M av (FD/KS på): Personale (FD) + Forretningsplan/Lokasjon (FD-delen) STÅR.
     await setFag('m', false)
     await ventState(page, s => s.fagAktiv?.m === false, 'M av')
     await dash()
     await expect(page.getByTestId('fane-personale'), 'Personale står (FD på)').toBeVisible()
     await expect(page.getByTestId('fane-forretningsplan'), 'Forretningsplan står (FD på)').toBeVisible()
+    await expect(page.getByTestId('fane-lokasjon'), 'Lokasjon står (FD+M, FD på)').toBeVisible()
+    // Slå FD av OGSÅ (begge av): de FD+M-delte fanene forsvinner nå (dashbordet
+    // åpent, JS-toggle → ingen redirect siden Oversikt (kjerne) er aktiv).
+    await setFag('fd', false)
+    await ventState(page, s => s.fagAktiv?.fd === false, 'FD av også')
+    for (const id of ['lokasjon', 'forretningsplan', 'produkter', 'priser']) {
+      await expect(page.getByTestId(`fane-${id}`), `${id} borte når BÅDE FD og M er av`).toHaveCount(0)
+    }
+    await nullstill(); await ventState(page, s => s.fagAktiv?.fd === true && s.fagAktiv?.m === true, 'fag tilbake')
 
     // (C) KS av (FD/M på), dashbordet fortsatt åpent: INGEN faner endres (KS styrer
     //     ingen fane). Toggle via JS-hooken så dashbordet ikke må lukkes.

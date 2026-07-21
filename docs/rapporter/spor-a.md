@@ -2733,3 +2733,32 @@ hub-fagstrukturen. Commit på samme gren, ikke merge.
   dashbord-headeren mister KS-brikka. Espen spør stiller ikke lenger KS-spørsmål
   (kundebehandling/klage), men KS-temaer (reiseliv) og kundemøtene er upåvirket.
 - KS-bryteren i lærerpanelet/⚙ viser hjelpeteksten om at KS ligger i kundemøtene.
+
+---
+
+## Lokasjon-fanen remappet til FD+M (delt) — 2026-07-21
+
+Oppfølging av statuspunktet i forrige avsnitt (Lokasjon var ren M).
+
+- **Lokasjon: M → FD+M** (`visFag: ['m'] → ['fd','m']`, badge/stripe forblir M
+  primær). Begrunnelse: fanen inneholder husleie + oppgraderingsinvestering (FD) i
+  tillegg til Plass-P (M) → samme delte mønster som Priser/Produkter/Forretningsplan.
+  Synlig hvis minst ETT av FD/M er aktivt; forsvinner FØRST når begge er av.
+
+### Oppdatert fanemapping (erstatter tabellen over for Lokasjon)
+| Fane | Synlig når | Badge |
+|---|---|---|
+| Produkter · Priser · **Lokasjon** · Forretningsplan | FD **eller** M | M / FD / M / FD |
+| Målgruppe · Markedsføring · Distribusjon · Utstilling | M | M |
+| Økonomi · Personale | FD | FD / FD |
+| Oversikt · Rapporter · Innboks | ALLTID (kjerne) | FD / V / V |
+| HMS | tema (beredskap) aktivt — krever FD | HMS |
+
+### Spilltest (31/31 PASS)
+- **26 (oppdatert):** M av (FD på) → Lokasjon flyttet til «synlig»-lista (står nå).
+- **31 (utvidet):** M av (FD på) → Lokasjon STÅR; FD av OGSÅ (begge av) → Lokasjon
+  (og de andre FD+M-delte: Forretningsplan/Produkter/Priser) forsvinner.
+
+### Chrome-sjekkliste — Lokasjon
+- Slå **M av** (FD på): Lokasjon STÅR (sammen med Produkter/Priser/Forretningsplan).
+- Slå **FD av OGSÅ** (begge av): Lokasjon (og de andre FD+M-delte) forsvinner.
