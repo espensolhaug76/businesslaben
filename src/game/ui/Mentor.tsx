@@ -69,39 +69,57 @@ function saveIntroDone() {
 }
 
 /** Tilstands-avledede HENDELSES-triggere. Scene-signaler (disk_stell/vindu/
- *  bykart) kommer via 'mentor:signal'; fane-triggere via 'mentor:fane'. */
+ *  bykart) kommer via 'mentor:signal'; fane-triggere via 'mentor:fane'.
+ *
+ *  DATAVAKT (global regel, fikserunde 3+): en DYNAMISK trigger som leser elevens
+ *  egne tall skal ALDRI fyre på tomt grunnlag (0 kunder, tom liste, manglende
+ *  node). Hver slik case har derfor et minstedata-vilkår, dokumentert i en
+ *  kommentar rett over. Rene tilstands-/hendelses-triggere (bool/present) trenger
+ *  ikke vakt. `dynamiskMentorMelding` returnerer i tillegg undefined om grunnlaget
+ *  mangler (belte + bukseseler), men vakta her hindrer at triggeren merkes «fyrt». */
 function oppfylt(id: string, s: GameState): boolean {
   switch (id) {
-    case 'forste_apning': return s.dayPhase === 'åpen'
-    case 'forste_bestilling_levert': return s.lastDelivery != null
-    // KROK 7 — DEN LEVENDE INNBOKSEN: første ULESTE quest-e-post med svarfrist.
+    case 'forste_apning': return s.dayPhase === 'åpen'                 // hendelse
+    case 'forste_bestilling_levert': return s.lastDelivery != null     // hendelse (present)
+    // KROK 7 — DEN LEVENDE INNBOKSEN. DATAVAKT: minst én ULEST quest-e-post med
+    // svarfrist i innboksen (tom innboks ⇒ ingen frist å minne om).
     case 'forste_epost_frist': return s.messages.some(m => m.epost != null && m.fristAbsDag != null && m.epostStatus === 'ubesvart' && !m.read)
-    // KROK 2 — STAMKUNDER: første gang en kunde blir stamkunde.
+    // KROK 2 — STAMKUNDER (parkert). DATAVAKT: minst én kunde er blitt stamkunde.
     case 'stamkunde_forste': return STAMKUNDER_AKTIV && Object.values(s.stamkunder).some(k => k.erStamkunde)
-    case 'forste_laan': return s.loans.length > 0
-    case 'forste_manedsoppgjor': return s.lastMonthSettlement != null
-    case 'forste_eierlonn': return s.lastMonthSettlement != null
+    case 'forste_laan': return s.loans.length > 0                      // hendelse (≥1 lån)
+    case 'forste_manedsoppgjor': return s.lastMonthSettlement != null  // hendelse (present)
+    case 'forste_eierlonn': return s.lastMonthSettlement != null       // hendelse (present)
+    // Dagsoppgjørs-triggere. DATAVAKT: det aktuelle tallet må være > 0 (ingen
+    // svinn/tomt trau/kø ⇒ ingenting å kommentere).
     case 'forste_svinn': return (s.lastDayResult?.svinnStk ?? 0) > 0
     case 'forste_tomt_trau': return (s.lastDayResult?.tomtProdukter.length ?? 0) > 0
     case 'forste_ko': return (s.lastDayResult?.koKunder ?? 0) > 0
     case 'forste_p_fullfort': return s.p1_complete || s.p2_complete || s.p3_complete || s.p4_complete
     case 'alle_p_fullfort': return s.p1_complete && s.p2_complete && s.p3_complete && s.p4_complete
     // TEMA 1: Beredskap (tema_beredskap_aktivert fyres via aktiveTemaer-effekten).
-    case 'beredskap_plan_bekreftet': return s.beredskap.planBekreftet
-    case 'beredskap_risiko_levert': return s.beredskap.risikoLagret
+    case 'beredskap_plan_bekreftet': return s.beredskap.planBekreftet  // hendelse (bekreftet)
+    // DATAVAKT: skjemaet er lagret OG eleven har fylt inn minst ETT tiltak.
+    // (Fare-kolonnen er forhåndsutfylt, så den duger ikke som «har jobbet med
+    // skjemaet»-signal — det er tiltakene eleven selv skriver.)
+    case 'beredskap_risiko_levert':
+      return s.beredskap.risikoLagret && s.beredskap.risikoRader.some(r => r.tiltak.trim().length > 0)
+    // DATAVAKT: alarmen faktisk håndtert (rekkefølge-lista ikke tom).
     case 'beredskap_brannalarm_handtert': return (s.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0
     // DEL 4 (fiksrunde 2): første brannØVELSE etter en FEILET skarp alarm.
+    // DATAVAKT: en skarp alarm er håndtert (≠ tom) OG gikk dårlig, OG minst én øvelse kjørt.
     case 'beredskap_ovelse_etter_feil':
       return (s.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0
         && s.beredskap.brannalarmUtfall?.kvalitet === 'bad'
         && s.beredskap.brannovelser.length > 0
     // TEMA 2/3: leser den transiente oppgjørs-payloaden (satt ved månedsrull).
+    // DATAVAKT: payloaden/noden må finnes (eleven hadde satt budsjett).
     case 'budsjett_avvik_storst': return !!s.budsjettOppgjorHint?.storstAvvik
+    // DATAVAKT: dekningsgrad-noden finnes OG spriket er > 5 prosentpoeng.
     case 'nokkeltall_dekningsgrad_avvik': {
       const d = s.budsjettOppgjorHint?.dekningsgradAvvik
       return !!d && Math.abs(d.ditt - d.bok) > 5
     }
-    // TEMA 8: leser siste fullførte kampanje (effektrapport + førpris-brudd).
+    // TEMA 8. DATAVAKT: minst én fullført kampanje i historikken.
     case 'kampanje_effekt': return s.kampanje.historikk.length > 0
     // TEMA 15 sesongslutt: sesong startet, nå UTE av varigheten. PARKERT
     // (TURISTSESONG_AKTIV) ⇒ armes aldri. DATAVAKT: krever minst 1 TILREISENDE
@@ -115,6 +133,7 @@ function oppfylt(id: string, s: GameState): boolean {
     case 'hotellavtale_svart': return TURISTSESONG_AKTIV && s.hotellavtale !== 'ingen'
     // TEMA 15 DEL 7: eleven har tilbudt en reiselivspakke (resultat lagret).
     case 'pakke_bygget': return TURISTSESONG_AKTIV && s.reiselivPakke != null
+    // DATAVAKT: en fullført kampanje finnes OG den brøt førpris-regelen.
     case 'kampanje_forpris_brudd': return s.kampanje.historikk[s.kampanje.historikk.length - 1]?.forprisBrudd === true
     default: return false
   }
@@ -323,6 +342,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   useEffect(() => {
     const dag = `${state.currentYear}-${state.currentMonth}-${state.dayNumber}`
     // (1) Åpner butikken med UPRISEDE varer i eksponering — re-armes per dag.
+    // DATAVAKT: minst én upriset vare FAKTISK i disk/vindu (ellers ingenting å si).
     if (state.dayPhase === 'åpen') {
       const iExpo = new Set<string>([
         ...state.counterLayout.map(t => t.productId),
@@ -331,6 +351,8 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
       if (state.products.some(p => iExpo.has(p.id) && p.retailPrice <= 0)) fire(`mangler_pris_apning|${dag}`)
     }
     // (2/7f-d) Dagsoppgjør: tapt salg pga mangler pris (antall) + overpris per vare.
+    // DATAVAKT: mangler-pris kun når > 0 stk tapt; overpris kun per FAKTISK vare i
+    // lista (tom liste ⇒ ingen overpris-trigger).
     const r = state.lastDayResult
     if (state.dayPhase === 'oppgjør' && r) {
       if (r.manglerPrisStk > 0) fire(`mangler_pris_oppgjor|${dag}`)
