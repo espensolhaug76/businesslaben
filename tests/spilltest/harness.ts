@@ -37,6 +37,7 @@ export interface SpillProduct {
 }
 export interface IncomingOrder { productId: string; qty: number; ankomstDag: number }
 export interface SpillState {
+  fagAktiv?: { fd: boolean; m: boolean; ks: boolean }
   money: number
   reputation: number
   currentMonth: number

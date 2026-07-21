@@ -2465,3 +2465,144 @@ Full URL (dev-server): **`http://localhost:5173/game?dev=1&skip=1`**
 7. **Verifiser at scenariet IKKE gjentas:** når du har spilt en kundes scenario én
    gang, skal du aldri se det SAMME scenariet igjen organisk — kun stamkundemøter
    med den personen. (Nye, uspilte kunder kommer fortsatt som fulle scenarier.)
+
+---
+
+## FAGFILTER — lærerstyrt fag- og «Espen spør»-styring + stamkunde parkert (fikserunde 3, 2026-07-21)
+
+Gren: `spor-a/kroker-espen-spor-stamkunder`. Fire deler + ⚙-tillegg, commit per
+del, `tsc -b` rent før hver. Bokmål. Statusforskjeller alltid tekstlabel, aldri
+kun farge. Espens styrende beslutninger: stamkunde-mekanikken PARKERES; elever
+ser IKKE fag læreren ikke har aktivert; «Espen spør» er av som standard og
+lærerstyrt per fag.
+
+### DEL 0 — Stamkunde bak av-flagg + scenariotrekking reversert
+- **Hvor flagget bor:** `src/game/data/featureFlags.ts` → `STAMKUNDER_AKTIV = false`
+  (egen fil, ikke balance.ts — feature-flagg er av/på-arkitektur, ikke tunbare
+  balansetall). Dokumentert der.
+- Flagg av ⇒ ingen stamkundemøter (OPEN_DAY gir ingen stamkunde-pool), Målgruppe-
+  fanens «Stamkunder — kjente fjes» skjult, mentor-triggeren `stamkunde_forste`
+  fyrer ikke, ⚙-panelets stamkunde-knapper deaktivert med «Parkert — kommer som
+  stamkort-tiltak». KODEN BEHOLDES i sin helhet (gjenbrukes til stamkort-tiltaket).
+- **Trekkeregel** (engangs-invarianten fjernet): USPILTE scenarioer foretrekkes
+  alltid; når hele poolen er spilt, nullstilles trekkgrunnlaget. `antallMoter`
+  skrives fortsatt (historikk bak ✓-scenariovelger). Midlertidig til scenario-
+  variant-jobben.
+
+### DEL 1 — Fagaktivering (lærerens programfag-brytere)
+- `src/game/data/fag.ts`: `FagKode` ('fd'|'m'|'ks'), `FagAktivering`, `FAG_META`
+  (fulle navn + FD/M/KS-kort), `FAG_DEFAULT` (alt på = fritt spill), `normaliserFag`.
+- RTDB `klasser/{kode}/fagAktivering = { fd, m, ks }` (søster til temaAktivering)
+  + localStorage-fallback + dev-overstyring per fag (vinner lokalt). `useFagAktive()`.
+- **temaer.ts:** hvert tema navngir sitt fag; `aktiveTemaer` er nå fag-gated —
+  et tema hvis fag er av forsvinner overalt spillet leser aktiveTemaer.
+- Lærerens Spillet-fane: «Fag»-seksjon ØVERST (tre brytere med fulle navn); temaer
+  hvis fag er av gråes ut med «Faget er slått av».
+
+### DEL 2 — Fane- og innholdsfilter
+- **Fanemapping implementert** (`visFag` — fane vises hvis MINST ETT fag er aktivt;
+  `fag`-stripe/badge uendret):
+
+  | Fane | Synlig når | Stripe |
+  |---|---|---|
+  | Oversikt · Rapporter · Innboks | ALLTID (kjerne) | FD / V / V |
+  | Forretningsplan · Økonomi | FD | FD |
+  | Produkter · Priser | FD **eller** M | M / FD |
+  | Målgruppe · Lokasjon · Markedsføring · Distribusjon · Utstilling | M | M |
+  | Personale | KS **eller** FD | KS |
+  | HMS | tema (beredskap) aktivt — og beredskap krever FD | HMS |
+
+- Skjulte faner er HELT borte (ingen gråtonet rest). Åpning/direktenavigasjon til
+  en skjult fane → Oversikt. Fagbytte MIDT i økt på fanen man står på → rolig
+  retur til Oversikt med melding «Læreren har endret fagoppsettet».
+- **Innboks:** kundebestilling (7a) kjerne (alltid); leverandørtilbud (7b) kun når
+  FD aktiv; markedsføringstilbud (7d) kun når M aktiv. Mottatte e-poster forblir
+  lesbare. `fagAktiv` speiles inn i reducer-state (SET_FAG_AKTIV) for e-postgen.
+- **Mentor:** skjulte faner kan ikke navigeres til ⇒ fane-triggerne deres armeres
+  aldri (re-arm-mekanismen uendret).
+
+### DEL 3 — «Espen spør» lærerstyrt + fagtagging
+- **Fagtagging** (`fagForSporsmal`): kalkyle/drift → fd, markedsmiks/malgruppe → m,
+  forbrukerlov → ks (kundemøte/servicerettigheter) — UNNTATT markedsføringsloven
+  (betalt omtale) som er m. Vurdert per spørsmål.
+- RTDB `klasser/{kode}/espenSpor = { aktiv (default FALSE), fag: {fd,m,ks} }` +
+  fallback (også av) + dev-overstyring. `finnKandidater` får `aktiveFag`-filter.
+- **Pool = aktiv PÅ ∧ spørsmålets fag valgt av lærer ∧ (temaId: temaet aktivt) ∧
+  nivåfilter.** Auto-spørsmål (mentor) fyrer kun når læreren har skrudd på;
+  fagpool = valgt av lærer ∩ globalt aktivt fag.
+- Lærerens Spillet-fane: «Espen spør»-seksjon under Fag — hovedbryter + tre
+  fag-avkrysninger (kun aktive fag valgbare, andre grået «(av)»).
+
+### ⚙ DEV — full lokal overstyring av ALT lærerstyrt
+Slik at Espen kan validere hele filteret alene uten lærerpanel/klassekode.
+Presedens **DEV > lærer/RTDB > default**; overstyringer persisteres lokalt,
+ALDRI til RTDB.
+- «Fag»-gruppe: tre toggles (FD/M/KS) med «Nå: DEV / lærer/standard»-labels.
+- «Espen spør»-gruppe: hovedbryter (av/på) + tre fag-toggles (kun aktive fag) +
+  «🎓 Still neste spørsmål nå» — alle med kilde-labels; still-knappen overstyrer
+  av/på lokalt men respekterer fagvalget.
+- «↺ Nullstill DEV-overstyringer» — fjerner alle lokale overstyringer (fag, nivå,
+  «Espen spør») → tilbake til lærer/RTDB/standard.
+- DEV-fagbytte utløser NØYAKTIG samme oppførsel som lærerbytte (fane-skjuling,
+  redirect fra åpen skjult fane, innboks- og mentor-filter).
+
+### Spilltest (28/28 PASS)
+- **24 (D):** STAMKUNDER_AKTIV=false → 0 stamkundemøter; uspilt foretrekkes; pool
+  nullstilt når alt er spilt.
+- **26 (A+E):** M av → 5 M-faner + mkf-tilbud (7d) borte, Produkter/Priser/kjerne
+  igjen, ingen mkf over 6 dager; ↺ Nullstill → M-faner tilbake.
+- **27 (B):** fagbytte i åpen Målgruppe-fane → melding + tilbake på Oversikt, 0 feil.
+- **28 (C):** Espen spør av default → 0 auto-spørsmål over 4 dager; fagfilter:
+  aktiveFag=[fd] gir kun fd-tagg, [m] kun m-tagg (finnKandidater-fasit).
+
+### Åpne flagg / valg gjort her
+- **STAMKUNDER_AKTIV** ligger i `featureFlags.ts` (produkt-flagg, ikke lærerstyrt).
+  Sett `true` igjen når stamkort-tiltaket bygges.
+- **Fag-mapping av temaer** følger docs/TEMAER_OG_KOMPETANSEMAL.md (FAG A/B → fd,
+  FAG C → m, FAG D → ks). HMS hører under FD (Tema 1 krever FD aktiv).
+- **Lokasjon-fanen** (ikke nevnt i oppdraget) er kartlagt som M (den er en
+  markedsføring/Plass-fane) — skjules når M er av.
+- **DEV-overstyringene** speiles til reducer-state kun for fag (innboksgen);
+  «Espen spør» og fane-filter leser context direkte. Test-broen eksponerer
+  `__SET_FAG_DEV__`/`__NULLSTILL_DEV__`/`__SET_ESPEN_DEV_*__` (kun i DEV-bygg).
+
+### Chrome-sjekkliste (Espen validerer)
+**A) ⚙ DEV-panelet** (`http://localhost:5173/game?dev=1&skip=1`) — full lokal
+overstyring, ingen klassekode nødvendig. Klikk **⚙ DEV** nede til venstre:
+
+1. **Fag (overstyrer lærer):** tre toggles FD/M/KS, alle **PÅ** som standard
+   («Nå: lærer/standard»). Slå **M av** → toggle viser AV + «Nå: DEV». Åpne
+   💻 Dashbord: **Målgruppe, Lokasjon, Markedsføring, Distribusjon, Utstilling**
+   er BORTE; **Produkter/Priser** (FD-delt) + Oversikt/Økonomi/Rapporter/Innboks
+   står igjen. Slå **FD av** også → Produkter/Priser forsvinner også, og HMS-fanen
+   (hvis beredskap er aktivt) forsvinner. Slå **KS av** → Personale forsvinner
+   (med mindre FD er på).
+2. **Redirect:** slå alle fag på igjen (eller ↺ Nullstill). Åpne Dashbord, stå på
+   **Målgruppe**, og slå **M av** i ⚙ mens du står der → rolig melding «Læreren
+   har endret fagoppsettet — du er tilbake på Oversikt» og du havner på Oversikt.
+3. **Innboks:** med **M av**, spol noen dager (⚙ har ikke egen dagknapp — bruk
+   dagssyklusen) → ingen «markedsføringstilbud» (7d) i 📬 Innboks. Med **FD av**
+   forsvinner «leverandørtilbud» (7b). «Kundebestilling» (7a) kommer alltid.
+4. **Espen spør (overstyrer lærer):** hovedbryter **AV** som standard
+   («Nå: lærer/standard»). Slå **på** → «Nå: DEV». Slå av **M** og **KS** under
+   (kun **FD** igjen). Klikk **🎓 Still neste spørsmål nå** → Espen peker med
+   N-badge; klikk figuren → spørsmålet er et Forretningsdrift-spørsmål (kalkyle/
+   drift). Fag som er globalt av vises som «Faget X er slått av» og kan ikke velges.
+5. **↺ Nullstill DEV-overstyringer** → alt tilbake til lærer/standard (alle fag på,
+   Espen spør av, nivå tilbakestilt).
+6. **Stamkunder (parkert):** ⚙ → Stamkunder → begge knappene er grå med «Parkert —
+   kommer som stamkort-tiltak». Målgruppe-fanen har INGEN «Stamkunder — kjente
+   fjes»-seksjon.
+
+**B) Lærerpanelet** (TeacherDashboard → «Spillet»-fanen, krever valgt klasse):
+7. **Fag-seksjonen** ØVERST: tre brytere (Forretningsdrift / Markedsføring og
+   innovasjon / Kultur og samhandling), alle på som standard. Slå ett av → temaene
+   som hører til gråes ut med «Faget er slått av», og elever i klassen mister de
+   tilhørende fanene live.
+8. **Espen spør-seksjonen** (under Fag): hovedbryter av som standard. Slå på → tre
+   fag-avkrysninger dukker opp (kun fag som er på over kan velges; andre grået
+   «(av)»). Velg f.eks. bare FD → elevene får kun Forretningsdrift-spørsmål.
+9. Sett begge (fag + Espen spør) i BEGGE stillinger og bekreft at en elev-klient
+   med samme klassekode ser effekten live (faner av/på, spørsmål av/på).
+
+Push. IKKE merge (venter på Espens Chrome-validering).

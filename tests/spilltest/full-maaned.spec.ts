@@ -16,7 +16,7 @@ import { BALANCE } from '../../src/game/data/balance'
 import { beregnPakke, velgProfil, EGEN_KAFE_ID, velgTuristkontorScenario, velgByhotellScenario } from '../../src/game/data/reiseliv'
 import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS, CAFE_SCENARIO_IDS } from '../../src/game/sales/scenarios'
 import { bestillingBetaling, tilbudsprisPerEnhet, leverandorNettoBesparelse, epostAbsDag, type KundebestillingPayload, type LeverandortilbudPayload } from '../../src/game/data/innboksEpost'
-import { finnKandidater } from '../../src/game/data/espenSporsmal'
+import { finnKandidater, fagForSporsmal } from '../../src/game/data/espenSporsmal'
 import { STAMKUNDER_AKTIV } from '../../src/game/data/featureFlags'
 import type { InboxMessage, GameState } from '../../src/game/types'
 
@@ -1174,6 +1174,102 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await expect(page.getByPlaceholder(/samlet 540/i), 'VG2: pristilbud-feltet synlig').toHaveCount(1)
     await page.evaluate(() => localStorage.removeItem('klasse-nivaa-dev-override'))
     ctx.ok(`Nivå: VG1-pool ${kandVg1.length} spm (0 VG2), VG2-pool har VG2-spm; pristilbud-felt skjult i VG1, synlig i VG2`)
+  })
+
+  // ── FAGFILTER (fikserunde 3) — steg 26–28 ──────────────────────────────────
+  // DEV-hookene __SET_FAG_DEV__/__NULLSTILL_DEV__ overstyrer fag lokalt PÅ SAMME
+  // VEI som ⚙-panelet/læreren (context → fane-filter + state-speil). Tilgjengelig
+  // under import.meta.env.DEV (uten ?dev=1).
+  await steg(page, rapport, 26, 'Fagfilter: M av → M-faner + mkf-tilbud (7d) borte, FD-faner igjen; ↺ Nullstill → tilbake', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot steg 26')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 200 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager')
+
+    // Slå Markedsføring av lokalt (samme vei som ⚙/læreren).
+    await page.evaluate(() => (window as unknown as { __SET_FAG_DEV__: (f: string, v: boolean) => void }).__SET_FAG_DEV__('m', false))
+    await ventState(page, s => s.fagAktiv?.m === false, 'M av speilet til state')
+
+    // (A) Faner: M-faner HELT borte; FD-delte (Produkter/Priser) + kjerne igjen.
+    await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+    for (const id of ['malgruppe', 'markedsforing', 'utstilling', 'distribusjon', 'lokasjon']) {
+      await expect(page.getByTestId(`fane-${id}`), `M-fane ${id} skjult`).toHaveCount(0)
+    }
+    for (const id of ['oversikt', 'produkter', 'priser', 'okonomi', 'rapporter', 'innboks']) {
+      await expect(page.getByTestId(`fane-${id}`), `${id} synlig`).toBeVisible()
+    }
+    await page.getByTestId('dashbord-lukk').click()
+
+    // (A) Innboks: ingen mkf-tilbud (7d) genereres over flere dager når M er av.
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen')
+    for (let d = 0; d < 6; d++) {
+      await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør')
+      await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'stengt')
+      await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen')
+    }
+    expect((await lesState(page)).messages.filter(m => m.type === 'mkftilbud').length, 'ingen mkf-tilbud når M er av').toBe(0)
+
+    // (E) ↺ Nullstill → M tilbake, M-faner synlige igjen.
+    await page.evaluate(() => (window as unknown as { __NULLSTILL_DEV__: () => void }).__NULLSTILL_DEV__())
+    await ventState(page, s => s.fagAktiv?.m === true, 'M tilbake')
+    await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+    await expect(page.getByTestId('fane-malgruppe'), 'Målgruppe synlig igjen').toBeVisible()
+    await page.getByTestId('dashbord-lukk').click()
+    ctx.ok('M av → 5 M-faner + mkf-tilbud (7d) borte, Produkter/Priser/kjerne igjen; ↺ Nullstill → M-faner tilbake')
+  })
+
+  await steg(page, rapport, 27, 'Fagbytte i ÅPEN skjult fane → rolig retur til Oversikt (ingen feil)', async ctx => {
+    const feil: string[] = []
+    const onErr = (e: Error) => feil.push(String(e))
+    page.on('pageerror', onErr)
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot steg 27')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    // Legg åpningsbestilling så OpeningOrderOverlay lukkes (ellers fanger den klikk).
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 100 }] })
+    await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager')
+    await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+    await page.getByTestId('fane-malgruppe').click()   // stå på en M-fane
+    // Læreren (her: DEV) slår M av MENS eleven står på Målgruppe.
+    await page.evaluate(() => (window as unknown as { __SET_FAG_DEV__: (f: string, v: boolean) => void }).__SET_FAG_DEV__('m', false))
+    await expect(page.getByText(/Læreren har endret fagoppsettet/), 'rolig melding vises').toBeVisible()
+    await expect(page.getByTestId('fane-malgruppe'), 'Målgruppe-fanen borte').toHaveCount(0)
+    await expect(page.getByTestId('fane-oversikt'), 'Oversikt fortsatt der (ingen krasj)').toBeVisible()
+    expect(feil, 'ingen runtime-feil ved fagbytte').toEqual([])
+    page.off('pageerror', onErr)
+    await page.evaluate(() => (window as unknown as { __NULLSTILL_DEV__: () => void }).__NULLSTILL_DEV__())
+    ctx.ok('Fagbytte på åpen Målgruppe-fane → «Læreren har endret fagoppsettet» + tilbake på Oversikt, 0 feil')
+  })
+
+  await steg(page, rapport, 28, 'Espen spør lærerstyrt: av default → ingen auto; fagfilter fd/m (finnKandidater-fasit)', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot steg 28')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 200 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager')
+    const prods = (await lesState(page)).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: 50 } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+
+    // (C1) AV som standard → mentor fyrer INGEN auto-spørsmål over flere dager.
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen')
+    for (let d = 0; d < 4; d++) {
+      await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør')
+      await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'stengt')
+      await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen')
+    }
+    expect((await lesFull()).espenSpor.aktivt, 'av default → ingen auto-spørsmål').toBeNull()
+
+    // (C2) Fagfilter (ren finnKandidater-fasit = samme UI/reducer bruker).
+    const st = await lesFull()
+    const base = { aktiveTemaIds: [] as string[], besvarteIds: [] as string[], feilCooldown: {}, absDag: 1 }
+    const kandFd = finnKandidater(st, { nivaa: 'vg2', ...base, aktiveFag: ['fd'] })
+    const kandM = finnKandidater(st, { nivaa: 'vg2', ...base, aktiveFag: ['m'] })
+    expect(kandFd.length, 'FD-pool har spørsmål').toBeGreaterThan(0)
+    expect(kandFd.every(q => fagForSporsmal(q) === 'fd'), 'aktiveFag=[fd] ⇒ kun fd-taggede').toBe(true)
+    expect(kandM.length, 'M-pool har spørsmål').toBeGreaterThan(0)
+    expect(kandM.every(q => fagForSporsmal(q) === 'm'), 'aktiveFag=[m] ⇒ kun m-taggede').toBe(true)
+    ctx.ok(`Av default: 0 auto-spørsmål over 4 dager. Fagfilter: ${kandFd.length} fd-spm (alle fd), M-pool alle m-tagget`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
