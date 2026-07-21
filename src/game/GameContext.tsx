@@ -1,7 +1,9 @@
-import { createContext, useContext, useReducer, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useReducer, useState, useEffect, useMemo, type ReactNode } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../lib/firebase'
 import type { TemaAktivering, TemaNivaa } from './data/temaer'
+import { temaById } from './data/temaer'
+import { type FagKode, type FagAktivering, FAG_DEFAULT, normaliserFag } from './data/fag'
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
@@ -2289,6 +2291,16 @@ interface GameContextValue {
   /** Dev-overstyring av klassenivå (?dev=1), null = ingen. */
   klasseNivaaDev: TemaNivaa | null
   setKlasseNivaaDev: (n: TemaNivaa | null) => void
+  /** Fagaktivering (fd/m/ks) — EFFEKTIV (dev-overstyring vinner over lærer/RTDB).
+   *  Fag som er av skjuler faner/temaer/innhold HELT for eleven. */
+  fagAktiv: FagAktivering
+  /** Fag fra lærer/RTDB (eller fallback) — uten dev-overstyring (for «Nå: lærer»). */
+  fagRaw: FagAktivering
+  /** Dev-overstyring per fag (?dev=1). Fravær = ingen overstyring for det faget. */
+  fagDev: Partial<Record<FagKode, boolean>>
+  setFagDev: (fag: FagKode, val: boolean | null) => void
+  /** ↺ Nullstill ALLE lokale dev-overstyringer (fag, nivå, «Espen spør»). */
+  nullstillDevOverstyringer: () => void
 }
 
 const GameContext = createContext<GameContextValue | null>(null)
@@ -2328,6 +2340,24 @@ function lesKlasseNivaaDev(): TemaNivaa | null {
     if (raw === 'vg1' || raw === 'vg2') return raw
   } catch { /* utilgjengelig */ }
   return null
+}
+
+// FAGAKTIVERING (fikserunde 3) — RTDB klasser/{kode}/fagAktivering (søster til
+// temaAktivering). Uten klassekode: lokal fallback (default ALT på). Dev-
+// overstyring (?dev=1) i egen nøkkel som VINNER lokalt (per fag).
+function lesFagFallback(): FagAktivering {
+  try {
+    const raw = localStorage.getItem('fag-aktivering-dev')
+    if (raw) return normaliserFag(JSON.parse(raw))
+  } catch { /* korrupt/utilgjengelig */ }
+  return { ...FAG_DEFAULT }
+}
+function lesFagDev(): Partial<Record<FagKode, boolean>> {
+  try {
+    const raw = localStorage.getItem('fag-aktivering-dev-override')
+    if (raw) { const v = JSON.parse(raw); if (v && typeof v === 'object') return v as Partial<Record<FagKode, boolean>> }
+  } catch { /* utilgjengelig */ }
+  return {}
 }
 
 const BEREDSKAP_KEY = 'beredskap_state_v1'
@@ -2381,14 +2411,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     w.__GAME_DISPATCH__ = dispatch
   })
 
-  const [aktiveTemaer, setAktiveTemaer] = useState<Record<string, TemaAktivering>>(() => lesTemaFallback())
+  const [aktiveTemaerRaw, setAktiveTemaerRaw] = useState<Record<string, TemaAktivering>>(() => lesTemaFallback())
 
   // Abonnér på tema-aktiveringsnoden ved øktstart når klassekode finnes.
   useEffect(() => {
     const kode = hentKlassekode()
-    if (!kode) { setAktiveTemaer(lesTemaFallback()); return }
+    if (!kode) { setAktiveTemaerRaw(lesTemaFallback()); return }
     return onValue(ref(db, `klasser/${kode}/temaAktivering`), snap => {
-      setAktiveTemaer((snap.val() as Record<string, TemaAktivering> | null) ?? {})
+      setAktiveTemaerRaw((snap.val() as Record<string, TemaAktivering> | null) ?? {})
     })
   }, [])
 
@@ -2413,6 +2443,57 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
   const klasseNivaa: TemaNivaa = klasseNivaaDev ?? klasseNivaaRaw
 
+  // FAGAKTIVERING: lærerens programfag-brytere (fd/m/ks). RTDB-node + fallback +
+  // valgfri dev-overstyring per fag (vinner lokalt). Default alt på (fritt spill).
+  const [fagRaw, setFagRaw] = useState<FagAktivering>(() => lesFagFallback())
+  const [fagDev, setFagDevState] = useState<Partial<Record<FagKode, boolean>>>(() => lesFagDev())
+  useEffect(() => {
+    const kode = hentKlassekode()
+    if (!kode) { setFagRaw(lesFagFallback()); return }
+    return onValue(ref(db, `klasser/${kode}/fagAktivering`), snap => {
+      setFagRaw(normaliserFag(snap.val()))
+    })
+  }, [])
+  const setFagDev = (fag: FagKode, val: boolean | null) => {
+    setFagDevState(prev => {
+      const next = { ...prev }
+      if (val === null) delete next[fag]; else next[fag] = val
+      try {
+        if (Object.keys(next).length) localStorage.setItem('fag-aktivering-dev-override', JSON.stringify(next))
+        else localStorage.removeItem('fag-aktivering-dev-override')
+      } catch { /* ignore */ }
+      return next
+    })
+  }
+  // Presedens: dev-overstyring > lærer/RTDB (eller fallback) > default (på).
+  const fagAktiv: FagAktivering = {
+    fd: fagDev.fd ?? fagRaw.fd,
+    m: fagDev.m ?? fagRaw.m,
+    ks: fagDev.ks ?? fagRaw.ks,
+  }
+
+  // Et tema hvis fag er AV regnes som INAKTIVT uansett temaAktivering — skjules
+  // dermed overalt spillet leser aktiveTemaer (faner, mentor, dev, OPEN_DAY).
+  const aktiveTemaer = useMemo(() => {
+    const out: Record<string, TemaAktivering> = {}
+    for (const [id, v] of Object.entries(aktiveTemaerRaw)) {
+      const fag = temaById(id)?.fag
+      if (fag && !fagAktiv[fag]) continue
+      out[id] = v
+    }
+    return out
+  }, [aktiveTemaerRaw, fagAktiv.fd, fagAktiv.m, fagAktiv.ks])
+
+  // ↺ Nullstill ALLE lokale dev-overstyringer (fag + klassenivå; «Espen spør» i DEL 3).
+  const nullstillDevOverstyringer = () => {
+    try {
+      localStorage.removeItem('fag-aktivering-dev-override')
+      localStorage.removeItem('klasse-nivaa-dev-override')
+    } catch { /* ignore */ }
+    setFagDevState({})
+    setKlasseNivaaDevState(null)
+  }
+
   // TEMA 15: når læreren aktiverer reiseliv-temaet OG ingen sesong har startet
   // ennå, start turistsesongen. Kun ÉN auto-start (turistsesong != null etterpå);
   // dev-knappen kan restarte manuelt.
@@ -2422,7 +2503,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [aktiveTemaer, state.turistsesong])
 
-  return <GameContext.Provider value={{ state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev }}>{children}</GameContext.Provider>
+  return <GameContext.Provider value={{ state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev, fagAktiv, fagRaw, fagDev, setFagDev, nullstillDevOverstyringer }}>{children}</GameContext.Provider>
 }
 
 export function useGame() {
@@ -2464,6 +2545,11 @@ export function useTemaNivaa(temaId: string): TemaNivaa | undefined {
  *  ikke er bundet til et aktivt tema. */
 export function useKlasseNivaa(): TemaNivaa {
   return useGame().klasseNivaa
+}
+/** Fagaktivering (fd/m/ks) — EFFEKTIV (dev-overstyring vinner). Fag som er av er
+ *  HELT skjult for eleven (faner/temaer/innhold). */
+export function useFagAktive(): FagAktivering {
+  return useGame().fagAktiv
 }
 /** DEL 0 — EFFEKTIVT nivå for et innholdsstykke. Presedens: er innholdet bundet
  *  til et tema (temaId gitt OG temaet aktivt) styrer TEMAETS nivå; ellers gjelder

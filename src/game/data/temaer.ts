@@ -7,12 +7,18 @@
 // Selve tema-INNHOLDET (hub-moduler, hendelser, oppgaver) kommer i egne jobber;
 // her definerer vi kun METADATA + hvilke hub-moduler temaet peker på.
 
+import type { FagKode } from './fag'
+
 export type TemaNivaa = 'vg1' | 'vg2'
 
 /** Definisjon av ett tema (metadata + hub-modul-referanser). */
 export interface TemaDef {
   id: string
   navn: string
+  /** Programfaget temaet hører til (docs/TEMAER_OG_KOMPETANSEMAL.md). Er fagets
+   *  bryter av (fagAktivering), regnes temaet som inaktivt uansett temaAktivering
+   *  — det skjules i både lærerpanelet og spillet. */
+  fag: FagKode
   /** Hvilke nivåer temaet finnes for (styrer vg1/vg2-velgeren i læreren). */
   nivaaer: TemaNivaa[]
   /** teacherModuleRegistry-id-er (TEACHER_MODULE_PHASES-nøkler = rute-stier) som
@@ -32,6 +38,7 @@ export const TEMAER: TemaDef[] = [
   {
     id: 'beredskap',
     navn: 'Beredskap',
+    fag: 'fd',   // HMS/beredskap ligger under Forretningsdrift (VG1) / HMS (VG2)
     nivaaer: ['vg1', 'vg2'],
     // VG1 (Forretningsdrift): Contingency + Risikovurdering.
     // VG2 (HMS): Beredskap + Brannvern + Risikoanalyse. Vises som «📚 Lær mer»
@@ -49,6 +56,7 @@ export const TEMAER: TemaDef[] = [
   {
     id: 'budsjett',
     navn: 'Budsjett og avvik',
+    fag: 'fd',
     nivaaer: ['vg1', 'vg2'],
     // VG1: enkelt budsjett + «traff du planen?». VG2: i tillegg avvikskommentar.
     // Hub: VG1 Budsjettering · VG2 Regnskapsanalyse (se HUB_LENKER i data/budsjett.ts).
@@ -62,6 +70,7 @@ export const TEMAER: TemaDef[] = [
   {
     id: 'nokkeltall',
     navn: 'Nøkkeltall og lønnsomhet',
+    fag: 'fd',
     nivaaer: ['vg2'],   // KUN VG2 — VG1 skal aldri se nøkkeltall (LK20-nivåregel)
     // Hub: VG2 Nøkkeltall/lønnsomhet · Pris og kalkulasjon.
     hubModulRefs: [
@@ -74,6 +83,7 @@ export const TEMAER: TemaDef[] = [
   {
     id: 'kampanje',
     navn: 'Kampanje og markedsplan',
+    fag: 'm',
     nivaaer: ['vg1', 'vg2'],
     // VG1: enkel markedsplan + kampanje med begrunnelse. VG2: ROI + A/B.
     // Hub: Markedsplan · Kommunikasjonskanaler · Markedsføringsloven · (VG2)
@@ -91,6 +101,7 @@ export const TEMAER: TemaDef[] = [
   {
     id: 'reiseliv',
     navn: 'Reiseliv og vertskap',
+    fag: 'ks',
     nivaaer: ['vg1', 'vg2'],
     // VG1: vertskapsrollen + kulturforståelse i kundemøter. VG2: reiselivsprodukt
     // + internasjonale markeder (light). Aktivering slår på TURISTSESONG (egne

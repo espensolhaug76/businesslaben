@@ -12,6 +12,7 @@
 import { useGame, useErTemaAktivt, turistsesongInfo } from '../GameContext'
 import { useDevPanel, setDevPanel, toggleDevPanel } from './devPanel'
 import { STAMKUNDER_AKTIV } from '../data/featureFlags'
+import { FAG_KODER, FAG_META } from '../data/fag'
 
 const FONT = "'Outfit', sans-serif"
 
@@ -19,7 +20,8 @@ export default function DevPanel({ onOpenSim, isInterior }: {
   onOpenSim: () => void
   isInterior: boolean
 }) {
-  const { state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev } = useGame()
+  const { state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev,
+    fagAktiv, fagDev, setFagDev, nullstillDevOverstyringer } = useGame()
   const { open, kalibrering, scenariovelger } = useDevPanel()
   const beredskapAktiv = useErTemaAktivt('beredskap')
   const reiselivAktiv = useErTemaAktivt('reiseliv')
@@ -64,6 +66,23 @@ export default function DevPanel({ onOpenSim, isInterior }: {
                 </button>
               ))}
             </div>
+          </Group>
+
+          <Group title="Fag (overstyrer lærer)">
+            {FAG_KODER.map(f => {
+              const erDev = fagDev[f] !== undefined
+              return (
+                <div key={f}>
+                  <ToggleBtn
+                    label={`${FAG_META[f].kort} · ${FAG_META[f].navn}`}
+                    on={fagAktiv[f]}
+                    onClick={() => setFagDev(f, !fagAktiv[f])}
+                  />
+                  <div style={hintStyle}>Nå: {erDev ? 'DEV' : 'lærer/standard'}</div>
+                </div>
+              )
+            })}
+            <div style={hintStyle}>Fag som er av er HELT skjult: faner, temaer, innboks-tilbud, «Espen spør».</div>
           </Group>
 
           <Group title="Espen spør">
@@ -162,6 +181,12 @@ export default function DevPanel({ onOpenSim, isInterior }: {
               reason={!(allPs && harLeid) ? 'Krever ferdig oppstart (P1–P4) og leid lokale.' : undefined}
               onClick={onOpenSim}
             />
+            <DevBtn
+              label="↺ Nullstill DEV-overstyringer"
+              color="#fca5a5" bg="rgba(148,163,184,0.14)"
+              onClick={nullstillDevOverstyringer}
+            />
+            <div style={hintStyle}>Fjerner lokale overstyringer (fag, nivå, «Espen spør») → tilbake til lærer/standard.</div>
           </Group>
         </div>
       )}
