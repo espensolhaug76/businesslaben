@@ -5,6 +5,7 @@ import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
 import { getIndustryDefinitionFor, getActiveIndustryDefinition } from '../data/industryDefinition'
 import WindowDisplayEditor from '../city/WindowDisplay'
 import { SCENARIOS } from '../sales/scenarios'
+import { stamkundeTrinnLabel } from '../data/stamkundeDialog'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
@@ -1091,10 +1092,9 @@ function StamkundeOversikt() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         {rader.map(r => {
-          // Fargeblind-trygt: alltid en TEKSTLABEL, aldri kun farge.
-          const label = r.erStamkunde ? 'Stamkunde' : r.sisteUtfall === 'misfornoyd' ? 'Misfornøyd sist' : 'Kjenner deg'
-          const farge = r.erStamkunde ? '#2dd4bf' : r.sisteUtfall === 'misfornoyd' ? '#f59e0b' : '#94a3b8'
-          const ikon = r.erStamkunde ? '💚' : r.sisteUtfall === 'misfornoyd' ? '💬' : '👋'
+          // Fargeblind-trygt: alltid en TEKSTLABEL, aldri kun farge. Viser
+          // utviklingstrinnet (Ny/Trygg stamkunde · Anbefaler deg).
+          const { label, farge, ikon } = stamkundeTrinnLabel(r)
           return (
             <div key={r.navn} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '0.5rem 0.8rem' }}>
               <span style={{ fontSize: 13, color: '#f1f5f9', fontWeight: 600 }}>{ikon} {r.navn}</span>

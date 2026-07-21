@@ -283,7 +283,15 @@ export const BALANCE = {
     vektFaktor: 2,
     /** Kunder med «misfornøyd sist» vektes NED (men uteblir aldri helt). */
     vektMisfornoyd: 0.5,
-    /** Stamkunder handler litt mer — påslag på scenariobetalingen (kr, ikke antall). */
+    /** Stamkunder handler litt mer — påslag på betalingen (kr, ikke antall). */
     kjopsBonusFaktor: 1.2,
+    /** REDESIGN — andel av dagens kundemøter som reserveres til STAMKUNDEMØTER
+     *  (gjenkjenningsmøter) når det finnes returnerende kunder. Resten er
+     *  engangs-scenarier fra den uspilte poolen. Minst ett stamkundemøte når
+     *  noen kan returnere. */
+    moteReserveAndel: 0.5,
+    /** Lite rykte-/XP-påslag for et godt stamkundemøte (relasjonspleie). */
+    stamkundemoteRykte: 2,
+    stamkundemoteXp: 5,
   },
 }

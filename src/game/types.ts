@@ -470,6 +470,10 @@ export interface ScheduledMeeting {
   scenarioId: string
   spawned: boolean
   done: boolean
+  /** Møtetype (KROK 2-redesign): 'scenario' = engangs pedagogisk salgsscenario;
+   *  'stamkunde' = kort gjenkjenningsmøte med en returnerende kunde (ingen
+   *  scenariotre). Udefinert = 'scenario' (bakoverkompatibelt). */
+  kind?: 'scenario' | 'stamkunde'
 }
 
 /** Én linje i dagspulsens live-ticker (siste bakgrunnssalg). */
@@ -587,6 +591,10 @@ export interface GameState {
   /** Kundemøtet som er spawnet NÅ (venter på/i samtale) — klokka pauser mens
    *  denne er satt. Null ellers. */
   activeMeetingScenarioId: string | null
+  /** Møtetypen til det aktive møtet: 'scenario' (fullt salgsscenario) eller
+   *  'stamkunde' (kort gjenkjenningsmøte). Styrer hvilket overlay som åpnes.
+   *  Transient (ikke persistert) — nullstilles med activeMeetingScenarioId. */
+  activeMeetingKind: 'scenario' | 'stamkunde'
   /** Dagspulsens live-ticker: siste bakgrunnssalg (nyeste først, kappet). */
   dayTicker: TickerLinje[]
   /** Per-produkt dagstall (DEL 4): solgt (møter + bakgrunn), svinn, tapte salg. */
@@ -764,6 +772,11 @@ export interface GameState {
     fornoydeUtfall: number
     sisteUtfall: 'fornoyd' | 'noytral' | 'misfornoyd'
     erStamkunde: boolean
+    /** KROK 2-redesign — utviklingstrinn for den RETURNERENDE personen:
+     *  0 = ikke returnerende ennå (scenario spilt, men ikke godt utfall);
+     *  1 = ny stamkunde (gjenkjennelse), 2 = trygg stamkunde, 3 = anbefaler deg.
+     *  Stiger med hvert gode stamkundemøte. Persistert (gamle lagringer → 0). */
+    utviklingstrinn: number
   }>
   /** Siste kunde (scenario-id) et EKTE møte ble løst med — dev-knappen «gjør til
    *  stamkunde» virker på denne. Transient (ikke persistert). */

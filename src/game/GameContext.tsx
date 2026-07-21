@@ -169,6 +169,7 @@ const initialState: GameState = {
   dayMinute: 0,
   dayMeetings: [],
   activeMeetingScenarioId: null,
+  activeMeetingKind: 'scenario',
   dayTicker: [],
   dayProductStats: {},
   lastDayResult: null,
@@ -294,6 +295,9 @@ type Action =
   | { type: 'SET_WINDOW_DISPLAY'; fixtureId: WindowDisplayItem['fixtureId']; items: WindowDisplayItem[] }
   | { type: 'SET_COUNTER_LAYOUT'; items: TrauItem[] }
   | { type: 'RESOLVE_SALES_SCENARIO'; scenarioId?: string; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number; stockout?: boolean }
+  /** KROK 2-redesign — løs et STAMKUNDEMØTE (kort gjenkjenningsmøte): påslag med
+   *  kjøpsbonus, hev utviklingstrinnet, service recovery. */
+  | { type: 'RESOLVE_STAMKUNDEMOTE'; scenarioId: string; sales: SaleLine[]; reputationDelta: number; xpEarned: number }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
   // Åpningsbestilling (docs/INNKJOP_LEVERING.md): elevens ene selvvalgte
   // startlager, ferdig på lager dag 1 (ingen ventetid). Tom liste tillates.
@@ -343,8 +347,9 @@ type Action =
   /** Dev (?dev=1): gjør siste møtte kunde (ev. en standard) til stamkunde. */
   | { type: 'DEV_GJOR_STAMKUNDE' }
   /** Dev/test: sett et bestemt kundemøte som aktivt nå (for å teste møteflyt/
-   *  stamkunder deterministisk). Kun i åpen butikk. */
-  | { type: 'DEV_SPAWN_MOTE'; scenarioId: string }
+   *  stamkunder deterministisk). Kun i åpen butikk. `kind` velger scenario- eller
+   *  stamkundemøte (default 'scenario'). */
+  | { type: 'DEV_SPAWN_MOTE'; scenarioId: string; kind?: 'scenario' | 'stamkunde' }
   | { type: 'SET_TUTORIAL_STEP'; step: number }
   | { type: 'SET_P1_COMPLETE' }
   | { type: 'SET_P2_COMPLETE' }
@@ -684,14 +689,20 @@ function reducer(state: GameState, action: Action): GameState {
       // signalet (samme som 💚-fornøyd-badgen), ikke et nytt utfallslager.
       const stamkunder = (isMeeting && action.scenarioId)
         ? (() => {
-            const cur = state.stamkunder[action.scenarioId] ?? { antallMoter: 0, fornoydeUtfall: 0, sisteUtfall: 'noytral' as const, erStamkunde: false }
+            const cur = state.stamkunder[action.scenarioId] ?? { antallMoter: 0, fornoydeUtfall: 0, sisteUtfall: 'noytral' as const, erStamkunde: false, utviklingstrinn: 0 }
             const utfall = action.reputationDelta > 0 ? 'fornoyd' as const : action.reputationDelta < 0 ? 'misfornoyd' as const : 'noytral' as const
             const fornoydeUtfall = cur.fornoydeUtfall + (utfall === 'fornoyd' ? 1 : 0)
+            // REDESIGN: et godt SCENARIO-utfall gjør personen til en returnerende
+            // kunde på trinn 1 (gjenkjennelse). Videre trinn-stigning skjer i
+            // stamkundemøtene (RESOLVE_STAMKUNDEMOTE), ikke ved scenarioreprise.
+            const curTrinn = cur.utviklingstrinn ?? 0
+            const utviklingstrinn = utfall === 'fornoyd' ? Math.max(curTrinn, 1) : curTrinn
             return {
               ...state.stamkunder,
               [action.scenarioId]: {
                 antallMoter: cur.antallMoter + 1, fornoydeUtfall, sisteUtfall: utfall,
                 erStamkunde: fornoydeUtfall >= BALANCE.stamkunder.fornoydeForStamkunde,
+                utviklingstrinn,
               },
             }
           })()
@@ -724,6 +735,7 @@ function reducer(state: GameState, action: Action): GameState {
         // scenario lar det stå (evt. ekte kunde gjenopptas). Kunden vises uansett
         // bare i åpen butikk (InteriorView gater på dayPhase).
         activeMeetingScenarioId: isMeeting ? null : state.activeMeetingScenarioId,
+        activeMeetingKind: isMeeting ? 'scenario' : state.activeMeetingKind,
         dayMeetings,
         dayProductStats,
         meetingsToday: isMeeting ? state.meetingsToday + 1 : state.meetingsToday,
@@ -738,6 +750,87 @@ function reducer(state: GameState, action: Action): GameState {
           // KROK 4: et FORNØYD kundemøte (positiv rykte-delta) → 💚 i dagspulsen.
           sisteMoteFornoyd: (isMeeting && action.reputationDelta > 0)
             ? { minutt: state.dayMinute } : state.dayStats.sisteMoteFornoyd,
+        } : state.dayStats,
+      }
+    }
+
+    case 'RESOLVE_STAMKUNDEMOTE': {
+      // KROK 2-REDESIGN — løs et STAMKUNDEMØTE (kort gjenkjenningsmøte). Ingen
+      // scenariotre: eleven har sett kunden i scenen, dette er en varm handel med
+      // kjøpsbonus + relasjonspleie. Trinn 3 → +1 kjøp (kunden tok med en venn/
+      // kollega), avgjort av overlayet (qty i action.sales). Et godt møte hever
+      // utviklingstrinnet og løfter sisteUtfall til fornøyd (service recovery).
+      const inDay = state.dayPhase === 'åpen'
+      const isMeeting = inDay && state.activeMeetingScenarioId === action.scenarioId
+
+      const reqByProduct = new Map<string, number>()
+      for (const l of action.sales) reqByProduct.set(l.productId, (reqByProduct.get(l.productId) ?? 0) + l.qty)
+      let revenue = 0, varekost = 0, soldStk = 0
+      const soldByProduct = new Map<string, { navn: string; sold: number }>()
+      const products = state.products.map(p => {
+        const req = reqByProduct.get(p.id) ?? 0
+        if (req <= 0) return p
+        const sold = Math.min(req, p.stock)
+        revenue += sold * p.retailPrice; varekost += sold * p.costPrice; soldStk += sold
+        if (sold > 0) soldByProduct.set(p.id, { navn: p.name, sold })
+        return sold > 0 ? { ...p, stock: p.stock - sold } : p
+      })
+      // Stamkunder handler litt mer — påslag på betalingen (de ER stamkunder).
+      const revenueEff = Math.round(revenue * BALANCE.stamkunder.kjopsBonusFaktor)
+      const reputation = Math.max(0, Math.min(100, state.reputation + action.reputationDelta))
+
+      const newXp = state.xp + action.xpEarned
+      let newLevel = state.level, xpToNext = state.xpToNextLevel
+      while (newXp >= xpForLevel(newLevel) && newLevel < 12) { newLevel++; xpToNext = xpForLevel(newLevel) }
+
+      // Minne: varmt møte ⇒ fornøyd, trinn +1 (maks 3). Kun det EKTE møtet teller.
+      const stamkunder = isMeeting
+        ? (() => {
+            const cur = state.stamkunder[action.scenarioId] ?? { antallMoter: 0, fornoydeUtfall: 0, sisteUtfall: 'noytral' as const, erStamkunde: false, utviklingstrinn: 0 }
+            const fornoydeUtfall = cur.fornoydeUtfall + 1
+            const utviklingstrinn = Math.min(3, Math.max(1, cur.utviklingstrinn ?? 0) + 1)
+            return {
+              ...state.stamkunder,
+              [action.scenarioId]: {
+                antallMoter: cur.antallMoter + 1, fornoydeUtfall, sisteUtfall: 'fornoyd' as const,
+                erStamkunde: cur.erStamkunde || fornoydeUtfall >= BALANCE.stamkunder.fornoydeForStamkunde,
+                utviklingstrinn,
+              },
+            }
+          })()
+        : state.stamkunder
+
+      const meetingIdx = isMeeting ? state.dayMeetings.findIndex(m => m.spawned && !m.done) : -1
+      const dayMeetings = meetingIdx >= 0
+        ? state.dayMeetings.map((m, i) => i === meetingIdx ? { ...m, done: true } : m)
+        : state.dayMeetings
+      const dayProductStats = inDay
+        ? mergeProductStats(state.dayProductStats, Object.fromEntries(
+            [...soldByProduct.entries()].map(([id, v]) => [id, { navn: v.navn, soldStk: v.sold, tapteSalgStk: 0 }]),
+          ))
+        : state.dayProductStats
+
+      return {
+        ...state,
+        products,
+        money: state.money + revenueEff,
+        reputation,
+        stamkunder,
+        sisteMoteKundeId: isMeeting ? action.scenarioId : state.sisteMoteKundeId,
+        xp: newXp, level: newLevel, xpToNextLevel: xpToNext,
+        activeMeetingScenarioId: isMeeting ? null : state.activeMeetingScenarioId,
+        activeMeetingKind: isMeeting ? 'scenario' : state.activeMeetingKind,
+        dayMeetings,
+        dayProductStats,
+        meetingsToday: isMeeting ? state.meetingsToday + 1 : state.meetingsToday,
+        dayStats: inDay ? {
+          ...state.dayStats,
+          soldStk: state.dayStats.soldStk + soldStk,
+          soldKr: state.dayStats.soldKr + revenueEff,
+          varekostKr: state.dayStats.varekostKr + varekost,
+          reputationDelta: state.dayStats.reputationDelta + action.reputationDelta,
+          xpEarned: state.dayStats.xpEarned + action.xpEarned,
+          sisteMoteFornoyd: isMeeting ? { minutt: state.dayMinute } : state.dayStats.sisteMoteFornoyd,
         } : state.dayStats,
       }
     }
@@ -1614,7 +1707,7 @@ function reducer(state: GameState, action: Action): GameState {
     // ── KROK 2 — STAMKUNDER (dev) ────────────────────────────────────────────
     case 'DEV_SPAWN_MOTE':
       return state.dayPhase === 'åpen'
-        ? { ...state, activeMeetingScenarioId: action.scenarioId }
+        ? { ...state, activeMeetingScenarioId: action.scenarioId, activeMeetingKind: action.kind ?? 'scenario' }
         : state
 
     case 'DEV_GJOR_STAMKUNDE': {
@@ -1628,6 +1721,7 @@ function reducer(state: GameState, action: Action): GameState {
             antallMoter: Math.max(2, (cur?.antallMoter ?? 0) + 1),
             fornoydeUtfall: Math.max(BALANCE.stamkunder.fornoydeForStamkunde, (cur?.fornoydeUtfall ?? 0)),
             sisteUtfall: 'fornoyd', erStamkunde: true,
+            utviklingstrinn: Math.max(1, cur?.utviklingstrinn ?? 0),
           },
         },
       }
@@ -1716,16 +1810,26 @@ function reducer(state: GameState, action: Action): GameState {
         scenariosForIndustry(getActiveIndustryDefinition().scenariePool),
         DAY_CONFIG.scenarioMix,
       ).map(s => s.id)
-      const poolIds = basePool.filter(id => !TURIST_SCENARIO_IDS.includes(id))
-      // KROK 2 — STAMKUNDER: vekt dagens kundemiks. Stamkunder opp, «misfornøyd
-      // sist» ned. Tomt (fersk kafé) ⇒ undefined ⇒ uendret (byte-identisk) miks.
+      // KROK 2-REDESIGN — ENGANGS: et salgsscenario som er SPILT (antallMoter ≥ 1)
+      // trekkes ALDRI igjen. Personen kommer i stedet tilbake som STAMKUNDEMØTE.
+      // (Turist-scenariene bor på turistkontor/byhotell → filtreres alltid bort.)
+      const poolIds = basePool.filter(id =>
+        !TURIST_SCENARIO_IDS.includes(id) && (state.stamkunder[id]?.antallMoter ?? 0) === 0)
+      // STAMKUNDEMØTER: returnerende kunder (møtt før + utviklingstrinn ≥ 1, eller
+      // «misfornøyd sist» → service recovery-sjanse). Vektes: stamkunde opp,
+      // misfornøyd ned. Tomt (fersk kafé) ⇒ ingen stamkundemøter (uendret miks).
+      const stamIds: string[] = []
       const stamVekter: Record<string, number> = {}
       for (const [id, sk] of Object.entries(state.stamkunder)) {
+        if (!((sk.utviklingstrinn ?? 0) >= 1 || sk.sisteUtfall === 'misfornoyd')) continue
+        stamIds.push(id)
         stamVekter[id] = sk.erStamkunde ? BALANCE.stamkunder.vektFaktor
           : sk.sisteUtfall === 'misfornoyd' ? BALANCE.stamkunder.vektMisfornoyd : 1
       }
-      const harVekter = Object.values(stamVekter).some(v => v !== 1)
-      const dayMeetings = planleggMoter(moterForDag(state.dayNumber), poolIds, (Math.imul(seed, 2654435761)) >>> 0, harVekter ? stamVekter : undefined)
+      const dayMeetings = planleggMoter(
+        moterForDag(state.dayNumber), poolIds, (Math.imul(seed, 2654435761)) >>> 0,
+        stamIds.length ? { ids: stamIds, vekter: stamVekter } : undefined,
+      )
 
       return {
         ...state,
@@ -1738,6 +1842,7 @@ function reducer(state: GameState, action: Action): GameState {
         dayMinute: 0,
         dayMeetings,
         activeMeetingScenarioId: null,
+        activeMeetingKind: 'scenario',
         dayTicker: [],
         dayProductStats: {},
       }
@@ -1827,13 +1932,15 @@ function reducer(state: GameState, action: Action): GameState {
       // Spawn ETT forfalt kundemøte (klokka pauser til det er ferdig).
       let dayMeetings = state.dayMeetings
       let activeMeetingScenarioId = state.activeMeetingScenarioId
+      let activeMeetingKind = state.activeMeetingKind
       const dueIdx = state.dayMeetings.findIndex(m => !m.spawned && !m.done && m.minutt <= nyMinutt)
       if (dueIdx >= 0) {
         dayMeetings = state.dayMeetings.map((m, i) => i === dueIdx ? { ...m, spawned: true } : m)
         activeMeetingScenarioId = state.dayMeetings[dueIdx]!.scenarioId
+        activeMeetingKind = state.dayMeetings[dueIdx]!.kind ?? 'scenario'
       }
 
-      return { ...state, dayMinute: nyMinutt, products, money, dayStats, dayProductStats, dayTicker, dayBackground, dayMeetings, activeMeetingScenarioId, turistsesong }
+      return { ...state, dayMinute: nyMinutt, products, money, dayStats, dayProductStats, dayTicker, dayBackground, dayMeetings, activeMeetingScenarioId, activeMeetingKind, turistsesong }
     }
 
     case 'CLOSE_DAY': {
@@ -2140,6 +2247,7 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         activeMeetingScenarioId: null,
+        activeMeetingKind: 'scenario',
         dayMeetings: idx >= 0 ? state.dayMeetings.map((m, i) => i === idx ? { ...m, done: true } : m) : state.dayMeetings,
         meetingsToday: state.meetingsToday + 1,
       }
@@ -2236,7 +2344,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
         s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall,
           kampanje: v.kampanje ?? s.kampanje, prisendretDag: v.prisendretDag ?? s.prisendretDag,
           mkfBoost: v.mkfBoost ?? s.mkfBoost,
-          espenSpor: v.espenSpor ?? s.espenSpor, stamkunder: v.stamkunder ?? s.stamkunder,
+          espenSpor: v.espenSpor ?? s.espenSpor,
+          // REDESIGN: gamle lagringer mangler `utviklingstrinn` → default 0.
+          stamkunder: v.stamkunder
+            ? Object.fromEntries(Object.entries(v.stamkunder).map(([id, sk]) => [id, { utviklingstrinn: 0, ...(sk as object) }])) as GameState['stamkunder']
+            : s.stamkunder,
           turistsesong: v.turistsesong ?? s.turistsesong, hotellavtale: v.hotellavtale ?? s.hotellavtale,
           opplevByenPameldt: v.opplevByenPameldt ?? s.opplevByenPameldt, reiselivPakke: v.reiselivPakke ?? s.reiselivPakke }
       }

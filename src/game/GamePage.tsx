@@ -5,6 +5,7 @@ import HUD from './ui/HUD'
 import SimulationModal from './ui/SimulationModal'
 import DashboardOverlay from './ui/DashboardOverlay'
 import SalesScenarioOverlay from './ui/SalesScenarioOverlay'
+import StamkundeMoteOverlay from './ui/StamkundeMoteOverlay'
 import YearEndOverlay from './ui/YearEndOverlay'
 import DayResultOverlay from './ui/DayResultOverlay'
 import MonthResultOverlay from './ui/MonthResultOverlay'
@@ -93,6 +94,9 @@ function GameContent() {
   // kommer i neste fase.
   const [salesOpen, setSalesOpen] = useState(false)
   const [salesScenarioId, setSalesScenarioId] = useState('morgenkunden')
+  // KROK 2-redesign: hvilket overlay åpnes — fullt salgsscenario eller kort
+  // stamkundemøte (gjenkjenningsmøte). Settes fra møtets kind.
+  const [salesKind, setSalesKind] = useState<'scenario' | 'stamkunde'>('scenario')
 
   // Dev shortcut: ?skip=1 (eller dev-dyplenke til en bydel) seeds defaults and
   // skips the StartupScreen wizard.
@@ -123,8 +127,9 @@ function GameContent() {
   // turistkontoret/byhotellet starter reiselivs-scenariene med samme overlay.
   useEffect(() => {
     const handler = (e: Event) => {
-      const id = (e as CustomEvent).detail?.scenarioId ?? 'morgenkunden'
-      setSalesScenarioId(id)
+      const detail = (e as CustomEvent).detail
+      setSalesScenarioId(detail?.scenarioId ?? 'morgenkunden')
+      setSalesKind(detail?.kind === 'stamkunde' ? 'stamkunde' : 'scenario')
       setSalesOpen(true)
       setOverlay(true)
     }
@@ -286,7 +291,9 @@ function GameContent() {
       <SimulationModal open={simOpen} onClose={closeSim} />
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} initialTab={dashboardTab as any} />
-      <SalesScenarioOverlay open={salesOpen} onClose={closeSales} scenarioId={salesScenarioId} />
+      {salesKind === 'stamkunde'
+        ? <StamkundeMoteOverlay open={salesOpen} onClose={closeSales} scenarioId={salesScenarioId} />
+        : <SalesScenarioOverlay open={salesOpen} onClose={closeSales} scenarioId={salesScenarioId} />}
       <YearEndOverlay />
       {/* Dagsoppgjør: «Bestill til i morgen» åpner dashbordet på Produkter uten
           å avansere dagen; oppgjøret skjules mens dashbordet ligger over (det

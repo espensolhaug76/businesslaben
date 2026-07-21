@@ -15,13 +15,14 @@ const LS_KEY = 'dev_panel_v1'
 export interface DevPanelState {
   /** ⚙-skuffen åpen? (persistert) */
   open: boolean
-  /** Vis tracer-/kalibreringspanelene i scenene? Default AV (avklutter scenen). */
+  /** Vis tracer-/kalibreringspanelene i scenene? Default PÅ (som før ?dev=1) —
+   *  panelet lar deg slå dem AV for en ren scene. */
   kalibrering: boolean
-  /** Vis scenariovelgeren (interiørscenen)? Default AV. */
+  /** Vis scenariovelgeren (interiørscenen)? Default PÅ. */
   scenariovelger: boolean
 }
 
-const DEFAULT: DevPanelState = { open: false, kalibrering: false, scenariovelger: false }
+const DEFAULT: DevPanelState = { open: false, kalibrering: true, scenariovelger: true }
 
 function load(): DevPanelState {
   if (typeof window === 'undefined') return DEFAULT

@@ -29,6 +29,10 @@ export default function DevPanel({ onOpenSim, isInterior }: {
   const åpenDag = state.dayPhase === 'åpen'
   const harAktivEpost = state.messages.some(m => m.epost && (m.epostStatus === 'ubesvart' || m.epostStatus === 'akseptert'))
   const sesongAktiv = !!turistsesongInfo(state)?.aktiv
+  // Første returnerende kunde (utviklingstrinn ≥ 1 eller misfornøyd sist) — for
+  // å spawne et stamkundemøte og teste gjenkjenningsflyten.
+  const returnerendeId = Object.entries(state.stamkunder)
+    .find(([, sk]) => (sk.utviklingstrinn ?? 0) >= 1 || sk.sisteUtfall === 'misfornoyd')?.[0]
 
   return (
     <div style={{ position: 'fixed', bottom: 20, left: 20, zIndex: 95, fontFamily: FONT }}>
@@ -78,6 +82,14 @@ export default function DevPanel({ onOpenSim, isInterior }: {
               disabled={!state.sisteMoteKundeId}
               reason={!state.sisteMoteKundeId ? 'Møt en kunde først — ingen «siste kunde» ennå.' : undefined}
               onClick={() => dispatch({ type: 'DEV_GJOR_STAMKUNDE' })}
+            />
+            <DevBtn
+              label="👥 Spawn stamkundemøte nå"
+              color="#5eead4" bg="rgba(45,212,191,0.1)"
+              disabled={!åpenDag || !returnerendeId}
+              reason={!åpenDag ? 'Krever åpen dag.'
+                : !returnerendeId ? 'Ingen returnerende stamkunde ennå (spill et scenario med godt utfall først).' : undefined}
+              onClick={() => returnerendeId && dispatch({ type: 'DEV_SPAWN_MOTE', scenarioId: returnerendeId, kind: 'stamkunde' })}
             />
           </Group>
 

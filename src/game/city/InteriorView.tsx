@@ -256,7 +256,9 @@ export default function InteriorView({ districtId, lokaleId }: {
     // dev-knappene; GamePage lytter og håndterer __OVERLAY_OPEN__). Klokka er
     // pauset så lenge activeMeetingScenarioId er satt. X-en minimerer bare
     // visningen — møtet består — så dette er veien tilbake til dialogen.
-    window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: realScenario.id } }))
+    // KROK 2-redesign: kind styrer hvilket overlay GamePage åpner (fullt
+    // salgsscenario vs. kort stamkundemøte).
+    window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: realScenario.id, kind: state.activeMeetingKind } }))
   }
 
   // DEV-PREVIEW: Esc fjerner previewen.

@@ -5,7 +5,6 @@ import Fagord from './Fagord'
 import { IS_DEV_COORDS } from '../city/DevCoordHelper'
 import { getScenario } from '../sales/scenarios'
 import { productMatchesNeed, findProductByTags, interpolateTokens, buildSalesResult, shuffle } from '../sales/engine'
-import { stamkundeHilsen } from '../data/stamkundeDialog'
 import type { SalesScenario, SalesStep, SalesChoice, SaleLine, ScoredPick, ChoiceQuality } from '../sales/types'
 import type { Product } from '../types'
 
@@ -374,7 +373,6 @@ function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixe
   onChooseMarginDiscount: (p: Product | null, mode: 'discount' | 'no-discount') => void
   onNext: () => void
 }) {
-  const { state } = useGame()   // KROK 2 — les stamkunde-minne for gjenkjenningshilsen
   const need = step.recommendNeed ?? []
   const hasMatch = step.kind === 'recommend' && products.some(p => productMatchesNeed(p, need))
   const matchedProduct = (step.kind === 'stock-commit' || step.kind === 'margin-discount')
@@ -394,32 +392,12 @@ function DialogView({ scenario, step, stepIndex, pending, products, onChooseFixe
   const note = step.note ? interpolateTokens(step.note, products) : undefined
   const pendingText = pending ? interpolateTokens(pending.text, products) : ''
 
-  // KROK 2 — STAMKUNDER: gjenkjenningshilsen ved møtestart (kun steg 1, kun kjente
-  // kunder). Et lag OPPÅ scenariet — selve replikkene er uendret.
-  const hilsen = useMemo(() => {
-    if (stepIndex !== 0) return null
-    const minne = state.stamkunder[scenario.id]
-    return stamkundeHilsen(scenario.id, minne, (minne?.antallMoter ?? 0) * 2654435761 >>> 0)
-  }, [stepIndex, scenario.id, state.stamkunder])
-
   return (
     <div>
       {/* Stegteller */}
       <div style={{ fontSize: 11, color: '#475569', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '0.6rem' }}>
         STEG {stepIndex + 1} AV {scenario.steps.length}
       </div>
-
-      {/* KROK 2 — gjenkjenningshilsen (stamkunde). Tekstlabel «Kjenner deg igjen»,
-          aldri kun farge (fargeblind-regel). */}
-      {hilsen && (
-        <div style={{
-          background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.35)',
-          borderRadius: '0 14px 14px 14px', padding: '0.7rem 1rem', marginBottom: '0.5rem',
-        }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: '#2dd4bf', letterSpacing: '0.05em', marginBottom: 3 }}>👋 KJENNER DEG IGJEN</div>
-          <div style={{ fontSize: 14, color: '#d1fae5', lineHeight: 1.5, fontStyle: 'italic' }}>{hilsen}</div>
-        </div>
-      )}
 
       {/* Kunde-replikk */}
       <div style={{

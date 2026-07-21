@@ -130,47 +130,77 @@ export function moterForDag(dayNumber: number): number {
 }
 
 /** Planlegg dagens kundemøter på klokkeslett (minutter siden 09:00), spredt
- *  jevnt mellom moteForste og moteSiste med lett seed-jitter. Scenariene
- *  trekkes UTEN gjentakelse til poolen er tømt. Deterministisk per dag. */
-export function planleggMoter(antall: number, scenarioIds: string[], seed: number, vekter?: Record<string, number>): ScheduledMeeting[] {
+ *  jevnt mellom moteForste og moteSiste med lett seed-jitter. Deterministisk.
+ *
+ *  KROK 2-REDESIGN — to møtetyper i samme strøm:
+ *   • ENGANGS-SCENARIER (kind 'scenario'): trekkes UTEN gjentakelse fra den
+ *     USPILTE poolen (`scenarioIds`). Et spilt scenario gjentas ALDRI (kalleren
+ *     har allerede filtrert bort spilte id-er), så poolen fylles ikke på nytt.
+ *   • STAMKUNDEMØTER (kind 'stamkunde'): returnerende kunder (`stamkunde.ids`),
+ *     trukket VEKTET uten gjentakelse (stamkunder opp, «misfornøyd sist» ned),
+ *     maks én gang per dag. Reserveres inntil `moteReserveAndel` av dagens møter
+ *     når det finnes returnerende kunder — resten fylles med engangs-scenarier. */
+export function planleggMoter(
+  antall: number,
+  scenarioIds: string[],
+  seed: number,
+  stamkunde?: { ids: string[]; vekter: Record<string, number> },
+): ScheduledMeeting[] {
   const apne = BALANCE.klokke.apneMinutt
   const forste = BALANCE.moteForste - apne // minutter siden åpning
   const siste = BALANCE.moteSiste - apne
   const spenn = Math.max(1, siste - forste)
-  const steg = antall > 0 ? spenn / antall : spenn
-
-  // Scenario-pool stokket (uten gjentakelse); fylles på nytt hvis den tømmes.
   let s = seed >>> 0
-  const pool: string[] = []
-  const refill = () => {
-    if (vekter) {
-      // KROK 2 — VEKTET uten gjentakelse (Efraimidis–Spirakis): nøkkel =
-      // rand^(1/vekt), sortert synkende → høyere vekt trekkes tidligere (og havner
-      // oftere blant dagens få møter). Deterministisk. Stamkunder vektes opp,
-      // «misfornøyd sist» ned — men hver kunde er med maks én gang per runde
-      // (aldri dobbeltbooket, aldri helt utelatt).
-      const nokler = scenarioIds.map(id => {
-        s = nextSeed(s)
-        const w = Math.max(0.01, vekter[id] ?? 1)
-        return { id, key: Math.pow(rand01(s), 1 / w) }
-      })
-      nokler.sort((a, b) => b.key - a.key)
-      for (const n of nokler) pool.push(n.id)
-    } else {
-      const rest = [...scenarioIds]
-      while (rest.length) { s = nextSeed(s); pool.push(rest.splice(Math.floor(rand01(s) * rest.length), 1)[0]!) }
-    }
-  }
-  if (scenarioIds.length) refill()
 
+  // Hvor mange av hver type? Reserver plass til stamkundemøter når noen kan
+  // returnere, ellers er alt engangs-scenarier.
+  const stamAvail = stamkunde?.ids.length ?? 0
+  const stamMål = stamAvail > 0 ? Math.min(stamAvail, Math.max(1, Math.floor(antall * BALANCE.stamkunder.moteReserveAndel))) : 0
+  const scenarioN = Math.min(scenarioIds.length, Math.max(0, antall - stamMål))
+  const stamN = Math.min(stamAvail, Math.max(0, antall - scenarioN))
+
+  // Engangs-scenarier — trekk uten gjentakelse (ingen refill: aldri reprise).
+  const scenPool = [...scenarioIds]
+  const scenValgt: string[] = []
+  for (let i = 0; i < scenarioN && scenPool.length; i++) {
+    s = nextSeed(s)
+    scenValgt.push(scenPool.splice(Math.floor(rand01(s) * scenPool.length), 1)[0]!)
+  }
+
+  // Stamkundemøter — VEKTET uten gjentakelse (Efraimidis–Spirakis): nøkkel =
+  // rand^(1/vekt), sortert synkende → høyere vekt trekkes tidligere.
+  const stamValgt: string[] = []
+  if (stamkunde && stamN > 0) {
+    const nokler = stamkunde.ids.map(id => {
+      s = nextSeed(s)
+      const w = Math.max(0.01, stamkunde.vekter[id] ?? 1)
+      return { id, key: Math.pow(rand01(s), 1 / w) }
+    })
+    nokler.sort((a, b) => b.key - a.key)
+    for (let i = 0; i < stamN; i++) stamValgt.push(nokler[i]!.id)
+  }
+
+  // Kombiner og stokk rekkefølgen så nye kunder og stamkunder blandes utover
+  // dagen (Fisher–Yates, seedet).
+  const innhold: { id: string; kind: 'scenario' | 'stamkunde' }[] = [
+    ...scenValgt.map(id => ({ id, kind: 'scenario' as const })),
+    ...stamValgt.map(id => ({ id, kind: 'stamkunde' as const })),
+  ]
+  for (let i = innhold.length - 1; i > 0; i--) {
+    s = nextSeed(s)
+    const j = Math.floor(rand01(s) * (i + 1))
+    const tmp = innhold[i]!; innhold[i] = innhold[j]!; innhold[j] = tmp
+  }
+
+  // Fordel på klokkeslett (jevnt spredt + jitter).
+  const L = innhold.length
+  const steg = L > 0 ? spenn / L : spenn
   const moter: ScheduledMeeting[] = []
-  for (let i = 0; i < antall; i++) {
+  for (let i = 0; i < L; i++) {
     s = nextSeed(s)
     const jitter = Math.round((rand01(s) - 0.5) * 2 * BALANCE.moteJitterMinutt)
     const minutt = clamp(Math.round(forste + steg * (i + 0.5) + jitter), forste, siste)
-    if (!pool.length && scenarioIds.length) refill()
-    const scenarioId = pool.shift() ?? scenarioIds[0] ?? 'morgenkunden'
-    moter.push({ minutt, scenarioId, spawned: false, done: false })
+    moter.push({ minutt, scenarioId: innhold[i]!.id, kind: innhold[i]!.kind, spawned: false, done: false })
   }
   return moter.sort((a, b) => a.minutt - b.minutt)
 }

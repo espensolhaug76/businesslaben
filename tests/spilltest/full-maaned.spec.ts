@@ -17,7 +17,7 @@ import { beregnPakke, velgProfil, EGEN_KAFE_ID, velgTuristkontorScenario, velgBy
 import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS } from '../../src/game/sales/scenarios'
 import { bestillingBetaling, tilbudsprisPerEnhet, leverandorNettoBesparelse, epostAbsDag, type KundebestillingPayload, type LeverandortilbudPayload } from '../../src/game/data/innboksEpost'
 import { finnKandidater } from '../../src/game/data/espenSporsmal'
-import { stamkundeHilsen, STAMKUNDE_HILSEN } from '../../src/game/data/stamkundeDialog'
+import { stamkundeMote, STAMKUNDE_UTVIKLING } from '../../src/game/data/stamkundeDialog'
 import type { InboxMessage, GameState } from '../../src/game/types'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
@@ -1101,34 +1101,68 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`Feil svar: penger uendret (${m0}), forklaring vist, cooldown til dag ${etter.espenSpor.feilCooldown[a.id]}`)
   })
 
-  await steg(page, rapport, 24, 'Stamkunder: 2 fornøyde møter → erStamkunde, gjenkjenningsdialog + kjøpsbonus', async ctx => {
+  await steg(page, rapport, 24, 'Stamkunder (redesign): engangs-scenario gjentas ikke; stamkundemøte trinn 1→2→3 + venn-kjøp', async ctx => {
     await oppsettÅpenDag()
     const kunde = 'den-usikre'
-    const møt = async () => {
-      await dispatch(page, { type: 'DEV_SPAWN_MOTE', scenarioId: kunde })
-      await ventState(page, s => s.activeMeetingScenarioId === kunde, 'møte spawnet')
-      const m = (await lesState(page)).money
-      await dispatch(page, { type: 'RESOLVE_SALES_SCENARIO', scenarioId: kunde, sales: [{ productId: 'coffee', qty: 1 }], reputationDelta: 5, xpEarned: 0 })
-      await ventState(page, s => s.activeMeetingScenarioId === null, 'møte løst')
-      return (await lesState(page)).money - m   // penger inn på dette møtet
-    }
-    const d1 = await møt()
-    expect(d1, 'møte 1: full pris uten bonus (ennå ikke stamkunde)').toBe(50)
+    const uDef = STAMKUNDE_UTVIKLING.find(x => x.scenarioId === kunde)!
+
+    // (A) ENGANGS: spill SALGSSCENARIET én gang med godt utfall → utviklingstrinn 1.
+    await dispatch(page, { type: 'DEV_SPAWN_MOTE', scenarioId: kunde })
+    await ventState(page, s => s.activeMeetingScenarioId === kunde, 'scenario-møte spawnet')
+    const m0 = (await lesState(page)).money
+    await dispatch(page, { type: 'RESOLVE_SALES_SCENARIO', scenarioId: kunde, sales: [{ productId: 'coffee', qty: 1 }], reputationDelta: 5, xpEarned: 0 })
+    await ventState(page, s => s.activeMeetingScenarioId === null, 'scenario-møte løst')
+    expect((await lesState(page)).money - m0, 'scenario: full pris, ingen bonus ennå').toBe(50)
     let stam = (await lesFull()).stamkunder[kunde]
-    expect(stam.fornoydeUtfall, 'ett fornøyd utfall').toBe(1)
-    expect(stam.erStamkunde, 'ennå ikke stamkunde').toBe(false)
-    const d2 = await møt()
-    expect(d2, 'møte 2: fortsatt full pris (stamkunde-status settes AV dette møtet)').toBe(50)
-    stam = (await lesFull()).stamkunder[kunde]
-    expect(stam.erStamkunde, '2 fornøyde → stamkunde').toBe(true)
-    // Møte 3: nå er kunden stamkunde → kjøpsbonus 1,2 på betalingen.
-    const d3 = await møt()
-    expect(d3, `møte 3: kjøpsbonus ×${B.stamkunder.kjopsBonusFaktor} (50 → ${Math.round(50 * B.stamkunder.kjopsBonusFaktor)})`).toBe(Math.round(50 * B.stamkunder.kjopsBonusFaktor))
-    // Gjenkjenningsdialog (ren funksjon = samme fasit UI-et bruker).
-    const minne = (await lesFull()).stamkunder[kunde]
-    const hilsen = stamkundeHilsen(kunde, minne, minne.antallMoter * 2654435761 >>> 0)
-    expect(hilsen && STAMKUNDE_HILSEN.find(h => h.scenarioId === kunde)!.fornoyd.includes(hilsen), 'varm gjenkjenningshilsen vises').toBeTruthy()
-    ctx.ok(`Stamkunde ${kunde}: 2 fornøyde → stamkunde, møte 3 betaling ${d3} kr (bonus), hilsen «${hilsen}»`)
+    expect(stam.antallMoter, 'ett møte spilt').toBe(1)
+    expect(stam.utviklingstrinn, 'godt scenarioutfall → returnerende på trinn 1').toBe(1)
+    expect(stam.erStamkunde, 'ennå ikke stamkunde (1 fornøyd)').toBe(false)
+
+    // (B) ENGANGS-INVARIANT: en ny dag trekker ALDRI et scenario-møte for en
+    // allerede spilt kunde (personen kommer i stedet som stamkundemøte).
+    await dispatch(page, { type: 'CLOSE_DAY' })
+    await ventState(page, s => s.dayPhase !== 'åpen', 'dag stengt')
+    await dispatch(page, { type: 'START_NEW_DAY' })
+    await ventState(page, s => s.dayPhase === 'stengt', 'ny dag klar')
+    await dispatch(page, { type: 'OPEN_DAY' })
+    await ventState(page, s => s.dayPhase === 'åpen', 'ny dag åpen')
+    const full = await lesFull()
+    const scenarioMoter = full.dayMeetings.filter(m => (m.kind ?? 'scenario') === 'scenario')
+    expect(
+      scenarioMoter.every(m => (full.stamkunder[m.scenarioId]?.antallMoter ?? 0) === 0),
+      'ingen scenario-møter for allerede spilte kunder',
+    ).toBe(true)
+
+    // (C) STAMKUNDEMØTE: trinn 1 → 2 → 3 gir riktig dialog + kjøpsbonus; trinn 3
+    // tar med en venn/kollega (+1 kjøp). Ren dialog-funksjon = samme fasit UI-et
+    // bruker; RESOLVE_STAMKUNDEMOTE speiler qty overlayet ville sendt.
+    const stamMøte = async (forventetTrinn: 1 | 2 | 3, venn: boolean) => {
+      const minne = (await lesFull()).stamkunder[kunde]
+      const mote = stamkundeMote(kunde, minne)!
+      expect(mote.trinn, `dialog viser trinn ${forventetTrinn}`).toBe(forventetTrinn)
+      expect(mote.venn, `venn/kollega-kjøp = ${venn}`).toBe(venn)
+      const fasit = forventetTrinn === 1 ? uDef.trinn1 : forventetTrinn === 2 ? uDef.trinn2 : uDef.trinn3
+      expect(mote.replikker, `riktige replikker for trinn ${forventetTrinn}`).toEqual(fasit)
+
+      await dispatch(page, { type: 'DEV_SPAWN_MOTE', scenarioId: kunde, kind: 'stamkunde' })
+      await ventState(page, s => s.activeMeetingScenarioId === kunde, 'stamkundemøte spawnet')
+      const m = (await lesState(page)).money
+      const antall = venn ? 2 : 1
+      await dispatch(page, { type: 'RESOLVE_STAMKUNDEMOTE', scenarioId: kunde, sales: [{ productId: 'coffee', qty: antall }], reputationDelta: B.stamkunder.stamkundemoteRykte, xpEarned: B.stamkunder.stamkundemoteXp })
+      await ventState(page, s => s.activeMeetingScenarioId === null, 'stamkundemøte løst')
+      const delta = (await lesState(page)).money - m
+      expect(delta, `betaling ${antall}×50×${B.stamkunder.kjopsBonusFaktor} (bonus)`).toBe(Math.round(antall * 50 * B.stamkunder.kjopsBonusFaktor))
+      return mote
+    }
+
+    await stamMøte(1, false)
+    expect((await lesFull()).stamkunder[kunde].utviklingstrinn, 'etter møte 1 → trinn 2').toBe(2)
+    expect((await lesFull()).stamkunder[kunde].erStamkunde, '2 fornøyde → stamkunde').toBe(true)
+    await stamMøte(2, false)
+    expect((await lesFull()).stamkunder[kunde].utviklingstrinn, 'etter møte 2 → trinn 3').toBe(3)
+    const m3 = await stamMøte(3, true)   // trinn 3: kunden tar med én til (+1 kjøp)
+    expect((await lesFull()).stamkunder[kunde].utviklingstrinn, 'trinn 3 er taket').toBe(3)
+    ctx.ok(`Engangs OK (ingen scenarioreprise); stamkundemøte trinn 1→2→3, +1 venn-kjøp på trinn 3 («${m3.trinnLabel}»)`)
   })
 
   await steg(page, rapport, 25, 'Nivåbryter: VG1 skjuler VG2-spørsmål + pristilbud-felt; VG2 viser dem', async ctx => {
