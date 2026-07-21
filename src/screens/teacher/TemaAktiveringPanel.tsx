@@ -106,19 +106,27 @@ export default function TemaAktiveringPanel() {
         </div>
         <div className="space-y-2">
           {FAG_KODER.map(f => (
-            <div key={f} className="flex items-center justify-between gap-4 p-2.5 rounded-xl border border-gray-200">
-              <div className="font-medium text-gray-900 text-sm min-w-0">
-                <span className="inline-block w-8 text-[11px] font-mono text-gray-400">{FAG_META[f].kort}</span>
-                {FAG_META[f].navn}
+            <div key={f} className="p-2.5 rounded-xl border border-gray-200">
+              <div className="flex items-center justify-between gap-4">
+                <div className="font-medium text-gray-900 text-sm min-w-0">
+                  <span className="inline-block w-8 text-[11px] font-mono text-gray-400">{FAG_META[f].kort}</span>
+                  {FAG_META[f].navn}
+                </div>
+                <button
+                  onClick={() => skrivFag(f, !fag[f])}
+                  role="switch"
+                  aria-checked={fag[f]}
+                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${fag[f] ? 'bg-teal-500' : 'bg-gray-300'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${fag[f] ? 'translate-x-5' : ''}`} />
+                </button>
               </div>
-              <button
-                onClick={() => skrivFag(f, !fag[f])}
-                role="switch"
-                aria-checked={fag[f]}
-                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${fag[f] ? 'bg-teal-500' : 'bg-gray-300'}`}
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${fag[f] ? 'translate-x-5' : ''}`} />
-              </button>
+              {f === 'ks' && (
+                <div className="text-[11px] text-gray-500 mt-1.5 leading-snug">
+                  Kultur og samhandling ligger i kundemøtene, som alltid er på. Denne
+                  bryteren styrer KS-spørsmål fra Espen og KS-temaer.
+                </div>
+              )}
             </div>
           ))}
         </div>

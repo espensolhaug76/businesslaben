@@ -1198,12 +1198,13 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await page.evaluate(() => (window as unknown as { __SET_FAG_DEV__: (f: string, v: boolean) => void }).__SET_FAG_DEV__('m', false))
     await ventState(page, s => s.fagAktiv?.m === false, 'M av speilet til state')
 
-    // (A) Faner: M-faner HELT borte; FD-delte (Produkter/Priser) + kjerne igjen.
+    // (A) Faner: rene M-faner HELT borte; FD-faner + FD-delte + kjerne igjen.
+    // Personale (ren FD) og Forretningsplan (FD+M) STÅR fordi FD er på.
     await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
     for (const id of ['malgruppe', 'markedsforing', 'utstilling', 'distribusjon', 'lokasjon']) {
       await expect(page.getByTestId(`fane-${id}`), `M-fane ${id} skjult`).toHaveCount(0)
     }
-    for (const id of ['oversikt', 'produkter', 'priser', 'okonomi', 'rapporter', 'innboks']) {
+    for (const id of ['oversikt', 'produkter', 'priser', 'okonomi', 'personale', 'forretningsplan', 'rapporter', 'innboks']) {
       await expect(page.getByTestId(`fane-${id}`), `${id} synlig`).toBeVisible()
     }
     await page.getByTestId('dashbord-lukk').click()
@@ -1324,6 +1325,57 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(res.ulagret, 'ikke lagret → fyrer ikke').toBe(false)
     expect(res.fylt, 'lagret + minst ett tiltak → fyrer').toBe(true)
     ctx.ok('Datavakt (beredskap_risiko_levert): tomt/ulagret grunnlag → fyrer ikke; ≥1 tiltak → fyrer')
+  })
+
+  await steg(page, rapport, 31, 'Fagmapping-korreksjon: Personale=REN FD, Forretningsplan=FD+M, KS styrer ingen fane', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot steg 31')
+    await page.waitForFunction(() => !!(window as unknown as { __SET_FAG_DEV__?: unknown }).__SET_FAG_DEV__, null, { timeout: 8000 })
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 100 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager')
+    const setFag = (f: string, v: boolean) => page.evaluate(([ff, vv]) => (window as unknown as { __SET_FAG_DEV__: (f: string, v: boolean) => void }).__SET_FAG_DEV__(ff as string, vv as boolean), [f, v] as const)
+    const nullstill = () => page.evaluate(() => (window as unknown as { __NULLSTILL_DEV__: () => void }).__NULLSTILL_DEV__())
+    const dash = () => page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+
+    // (A) FD av (M/KS på): Personale (ren FD) + Økonomi (FD) SKJULT; Forretningsplan
+    //     (FD+M) og Målgruppe (M) STÅR fordi M er på.
+    await setFag('fd', false)
+    await ventState(page, s => s.fagAktiv?.fd === false, 'FD av')
+    await dash()
+    await expect(page.getByTestId('fane-personale'), 'Personale skjult (ren FD)').toHaveCount(0)
+    await expect(page.getByTestId('fane-okonomi'), 'Økonomi skjult (FD)').toHaveCount(0)
+    await expect(page.getByTestId('fane-forretningsplan'), 'Forretningsplan står (FD+M, M på)').toBeVisible()
+    await expect(page.getByTestId('fane-malgruppe'), 'Målgruppe står (M)').toBeVisible()
+    await page.getByTestId('dashbord-lukk').click()
+    await nullstill(); await ventState(page, s => s.fagAktiv?.fd === true, 'FD tilbake')
+
+    // (B) M av (FD/KS på): Personale (FD) og Forretningsplan (FD-delen) STÅR.
+    await setFag('m', false)
+    await ventState(page, s => s.fagAktiv?.m === false, 'M av')
+    await dash()
+    await expect(page.getByTestId('fane-personale'), 'Personale står (FD på)').toBeVisible()
+    await expect(page.getByTestId('fane-forretningsplan'), 'Forretningsplan står (FD på)').toBeVisible()
+
+    // (C) KS av (FD/M på), dashbordet fortsatt åpent: INGEN faner endres (KS styrer
+    //     ingen fane). Toggle via JS-hooken så dashbordet ikke må lukkes.
+    await nullstill(); await ventState(page, s => s.fagAktiv?.m === true, 'M tilbake')
+    const foer = await page.locator('[data-testid^="fane-"]').count()
+    await setFag('ks', false)
+    await ventState(page, s => s.fagAktiv?.ks === false, 'KS av')
+    const etter = await page.locator('[data-testid^="fane-"]').count()
+    expect(etter, 'KS av endrer INGEN faner').toBe(foer)
+    await page.getByTestId('dashbord-lukk').click()
+
+    // ks-spørsmål stilles ikke når KS er av (ren finnKandidater-fasit).
+    const st = await lesFull()
+    const base = { aktiveTemaIds: [] as string[], besvarteIds: [] as string[], feilCooldown: {}, absDag: 1 }
+    const utenKs = finnKandidater(st, { nivaa: 'vg2', ...base, aktiveFag: ['fd', 'm'] })
+    const medKs = finnKandidater(st, { nivaa: 'vg2', ...base, aktiveFag: ['fd', 'm', 'ks'] })
+    expect(utenKs.some(q => fagForSporsmal(q) === 'ks'), 'KS av → ingen ks-spørsmål').toBe(false)
+    expect(medKs.some(q => fagForSporsmal(q) === 'ks'), 'KS på → ks-spørsmål finnes').toBe(true)
+    await nullstill()
+    ctx.ok('Personale=FD (skjult ved FD av, står ved M av); Forretningsplan=FD+M (står så lenge FD el. M er på); KS av → 0 faner endres, men ks-spørsmål stilles ikke')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

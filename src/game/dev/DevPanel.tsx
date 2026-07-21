@@ -86,7 +86,10 @@ export default function DevPanel({ onOpenSim, isInterior }: {
                     on={fagAktiv[f]}
                     onClick={() => setFagDev(f, !fagAktiv[f])}
                   />
-                  <div style={hintStyle}>Nå: {erDev ? 'DEV' : 'lærer/standard'}</div>
+                  <div style={hintStyle}>
+                    Nå: {erDev ? 'DEV' : 'lærer/standard'}
+                    {f === 'ks' && ' · KS ligger i kundemøtene (alltid på) — bryteren styrer KS-spørsmål fra Espen og KS-temaer.'}
+                  </div>
                 </div>
               )
             })}

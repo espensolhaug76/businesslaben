@@ -14,11 +14,14 @@ import type { FagKode, FagAktivering } from './fag'
 export type EspenKategori = 'kalkyle' | 'malgruppe' | 'markedsmiks' | 'forbrukerlov' | 'drift'
 export type EspenNivaa = 'vg1' | 'vg2'
 
-// FAGTAGGING (fikserunde 3): hvert spørsmål hører til ett programfag. Vurdert per
-// spørsmål — grunnkoblingen følger kategori, men enkelte overstyres eksplisitt
-// (q.fag). kalkyle/drift = Forretningsdrift; markedsmiks/malgruppe = Markedsføring;
-// forbrukerlov = Kultur og samhandling (kundemøte/servicerettigheter) — UNNTATT
-// markedsføringsloven-spørsmål (betalt omtale) som er Markedsføring (q.fag: 'm').
+// FAGTAGGING (fikserunde 3, revidert etter Espens hub-gjennomgang): hvert spørsmål
+// hører til ett programfag. Grunnkobling følger kategori; enkelte overstyres (q.fag).
+//   • 'fd' Forretningsdrift = kalkyle/drift OG organisasjon/roller/bemanning.
+//   • 'm'  Markedsføring    = markedsmiks/malgruppe + markedsføringsloven (betalt omtale).
+//   • 'ks' Kultur/samhandling = kommunikasjon/KUNDEBEHANDLING/KLAGE/vertskap/etikk.
+// Derfor: forbrukerlov (angrerett/reklamasjon/forbrukerkjøp = kundebehandling/klage)
+// = 'ks'; men markedsføringsloven-spørsmålet (betalt omtale) overstyres til 'm'.
+// (Ingen organisasjons-/rolle-/bemanningsspørsmål finnes ennå — de skal bli 'fd'.)
 const KATEGORI_FAG: Record<EspenKategori, FagKode> = {
   kalkyle: 'fd',
   drift: 'fd',

@@ -2664,3 +2664,72 @@ Etter ⚙- og lærerpanel-flyten (over):
 - **Datavakt:** en dynamisk mentor-melding skal aldri dukke opp på tomt grunnlag —
   f.eks. lagre en tom risikovurdering (uten tiltak) i HMS-fanen → mentoren
   kommenterer den IKKE; fyll inn minst ett tiltak og lagre → da kommer refleksjonen.
+
+---
+
+## KORREKSJON av fagmapping (Espens hub-gjennomgang, SSR VG1) — 2026-07-21
+
+Justering av fane-/fag-koblingen fra DEL 2/DEL 3 etter Espens gjennomgang av
+hub-fagstrukturen. Commit på samme gren, ikke merge.
+
+### Endringer
+1. **Personale → REN FD** (var FD+M via `visFag: ['ks','fd']` → nå `['fd']`, og
+   badge/stripe `kultur` → `forretningsdrift`). Begrunnelse: hub-modulen
+   «Ansvarsfordeling, roller og organisasjonskart» ligger under Forretningsdrift.
+   Personale forsvinner når **FD** er av (uavhengig av KS), står når FD er på.
+2. **Forretningsplan → FD+M** (var ren FD → `visFag: ['fd','m']`). «Forretningsidé»
+   er M-modul i VG1-strukturen, finansiering/lån er FD → synlig hvis **minst ett**
+   av FD/M er aktivt. (Badge/stripe forblir FD som primærfag, som Priser/Produkter.)
+3. **KS styrer ikke lenger noen fane** (ingen tab har `visFag`/badge = KS). KS-
+   bryteren styrer fortsatt: «Espen spør»-spørsmål med fag `ks`, og fag-gating av
+   KS-temaer (`temaer.ts`, f.eks. reiseliv). Hjelpetekst lagt til under KS-bryteren
+   i BÅDE lærerpanelet og ⚙ DEV-panelet: «Kultur og samhandling ligger i
+   kundemøtene, som alltid er på. Denne bryteren styrer KS-spørsmål fra Espen og
+   KS-temaer.»
+4. **espenSporsmal.ts fag-gjennomgang:** ingen organisasjons-/rolle-/bemannings-
+   spørsmål finnes (de skal bli `fd` om de kommer). `ks` er nå eksplisitt forbeholdt
+   kommunikasjon/kundebehandling/klage/vertskap/etikk — forbrukerlov (angrerett/
+   reklamasjon/forbrukerkjøp = kundebehandling/klage) forblir `ks`; markedsførings-
+   loven (betalt omtale) forblir overstyrt til `m`. Ingen kodeendring i taggene,
+   kun skjerpet dokumentasjon av prinsippet.
+
+### Oppdatert fanemapping (fane vises hvis minst ETT `visFag` er aktivt)
+| Fane | Synlig når | Badge |
+|---|---|---|
+| Oversikt · Rapporter · Innboks | ALLTID (kjerne) | FD / V / V |
+| **Forretningsplan** | **FD eller M** | FD |
+| Økonomi | FD | FD |
+| Produkter · Priser | FD eller M | M / FD |
+| Målgruppe · Lokasjon · Markedsføring · Distribusjon · Utstilling | M | M |
+| **Personale** | **FD** | **FD** |
+| HMS | tema (beredskap) aktivt — krever FD | HMS |
+
+**KS** styrer nå INGEN fane — kun `ks`-spørsmål (Espen spør) + KS-temaer.
+
+### Spilltest (31/31 PASS)
+- **26 (oppdatert):** M av → Personale (ren FD) og Forretningsplan (FD+M) STÅR
+  fordi FD er på (lagt til i «synlig»-lista); rene M-faner + mkf-tilbud fortsatt borte.
+- **31 (nytt):** FD av → Personale + Økonomi skjult, Forretningsplan + Målgruppe står
+  (M på); M av → Personale + Forretningsplan står (FD på); KS av (dashbord åpent) →
+  **0 faner endres**, men `ks`-spørsmål stilles ikke (finnKandidater-fasit), og KS på
+  → `ks`-spørsmål finnes igjen.
+
+### Status på de to utestående (som bedt om)
+- **Flyttejobben (dev-salgssituasjoner → ⚙): FERDIG** (commit `ea6f46c`). Den løse
+  DEV-blokka «Test salgssituasjon-motoren» lå ugated i Oversikt-fanen (synlig for
+  elever) — flyttet til ⚙ DEV-panelets «Scenarier»-gruppe (nedtrekksliste + «🛎️
+  Åpne salgssituasjon»), kun `?dev=1`.
+- **Lokasjon FD+M-remapping: IKKE gjort** (ikke med i punkt 1–5 her). Lokasjon er
+  fortsatt **ren M** (`visFag: ['m']`) — den forsvinner når M er av. Hvis den skal
+  bli FD+M (synlig også når kun FD er på), si fra, så er det en énlinjes endring
+  (+ assertions). Avventer din beslutning.
+
+### Chrome-sjekkliste — KORREKSJON
+- ⚙ (eller lærerpanel) → slå **FD av** (M på): **Personale** og **Økonomi** forsvinner,
+  men **Forretningsplan** og **Målgruppe** står.
+- Slå **M av** (FD på): Personale og Forretningsplan står; rene M-faner (Målgruppe,
+  Lokasjon, Markedsføring, Distribusjon, Utstilling) forsvinner.
+- Slå **KS av** (FD/M på): **ingen faner** endrer seg. «Aktive fag»-merket i
+  dashbord-headeren mister KS-brikka. Espen spør stiller ikke lenger KS-spørsmål
+  (kundebehandling/klage), men KS-temaer (reiseliv) og kundemøtene er upåvirket.
+- KS-bryteren i lærerpanelet/⚙ viser hjelpeteksten om at KS ligger i kundemøtene.

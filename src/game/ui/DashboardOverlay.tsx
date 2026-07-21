@@ -87,7 +87,9 @@ const KODE_TIL_FAGID: Record<FagKode, FagId> = {
 const TABS: { id: Tab; label: string; emoji: string; fag: FagId; tema?: string; visFag?: FagKode[] }[] = [
   // ── Forretningsdrift ──
   { id: 'oversikt',        label: 'Oversikt',         emoji: '📊', fag: 'forretningsdrift' },   // kjerne
-  { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋', fag: 'forretningsdrift', visFag: ['fd'] },
+  // Forretningsplan er DELT FD+M: «Forretningsidé» er M-modul i VG1-strukturen,
+  // finansiering/lån er FD → synlig hvis minst ett av FD/M er aktivt.
+  { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋', fag: 'forretningsdrift', visFag: ['fd', 'm'] },
   { id: 'okonomi',         label: 'Økonomi',           emoji: '💰', fag: 'forretningsdrift', visFag: ['fd'] },
   { id: 'produkter',       label: 'Produkter',         emoji: '📦', fag: 'markedsforing', visFag: ['fd', 'm'] }, // FØR Priser: varer før prising
   { id: 'priser',          label: 'Priser',            emoji: '🏷️', fag: 'forretningsdrift', visFag: ['fd', 'm'] },
@@ -98,7 +100,10 @@ const TABS: { id: Tab; label: string; emoji: string; fag: FagId; tema?: string; 
   { id: 'distribusjon',    label: 'Distribusjon',      emoji: '🚚', fag: 'markedsforing', visFag: ['m'] }, // Plass-P (M-merke)
   { id: 'utstilling',      label: 'Utstilling',        emoji: '🪟', fag: 'markedsforing', visFag: ['m'] },
   // ── Kultur og samhandling ──
-  { id: 'personale',       label: 'Personale',         emoji: '👥', fag: 'kultur', visFag: ['ks', 'fd'] },
+  // Personale er REN FD: hub-modulen «Ansvarsfordeling, roller og organisasjonskart»
+  // ligger under Forretningsdrift (Espen-gjennomgang). Badge OG synlighet = FD;
+  // forsvinner når FD er av (uavhengig av KS).
+  { id: 'personale',       label: 'Personale',         emoji: '👥', fag: 'forretningsdrift', visFag: ['fd'] },
   // ── HMS (TEMA-fane: vises KUN når temaet er aktivt, se InnboksTabBar-filteret) ──
   { id: 'hms',             label: 'HMS',               emoji: '🦺', fag: 'hms', tema: 'beredskap' },
   // ── Verktøy (tverrgående) — KJERNE, vises alltid ──
