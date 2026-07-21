@@ -1387,6 +1387,80 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok('Personale=FD (skjult ved FD av, står ved M av); Forretningsplan=FD+M (står så lenge FD el. M er på); KS av → 0 faner endres, men ks-spørsmål stilles ikke')
   })
 
+  await steg(page, rapport, 32, 'Vareeksponering: bakgrunnssalg selger KUN utstilte varer; tom disk → 0 salg/tap; tapte-kort = sum av tre', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot steg 32')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 400 }, { productId: 'croissant', qty: 400 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee') && s.products.some(p => p.id === 'croissant'), 'lager')
+    await åpneDashbord()   // hold dashbordet åpent så auto-klokka pauser (deterministisk)
+
+    // Driv klokka manuelt, hopp over evt. kundemøte så bakgrunnssalget flyter.
+    const tikkTil = async (pred: (s: SpillState) => boolean, maxTikk = 600) => {
+      let s = await lesState(page), n = 0
+      while (!pred(s) && s.dayMinute < 460 && n < maxTikk) {
+        if (s.activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
+        else await dispatchN(page, { type: 'TICK' }, 10)
+        s = await lesState(page); n += 10
+      }
+      return s
+    }
+    const nyDag = async () => {
+      await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør')
+      await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'stengt')
+      await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen')
+    }
+    const settPris = async (mut: (p: { id: string; markedsPris: number; retailPrice: number }) => number) => {
+      const prods = (await lesState(page)).products.map(p => ({ ...p, retailPrice: mut(p) }))
+      await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+    }
+    // Pris begge til markedspris (så de KAN selge når utstilt).
+    await settPris(p => (p.id === 'coffee' || p.id === 'croissant') ? p.markedsPris : p.retailPrice)
+    await ventState(page, s => s.products.find(p => p.id === 'coffee')!.retailPrice > 0, 'priset')
+
+    // (A) TOM DISK: ingenting utstilt → 0 salg og 0 tap, men kundene teller.
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [] })
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen (tom disk)')
+    let s = await tikkTil(x => x.dayStats.bakgrunnKunder >= 8)
+    expect(s.dayStats.bakgrunnKunder, 'kundene teller som besøkende').toBeGreaterThan(0)
+    expect(s.dayStats.bakgrunnKr, 'tom disk → 0 omsetning').toBe(0)
+    expect(s.dayStats.bakgrunnStk, 'tom disk → 0 solgt').toBe(0)
+    expect(s.dayStats.tapteSalgStk + s.dayStats.manglerPrisStk + s.dayStats.overprisStk, 'tom disk → 0 tap').toBe(0)
+
+    // (B) UTSTILL KUN COFFEE: coffee (priset+lager) selger; croissant (priset+lager)
+    //     men IKKE utstilt → verken salg eller tap.
+    await nyDag()
+    await settPris(p => (p.id === 'coffee' || p.id === 'croissant') ? p.markedsPris : p.retailPrice)
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'coffee' }] })
+    s = await tikkTil(x => x.dayStats.bakgrunnStk >= 5)
+    expect(s.dayStats.bakgrunnStk, 'utstilt coffee selger').toBeGreaterThan(0)
+    const full = await lesFull()
+    expect(full.dayProductStats['coffee']?.soldStk ?? 0, 'coffee (utstilt) solgt').toBeGreaterThan(0)
+    const cro = full.dayProductStats['croissant']
+    expect((cro?.soldStk ?? 0) + (cro?.tapteSalgStk ?? 0) + (cro?.manglerPrisStk ?? 0) + (cro?.overprisStk ?? 0),
+      'ikke-utstilt croissant (priset+lager): verken salg eller tap').toBe(0)
+
+    // (C) TAPTE-KORTET = tomtLager + manglerPris + overpris. Lag manglerPris (croissant
+    //     upriset) + overpris (coffee 2× markedspris, HØY drikke-profil), begge utstilt.
+    await nyDag()
+    await settPris(p => p.id === 'coffee' ? p.markedsPris * 2 : p.id === 'croissant' ? 0 : p.retailPrice)
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'coffee' }, { trauId: 'trau-2', productId: 'croissant' }] })
+    s = await tikkTil(x => x.dayStats.manglerPrisStk >= 3 && x.dayStats.overprisStk >= 3)
+    const sum = s.dayStats.tapteSalgStk + s.dayStats.manglerPrisStk + s.dayStats.overprisStk
+    expect(s.dayStats.manglerPrisStk, 'mangler-pris-tap (upriset croissant)').toBeGreaterThan(0)
+    expect(s.dayStats.overprisStk, 'for-dyr-tap (coffee 2×)').toBeGreaterThan(0)
+    expect(sum, 'tapte-kortets sum > 0').toBeGreaterThan(0)
+    // Dagspuls-kortet: lukk dashbord (+ hopp møte) → daypuls vises; «Tapte salg»-kortet
+    // viser fordelingen «uten pris» + «for dyr» (dvs. summerer alle tre, ikke bare tomt lager).
+    await lukkDashbord()
+    if ((await lesState(page)).activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
+    const kort = page.getByTestId('puls-tapt')
+    await expect(kort, 'daypuls «Tapte salg»-kort synlig').toBeVisible({ timeout: 6000 })
+    await expect(kort).toContainText('uten pris')
+    await expect(kort).toContainText('for dyr')
+    ctx.ok(`Utstilte-only: tom disk 0 salg/0 tap (kunder teller); ikke-utstilt croissant aldri solgt/tapt; tapte-kort summerer (${s.dayStats.tapteSalgStk} tomt · ${s.dayStats.manglerPrisStk} pris · ${s.dayStats.overprisStk} dyr = ${sum})`)
+  })
+
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
   const { pass, fail, kjent } = skrivRapport(rapport, notater)
   expect(fail, `Reelle FAIL-steg (KJENT FEIL teller ikke): ${fail}. Se docs/rapporter/spilltest-siste.md`).toBe(0)

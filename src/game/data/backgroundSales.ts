@@ -271,22 +271,29 @@ export interface BolkResultat<P> {
 }
 
 /** Prosesser ÉN bolk (tick) bakgrunnskunder mot NÅVÆRENDE lager. Hver kunde
- *  ønsker 1–2 varer, valgt uniformt fra HELE sortimentet (også uprisede varer —
- *  de attraherer etterspørsel de ikke kan innfri). Per vare (DEL 7):
+ *  ønsker 1–2 varer, valgt fra de UTSTILTE varene (`utstilteIds` = varer i disken
+ *  eller vindusutstillingen). VAREEKSPONERING er kjernelære: en vare som ikke er
+ *  stilt ut FINNES ikke for forbipasserende — den gir verken salg eller tap. Per
+ *  utstilt vare (DEL 7):
  *   1. UPRISET (retailPrice ≤ 0) ⇒ tapt salg «mangler pris».
  *   2. PRISET: priselastisitet (retail / markedsPris × varens profil) avgjør om
  *      kunden faktisk kjøper. Avvist ⇒ tapt salg «for høy pris».
  *   3. Kjøp bekreftet: har lager ⇒ salg; tomt ⇒ tapt salg «tomt lager».
- *  Generisk så Product-typen bevares ut. */
+ *  Er INGENTING utstilt: null salg, null tap — kundene teller likevel som besøkende
+ *  (hintet «still ut i disken» gjør jobben). Generisk så Product-typen bevares ut. */
 export function simulerBakgrunnsbolk<P extends { id: string; name: string; stock: number; retailPrice: number; costPrice: number; markedsPris: number; category?: string }>(
   products: P[], antallKunder: number, seed: number,
+  /** Vare-id-er som er UTSTILT (disk/vindu) — kun disse kan selges/tapes. */
+  utstilteIds: ReadonlySet<string>,
   /** TEMA 15: per-kategori pick-vekt (turister vrir etterspørsel mot kaffe/kaker).
    *  Tom/utelatt = uniform valg (uendret). Kategorier uten oppføring = vekt 1. */
   vareVekt: Record<string, number> = {},
 ): BolkResultat<P> {
   let s = seed >>> 0
   const stock = new Map(products.map(p => [p.id, p.stock]))
-  const pool = products   // HELE sortimentet — uprisede varer teller (mangler-pris-tap)
+  // Trekkpoolen er KUN de utstilte varene (også uprisede/utsolgte — de gir tap,
+  // ikke salg). Ikke-utstilte varer finnes ikke for forbipasserende.
+  const pool = products.filter(p => utstilteIds.has(p.id))
   // Vektet trekning når vareVekt er satt: kumulativ vekt over poolen.
   const vektet = Object.keys(vareVekt).length > 0
   const vekter = vektet ? pool.map(p => Math.max(0, vareVekt[p.category ?? ''] ?? 1)) : null

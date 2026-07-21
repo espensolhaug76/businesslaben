@@ -2762,3 +2762,45 @@ Oppfølging av statuspunktet i forrige avsnitt (Lokasjon var ren M).
 ### Chrome-sjekkliste — Lokasjon
 - Slå **M av** (FD på): Lokasjon STÅR (sammen med Produkter/Priser/Forretningsplan).
 - Slå **FD av OGSÅ** (begge av): Lokasjon (og de andre FD+M-delte) forsvinner.
+
+---
+
+## Bakgrunnssalg selger kun utstilte varer + ærligere dagspuls — 2026-07-21
+
+Vareeksponering er kjernelære: en vare som ikke er stilt ut kan ikke selge seg selv.
+
+1. **`simulerBakgrunnsbolk` — trekkpool = KUN utstilte varer.** Ny parameter
+   `utstilteIds` (vare-id-er i `counterLayout` ELLER `windowDisplayLayout` med
+   `fixtureId 'vindu'`). Poolen filtreres til disse. Konsekvens:
+   - Ikke-utstilt vare → verken salg eller tap (finnes ikke for forbipasserende).
+   - Utstilt + upriset → «mangler pris»-tap (som før).
+   - Utstilt + priset + tomt lager → «tomt lager»-tap (som før).
+   - INGENTING utstilt → 0 salg, 0 tap; kundene teller fortsatt som besøkende (og
+     hintet «still ut i disken» gjør jobben). TICK (GameContext) bygger `utstilteIds`
+     fra `counterLayout` + vindus-utstilling og sender den inn. Doc-kommentar oppdatert.
+2. **DagspulsOverlay «Tapte salg»-kort = SUM av alle tre tapstyper** som hovedtall,
+   med fordeling som undertekst: «X tomt lager · Y uten pris · Z for dyr» (kun de
+   som er > 0; «ingen» når alt er 0). Tidligere viste kortet bare «tomt lager».
+   Dagsoppgjøret (DayResultOverlay) har allerede alle tre tapslinjene (tomt lager /
+   mangler pris / for høy pris) — ingen endring nødvendig der.
+3. **Språk:** «1 møter» → riktig bøying — «Kunder i dag»-underteksten viser nå
+   «1 møte · N øvrige» (og «N møter · …» for N ≠ 1).
+
+### Spilltest (32/32 PASS)
+- **32 (nytt):** (A) tom disk → 0 omsetning og 0 tap over mange tikk, men kundene
+  teller som besøkende; (B) kun coffee utstilt → coffee selger, mens croissant
+  (priset + lager, men IKKE utstilt) verken selges eller tapes; (C) utstilt upriset
+  croissant + utstilt coffee 2× → «mangler pris»- og «for dyr»-tap, og daypuls-
+  kortet «Tapte salg» viser fordelingen «uten pris» + «for dyr» (summerer alle tre,
+  ikke bare tomt lager). Eksisterende bakgrunnssalg-steg (4/5/14/20) uendret — de
+  stiller alltid varene ut i disken før de asserter salg.
+
+### Chrome-sjekkliste — vareeksponering
+- Ha en priset vare med lager, men la disken (og vinduet) være TOM → åpne dagen:
+  ingen bakgrunnssalg, ingen tap, men «Kunder i dag» øker. «Tapte salg»-kortet står
+  på 0 «ingen».
+- Still varen ut i disken → bakgrunnssalget begynner å tikke inn.
+- Sett én utstilt vare uten pris og én til langt over markedspris → «Tapte salg»-
+  kortet viser SUM med undertekst «… uten pris · … for dyr»; dagsoppgjøret lister
+  de samme tre tapstypene.
+- Sjekk teksten: ett kundemøte skrives «1 møte», ikke «1 møter».

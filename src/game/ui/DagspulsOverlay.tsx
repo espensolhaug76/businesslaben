@@ -31,6 +31,21 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
 
   const kunder = state.dayStats.bakgrunnKunder + state.meetingsToday
   const opptjent = state.dayStats.soldKr + state.dayStats.bakgrunnKr - state.dayStats.varekostKr
+  // Ærligere «kunder»-undertekst: riktig bøying (1 møte / N møter).
+  const moter = state.meetingsToday
+  const kunderSub = `${moter} ${moter === 1 ? 'møte' : 'møter'} · ${state.dayStats.bakgrunnKunder} øvrige`
+  // Tapte salg = SUM av alle tre tapstyper, med fordeling som undertekst.
+  const tapTomtLager = state.dayStats.tapteSalgStk
+  const tapUtenPris = state.dayStats.manglerPrisStk
+  const tapForDyr = state.dayStats.overprisStk
+  const tapTotalt = tapTomtLager + tapUtenPris + tapForDyr
+  const tapSub = tapTotalt > 0
+    ? [
+        tapTomtLager > 0 ? `${tapTomtLager} tomt lager` : null,
+        tapUtenPris > 0 ? `${tapUtenPris} uten pris` : null,
+        tapForDyr > 0 ? `${tapForDyr} for dyr` : null,
+      ].filter(Boolean).join(' · ')
+    : 'ingen'
 
   // Utstilte varer (trau + vindu) med lager — synker utover dagen.
   const utstiltIds = new Set<string>([
@@ -117,9 +132,9 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
 
         {/* Nøkkeltall */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.7rem' }}>
-          <PulsKort label="Kunder i dag" value={`${kunder}`} sub={`${state.meetingsToday} møter · ${state.dayStats.bakgrunnKunder} øvrige`} color="#38bdf8" />
+          <PulsKort label="Kunder i dag" value={`${kunder}`} sub={kunderSub} color="#38bdf8" />
           <PulsKort label="Opptjent i dag" value={formatKr(opptjent)} sub="salg − varekost (før svinn)" color={opptjent >= 0 ? '#22c55e' : '#ef4444'} />
-          <PulsKort label="Tapte salg" value={`${state.dayStats.tapteSalgStk}`} sub={state.dayStats.tapteSalgStk > 0 ? 'tomt lager' : 'ingen'} color={state.dayStats.tapteSalgStk > 0 ? '#ef4444' : '#64748b'} />
+          <PulsKort label="Tapte salg" value={`${tapTotalt}`} sub={tapSub} color={tapTotalt > 0 ? '#ef4444' : '#64748b'} testid="puls-tapt" />
         </div>
 
         {/* BEMANNING: kø live — kunder som gikk fordi kapasiteten på vakt var
@@ -194,9 +209,9 @@ const pilleBtn: React.CSSProperties = {
   background: 'transparent', border: 'none', color: '#00d4aa', fontSize: 16, cursor: 'pointer', fontFamily: 'inherit', padding: 2,
 }
 
-function PulsKort({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
+function PulsKort({ label, value, sub, color, testid }: { label: string; value: string; sub: string; color: string; testid?: string }) {
   return (
-    <div style={{ background: `${color}12`, border: `1px solid ${color}33`, borderRadius: 14, padding: '0.8rem 0.9rem' }}>
+    <div data-testid={testid} style={{ background: `${color}12`, border: `1px solid ${color}33`, borderRadius: 14, padding: '0.8rem 0.9rem' }}>
       <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 900, color }}>{value}</div>
       <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{sub}</div>

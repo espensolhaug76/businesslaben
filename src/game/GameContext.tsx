@@ -1902,8 +1902,14 @@ function reducer(state: GameState, action: Action): GameState {
 
         let seed = state.dayBackground.seed
         if (betjent > 0) {
+          // VAREEKSPONERING: bakgrunnssalget trekker KUN fra utstilte varer (disk
+          // + vindu). Ikke-utstilte varer selges/tapes aldri.
+          const utstilteIds = new Set<string>([
+            ...state.counterLayout.map(t => t.productId),
+            ...state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId),
+          ])
           // Kun de BETJENTE kundene når disken (kan så tape til tomt lager).
-          const r = simulerBakgrunnsbolk(state.products, betjent, state.dayBackground.seed, state.dayBackground.vareVekt)
+          const r = simulerBakgrunnsbolk(state.products, betjent, state.dayBackground.seed, utstilteIds, state.dayBackground.vareVekt)
           products = r.products
           // DEL 5: har eleven takket JA til hotellpakken, tar hotellet sin andel
           // av pakkegjestenes forbruk i sesong → lavere REALISERT omsetning (og
