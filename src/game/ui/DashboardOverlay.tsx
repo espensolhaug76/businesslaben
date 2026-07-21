@@ -7,7 +7,7 @@ import WindowDisplayEditor from '../city/WindowDisplay'
 import { SCENARIOS } from '../sales/scenarios'
 import { stamkundeTrinnLabel } from '../data/stamkundeDialog'
 import { STAMKUNDER_AKTIV } from '../data/featureFlags'
-import { type FagKode, type FagAktivering } from '../data/fag'
+import { type FagKode, type FagAktivering, FAG_KODER } from '../data/fag'
 import { type TemaAktivering } from '../data/temaer'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import { DAY_CONFIG } from '../data/dayConfig'
@@ -65,6 +65,14 @@ const FAG_FARGER: Record<FagId, { navn: string; kort: string; farge: string }> =
   kultur:           { navn: 'Kultur og samhandling',       kort: 'KS',  farge: '#f78fc8' }, // L≈180 (lysnet fra #f472b6 for lyshets-stigen)
   hms:              { navn: 'HMS',                          kort: 'HMS', farge: '#fcd34d' }, // L≈208 (rav→gul, lysnet fra #f59e0b) · VG2 eget fag
   verktoy:          { navn: 'Verktøy',                      kort: 'V',   farge: '#64748b' }, // L≈114 · tverrgående, ikke ett fag
+}
+
+// De tre programfagene læreren styrer (fag.ts sin FagKode) → FagId i FAG_FARGER,
+// så «Aktive fag»-merket i dashbord-headeren kan bruke samme farge/kort/navn.
+const KODE_TIL_FAGID: Record<FagKode, FagId> = {
+  fd: 'forretningsdrift',
+  m: 'markedsforing',
+  ks: 'kultur',
 }
 
 // Rekkefølgen her ER visningsrekkefølgen. Fagene ligger stort sett samlet, MEN
@@ -130,33 +138,16 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
           const { farge: fagFarge, kort: fagKort } = FAG_FARGER[t.fag]
           return (
             <button key={t.id} data-testid={`fane-${t.id}`} onClick={() => setActiveTab(t.id)} aria-current={aktiv ? 'page' : undefined} style={{
-              // AKTIV fane er tydelig MERKET (Espen-ønske): sterkere fyll, ramme,
-              // fetere skrift, løft-skygge og en teal topp-stripe — så den skiller
-              // seg ut MER enn fag-fargene. Fargesvak-trygt: forma (opphøyd, rammet,
-              // fet) + «● Aktiv»-teksten bærer info uten å være avhengig av farge.
-              background: aktiv ? 'rgba(0,212,170,0.18)' : 'transparent',
-              border: `1px solid ${aktiv ? 'rgba(0,212,170,0.75)' : 'transparent'}`,
-              borderBottom: 'none', borderRadius: '9px 9px 0 0',
-              padding: `${aktiv ? '0.62rem' : '0.6rem'} 1.2rem 0.7rem`,
-              color: aktiv ? '#8af0de' : '#64748b',
-              fontWeight: aktiv ? 800 : 600, fontSize: 14, cursor: 'pointer',
+              background: aktiv ? 'rgba(0,212,170,0.12)' : 'transparent',
+              border: `1px solid ${aktiv ? '#00d4aa' : 'transparent'}`,
+              borderBottom: 'none', borderRadius: '8px 8px 0 0',
+              padding: '0.6rem 1.2rem 0.65rem',
+              color: aktiv ? '#00d4aa' : '#64748b',
+              fontWeight: 600, fontSize: 14, cursor: 'pointer',
               fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s',
               flexShrink: 0, position: 'relative',
-              boxShadow: aktiv ? '0 -3px 16px rgba(0,212,170,0.3)' : 'none',
             }}>
-              {/* Teal «du er her»-stripe på toppen av den aktive fanen. */}
-              {aktiv && <span aria-hidden="true" style={{
-                position: 'absolute', left: 0, right: 0, top: 0, height: 3,
-                background: '#00d4aa', borderRadius: '9px 9px 0 0', pointerEvents: 'none',
-              }} />}
               {t.emoji} {t.label}
-              {aktiv && (
-                <span style={{
-                  marginLeft: 7, fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
-                  color: '#052e2b', background: '#2dd4bf', borderRadius: 99,
-                  padding: '1px 6px', verticalAlign: 'middle',
-                }}>● AKTIV</span>
-              )}
               {/* Fag-bokstavmerke (bærer fag-info UTEN farge — fargesvak-vennlig).
                   aria-hidden: rent VISUELT merke — skjermlesere skal lese fanens
                   rene navn («Produkter»), ikke «Produkter M». Fag-koblingen
@@ -175,7 +166,7 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
               {/* Diskret fag-stripe (venstre-til-høyre under fanen); tydeligere når aktiv.
                   aria-hidden: dekorativ (fargen speiler merket over). */}
               <span aria-hidden="true" style={{
-                position: 'absolute', left: 8, right: 8, bottom: 0, height: aktiv ? 4 : 3, borderRadius: 2,
+                position: 'absolute', left: 8, right: 8, bottom: 0, height: 3, borderRadius: 2,
                 background: fagFarge, opacity: aktiv ? 1 : 0.5, pointerEvents: 'none',
               }} />
             </button>
@@ -294,6 +285,28 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
               <div>
                 <h2 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>💻 Bedriftsdashboard</h2>
                 <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>All bedriftsstyring på ett sted</p>
+                {/* AKTIVE FAG — hvilke programfag læreren har slått PÅ for klassen
+                    (fd/m/ks). Fargesvak-trygt: kort (FD/M/KS) + fullt navn, ikke
+                    kun farge. Fag som er av vises ikke (de er skjult for eleven). */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>AKTIVE FAG:</span>
+                  {FAG_KODER.filter(f => fagAktiv[f]).map(f => {
+                    const { farge, kort, navn } = FAG_FARGER[KODE_TIL_FAGID[f]]
+                    return (
+                      <span key={f} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700,
+                        color: farge, background: `${farge}1a`, border: `1px solid ${farge}66`,
+                        borderRadius: 99, padding: '2px 10px',
+                      }}>
+                        <span aria-hidden="true" style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.03em', opacity: 0.85 }}>{kort}</span>
+                        {navn}
+                      </span>
+                    )
+                  })}
+                  {!FAG_KODER.some(f => fagAktiv[f]) && (
+                    <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>ingen</span>
+                  )}
+                </div>
               </div>
               <button data-testid="dashbord-lukk" onClick={onClose} style={{
                 background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
