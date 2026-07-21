@@ -2334,3 +2334,134 @@ Full URL (dev-server): **`http://localhost:5173/game?dev=1&skip=1`**
    førpris, pristilbud).
 6. **Lærer-panelet** (TeacherDashboard → «Spillet»): global «Klassens nivå»-velger
    (VG1/VG2) over tema-lista — endring ses live i spillet for elever med klassekoden.
+
+---
+
+## FIKSERUNDE — samlet DEV-panel + stamkunde-redesign (2026-07-21)
+
+Gren: `spor-a/kroker-espen-spor-stamkunder`. To deler, commit per del. `tsc -b`
+rent. Bokmål. Alle statuser er tekstlabels, aldri kun farge.
+
+### DEL 1 — SAMLET DEV-PANEL (⚙)
+**Problem:** dev-verktøyene lå spredt — en flytende knappeklynge nederst i midten
+(GamePage), tracere/kalibreringspaneler i hver scene, og scenariovelgeren i
+interiøret. Espen fant ikke de nye knappene.
+
+- **Ny `src/game/dev/DevPanel.tsx`:** ÉN fast **⚙ DEV**-knapp nede til VENSTRE,
+  synlig på ALLE spillruter når `?dev=1` (bykart, bydel, storefront, inne, disk).
+  Klikk → skuff med alle dev-handlinger gruppert med overskrifter:
+  - **Nivå:** VG1/VG2-toggle (`setKlasseNivaaDev`).
+  - **Espen spør:** 🎓 Still neste spørsmål nå.
+  - **Stamkunder:** 👋 Gjør siste kunde til stamkunde · 👥 Spawn stamkundemøte nå.
+  - **Innboks:** ⏩ Send test-e-post av hver type · ⏩ Spol til frist.
+  - **Tema:** 🔥 Utløs brannalarm · ⏩ Start turistsesong · ⏩ Spol til sesongslutt.
+  - **Scenarier:** toggle scenariovelgeren (vises i interiørscenen).
+  - **Kalibrering:** toggle tracer-/kalibreringsverktøyene i scenene.
+  - **Annet:** ▶ Simuler måneden (gammel PEST).
+- **Deaktivert med tekstlabel, aldri skjult:** handlinger som mangler kontekst
+  (ingen «siste kunde», ikke aktivt beredskap/reiseliv-tema, ingen åpen dag, ingen
+  returnerende stamkunde, ikke leid lokale) vises grået ut med en ⛔-forklaring.
+- **Delt lager `src/game/dev/devPanel.ts`** (`useSyncExternalStore`,
+  localStorage `dev_panel_v1`): husker panelets åpen/lukket + synlighetsflaggene
+  for kalibrering og scenariovelger.
+- **De spredte knappene er FJERNET fra sine gamle steder.** Kalibrerings-/tracer-
+  panelene og scenariovelgeren FLYTTES ikke — de bor fortsatt i scenene, og er
+  synlige som før (default PÅ i `?dev=1`), men panelet lar deg nå slå dem AV for en
+  ren scene. Gjelder InteriorView, MonterScene, StorefrontView, CityMapView,
+  DistrictView, LobbyView, TuristkontorScene.
+
+### DEL 2 — STAMKUNDE-REDESIGN: personen utvikler seg, scenariet gjentas IKKE
+**Prinsipp:** salgsscenariet er en ENGANGS pedagogisk situasjon. Stamkunden er
+PERSONEN, som kommer tilbake i egne, korte GJENKJENNINGSMØTER med UTVIKLING —
+aldri en reprise av scenariet.
+
+- **Engangs-scenarier:** `OPEN_DAY` filtrerer bort et scenario som er spilt
+  (`stamkunder[id].antallMoter ≥ 1`) fra dagens pool — samme scenario trekkes
+  ALDRI to ganger (unntak: dev/scenariovelgeren kan alltid). Kundemiks-vektingen
+  fra forrige runde gjelder nå STAMKUNDEMØTER, ikke scenarioreprise.
+- **Ny møtetype `'stamkunde'`** i `ScheduledMeeting.kind` + `state.activeMeetingKind`.
+  `planleggMoter` planlegger nå to typer i samme strøm: engangs-scenarier (uspilt
+  pool, uten gjentakelse) + stamkundemøter (returnerende kunder, vektet). Inntil
+  `moteReserveAndel` (0,5) av dagens møter reserveres til stamkundemøter når det
+  finnes returnerende kunder.
+- **Nytt overlay `src/game/ui/StamkundeMoteOverlay.tsx`:** kort (2–4 replikker +
+  kjøp m/`kjopsBonusFaktor`), bruker kundens sprite i scenen, IKKE scenariotreet.
+  `RESOLVE_STAMKUNDEMOTE` legger på kjøpsbonusen, hever utviklingstrinnet og gjør
+  service recovery (sisteUtfall → fornøyd).
+- **`data/stamkundeDialog.ts` skrevet om til UTVIKLINGSTRINN** per kunde (alle 6):
+  - **trinn 1** (etter godt scenarioutfall): gjenkjennelse, refererer forrige
+    møtes tema («fant jo den glutenfrie til meg sist»).
+  - **trinn 2**: tydelig utvikling (den usikre vet hva hun vil ha; prutekunden har
+    sluttet å mase om pris; den travle tar seg tid).
+  - **trinn 3**: kunden ANBEFALER deg — tar med venn/kollega → **+1 ekstra kjøp**.
+  - **Negativ kurve** (misfornøyd sist): 1 kjøligere kortvariant + vekt ned; et
+    godt møte løfter kurven igjen (service recovery). Replikkene bygger på
+    personlighetene i scenariodataene.
+- **`state.stamkunder[id].utviklingstrinn`** (0/1/2/3), persistert (gamle lagringer
+  → 0 ved innlasting). Godt scenarioutfall → trinn 1; hvert gode stamkundemøte
+  hever trinnet (maks 3).
+- **Målgruppe-fanen** viser trinnet som tekstlabel via `stamkundeTrinnLabel`:
+  «Ny stamkunde» / «Trygg stamkunde» / «Anbefaler deg» (+ «Misfornøyd sist» /
+  «Kjenner deg» for trinn 0). Alltid tekst, aldri kun farge.
+- **BALANCE.stamkunder** (tillegg): `moteReserveAndel: 0.5`,
+  `stamkundemoteRykte: 2`, `stamkundemoteXp: 5`. Uendret: `fornoydeForStamkunde: 2`,
+  `vektFaktor: 2`, `vektMisfornoyd: 0.5`, `kjopsBonusFaktor: 1.2`.
+- **Fjernet:** den gamle `stamkundeHilsen`-gjenkjenningshilsen på scenariets steg 1
+  (SalesScenarioOverlay) — gjenkjennelsen bor nå i selve stamkundemøtet, ikke oppå
+  et scenario som uansett ikke gjentas.
+
+### Spilltest — steg 24 (C) oppdatert (full spilltest 25/25 PASS)
+- **(A) Engangs:** spill `den-usikre` én gang med godt utfall → `utviklingstrinn=1`,
+  full pris (ingen bonus ennå).
+- **(B) Invariant:** ny dag trekker ALDRI et scenario-kind-møte for en allerede
+  spilt kunde.
+- **(C) Stamkundemøte:** trinn 1 → 2 → 3 gir riktig dialog (ren `stamkundeMote`-
+  fasit) og kjøpsbonus ×1,2; **trinn 3 = +1 venn-kjøp** (betaling 2×50×1,2 = 120).
+
+### Åpne flagg / valg gjort her (ikke låst)
+- **Møte-miks:** `moteReserveAndel = 0,5` (halvparten av dagens møter til
+  stamkunder når noen kan returnere). Rent balansetall — juster fritt i
+  `balance.ts` hvis kadensen føles feil.
+- **Stamkundemøtets kjøp:** kunden handler «det vanlige» = hovedproduktet
+  (`mainProductId`) hvis priset og på lager, ellers første prisede vare med lager;
+  qty 1, eller 2 på trinn 3. Ingen egen produktvelger — bevisst kort møte.
+
+### Chrome-sjekkliste (Espen validerer) — OPPDATERT
+Full URL (dev-server): **`http://localhost:5173/game?dev=1&skip=1`**
+
+1. **Klikk ⚙ DEV nede til venstre.** Knappen ligger fast i NEDRE VENSTRE hjørne på
+   ALLE ruter (bykart, bydel, storefront, inne, disk). Klikk → skuff spretter opp
+   med gruppene: **Nivå · Espen spør · Stamkunder · Innboks · Tema · Scenarier ·
+   Kalibrering · Annet**. Grå knapper har en ⛔-tekst som sier hvorfor de er av
+   (f.eks. «Møt en kunde først» før du har møtt noen). Panelet husker åpen/lukket.
+2. **Kalibrering:** sonetracere + kalibreringspaneler er PÅ som før i den scenen du
+   står i (inne: kunde/speil/tavle; disk: trau; bykart/bydel: rute-tracer). ⚙ →
+   **Kalibrering: PÅ → AV** skjuler dem for en ren scene, og PÅ igjen henter dem
+   tilbake. (Ingenting er flyttet — bare synligheten styres herfra.)
+3. **Scenarier:** gå inn i butikken (**inne**) → 🎭 scenariovelgeren ligger øverst
+   til venstre (PÅ som før). Start hvilket som helst scenario. ⚙ → **Scenariovelger:
+   AV** skjuler den.
+4. **Nivå / Espen spør / Innboks / Tema:** alle de gamle løse knappene ligger nå i
+   ⚙-skuffen under riktig overskrift. «🎓 Still neste spørsmål nå» → Espen peker med
+   N-badge; «⏩ Send test-e-post av hver type» fyller 📬 Innboks; «🔥 Utløs
+   brannalarm» krever aktivt beredskap-tema + åpen dag + bekreftet plan (ellers grå
+   med forklaring).
+5. **Stamkunder — engangs + utvikling:** åpne en dag (butikk → inne). Møt en kunde
+   (f.eks. `den-usikre`) og løs scenariet med et GODT utfall. Kunden er nå
+   returnerende (**Ny stamkunde**). Neste dag(er) kommer HEN tilbake som et kort
+   **stamkundemøte** (👋 STAMKUNDE KOMMER INNOM) — IKKE det samme scenariet på nytt.
+   For rask testing: ⚙ → Stamkunder → **👥 Spawn stamkundemøte nå** (krever åpen dag
+   + en returnerende kunde).
+   - **Trinn 1:** gjenkjennelse, refererer forrige møte. Handler «det vanlige» med
+     💚 kjøpsbonus ×1,2.
+   - **Trinn 2:** personen har utviklet seg (tryggere / vet hva hun vil ha).
+   - **Trinn 3:** kunden **tar med en venn/kollega → +1 kjøp** (to varer).
+   - **Misfornøyd sist:** kunden kommer kjøligere tilbake (én kortvariant) — et godt
+     møte løfter henne igjen.
+6. **Målgruppe-fanen** (💻 Dashbord → Målgruppe → «Stamkunder — kjente fjes»):
+   hver kjent kunde vises med navn + **tekstlabel-status** som stiger med
+   utviklingen: «Ny stamkunde» → «Trygg stamkunde» → «Anbefaler deg» (og
+   «Misfornøyd sist» / «Kjenner deg»). Alltid tekst, aldri kun farge.
+7. **Verifiser at scenariet IKKE gjentas:** når du har spilt en kundes scenario én
+   gang, skal du aldri se det SAMME scenariet igjen organisk — kun stamkundemøter
+   med den personen. (Nye, uspilte kunder kommer fortsatt som fulle scenarier.)
