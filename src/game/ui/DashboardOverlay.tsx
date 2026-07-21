@@ -129,17 +129,34 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
           const aktiv = activeTab === t.id
           const { farge: fagFarge, kort: fagKort } = FAG_FARGER[t.fag]
           return (
-            <button key={t.id} data-testid={`fane-${t.id}`} onClick={() => setActiveTab(t.id)} style={{
-              background: aktiv ? 'rgba(0,212,170,0.12)' : 'transparent',
-              border: `1px solid ${aktiv ? '#00d4aa' : 'transparent'}`,
-              borderBottom: 'none', borderRadius: '8px 8px 0 0',
-              padding: '0.6rem 1.2rem 0.65rem',
-              color: aktiv ? '#00d4aa' : '#64748b',
-              fontWeight: 600, fontSize: 14, cursor: 'pointer',
+            <button key={t.id} data-testid={`fane-${t.id}`} onClick={() => setActiveTab(t.id)} aria-current={aktiv ? 'page' : undefined} style={{
+              // AKTIV fane er tydelig MERKET (Espen-ønske): sterkere fyll, ramme,
+              // fetere skrift, løft-skygge og en teal topp-stripe — så den skiller
+              // seg ut MER enn fag-fargene. Fargesvak-trygt: forma (opphøyd, rammet,
+              // fet) + «● Aktiv»-teksten bærer info uten å være avhengig av farge.
+              background: aktiv ? 'rgba(0,212,170,0.18)' : 'transparent',
+              border: `1px solid ${aktiv ? 'rgba(0,212,170,0.75)' : 'transparent'}`,
+              borderBottom: 'none', borderRadius: '9px 9px 0 0',
+              padding: `${aktiv ? '0.62rem' : '0.6rem'} 1.2rem 0.7rem`,
+              color: aktiv ? '#8af0de' : '#64748b',
+              fontWeight: aktiv ? 800 : 600, fontSize: 14, cursor: 'pointer',
               fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s',
               flexShrink: 0, position: 'relative',
+              boxShadow: aktiv ? '0 -3px 16px rgba(0,212,170,0.3)' : 'none',
             }}>
+              {/* Teal «du er her»-stripe på toppen av den aktive fanen. */}
+              {aktiv && <span aria-hidden="true" style={{
+                position: 'absolute', left: 0, right: 0, top: 0, height: 3,
+                background: '#00d4aa', borderRadius: '9px 9px 0 0', pointerEvents: 'none',
+              }} />}
               {t.emoji} {t.label}
+              {aktiv && (
+                <span style={{
+                  marginLeft: 7, fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
+                  color: '#052e2b', background: '#2dd4bf', borderRadius: 99,
+                  padding: '1px 6px', verticalAlign: 'middle',
+                }}>● AKTIV</span>
+              )}
               {/* Fag-bokstavmerke (bærer fag-info UTEN farge — fargesvak-vennlig).
                   aria-hidden: rent VISUELT merke — skjermlesere skal lese fanens
                   rene navn («Produkter»), ikke «Produkter M». Fag-koblingen
@@ -158,7 +175,7 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
               {/* Diskret fag-stripe (venstre-til-høyre under fanen); tydeligere når aktiv.
                   aria-hidden: dekorativ (fargen speiler merket over). */}
               <span aria-hidden="true" style={{
-                position: 'absolute', left: 8, right: 8, bottom: 0, height: 3, borderRadius: 2,
+                position: 'absolute', left: 8, right: 8, bottom: 0, height: aktiv ? 4 : 3, borderRadius: 2,
                 background: fagFarge, opacity: aktiv ? 1 : 0.5, pointerEvents: 'none',
               }} />
             </button>
