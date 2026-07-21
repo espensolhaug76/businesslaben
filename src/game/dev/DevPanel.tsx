@@ -9,10 +9,12 @@
 // vises DEAKTIVERT med forklarende tekst — aldri skjult. Aldri kun farge:
 // hver knapp har alltid en tekstlabel.
 
+import { useState } from 'react'
 import { useGame, useErTemaAktivt, turistsesongInfo } from '../GameContext'
 import { useDevPanel, setDevPanel, toggleDevPanel } from './devPanel'
 import { STAMKUNDER_AKTIV } from '../data/featureFlags'
 import { FAG_KODER, FAG_META } from '../data/fag'
+import { SCENARIOS } from '../sales/scenarios'
 
 const FONT = "'Outfit', sans-serif"
 
@@ -40,6 +42,8 @@ export default function DevPanel({ onOpenSim, isInterior }: {
   // å spawne et stamkundemøte og teste gjenkjenningsflyten.
   const returnerendeId = Object.entries(state.stamkunder)
     .find(([, sk]) => (sk.utviklingstrinn ?? 0) >= 1 || sk.sisteUtfall === 'misfornoyd')?.[0]
+  // Direkte salgssituasjon-øving (flyttet fra dashbordets Oversikt-fane).
+  const [valgtScenario, setValgtScenario] = useState(SCENARIOS[0]?.id ?? 'morgenkunden')
 
   return (
     <div style={{ position: 'fixed', bottom: 20, left: 20, zIndex: 95, fontFamily: FONT }}>
@@ -195,6 +199,26 @@ export default function DevPanel({ onOpenSim, isInterior }: {
             <div style={hintStyle}>
               {isInterior ? 'Vises øverst til venstre i interiørscenen.' : 'Vises i interiørscenen (inne, bak disken).'}
             </div>
+            {/* Åpne et salgssituasjon-rollespill DIREKTE fra hvor som helst
+                (flyttet hit fra dashbordets Oversikt-fane). Isolert øving —
+                rører ikke dagens planlagte møter. */}
+            <select
+              value={valgtScenario}
+              onChange={e => setValgtScenario(e.target.value)}
+              style={selectStyle}
+            >
+              {SCENARIOS.map(s => (
+                <option key={s.id} value={s.id} style={{ background: '#0a0e1a', color: '#f1f5f9' }}>
+                  {s.customerName}
+                </option>
+              ))}
+            </select>
+            <DevBtn
+              label="🛎️ Åpne salgssituasjon"
+              color="#d8b4fe" bg="rgba(168,85,247,0.16)"
+              onClick={() => window.dispatchEvent(new CustomEvent('dev:openSalesScenario', { detail: { scenarioId: valgtScenario } }))}
+            />
+            <div style={hintStyle}>Tester salgssituasjon-motoren isolert (rører ikke dagens møter).</div>
           </Group>
 
           <Group title="Kalibrering">
@@ -307,6 +331,12 @@ const xStyle: React.CSSProperties = {
 }
 
 const hintStyle: React.CSSProperties = { fontSize: 10, color: '#64748b', margin: '1px 0 0 2px', lineHeight: 1.35 }
+
+const selectStyle: React.CSSProperties = {
+  width: '100%', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0',
+  border: '1px solid rgba(148,163,184,0.28)', borderRadius: 9,
+  padding: '0.45rem 0.5rem', fontSize: 12.5, fontFamily: FONT, cursor: 'pointer',
+}
 
 function pill(border: string, bg: string, color: string): React.CSSProperties {
   return {
