@@ -28,6 +28,7 @@ import MonterScene from './city/MonterScene'
 import LobbyView from './city/LobbyView'
 import { districtOfLokale } from '../data/districts'
 import { IS_DEV_COORDS } from './city/DevCoordHelper'
+import DevPanel from './dev/DevPanel'
 
 // ── BYBILDE-ARKITEKTUR ────────────────────────────────────────────────────────
 // /game er nå bildebasert: master-kart → bydel → lokale (URL-styrt).
@@ -65,7 +66,7 @@ function setOverlay(open: boolean) {
 }
 
 function GameContent() {
-  const { state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev } = useGame()
+  const { state, dispatch } = useGame()
   const navigate = useNavigate()
   const { districtId, lokaleId } = useParams<{ districtId?: string; lokaleId?: string }>()
   // Lokale-undernivåer via rute-suffiks: /inne = bak disken (kunde + salg),
@@ -214,7 +215,6 @@ function GameContent() {
     if (d) navigate(`/game/d/${d.id}/l/${id}`)
   }
 
-  const allPs = state.p1_complete && state.p2_complete && state.p3_complete && state.p4_complete
   const onMaster = !districtId
 
   return (
@@ -270,74 +270,17 @@ function GameContent() {
         </div>
       )}
 
-      {/* «Simuler måneden» (gammel PEST-månedssimulering) — DAGSSYKLUSEN eier nå
-          månedsrullen (START_NEW_DAY + månedsoppgjør), så denne er skjult bak
-          ?dev=1. SimulationModal/APPLY_MONTH_RESULT er urørt og gjenbrukes
-          senere som hendelser. */}
-      {IS_DEV_COORDS && allPs && state.rentedLocationId && !simOpen && !dashboardOpen && (
-        <div style={{
-          position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 92, fontFamily: "'Outfit', sans-serif",
-          display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center',
-        }}>
-          {/* TEMA 15 dev: start/spol turistsesong for testing/demonstrasjon. */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => dispatch({ type: 'START_TURISTSESONG' })}
-              style={{ background: 'rgba(56,189,248,0.18)', border: '1px solid rgba(56,189,248,0.5)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#7dd3fc', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-              ⏩ Start turistsesong nå
-            </button>
-            <button onClick={() => dispatch({ type: 'DEV_SPOL_TURISTSESONG_SLUTT' })}
-              style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.35)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#7dd3fc', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-              ⏩ Spol til sesongslutt
-            </button>
-          </div>
-          {/* KROK 7 dev: send test-e-poster + tving frister/leveranser til forfall. */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => dispatch({ type: 'DEV_SEND_TEST_EPOSTER' })}
-              style={{ background: 'rgba(168,85,247,0.18)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#d8b4fe', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-              ⏩ Send test-e-post av hver type
-            </button>
-            <button onClick={() => dispatch({ type: 'DEV_SPOL_TIL_FRIST' })}
-              style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.35)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#d8b4fe', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-              ⏩ Spol til frist
-            </button>
-          </div>
-          {/* DEL 0 dev: overstyr globalt klassenivå lokalt (VINNER over RTDB). */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700 }}>
-              Nivå: {klasseNivaa.toUpperCase()}{klasseNivaaDev ? ' (DEV)' : ''}
-            </span>
-            {(['vg1', 'vg2'] as const).map(n => (
-              <button key={n} onClick={() => setKlasseNivaaDev(klasseNivaaDev === n ? null : n)}
-                style={{ background: klasseNivaaDev === n ? 'rgba(250,204,21,0.25)' : 'rgba(250,204,21,0.08)', border: `1px solid ${klasseNivaaDev === n ? '#facc15' : 'rgba(250,204,21,0.35)'}`, borderRadius: 99, padding: '0.4rem 0.9rem', color: '#fde68a', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {n.toUpperCase()} <span style={{ opacity: 0.7 }}>DEV</span>
-              </button>
-            ))}
-          </div>
-          {/* KROK 6/2 dev: still neste spørsmål + gjør siste møtte kunde til stamkunde. */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => dispatch({ type: 'STILL_ESPEN_SPOR', nivaa: klasseNivaa, aktiveTemaIds: Object.entries(aktiveTemaer).filter(([, v]) => v?.aktiv).map(([k]) => k), dev: true })}
-              style={{ background: 'rgba(168,85,247,0.18)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#d8b4fe', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-              🎓 Still neste spørsmål nå
-            </button>
-            <button onClick={() => dispatch({ type: 'DEV_GJOR_STAMKUNDE' })}
-              style={{ background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.45)', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#5eead4', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-              👋 Gjør siste kunde til stamkunde
-            </button>
-          </div>
-          <button
-            onClick={() => { setSimOpen(true); setOverlay(true) }}
-            title="Dev: gammel PEST-månedssimulering (dagssyklusen eier månedsrullen)"
-            style={{
-              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-              border: 'none', borderRadius: 99, padding: '0.9rem 2.5rem',
-              color: '#fff', fontWeight: 800, fontSize: 16, cursor: 'pointer',
-              fontFamily: 'inherit', boxShadow: '0 0 24px rgba(34,197,94,0.4)',
-            }}
-          >
-            ▶ Simuler måneden <span style={{ fontSize: 12, opacity: 0.85 }}>(dev)</span>
-          </button>
-        </div>
+      {/* SAMLET DEV-PANEL (⚙) — én fast knapp nede til venstre på ALLE ruter når
+          ?dev=1. Alle de tidligere spredte dev-knappene (turistsesong, innboks,
+          nivå, «Espen spør», stamkunde, «Simuler måneden») bor nå her, gruppert.
+          Kalibrerings-/tracer-verktøyene og scenariovelgeren FLYTTES ikke — panelet
+          toggler bare synligheten deres (devPanel.ts). «Simuler måneden» er den
+          gamle PEST-månedssimuleringen (dagssyklusen eier månedsrullen). */}
+      {IS_DEV_COORDS && (
+        <DevPanel
+          onOpenSim={() => { setSimOpen(true); setOverlay(true) }}
+          isInterior={isInterior}
+        />
       )}
 
       <SimulationModal open={simOpen} onClose={closeSim} />

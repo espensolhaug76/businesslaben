@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGame } from '../GameContext'
+import { useDevPanel } from '../dev/devPanel'
 import { getDistrict, getLokale, STOREFRONT_HOTSPOTS, STOREFRONT_DISPLAY_ZONES, spriteForProduct } from '../../data/districts'
 import type { Product } from '../types'
 import { BackButton } from './DistrictView'
@@ -45,6 +46,9 @@ export default function StorefrontView({
 }) {
   const navigate = useNavigate()
   const { state } = useGame()
+  // Kalibrering vises kun når dev-panelet slår den PÅ (⚙ → «Kalibrering»).
+  // useDevPanel() kalles ubetinget (før IS_DEV_COORDS) — rules-of-hooks.
+  const visKal = useDevPanel().kalibrering && IS_DEV_COORDS
   const [hover, setHover] = useState<string | null>(null)
   const [imgFailed, setImgFailed] = useState(false)
   // Re-render når ZoneTracer skriver nye sone-verdier i runtime (?dev=1).
@@ -219,7 +223,7 @@ export default function StorefrontView({
 
         {/* ?dev=1: SONE-TRACING — dra rektangler, «Bruk» skriver sonene
             live (ZoneTracer tegner også alle eksisterende soner) */}
-        {IS_DEV_COORDS && <ZoneTracer onApply={() => setZoneRev(r => r + 1)} />}
+        {visKal && <ZoneTracer onApply={() => setZoneRev(r => r + 1)} />}
 
         {/* Hotspots (kun eget lokale) */}
         {mine && HOTSPOTS.map(h => {

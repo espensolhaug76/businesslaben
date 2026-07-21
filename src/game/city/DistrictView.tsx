@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGame, useAktiveTemaer } from '../GameContext'
+import { useDevPanel } from '../dev/devPanel'
 import { getDistrict, KUNDESKALA, KUNDESTIER, LOKALER, NO_GO, STASJON_REISELIV_HOTSPOTS, lokaleRent, type District, type Lokale } from '../../data/districts'
 import CustomerFlow from './CustomerFlow'
 import DevCoordHelper, { IS_DEV_COORDS } from './DevCoordHelper'
@@ -33,6 +34,8 @@ export default function DistrictView({
 }) {
   const navigate = useNavigate()
   const { state } = useGame()
+  // Sone-/rute-tracer vises kun når dev-panelet slår kalibrering PÅ.
+  const visKal = useDevPanel().kalibrering && IS_DEV_COORDS
   const aktiveTemaer = useAktiveTemaer()
   const district = getDistrict(districtId)
   const reduced = useReducedMotion()
@@ -86,7 +89,7 @@ export default function DistrictView({
             boks over bygget → «Bruk siste på: turistkontor / byhotell» skriver
             den inn live og logger verdien for innliming i districts.ts. Andre
             bydeler beholder rute-traceren (stier/no-go/kalibrering). */}
-        {IS_DEV_COORDS && district.id === 'stasjonsomradet' && (
+        {visKal && district.id === 'stasjonsomradet' && (
           <ZoneTracer
             onApply={() => setRev(r => r + 1)}
             targets={[
@@ -99,7 +102,7 @@ export default function DistrictView({
             ] satisfies DrawZone[]}
           />
         )}
-        {IS_DEV_COORDS && district.id !== 'stasjonsomradet' && (
+        {visKal && district.id !== 'stasjonsomradet' && (
           <DevCoordHelper
             paths={KUNDESTIER[district.id]}
             zones={NO_GO[district.id]}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGame, turistsesongInfo, aktivBesoksprofil } from '../GameContext'
+import { useDevPanel } from '../dev/devPanel'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import { getScenario } from '../sales/scenarios'
@@ -24,6 +25,8 @@ const WAIST_FRAC = 0.46   // sprite forankres på livet (samme som kassevyen)
 export default function TuristkontorScene({ districtId }: { districtId: string }) {
   const navigate = useNavigate()
   const { state, dispatch } = useGame()
+  // Gjest-kalibreringspanelet vises kun når dev-panelet slår kalibrering PÅ.
+  const visKal = useDevPanel().kalibrering && IS_DEV_COORDS
   const sesong = turistsesongInfo(state)
   const igjen = sesong?.aktiv ? Math.max(0, sesong.varighet - sesong.dag + 1) : 0
 
@@ -211,7 +214,7 @@ export default function TuristkontorScene({ districtId }: { districtId: string }
       {/* ?dev=1: kalibrer gjest-sprite + SKRÅ forgrunnslinje (occ.L/occ.R).
           Verdiene logges for innliming i districts.ts (TURISTKONTOR_GJEST_CAL /
           TURISTKONTOR_OCCLUDE). */}
-      {IS_DEV_COORDS && (
+      {visKal && (
         <div style={{
           position: 'fixed', top: 64, right: 16, zIndex: 300, width: 210,
           display: 'flex', flexDirection: 'column', gap: 6,

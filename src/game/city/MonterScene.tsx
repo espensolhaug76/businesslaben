@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { MonterTrau } from '../../data/districts'
 import { useGame } from '../GameContext'
+import { useDevPanel } from '../dev/devPanel'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
 import { DAY_CONFIG } from '../data/dayConfig'
 import { BackButton } from './DistrictView'
@@ -106,6 +107,8 @@ export default function MonterScene({ districtId, lokaleId }: {
 }) {
   const navigate = useNavigate()
   const { state, dispatch } = useGame()
+  // Trau-tracer + «nytt trau» vises kun når dev-panelet slår kalibrering PÅ.
+  const visKal = useDevPanel().kalibrering && IS_DEV_COORDS
   const stageRef = useRef<HTMLDivElement>(null)
 
   // LÆRINGSLAGET: kontekstuell mentor-trigger — disk-/monterflaten åpnet for styling.
@@ -372,14 +375,14 @@ export default function MonterScene({ districtId, lokaleId }: {
         })}
 
         {/* ?dev=1: sone-tracer med TRAU-mål (logger per trau til konsoll). */}
-        {IS_DEV_COORDS && (
+        {visKal && (
           <ZoneTracer onApply={() => setRev(r => r + 1)} targets={trauTargets(allTrau)} drawZones={trauDrawZones(allTrau)} />
         )}
       </div>
 
       {/* ?dev=1: legg til flere trau enn de faste (navngis trau-N fortløpende) —
           plasseres med sone-traceren over, lim resultatet inn i MONTER_TRAU. */}
-      {IS_DEV_COORDS && (
+      {visKal && (
         <div style={{ position: 'fixed', top: 64, right: 226, zIndex: 300 }}>
           <button
             onClick={addDevTrau}
@@ -534,7 +537,7 @@ export default function MonterScene({ districtId, lokaleId }: {
         borderRadius: 12, padding: '0.35rem 0.9rem', color: '#f1f5f9', zIndex: 80,
         fontSize: 12, whiteSpace: 'nowrap',
       }}>
-        🧁 Disk-monter{IS_DEV_COORDS ? ' · trau-tracer aktiv' : ''}
+        🧁 Disk-monter{visKal ? ' · trau-tracer aktiv' : ''}
       </div>
     </div>
   )

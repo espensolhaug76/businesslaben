@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DISTRICTS, ROADS, polygonCentroid, districtOfLokale } from '../../data/districts'
 import { useGame } from '../GameContext'
+import { useDevPanel } from '../dev/devPanel'
 import AmbientLayer from './AmbientLayer'
 import TrafficLayer from './TrafficLayer'
 import DevCoordHelper, { IS_DEV_COORDS } from './DevCoordHelper'
@@ -29,6 +30,8 @@ function stageSize(vp: Viewport) {
 export default function CityMapView() {
   const navigate = useNavigate()
   const { state } = useGame()
+  // Rute-tracer vises kun når dev-panelet slår kalibrering PÅ (⚙ → «Kalibrering»).
+  const visKal = useDevPanel().kalibrering && IS_DEV_COORDS
   // LÆRINGSLAGET: kontekstuell mentor-trigger — bykartet åpnet (lokasjon/beliggenhet).
   useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_bykart' } })) }, [])
   const [vp, setVp] = useState<Viewport>({ w: window.innerWidth, h: window.innerHeight })
@@ -152,7 +155,7 @@ export default function CityMapView() {
         </svg>
         {/* ?dev=1: rute-tracer for kalibrering av SMOKESTACKS/ROADS/polygons
             — eksisterende bilruter vises som overlay */}
-        {IS_DEV_COORDS && <DevCoordHelper paths={ROADS.map(r => r.points)} />}
+        {visKal && <DevCoordHelper paths={ROADS.map(r => r.points)} />}
         {/* Pin på bydelen der spilleren leier — myk puls (DEL 2) */}
         {rentedDistrict && (() => {
           const [cx, cy] = polygonCentroid(rentedDistrict.polygon)

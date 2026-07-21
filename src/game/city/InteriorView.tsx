@@ -4,6 +4,7 @@ import { INTERIOR_CUSTOMER_SPAWN, INTERIOR_CUSTOMER_STAND, INTERIOR_AMBIENT_TURI
 import { getScenario, SCENARIOS, FASHION_SCENARIOS } from '../sales/scenarios'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
+import { useDevPanel } from '../dev/devPanel'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
 import { tileCount, trauCols } from './MonterScene'
 import { useGame, turistsesongInfo } from '../GameContext'
@@ -125,6 +126,12 @@ export default function InteriorView({ districtId, lokaleId }: {
 }) {
   const navigate = useNavigate()
   const { state, dispatch } = useGame()
+  // Dev-panelets synlighetsflagg (⚙): «Kalibrering» viser tracer-/kalibrerings-
+  // panelene, «Scenarier» viser scenariovelgeren. useDevPanel() kalles ubetinget
+  // (før IS_DEV_COORDS) — rules-of-hooks.
+  const _dp = useDevPanel()
+  const visKal = _dp.kalibrering && IS_DEV_COORDS
+  const visScen = _dp.scenariovelger && IS_DEV_COORDS
   // SPILLKLOKKE: kunden i scenen er nå STYRT AV KLOKKA. Når et planlagt
   // kundemøte forfaller setter reduceren (TICK) state.activeMeetingScenarioId;
   // vi slår opp scenariet og viser kunden. Når møtet er løst/hoppet over
@@ -739,7 +746,7 @@ export default function InteriorView({ districtId, lokaleId }: {
 
         {/* ?dev=1: sone-tracer (samme verktøy som fasaden), merket
             spawn/stand/speil-N. */}
-        {IS_DEV_COORDS && !imgFailed && (
+        {visKal && !imgFailed && (
           <ZoneTracer
             onApply={() => setRev(r => r + 1)}
             targets={interiorTargets(mirrorTrau)}
@@ -751,12 +758,12 @@ export default function InteriorView({ districtId, lokaleId }: {
       {/* ?dev=1: scenariovelger — start hvilket som helst salgsscenario
           umiddelbart i den EKTE overlay-flyten (samme dispatch som et planlagt
           møte). Klokka pauser (salesOpen), poolen røres ikke. */}
-      {IS_DEV_COORDS && <DevScenarioPicker onPreview={setDevPreviewId} previewId={devPreviewId} />}
+      {visScen && <DevScenarioPicker onPreview={setDevPreviewId} previewId={devPreviewId} />}
 
       {/* ?dev=1: legg til flere speil-soner enn de faste (navngis speil-N
           fortløpende) — plasseres med sone-traceren over, lim resultatet inn
           i INTERIOR_MIRROR_TRAU. */}
-      {IS_DEV_COORDS && (
+      {visKal && (
         <div style={{ position: 'fixed', top: 64, right: 226, zIndex: 300 }}>
           <button
             onClick={addDevMirrorTrau}
@@ -774,7 +781,7 @@ export default function InteriorView({ districtId, lokaleId }: {
           øverst til HØYRE (under sone-tracer, som slutter på y≈302 målt live —
           ikke øverst til venstre lenger, det lå rett oppå glassmonteret med
           varene panelet skal kalibrere mot). */}
-      {IS_DEV_COORDS && (
+      {visKal && (
         <div style={{ position: 'fixed', top: 320, right: 16, zIndex: 90, width: 224 }}>
           <CalPanel title="🎚️ Kunde-kalibrering" color="#7dd3fc" open={kundeOpen} onToggle={() => setKundeOpen(o => !o)}>
             {/* SCALE/CENTER_X/WAIST_Y gjelder DEN VISTE kunden: vises en kunde
@@ -812,7 +819,7 @@ export default function InteriorView({ districtId, lokaleId }: {
           (samme top, right forskjøvet) i stedet for stablet under — unngår
           at panelenes (varierende) høyde kolliderer med hverandre, og holder
           begge unna glassmonteret med varene til venstre. */}
-      {IS_DEV_COORDS && (() => {
+      {visKal && (() => {
         const m = mirrorTrau.find(x => x.id === calMirrorId)
         return (
           <div style={{ position: 'fixed', top: 320, right: 256, zIndex: 90, width: 224 }}>
@@ -851,7 +858,7 @@ export default function InteriorView({ districtId, lokaleId }: {
       {/* TAVLE-KALIBRERING (kun ?dev=1) — vinkling/skala for drikkemeny-
           teksten på tavla. Plassert ved siden av speil-panelet (samme top,
           right forskjøvet enda et hakk), samme mutér-og-logg-mønster. */}
-      {IS_DEV_COORDS && (
+      {visKal && (
         <div style={{ position: 'fixed', top: 320, right: 496, zIndex: 90, width: 224 }}>
           <CalPanel title="📋 Tavle-kalibrering" color="#fbbf24" open={tavleOpen} onToggle={() => setTavleOpen(o => !o)}>
             <CalSlider label="menuTiltY (sidelengs)" value={menuTiltY} min={-60} max={60} step={1}
@@ -877,7 +884,7 @@ export default function InteriorView({ districtId, lokaleId }: {
         fontSize: 13, whiteSpace: 'nowrap',
       }}>
         🪑 Interiør · {state.shopOpen ? '🔓 Åpent' : '🔒 Stengt'}
-        {IS_DEV_COORDS ? ' · kalibrering aktiv (panel øverst høyre)' : ''}
+        {visKal ? ' · kalibrering aktiv (panel øverst høyre)' : ''}
       </div>
     </div>
   )

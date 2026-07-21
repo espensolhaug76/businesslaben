@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import { useGame } from '../GameContext'
+import { useDevPanel } from '../dev/devPanel'
 import { erTuristsesong, velgAmbientTurister, lobbySeed, AMBIENT_TURIST_SPRITER } from './lobbyAmbient'
 import HotellAvtalerOverlay from './HotellAvtalerOverlay'
 import HotellGjestOverlay from './HotellGjestOverlay'
@@ -74,6 +75,9 @@ const GJEST_SLOTS = [
 export default function LobbyView({ districtId }: { districtId: string }) {
   const navigate = useNavigate()
   const { state } = useGame()
+  // Lobby-dev-verktøy (gjest-velger, møtepunkt-markør, kalibreringspanel) vises
+  // kun når dev-panelet slår kalibrering PÅ (⚙ → «Kalibrering»).
+  const visKal = useDevPanel().kalibrering && IS_DEV_COORDS
   const [imgFailed, setImgFailed] = useState(false)
   const [senterFeil, setSenterFeil] = useState<Record<string, boolean>>({}) // gjest-sprite 404 (per id)
   const [hover, setHover] = useState(false)
@@ -157,7 +161,7 @@ export default function LobbyView({ districtId }: { districtId: string }) {
         </button>
         {/* ?dev=1: start et BESTEMT scenario (omgår sesong-gating) — for test +
             demo før reiseliv/turistsesong finnes på main. */}
-        {IS_DEV_COORDS && (
+        {visKal && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxWidth: 300 }}>
             {GJESTESCENARIER.map(s => (
               <button key={s.id} data-testid={`gjest-${s.id}`} onClick={() => setGjestId(s.id)}
@@ -265,7 +269,7 @@ export default function LobbyView({ districtId }: { districtId: string }) {
 
         {/* ?dev=1: møtepunkt-markør (over forgrunnslaget) — viser forankrings-
             punktet (senter-x, anchor-y) så Espen ser hvor sjefen står. */}
-        {IS_DEV_COORDS && (
+        {visKal && (
           <div style={{
             position: 'absolute', left: `${centerX}%`, top: `${anchorY}%`, transform: 'translate(-50%,-50%)',
             width: 14, height: 14, borderRadius: '50%', background: '#c084fc', border: '2px solid #0f172a',
@@ -275,7 +279,7 @@ export default function LobbyView({ districtId }: { districtId: string }) {
       </div>
 
       {/* ?dev=1: kalibreringspanel — samme mutér-og-logg-mønster som InteriorView. */}
-      {IS_DEV_COORDS && (
+      {visKal && (
         <div style={{ position: 'fixed', top: 64, right: 16, zIndex: 90, width: 236 }}>
           <div style={{ background: 'rgba(10,14,26,0.94)', border: '1px solid #c084fc55', borderRadius: 12, padding: '10px 12px' }}>
             <div style={{ color: '#c084fc', fontSize: 12, fontWeight: 800, marginBottom: 8 }}>🏨 Lobby-kalibrering</div>
@@ -317,7 +321,7 @@ export default function LobbyView({ districtId }: { districtId: string }) {
         background: 'rgba(10,14,26,0.85)', border: '1px solid rgba(255,255,255,0.12)',
         borderRadius: 12, padding: '0.4rem 1rem', color: '#f1f5f9', zIndex: 80, fontSize: 13, whiteSpace: 'nowrap',
       }}>
-        🏨 Byhotellet — lobby (vertskapsscene){IS_DEV_COORDS ? ' · kalibrering aktiv (panel øverst høyre)' : ''}
+        🏨 Byhotellet — lobby (vertskapsscene){visKal ? ' · kalibrering aktiv (panel øverst høyre)' : ''}
       </div>
 
       {/* «Hotellets avtaler» — leseinnsikt i byens ferdigforhandlede satser. */}
