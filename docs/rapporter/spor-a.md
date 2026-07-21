@@ -2606,3 +2606,61 @@ overstyring, ingen klassekode nødvendig. Klikk **⚙ DEV** nede til venstre:
    med samme klassekode ser effekten live (faner av/på, spørsmål av/på).
 
 Push. IKKE merge (venter på Espens Chrome-validering).
+
+---
+
+## TILLEGG — Turistsesong parkert + datavakt på dynamiske triggere (fikserunde 3+, 2026-07-21)
+
+### 1. Turistsesong parkert (TURISTSESONG_AKTIV)
+- **Hvor flagget bor:** `src/game/data/featureFlags.ts` → `TURISTSESONG_AKTIV = false`
+  (samme mønster som `STAMKUNDER_AKTIV`). Tema 15 venter på ferdig innhold. Koden
+  beholdes (turistsesong-state, turist-scenarier, turistkontor/byhotell-scener,
+  pakkebygger) — kun gated:
+  - `START_TURISTSESONG` er no-op når av; auto-starten ved reiseliv-tema-
+    aktivering (GameContext-effekten) gates også → ingen sesong kan starte.
+  - ⚙-panelet: «Start turistsesong nå» / «Spol til sesongslutt» deaktivert med
+    «Parkert — venter på Tema 15-innhold».
+  - Mentor: de sesong-relaterte triggerne armes ikke — `turistsesong_slutt`,
+    `hotellavtale_svart`, `pakke_bygget`, og `tema_reiseliv_aktivert` (som lover
+    turister i strømmen).
+
+### 2. Datavakt på dynamiske mentor-triggere (ny global regel)
+Regel: en DYNAMISK trigger som leser elevens egne tall skal ALDRI fyre på tomt
+grunnlag (0 kunder, tom liste, manglende node). Gikk gjennom ALLE dynamiske
+triggere i `Mentor.tsx` (`oppfylt()` + prisings-effekten) og dokumenterte
+minstedata-vilkåret i en kommentar per trigger. `dynamiskMentorMelding` returnerer
+i tillegg `undefined` ved manglende grunnlag (belte + bukseseler), men vakta i
+`oppfylt()` hindrer at triggeren i det hele tatt merkes «fyrt».
+
+Innstramminger der vakten manglet/var for svak:
+- **`turistsesong_slutt`** (referansecaset): krever minst **1 tilreisende kunde**
+  (`turistKunder ≥ 1`) — ikke bare at sesongen har hatt bakgrunnskunder. (I praksis
+  også parkert av TURISTSESONG_AKTIV nå.)
+- **`beredskap_risiko_levert`**: krever nå at skjemaet er lagret OG minst **ETT
+  tiltak** er fylt inn. (Fare-kolonnen er forhåndsutfylt, så den duger ikke som
+  «har jobbet med skjemaet»-signal.)
+
+Øvrige dynamiske triggere hadde allerede tilstrekkelig vakt (`> 0` / present /
+ikke-tom liste), nå eksplisitt dokumentert: `forste_epost_frist`, `stamkunde_forste`,
+`forste_svinn/tomt_trau/ko`, `beredskap_brannalarm_handtert`,
+`beredskap_ovelse_etter_feil`, `budsjett_avvik_storst`,
+`nokkeltall_dekningsgrad_avvik`, `kampanje_effekt`, `kampanje_forpris_brudd`,
+`hotellavtale_svart`, `pakke_bygget`, samt prisings-triggerne (`mangler_pris_*`,
+`overpris|<vare>`).
+
+### 3. Spilltest (30/30 PASS)
+- **29:** TURISTSESONG_AKTIV=false → `START_TURISTSESONG` no-op (turistsesong=null),
+  sesong-trigger armes ikke (via den eksponerte, rene trigger-vakta), ⚙-knappen
+  «Start turistsesong nå» grå med «Parkert»-forklaring.
+- **30:** datavakt — `beredskap_risiko_levert` fyrer IKKE på tomt/ulagret grunnlag,
+  men fyrer med ≥ 1 utfylt tiltak (ren `oppfylt`-fasit, kjørt i nettleseren via
+  `window.__OPPFYLT__` under DEV).
+
+### Chrome-sjekkliste — TILLEGG
+Etter ⚙- og lærerpanel-flyten (over):
+- **Turistsesong:** ⚙ → Tema → «Start turistsesong nå» og «Spol til sesongslutt»
+  er GRÅ med «Parkert — venter på Tema 15-innhold». Aktiver reiseliv-temaet i
+  lærerpanelet → INGEN turistsesong starter, og mentoren sier ingenting om turister.
+- **Datavakt:** en dynamisk mentor-melding skal aldri dukke opp på tomt grunnlag —
+  f.eks. lagre en tom risikovurdering (uten tiltak) i HMS-fanen → mentoren
+  kommenterer den IKKE; fyll inn minst ett tiltak og lagre → da kommer refleksjonen.

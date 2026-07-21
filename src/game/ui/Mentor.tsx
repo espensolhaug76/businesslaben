@@ -261,6 +261,12 @@ function renderMelding(melding: string): ReactNode {
 
 export default function Mentor({ blocked }: { blocked: boolean }) {
   const { state, aktiveTemaer, dispatch, klasseNivaa, espenSporStyring, fagAktiv } = useGame()
+  // TEST-BRO (KUN DEV): eksponer den rene trigger-vakta så spilltesten kan
+  // asserte at en dynamisk trigger IKKE fyrer på tomt grunnlag (datavakt).
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    ;(window as unknown as { __OPPFYLT__?: unknown }).__OPPFYLT__ = oppfylt
+  }, [])
   const [fired, setFired] = useState<Set<string>>(loadFired)
   const [queue, setQueue] = useState<string[]>([])          // HENDELSES-kø (peker/kø)
   // KROK 6 — «Espen spør»: er det aktive spørsmålet avslørt (eleven klikket)?

@@ -17,7 +17,7 @@ import { beregnPakke, velgProfil, EGEN_KAFE_ID, velgTuristkontorScenario, velgBy
 import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS, CAFE_SCENARIO_IDS } from '../../src/game/sales/scenarios'
 import { bestillingBetaling, tilbudsprisPerEnhet, leverandorNettoBesparelse, epostAbsDag, type KundebestillingPayload, type LeverandortilbudPayload } from '../../src/game/data/innboksEpost'
 import { finnKandidater, fagForSporsmal } from '../../src/game/data/espenSporsmal'
-import { STAMKUNDER_AKTIV } from '../../src/game/data/featureFlags'
+import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from '../../src/game/data/featureFlags'
 import type { InboxMessage, GameState } from '../../src/game/types'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
@@ -645,6 +645,10 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
 
   // ── STEG 15 — TEMA 15 Reiseliv: turistsesong (andel + trafikkløft) + hotellavtale ─
   await steg(page, rapport, 15, 'Reiseliv: turistsesong i kaféen er kun økonomisk (trafikkløft + varevekt, INGEN turist-scenarier i pool) + byhotell-avtale gir riktig effekt ved aksept', async ctx => {
+    // TURISTSESONG PARKERT (TURISTSESONG_AKTIV=false): sesongen kan ikke starte, så
+    // sesong-økonomien kan ikke testes. Steget bevares for når Tema 15 gjenåpnes.
+    // Rydder localStorage (som det fulle steget gjorde) så neste steg booter rent.
+    if (!TURISTSESONG_AKTIV) { await ryddLocalStorage(page); ctx.ok('Turistsesong PARKERT — sesong-økonomitesten hoppes over til Tema 15 gjenåpnes'); return }
     const T = BALANCE.turistsesong
     // Hermetisk: frisk boot + sentrum-l2 + priset lager + ett trau.
     await page.goto('/game?skip=1')
@@ -716,6 +720,9 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
 
   // ── STEG 16 — TEMA 15 DEL 7 Pakkebyggeren (reiselivsprodukt) ────────────────
   await steg(page, rapport, 16, 'Pakkebyggeren (treff == beregnPakke-fasit + kafé-trafikk) + reiselivs-inngangene (turistkontor/byhotell velger scenario + åpner dialogkort)', async ctx => {
+    // TURISTSESONG PARKERT: pakkebyggeren/sesong-inngangene krever en aktiv sesong.
+    // Rydder localStorage (som det fulle steget gjorde) så neste steg booter rent.
+    if (!TURISTSESONG_AKTIV) { await ryddLocalStorage(page); ctx.ok('Turistsesong PARKERT — pakkebygger/sesong-inngang hoppes over til Tema 15 gjenåpnes'); return }
     const T = BALANCE.turistsesong
     // Hermetisk boot + sentrum-l2 (basetrafikk 150) + priset lager + kaffe i trau
     // (holdbar → eksponering identisk baseline↔sesong, som i steg 15). VIKTIG:
@@ -1270,6 +1277,53 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(kandM.length, 'M-pool har spørsmål').toBeGreaterThan(0)
     expect(kandM.every(q => fagForSporsmal(q) === 'm'), 'aktiveFag=[m] ⇒ kun m-taggede').toBe(true)
     ctx.ok(`Av default: 0 auto-spørsmål over 4 dager. Fagfilter: ${kandFd.length} fd-spm (alle fd), M-pool alle m-tagget`)
+  })
+
+  // ── TURISTSESONG PARKERT + DATAVAKT (TILLEGG) — steg 29–30 ──────────────────
+  await steg(page, rapport, 29, 'Turistsesong PARKERT: sesong kan ikke starte, ⚙-knapper grå, sesong-trigger armes ikke', async ctx => {
+    await page.goto('/game?skip=1&dev=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot steg 29')
+    await page.waitForFunction(() => !!(window as unknown as { __OPPFYLT__?: unknown }).__OPPFYLT__, null, { timeout: 8000 })
+    expect(TURISTSESONG_AKTIV, 'sesongen er parkert bak av-flagg').toBe(false)
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    // Legg åpningsbestilling så OpeningOrderOverlay lukkes (ellers fanger den ⚙-klikk).
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 100 }] })
+    await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager')
+    // START_TURISTSESONG er no-op → ingen sesong.
+    await dispatch(page, { type: 'START_TURISTSESONG' })
+    expect((await lesFull()).turistsesong, 'sesongen kan ikke starte (parkert)').toBeNull()
+    // Sesong-trigger armes aldri (via den eksponerte trigger-vakta).
+    const sesongFyrer = await page.evaluate(() => (window as unknown as { __OPPFYLT__: (id: string, s: unknown) => boolean }).__OPPFYLT__('turistsesong_slutt', (window as unknown as { __GAME_STATE__: unknown }).__GAME_STATE__))
+    expect(sesongFyrer, 'sesong-trigger armes ikke når parkert').toBe(false)
+    // ⚙-knappen «Start turistsesong nå» er grå med «Parkert»-forklaring.
+    await page.getByRole('button', { name: /⚙ DEV/ }).click()
+    await expect(page.getByRole('button', { name: /Start turistsesong nå/ }), 'sesongknapp deaktivert').toBeDisabled()
+    await expect(page.getByText(/Parkert — venter på Tema 15-innhold/).first(), '«Parkert»-forklaring vises').toBeVisible()
+    ctx.ok('Parkert: START_TURISTSESONG no-op (turistsesong=null), sesong-trigger armes ikke, ⚙-knapp grå «Parkert»')
+  })
+
+  await steg(page, rapport, 30, 'Datavakt: dynamisk trigger fyrer IKKE på tomt grunnlag (beredskap_risiko_levert)', async ctx => {
+    await page.goto('/game?skip=1&dev=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot steg 30')
+    await page.waitForFunction(() => !!(window as unknown as { __OPPFYLT__?: unknown }).__OPPFYLT__, null, { timeout: 8000 })
+    // Kjør den rene trigger-vakta i nettleseren mot håndlagde grunnlag.
+    const res = await page.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const st: any = (window as any).__GAME_STATE__
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const opp = (window as any).__OPPFYLT__ as (id: string, s: any) => boolean
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const medTiltak = (t: (i: number) => string) => ({ ...st, beredskap: { ...st.beredskap, risikoLagret: true, risikoRader: st.beredskap.risikoRader.map((r: any, i: number) => ({ ...r, tiltak: t(i) })) } })
+      return {
+        tomt: opp('beredskap_risiko_levert', medTiltak(() => '')),
+        ulagret: opp('beredskap_risiko_levert', { ...st, beredskap: { ...st.beredskap, risikoLagret: false } }),
+        fylt: opp('beredskap_risiko_levert', medTiltak(i => (i === 0 ? 'Sikre kassen' : ''))),
+      }
+    })
+    expect(res.tomt, 'lagret skjema UTEN tiltak → fyrer ikke (tomt grunnlag)').toBe(false)
+    expect(res.ulagret, 'ikke lagret → fyrer ikke').toBe(false)
+    expect(res.fylt, 'lagret + minst ett tiltak → fyrer').toBe(true)
+    ctx.ok('Datavakt (beredskap_risiko_levert): tomt/ulagret grunnlag → fyrer ikke; ≥1 tiltak → fyrer')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
