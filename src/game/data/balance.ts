@@ -214,6 +214,9 @@ export const BALANCE = {
     roligDagKunder: 25,
     /** Mikro-animasjon: leveranse-eska glir inn ved dagstart (ms). */
     leveranseAnimMs: 1000,
+    /** «Ferske varer klare»-toasten lukkes automatisk etter så mange ms etter at
+     *  den faktisk VISES (kø-disiplin: teller ikke mens den er skjult bak et møte). */
+    leveranseToastMs: 9000,
     /** 💚-fornøyd-kunde-badgen i dagspulsen vises i så mange SPILLMINUTTER etter
      *  et fornøyd kundemøte (fader naturlig når klokka går videre). */
     fornoydBadgeMinutt: 30,

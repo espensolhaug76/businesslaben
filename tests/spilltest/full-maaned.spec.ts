@@ -1461,6 +1461,68 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`Utstilte-only: tom disk 0 salg/0 tap (kunder teller); ikke-utstilt croissant aldri solgt/tapt; tapte-kort summerer (${s.dayStats.tapteSalgStk} tomt · ${s.dayStats.manglerPrisStk} pris · ${s.dayStats.overprisStk} dyr = ${sum})`)
   })
 
+  await steg(page, rapport, 33, 'Dagspuls: «siste salg»-logg ruller (maks 10, ikke tømt av tick uten salg) + leverings-toast venter på kundemøte', async ctx => {
+    // (A) RULLERENDE «siste salg»-logg (dayStats.sisteSalgLogg).
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 33A')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 500 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager (A)')
+    // FULL produktobjekter (lesFull) — ikke harness-subsettet — så SET_PRODUCTS ikke
+    // stripper felt bakgrunnssalget trenger.
+    const prods = (await lesFull()).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: p.markedsPris } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'coffee' }] })
+    await åpneDashbord()   // pause auto-klokka (deterministisk)
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen (A)')
+    let s = await lesState(page), nn = 0
+    while (s.dayStats.sisteSalgLogg.length < 10 && s.dayMinute < 460 && nn < 800) {
+      if (s.activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
+      else await dispatchN(page, { type: 'TICK' }, 10)
+      s = await lesState(page); nn += 10
+    }
+    expect(s.dayStats.sisteSalgLogg.length, 'loggen fyller opp til taket (10)').toBe(10)
+    // Fjern alt fra disken → ingen utstilt vare → bakgrunnssalget kan ikke selge
+    // (verifiserer også vareeksponering-koblingen fra forrige fiks).
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [] })
+    await ventState(page, s => (s as unknown as { counterLayout: unknown[] }).counterLayout.length === 0, 'disk tømt')
+    // Sett-le: noen ticks uten salg så loggen har konvergert (test-broen
+    // window.__GAME_STATE__ ligger ett render-steg bak reduceren). Deretter er
+    // loggen frosset (ingen salg mulig) → snapshot som fasit.
+    await dispatchN(page, { type: 'TICK' }, 5)
+    const før = JSON.stringify((await lesState(page)).dayStats.sisteSalgLogg)
+    // Tikk MYE mer uten salg → loggen skal stå HELT urørt (ikke tømt, ikke endret).
+    await dispatchN(page, { type: 'TICK' }, 40)
+    s = await lesState(page)
+    expect(s.dayStats.sisteSalgLogg.length, 'logg holder taket 10 (ikke tømt)').toBe(10)
+    expect(JSON.stringify(s.dayStats.sisteSalgLogg), 'logg uendret av tick uten salg').toBe(før)
+
+    // (B) LEVERINGS-TOAST i kø-disiplin (interiørscenen): venter på kundemøtet.
+    await page.goto('/game/d/sentrum/l/sentrum-l2/inne?dev=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 33B (interiør)')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 100 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager (B)')
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen (B)')
+    // Bestill noe som ankommer neste dag → lastDelivery settes ved START_NEW_DAY.
+    const coffeeProd = (await lesFull()).products.find(p => p.id === 'coffee')
+    await dispatch(page, { type: 'ORDER_PRODUCT', product: coffeeProd, quantity: 50 })
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør (B)')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => (s as unknown as GameState).lastDelivery != null, 'lastDelivery satt')
+    const toast = page.getByTestId('levering-toast')
+    await expect(toast, 'toast i DOM når ingen møte').toHaveCount(1)
+    // Åpne dag + spawn kundemøte → toasten skal IKKE være i DOM (kø-disiplin).
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen dag 2 (B)')
+    await dispatch(page, { type: 'DEV_SPAWN_MOTE', scenarioId: 'morgenkunden' })
+    await ventState(page, s => s.activeMeetingScenarioId != null, 'møte aktivt')
+    await expect(toast, 'toast borte mens møte/scenario aktivt').toHaveCount(0)
+    // Lukk møtet → toasten dukker opp igjen.
+    await dispatch(page, { type: 'SKIP_MEETING' })
+    await ventState(page, s => s.activeMeetingScenarioId == null, 'møte lukket')
+    await expect(toast, 'toast tilbake etter at møtet lukkes').toHaveCount(1)
+    ctx.ok('sisteSalgLogg ruller (taket 10, urørt av tick uten salg); leverings-toast venter på møtet (borte under, tilbake etter)')
+  })
+
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
   const { pass, fail, kjent } = skrivRapport(rapport, notater)
   expect(fail, `Reelle FAIL-steg (KJENT FEIL teller ikke): ${fail}. Se docs/rapporter/spilltest-siste.md`).toBe(0)

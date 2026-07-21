@@ -132,6 +132,16 @@ export default function InteriorView({ districtId, lokaleId }: {
   const _dp = useDevPanel()
   const visKal = _dp.kalibrering && IS_DEV_COORDS
   const visScen = _dp.scenariovelger && IS_DEV_COORDS
+  // LEVERINGS-TOAST i kø-disiplin: «Ferske varer klare» vises ALDRI oppå et aktivt
+  // kundemøte (samme prinsipp som mentor-meldingene) — den venter til møtet er
+  // ferdig. Lukkes automatisk etter en stund, og ved klikk (✕). Auto-lukk-timeren
+  // teller kun mens toasten faktisk vises (ikke mens den er køet bak et møte).
+  const leveringSynlig = !!state.lastDelivery && !state.activeMeetingScenarioId
+  useEffect(() => {
+    if (!leveringSynlig) return
+    const id = window.setTimeout(() => dispatch({ type: 'CLEAR_DELIVERY' }), BALANCE.gamefeel.leveranseToastMs)
+    return () => window.clearTimeout(id)
+  }, [leveringSynlig, dispatch])
   // SPILLKLOKKE: kunden i scenen er nå STYRT AV KLOKKA. Når et planlagt
   // kundemøte forfaller setter reduceren (TICK) state.activeMeetingScenarioId;
   // vi slår opp scenariet og viser kunden. Når møtet er løst/hoppet over
@@ -360,30 +370,35 @@ export default function InteriorView({ districtId, lokaleId }: {
           sier «ferske varer klare», ikke «leveres» — via
           ACTIVE_DEF.forsyning.klarMelding. Avvisbar med ✕ (CLEAR_DELIVERY).
           Toppmidtstilt under HUD. */}
-      {state.lastDelivery && (
-        <div style={{
-          position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 82,
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'rgba(16,185,129,0.16)', border: '1px solid rgba(16,185,129,0.55)',
-          borderRadius: 12, padding: '0.5rem 0.9rem', color: '#6ee7b7',
-          fontSize: 13, fontWeight: 700, fontFamily: "'Outfit', sans-serif",
-          maxWidth: 520, boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
-        }}>
-          {/* KROK 4 — eska glir inn ved dagstart (én gang, varighet fra balance). */}
-          <span className="leveranse-glid" style={{ fontSize: 18, animationDuration: `${BALANCE.gamefeel.leveranseAnimMs}ms` }}>📦</span>
-          <span>
-            {ACTIVE_DEF.forsyning.klarMelding(state.lastDelivery.lines.map(l => `${l.qty} × ${l.name}`).join(', '))}
-          </span>
-          <button
-            onClick={() => dispatch({ type: 'CLEAR_DELIVERY' })}
-            title="Lukk"
-            style={{
-              background: 'transparent', border: 'none', color: '#6ee7b7',
-              fontSize: 15, lineHeight: 1, cursor: 'pointer', padding: 2, fontFamily: 'inherit',
-            }}
-          >✕</button>
-        </div>
-      )}
+      {leveringSynlig && (() => {
+        // Lang vareliste: maks 3 linjer + «… og N flere» (ingen tekst-overlapp).
+        const linjer = state.lastDelivery!.lines
+        const vist = linjer.slice(0, 3).map(l => `${l.qty} × ${l.name}`)
+        const flere = linjer.length - vist.length
+        const tekst = ACTIVE_DEF.forsyning.klarMelding(vist.join(', ') + (flere > 0 ? ` … og ${flere} flere` : ''))
+        return (
+          <div data-testid="levering-toast" style={{
+            position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 82,
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            background: 'rgba(16,185,129,0.16)', border: '1px solid rgba(16,185,129,0.55)',
+            borderRadius: 12, padding: '0.55rem 0.9rem', color: '#6ee7b7',
+            fontSize: 13, fontWeight: 700, fontFamily: "'Outfit', sans-serif",
+            width: 'min(520px, calc(100vw - 2rem))', boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+          }}>
+            {/* KROK 4 — eska glir inn ved dagstart (én gang, varighet fra balance). */}
+            <span className="leveranse-glid" style={{ fontSize: 18, flexShrink: 0, animationDuration: `${BALANCE.gamefeel.leveranseAnimMs}ms` }}>📦</span>
+            <span style={{ flex: 1, minWidth: 0, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{tekst}</span>
+            <button
+              onClick={() => dispatch({ type: 'CLEAR_DELIVERY' })}
+              title="Lukk"
+              style={{
+                background: 'transparent', border: 'none', color: '#6ee7b7', flexShrink: 0,
+                fontSize: 15, lineHeight: 1, cursor: 'pointer', padding: 2, fontFamily: 'inherit',
+              }}
+            >✕</button>
+          </div>
+        )
+      })()}
 
       {/* ÅPEN/STENGT-bryter + «Stell disken», samlet nederst til venstre — de
           hører sammen (stengt butikk → stell disken i fred). IKKE øverst til

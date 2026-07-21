@@ -56,6 +56,8 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
     .map(id => state.products.find(p => p.id === id))
     .filter((p): p is NonNullable<typeof p> => !!p)
   const maxStock = Math.max(1, ...utstilt.map(p => p.stock))
+  // Rullerende «siste salg»-logg (reducer-eid) — nyeste øverst, maks 10.
+  const sisteSalg = state.dayStats.sisteSalgLogg
 
   // Minimert: liten pille nede, butikken synlig bak.
   if (minimert) {
@@ -153,16 +155,19 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.9rem' }}>
-          {/* Ticker */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '0.9rem 1rem', minHeight: 190 }}>
+          {/* SISTE SALG — RULLERENDE logg (dayStats.sisteSalgLogg). Et tick uten
+              salg endrer ingenting. Fast min-høyde (plass til ~8 rader) så
+              rader som kommer/går aldri flytter resten av skjermen. Faste keys
+              (ikke dayMinute) → ingen re-animasjon/hopp hvert tick. */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '0.9rem 1rem', minHeight: 230 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.06em', marginBottom: '0.6rem' }}>📟 SISTE SALG</div>
-            {state.dayTicker.length === 0 ? (
-              <div style={{ fontSize: 13, color: '#475569' }}>Venter på dagens første kunder …</div>
+            {sisteSalg.length === 0 ? (
+              <div style={{ fontSize: 13, color: '#475569' }}>Ingen salg ennå</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 <AnimatePresence initial={false}>
-                  {state.dayTicker.map((l, i) => (
-                    <motion.div key={`${l.navn}-${i}-${state.dayMinute}`} initial={{ opacity: 0, x: -8 }} animate={{ opacity: i === 0 ? 1 : 0.6 - i * 0.06, x: 0 }}
+                  {sisteSalg.map((l, i) => (
+                    <motion.div key={`${l.navn}-${l.qty}-${l.kr}-${i}`} initial={{ opacity: 0, x: -8 }} animate={{ opacity: i === 0 ? 1 : Math.max(0.35, 0.75 - i * 0.05), x: 0 }} exit={{ opacity: 0 }}
                       style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                       <span style={{ color: '#cbd5e1' }}>{l.qty} × {l.navn}</span>
                       <span style={{ color: '#22c55e' }}>{formatKr(l.kr)}</span>
@@ -173,8 +178,9 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
             )}
           </div>
 
-          {/* Lagerstatus — utstilte varer synker */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '0.9rem 1rem', minHeight: 190 }}>
+          {/* Lagerstatus — utstilte varer synker. Samme faste min-høyde som «Siste
+              salg» så de to panelene alltid er like høye (layoutstabilitet). */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '0.9rem 1rem', minHeight: 230 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.06em', marginBottom: '0.6rem' }}>🧺 LAGER PÅ DISKEN</div>
             {utstilt.length === 0 ? (
               <div style={{ fontSize: 13, color: '#475569' }}>Ingen varer utstilt — still ut i disken for mer trafikk.</div>

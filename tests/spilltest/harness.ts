@@ -58,7 +58,7 @@ export interface SpillState {
   monthlyPayroll: number
   marketingBudget: Record<string, number>
   businessPlan: { description: string; qualityScore: number; canvas: Record<string, string> }
-  dayStats: { soldKr: number; bakgrunnKr: number; bakgrunnKunder: number; bakgrunnStk: number; tapteSalgStk: number; tapteSalgKr: number; manglerPrisStk: number; overprisStk: number }
+  dayStats: { soldKr: number; bakgrunnKr: number; bakgrunnKunder: number; bakgrunnStk: number; tapteSalgStk: number; tapteSalgKr: number; manglerPrisStk: number; overprisStk: number; sisteSalgLogg: { navn: string; qty: number; kr: number }[] }
   dayMeetings: { scenarioId: string; minutt: number; spawned: boolean }[]
   lastDayResult: unknown | null
   lastMonthSettlement: MonthSettlement | null

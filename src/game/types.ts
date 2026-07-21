@@ -585,6 +585,10 @@ export interface GameState {
      *  `minutt` = dayMinute da det skjedde, så dagspulsen kan vise en transient
      *  💚-badge som fader når klokka går videre. */
     sisteMoteFornoyd?: { minutt: number } | null
+    /** RULLERENDE «siste salg»-logg (dagspuls): reduceren APPENDER hver bolks
+     *  ticker-linjer per TICK og beholder de siste 10 (nyeste øverst). Et tick
+     *  uten salg lar loggen stå urørt. Nullstilles ved OPEN_DAY. */
+    sisteSalgLogg: TickerLinje[]
   }
   /** Dagens bakgrunnssalg-plan (BAKGRUNNSSALG) — beregnet ved OPEN_DAY, tappet
    *  løpende per klokke-tick. Null utenom en handledag. */
@@ -600,8 +604,6 @@ export interface GameState {
    *  'stamkunde' (kort gjenkjenningsmøte). Styrer hvilket overlay som åpnes.
    *  Transient (ikke persistert) — nullstilles med activeMeetingScenarioId. */
   activeMeetingKind: 'scenario' | 'stamkunde'
-  /** Dagspulsens live-ticker: siste bakgrunnssalg (nyeste først, kappet). */
-  dayTicker: TickerLinje[]
   /** Per-produkt dagstall (DEL 4): solgt (møter + bakgrunn), svinn, tapte salg. */
   dayProductStats: Record<string, { navn: string; soldStk: number; svinnStk: number; tapteSalgStk: number; manglerPrisStk: number; overprisStk: number }>
   /** Siste fullførte dags oppgjørstall — DayResultOverlay vises når denne er

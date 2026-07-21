@@ -8,7 +8,7 @@ import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
   GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement, DayBackground,
-  EmployeeRole, Shift,
+  EmployeeRole, Shift, TickerLinje,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
@@ -45,6 +45,7 @@ const EMPTY_DAY_STATS = {
   manglerPrisStk: 0, manglerPrisKr: 0, overprisStk: 0, overprisKr: 0,
   koKunder: 0,
   reputationDelta: 0, xpEarned: 0, kunnskapsbonusKr: 0, stockoutHappened: false,
+  sisteSalgLogg: [] as TickerLinje[],
 }
 
 type ProductStats = Record<string, { navn: string; soldStk: number; svinnStk: number; tapteSalgStk: number; manglerPrisStk: number; overprisStk: number }>
@@ -67,7 +68,7 @@ function mergeProductStats(base: ProductStats, delta: Record<string, { navn: str
 /** Hvor mange spillminutter den åpne dagen varer (09:00–17:00). */
 const DAG_VARIGHET = BALANCE.klokke.stengMinutt - BALANCE.klokke.apneMinutt
 /** Maks antall linjer i dagspulsens ticker. */
-const TICKER_MAX = 8
+const SISTE_SALG_MAX = 10   // rullerende «siste salg»-logg i dagspulsen
 
 // ─── XP thresholds ──────────────────────────────────────────────────────────
 
@@ -174,7 +175,6 @@ const initialState: GameState = {
   dayMeetings: [],
   activeMeetingScenarioId: null,
   activeMeetingKind: 'scenario',
-  dayTicker: [],
   dayProductStats: {},
   lastDayResult: null,
   dayHistory: [],
@@ -1860,7 +1860,6 @@ function reducer(state: GameState, action: Action): GameState {
         dayMeetings,
         activeMeetingScenarioId: null,
         activeMeetingKind: 'scenario',
-        dayTicker: [],
         dayProductStats: {},
       }
     }
@@ -1877,7 +1876,6 @@ function reducer(state: GameState, action: Action): GameState {
       let money = state.money
       let dayStats = state.dayStats
       let dayProductStats = state.dayProductStats
-      let dayTicker = state.dayTicker
       let dayBackground = state.dayBackground
       let turistsesong = state.turistsesong   // TEMA 15: akkumuler sesongens tall
 
@@ -1936,7 +1934,12 @@ function reducer(state: GameState, action: Action): GameState {
             stockoutHappened: dayStats.stockoutHappened || r.tapteSalgStk > 0,
           }
           dayProductStats = mergeProductStats(dayProductStats, r.perProdukt)
-          dayTicker = [...r.ticker, ...dayTicker].slice(0, TICKER_MAX)
+          // RULLERENDE «siste salg»-logg: APPEND bolkens ticker-linjer (nyeste
+          // øverst), behold de siste 10. Et tick uten salg (tom ticker) lar
+          // loggen stå urørt.
+          if (r.ticker.length > 0) {
+            dayStats = { ...dayStats, sisteSalgLogg: [...r.ticker, ...dayStats.sisteSalgLogg].slice(0, SISTE_SALG_MAX) }
+          }
           // TEMA 15: akkumuler sesongens turist-/bakgrunnstall (mentor-refleksjon).
           if (turistsesong && state.dayBackground.turistandel > 0) {
             turistsesong = {
@@ -1963,7 +1966,7 @@ function reducer(state: GameState, action: Action): GameState {
         activeMeetingKind = state.dayMeetings[dueIdx]!.kind ?? 'scenario'
       }
 
-      return { ...state, dayMinute: nyMinutt, products, money, dayStats, dayProductStats, dayTicker, dayBackground, dayMeetings, activeMeetingScenarioId, activeMeetingKind, turistsesong }
+      return { ...state, dayMinute: nyMinutt, products, money, dayStats, dayProductStats, dayBackground, dayMeetings, activeMeetingScenarioId, activeMeetingKind, turistsesong }
     }
 
     case 'CLOSE_DAY': {
@@ -2252,11 +2255,11 @@ function reducer(state: GameState, action: Action): GameState {
         lastMonthSettlement: settlement,
         budsjett,   // TEMA 2: låst budsjett for måneden som ble gjort opp
         budsjettOppgjorHint,   // TEMA 2/3: mentor-payload for dynamiske triggere
-        // Nullstill klokke/møter/ticker/produkt-stats for neste dag.
+        // Nullstill klokke/møter/produkt-stats for neste dag («siste salg»-loggen
+        // ligger nå i dayStats og nullstilles ved OPEN_DAY).
         dayMinute: 0,
         dayMeetings: [],
         activeMeetingScenarioId: null,
-        dayTicker: [],
         dayProductStats: {},
       }
     }

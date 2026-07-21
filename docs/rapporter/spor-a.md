@@ -2804,3 +2804,56 @@ Vareeksponering er kjernelære: en vare som ikke er stilt ut kan ikke selge seg 
   kortet viser SUM med undertekst «… uten pris · … for dyr»; dagsoppgjøret lister
   de samme tre tapstypene.
 - Sjekk teksten: ett kundemøte skrives «1 møte», ikke «1 møter».
+
+---
+
+## Dagspuls-ticker som rullerende logg + leverings-toast i kø-disiplin — 2026-07-21
+
+### 1. «Siste salg» som rullerende logg
+- **Nytt felt `dayStats.sisteSalgLogg: TickerLinje[]`.** Reduceren (TICK) APPENDER
+  bolkens ticker-linjer (nyeste øverst) og beholder de siste **10**. Et tick UTEN
+  salg (tom bolk-ticker) lar loggen stå HELT urørt (samme referanse → ingen
+  re-render). Nullstilles ved OPEN_DAY (del av `EMPTY_DAY_STATS`).
+- Det gamle `state.dayTicker` er FJERNET (loggen bor nå i dayStats). DagspulsOverlay
+  leser `dayStats.sisteSalgLogg`, ikke siste bolk. Faste React-keys (ikke lenger
+  `dayMinute` i key-en) → panelet re-animeres ikke hvert tick (roten til «hoppet»).
+- **Layoutstabilitet:** «Siste salg»- og «Lager på disken»-panelene har fast
+  min-høyde (230 px, plass til ~8 rader) så rader som kommer/går aldri flytter
+  resten av skjermen. Tom logg viser tekstlinjen «Ingen salg ennå» i samme høyde.
+
+### 2. Leverings-toast inn i kø-disiplinen
+**Valg (dokumentert):** beholdt den eksisterende «Ferske varer klare»-toasten i
+interiørscenen og la den inn i kø-disiplinen (gjenbruker toasten,
+`CLEAR_DELIVERY`-action og glid-animasjonen) — framfor å gjøre den til en
+mentor-melding, fordi mentor-meldinger ikke lukkes automatisk (kravet om auto-lukk
+ville krevd egen mekanikk uansett).
+- **Kø-prinsipp:** toasten rendres ALDRI mens et kundemøte er aktivt
+  (`leveringSynlig = lastDelivery && !activeMeetingScenarioId`). Den venter til
+  møtet er ferdig og dukker opp igjen (samme prinsipp som mentor-meldingene).
+  (Andre overlays ligger uansett over toasten i z-orden.)
+- **Auto-lukk + klikk:** lukkes automatisk etter `gamefeel.leveranseToastMs` (9 s)
+  ETTER at den faktisk vises (timeren teller ikke mens den er køet bak et møte),
+  og fortsatt med ✕-knapp.
+- **Lang vareliste:** maks 3 varelinjer + «… og N flere»; fast maksbredde
+  (`min(520px, 100vw−2rem)`), ordbryting (`overflowWrap`, `line-height 1.4`) → ingen
+  tekst-overlapp.
+
+### 3. Spilltest (33/33 GRØNT)
+- **Steg 33 (nytt):** (A) selg til `sisteSalgLogg` når taket 10; fjern alt fra disken
+  og tikk 40 ganger → loggen er UENDRET (ikke tømt) og holder taket 10. (B) i
+  interiørscenen med en morgenleveranse: toasten er i DOM når ingen møte, FORSVINNER
+  når et kundemøte spawnes (DEV_SPAWN_MOTE), og kommer TILBAKE når møtet lukkes.
+  MERK: selve layout-roen er visuell — Espen dømmer den i Chrome; testen sjekker
+  DOM-tilstedeværelse og loggens oppførsel. (Fallgruve funnet under bygging:
+  `window.__GAME_STATE__` ligger ett render-steg bak reduceren — testen tar derfor
+  snapshot av loggen ETTER at disken er tømt og noen tomme ticks har fått den til å
+  konvergere, ikke før.)
+
+### Chrome-sjekkliste — dagspuls
+- Åpne en dag med utstilte varer: «Siste salg» fyller seg oppover, panelet holder
+  fast høyde, og et tick uten salg får INGENTING til å hoppe/blinke.
+- Med tom disk står «Siste salg» på «Ingen salg ennå» i full høyde.
+- Morgenleveranse: «Ferske varer klare»-toasten vises ved dagstart; når et
+  kundemøte kommer, forsvinner toasten og kommer tilbake etter møtet. Lang
+  bestilling vises som «… og N flere». Toasten lukker seg selv etter noen sekunder,
+  og med ✕.
