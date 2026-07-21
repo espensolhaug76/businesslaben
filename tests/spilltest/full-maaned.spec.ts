@@ -14,10 +14,10 @@ import { INDUSTRY_META } from '../../src/game/data/industries'
 import { provisjonKr, byTilbudById } from '../../src/game/data/bykatalog'
 import { BALANCE } from '../../src/game/data/balance'
 import { beregnPakke, velgProfil, EGEN_KAFE_ID, velgTuristkontorScenario, velgByhotellScenario } from '../../src/game/data/reiseliv'
-import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS } from '../../src/game/sales/scenarios'
+import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS, CAFE_SCENARIO_IDS } from '../../src/game/sales/scenarios'
 import { bestillingBetaling, tilbudsprisPerEnhet, leverandorNettoBesparelse, epostAbsDag, type KundebestillingPayload, type LeverandortilbudPayload } from '../../src/game/data/innboksEpost'
 import { finnKandidater } from '../../src/game/data/espenSporsmal'
-import { stamkundeMote, STAMKUNDE_UTVIKLING } from '../../src/game/data/stamkundeDialog'
+import { STAMKUNDER_AKTIV } from '../../src/game/data/featureFlags'
 import type { InboxMessage, GameState } from '../../src/game/types'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
@@ -1101,68 +1101,44 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`Feil svar: penger uendret (${m0}), forklaring vist, cooldown til dag ${etter.espenSpor.feilCooldown[a.id]}`)
   })
 
-  await steg(page, rapport, 24, 'Stamkunder (redesign): engangs-scenario gjentas ikke; stamkundemøte trinn 1→2→3 + venn-kjøp', async ctx => {
+  await steg(page, rapport, 24, 'Stamkunder PARKERT (STAMKUNDER_AKTIV=false) + trekkeregel: uspilt foretrekkes, nullstill ved tom pool', async ctx => {
     await oppsettÅpenDag()
-    const kunde = 'den-usikre'
-    const uDef = STAMKUNDE_UTVIKLING.find(x => x.scenarioId === kunde)!
-
-    // (A) ENGANGS: spill SALGSSCENARIET én gang med godt utfall → utviklingstrinn 1.
-    await dispatch(page, { type: 'DEV_SPAWN_MOTE', scenarioId: kunde })
-    await ventState(page, s => s.activeMeetingScenarioId === kunde, 'scenario-møte spawnet')
-    const m0 = (await lesState(page)).money
-    await dispatch(page, { type: 'RESOLVE_SALES_SCENARIO', scenarioId: kunde, sales: [{ productId: 'coffee', qty: 1 }], reputationDelta: 5, xpEarned: 0 })
-    await ventState(page, s => s.activeMeetingScenarioId === null, 'scenario-møte løst')
-    expect((await lesState(page)).money - m0, 'scenario: full pris, ingen bonus ennå').toBe(50)
-    let stam = (await lesFull()).stamkunder[kunde]
-    expect(stam.antallMoter, 'ett møte spilt').toBe(1)
-    expect(stam.utviklingstrinn, 'godt scenarioutfall → returnerende på trinn 1').toBe(1)
-    expect(stam.erStamkunde, 'ennå ikke stamkunde (1 fornøyd)').toBe(false)
-
-    // (B) ENGANGS-INVARIANT: en ny dag trekker ALDRI et scenario-møte for en
-    // allerede spilt kunde (personen kommer i stedet som stamkundemøte).
-    await dispatch(page, { type: 'CLOSE_DAY' })
-    await ventState(page, s => s.dayPhase !== 'åpen', 'dag stengt')
-    await dispatch(page, { type: 'START_NEW_DAY' })
-    await ventState(page, s => s.dayPhase === 'stengt', 'ny dag klar')
-    await dispatch(page, { type: 'OPEN_DAY' })
-    await ventState(page, s => s.dayPhase === 'åpen', 'ny dag åpen')
-    const full = await lesFull()
-    const scenarioMoter = full.dayMeetings.filter(m => (m.kind ?? 'scenario') === 'scenario')
-    expect(
-      scenarioMoter.every(m => (full.stamkunder[m.scenarioId]?.antallMoter ?? 0) === 0),
-      'ingen scenario-møter for allerede spilte kunder',
-    ).toBe(true)
-
-    // (C) STAMKUNDEMØTE: trinn 1 → 2 → 3 gir riktig dialog + kjøpsbonus; trinn 3
-    // tar med en venn/kollega (+1 kjøp). Ren dialog-funksjon = samme fasit UI-et
-    // bruker; RESOLVE_STAMKUNDEMOTE speiler qty overlayet ville sendt.
-    const stamMøte = async (forventetTrinn: 1 | 2 | 3, venn: boolean) => {
-      const minne = (await lesFull()).stamkunder[kunde]
-      const mote = stamkundeMote(kunde, minne)!
-      expect(mote.trinn, `dialog viser trinn ${forventetTrinn}`).toBe(forventetTrinn)
-      expect(mote.venn, `venn/kollega-kjøp = ${venn}`).toBe(venn)
-      const fasit = forventetTrinn === 1 ? uDef.trinn1 : forventetTrinn === 2 ? uDef.trinn2 : uDef.trinn3
-      expect(mote.replikker, `riktige replikker for trinn ${forventetTrinn}`).toEqual(fasit)
-
-      await dispatch(page, { type: 'DEV_SPAWN_MOTE', scenarioId: kunde, kind: 'stamkunde' })
-      await ventState(page, s => s.activeMeetingScenarioId === kunde, 'stamkundemøte spawnet')
-      const m = (await lesState(page)).money
-      const antall = venn ? 2 : 1
-      await dispatch(page, { type: 'RESOLVE_STAMKUNDEMOTE', scenarioId: kunde, sales: [{ productId: 'coffee', qty: antall }], reputationDelta: B.stamkunder.stamkundemoteRykte, xpEarned: B.stamkunder.stamkundemoteXp })
-      await ventState(page, s => s.activeMeetingScenarioId === null, 'stamkundemøte løst')
-      const delta = (await lesState(page)).money - m
-      expect(delta, `betaling ${antall}×50×${B.stamkunder.kjopsBonusFaktor} (bonus)`).toBe(Math.round(antall * 50 * B.stamkunder.kjopsBonusFaktor))
-      return mote
+    const nonTurist = CAFE_SCENARIO_IDS.filter(id => !TURIST_SCENARIO_IDS.includes(id))
+    // Spill et scenario til ende (dev): markerer det som spilt (antallMoter ≥ 1).
+    const spill = async (id: string) => {
+      await dispatch(page, { type: 'DEV_SPAWN_MOTE', scenarioId: id })
+      await ventState(page, s => s.activeMeetingScenarioId === id, `spawn ${id}`)
+      await dispatch(page, { type: 'RESOLVE_SALES_SCENARIO', scenarioId: id, sales: [{ productId: 'coffee', qty: 1 }], reputationDelta: 5, xpEarned: 0 })
+      await ventState(page, s => s.activeMeetingScenarioId === null, `løst ${id}`)
+    }
+    const nyDag = async () => {
+      await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør')
+      await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'stengt')
+      await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen')
     }
 
-    await stamMøte(1, false)
-    expect((await lesFull()).stamkunder[kunde].utviklingstrinn, 'etter møte 1 → trinn 2').toBe(2)
-    expect((await lesFull()).stamkunder[kunde].erStamkunde, '2 fornøyde → stamkunde').toBe(true)
-    await stamMøte(2, false)
-    expect((await lesFull()).stamkunder[kunde].utviklingstrinn, 'etter møte 2 → trinn 3').toBe(3)
-    const m3 = await stamMøte(3, true)   // trinn 3: kunden tar med én til (+1 kjøp)
-    expect((await lesFull()).stamkunder[kunde].utviklingstrinn, 'trinn 3 er taket').toBe(3)
-    ctx.ok(`Engangs OK (ingen scenarioreprise); stamkundemøte trinn 1→2→3, +1 venn-kjøp på trinn 3 («${m3.trinnLabel}»)`)
+    // (A) FLAGGET AV + «uspilt foretrekkes»: spill én kunde, ny dag → ingen
+    //     stamkundemøte spawnes, og den spilte kunden trekkes IKKE som scenario
+    //     så lenge det finnes uspilte.
+    expect(STAMKUNDER_AKTIV, 'stamkunder er parkert bak av-flagg').toBe(false)
+    const forst = nonTurist[0]!
+    await spill(forst)
+    await nyDag()
+    let dm = (await lesFull()).dayMeetings
+    expect(dm.length, 'dagen har møter').toBeGreaterThan(0)
+    expect(dm.every(m => (m.kind ?? 'scenario') === 'scenario'), 'ingen stamkundemøter (parkert)').toBe(true)
+    expect(dm.some(m => m.scenarioId === forst), 'uspilt foretrekkes — spilt kunde trekkes ikke ennå').toBe(false)
+
+    // (B) NULLSTILL VED TOM POOL: spill ALLE gjenværende → uspilt tom → neste dag
+    //     kan trekke spilte scenarioer igjen (trekkgrunnlaget nullstilt).
+    for (const id of nonTurist.slice(1)) await spill(id)
+    await nyDag()
+    const full = await lesFull()
+    dm = full.dayMeetings
+    expect(dm.length, 'dagen har møter etter uttømt pool').toBeGreaterThan(0)
+    expect(dm.every(m => (m.kind ?? 'scenario') === 'scenario'), 'fortsatt ingen stamkundemøter').toBe(true)
+    expect(dm.every(m => (full.stamkunder[m.scenarioId]?.antallMoter ?? 0) >= 1), 'alt spilt → poolen nullstilt, spilte trekkes igjen').toBe(true)
+    ctx.ok(`Parkert: 0 stamkundemøter; uspilt foretrekkes (${forst} holdt tilbake), pool nullstilt da alle ${nonTurist.length} var spilt`)
   })
 
   await steg(page, rapport, 25, 'Nivåbryter: VG1 skjuler VG2-spørsmål + pristilbud-felt; VG2 viser dem', async ctx => {

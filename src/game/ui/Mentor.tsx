@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, turistsesongInfo } from '../GameContext'
 import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, MENTOR_INTRO } from '../data/mentorTriggers'
+import { STAMKUNDER_AKTIV } from '../data/featureFlags'
 import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
 import { kanalById, kanalTreffISegmenter } from '../data/kampanje'
@@ -75,7 +76,7 @@ function oppfylt(id: string, s: GameState): boolean {
     // KROK 7 — DEN LEVENDE INNBOKSEN: første ULESTE quest-e-post med svarfrist.
     case 'forste_epost_frist': return s.messages.some(m => m.epost != null && m.fristAbsDag != null && m.epostStatus === 'ubesvart' && !m.read)
     // KROK 2 — STAMKUNDER: første gang en kunde blir stamkunde.
-    case 'stamkunde_forste': return Object.values(s.stamkunder).some(k => k.erStamkunde)
+    case 'stamkunde_forste': return STAMKUNDER_AKTIV && Object.values(s.stamkunder).some(k => k.erStamkunde)
     case 'forste_laan': return s.loans.length > 0
     case 'forste_manedsoppgjor': return s.lastMonthSettlement != null
     case 'forste_eierlonn': return s.lastMonthSettlement != null

@@ -11,6 +11,7 @@
 
 import { useGame, useErTemaAktivt, turistsesongInfo } from '../GameContext'
 import { useDevPanel, setDevPanel, toggleDevPanel } from './devPanel'
+import { STAMKUNDER_AKTIV } from '../data/featureFlags'
 
 const FONT = "'Outfit', sans-serif"
 
@@ -79,15 +80,17 @@ export default function DevPanel({ onOpenSim, isInterior }: {
             <DevBtn
               label="👋 Gjør siste kunde til stamkunde"
               color="#5eead4" bg="rgba(45,212,191,0.14)"
-              disabled={!state.sisteMoteKundeId}
-              reason={!state.sisteMoteKundeId ? 'Møt en kunde først — ingen «siste kunde» ennå.' : undefined}
+              disabled={!STAMKUNDER_AKTIV || !state.sisteMoteKundeId}
+              reason={!STAMKUNDER_AKTIV ? 'Parkert — kommer som stamkort-tiltak.'
+                : !state.sisteMoteKundeId ? 'Møt en kunde først — ingen «siste kunde» ennå.' : undefined}
               onClick={() => dispatch({ type: 'DEV_GJOR_STAMKUNDE' })}
             />
             <DevBtn
               label="👥 Spawn stamkundemøte nå"
               color="#5eead4" bg="rgba(45,212,191,0.1)"
-              disabled={!åpenDag || !returnerendeId}
-              reason={!åpenDag ? 'Krever åpen dag.'
+              disabled={!STAMKUNDER_AKTIV || !åpenDag || !returnerendeId}
+              reason={!STAMKUNDER_AKTIV ? 'Parkert — kommer som stamkort-tiltak.'
+                : !åpenDag ? 'Krever åpen dag.'
                 : !returnerendeId ? 'Ingen returnerende stamkunde ennå (spill et scenario med godt utfall først).' : undefined}
               onClick={() => returnerendeId && dispatch({ type: 'DEV_SPAWN_MOTE', scenarioId: returnerendeId, kind: 'stamkunde' })}
             />

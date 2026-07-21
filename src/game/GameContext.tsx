@@ -24,6 +24,7 @@ import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinn
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
+import { STAMKUNDER_AKTIV } from './data/featureFlags'
 import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS } from './sales/scenarios'
 import { beregnPakke, velgProfil, BESOKSPROFILER, velgPakkeForesporsler } from './data/reiseliv'
 import {
@@ -1810,21 +1811,25 @@ function reducer(state: GameState, action: Action): GameState {
         scenariosForIndustry(getActiveIndustryDefinition().scenariePool),
         DAY_CONFIG.scenarioMix,
       ).map(s => s.id)
-      // KROK 2-REDESIGN — ENGANGS: et salgsscenario som er SPILT (antallMoter ≥ 1)
-      // trekkes ALDRI igjen. Personen kommer i stedet tilbake som STAMKUNDEMØTE.
+      // TREKKEREGEL (fikserunde 3): USPILTE scenarioer foretrekkes ALLTID; når
+      // alle i poolen er spilt, nullstilles trekkgrunnlaget (hele poolen igjen).
+      // Midlertidig til scenariovariant-jobben gir hver kunde flere forespørsler.
       // (Turist-scenariene bor på turistkontor/byhotell → filtreres alltid bort.)
-      const poolIds = basePool.filter(id =>
-        !TURIST_SCENARIO_IDS.includes(id) && (state.stamkunder[id]?.antallMoter ?? 0) === 0)
-      // STAMKUNDEMØTER: returnerende kunder (møtt før + utviklingstrinn ≥ 1, eller
-      // «misfornøyd sist» → service recovery-sjanse). Vektes: stamkunde opp,
-      // misfornøyd ned. Tomt (fersk kafé) ⇒ ingen stamkundemøter (uendret miks).
+      const nonTurist = basePool.filter(id => !TURIST_SCENARIO_IDS.includes(id))
+      const uspilt = nonTurist.filter(id => (state.stamkunder[id]?.antallMoter ?? 0) === 0)
+      const poolIds = uspilt.length > 0 ? uspilt : nonTurist
+      // STAMKUNDEMØTER — PARKERT bak STAMKUNDER_AKTIV (gjenbrukes som stamkort-
+      // tiltak senere). Når flagget er av gis ingen stamkunde-pool ⇒ ingen
+      // stamkundemøter spawnes; alt blir vanlige scenarier.
       const stamIds: string[] = []
       const stamVekter: Record<string, number> = {}
-      for (const [id, sk] of Object.entries(state.stamkunder)) {
-        if (!((sk.utviklingstrinn ?? 0) >= 1 || sk.sisteUtfall === 'misfornoyd')) continue
-        stamIds.push(id)
-        stamVekter[id] = sk.erStamkunde ? BALANCE.stamkunder.vektFaktor
-          : sk.sisteUtfall === 'misfornoyd' ? BALANCE.stamkunder.vektMisfornoyd : 1
+      if (STAMKUNDER_AKTIV) {
+        for (const [id, sk] of Object.entries(state.stamkunder)) {
+          if (!((sk.utviklingstrinn ?? 0) >= 1 || sk.sisteUtfall === 'misfornoyd')) continue
+          stamIds.push(id)
+          stamVekter[id] = sk.erStamkunde ? BALANCE.stamkunder.vektFaktor
+            : sk.sisteUtfall === 'misfornoyd' ? BALANCE.stamkunder.vektMisfornoyd : 1
+        }
       }
       const dayMeetings = planleggMoter(
         moterForDag(state.dayNumber), poolIds, (Math.imul(seed, 2654435761)) >>> 0,

@@ -132,14 +132,17 @@ export function moterForDag(dayNumber: number): number {
 /** Planlegg dagens kundemøter på klokkeslett (minutter siden 09:00), spredt
  *  jevnt mellom moteForste og moteSiste med lett seed-jitter. Deterministisk.
  *
- *  KROK 2-REDESIGN — to møtetyper i samme strøm:
- *   • ENGANGS-SCENARIER (kind 'scenario'): trekkes UTEN gjentakelse fra den
- *     USPILTE poolen (`scenarioIds`). Et spilt scenario gjentas ALDRI (kalleren
- *     har allerede filtrert bort spilte id-er), så poolen fylles ikke på nytt.
+ *  To møtetyper i samme strøm:
+ *   • SCENARIER (kind 'scenario'): trekkes uten gjentakelse fra `scenarioIds`
+ *     (kalleren gir den foretrukne poolen: uspilte scenarioer først, og hele
+ *     poolen på nytt når alt er spilt — fikserunde 3). Fylles på nytt hvis den
+ *     tømmes midt i en dag, så dagen alltid får `antall` møter.
  *   • STAMKUNDEMØTER (kind 'stamkunde'): returnerende kunder (`stamkunde.ids`),
  *     trukket VEKTET uten gjentakelse (stamkunder opp, «misfornøyd sist» ned),
  *     maks én gang per dag. Reserveres inntil `moteReserveAndel` av dagens møter
- *     når det finnes returnerende kunder — resten fylles med engangs-scenarier. */
+ *     når det finnes returnerende kunder — resten fylles med scenarier.
+ *     (Stamkunder er PARKERT bak STAMKUNDER_AKTIV; kalleren gir da ingen
+ *     stamkunde-pool, så alt blir scenarier.) */
 export function planleggMoter(
   antall: number,
   scenarioIds: string[],
@@ -153,16 +156,17 @@ export function planleggMoter(
   let s = seed >>> 0
 
   // Hvor mange av hver type? Reserver plass til stamkundemøter når noen kan
-  // returnere, ellers er alt engangs-scenarier.
+  // returnere; resten (og alt ellers) er scenarier som fyller dagen.
   const stamAvail = stamkunde?.ids.length ?? 0
-  const stamMål = stamAvail > 0 ? Math.min(stamAvail, Math.max(1, Math.floor(antall * BALANCE.stamkunder.moteReserveAndel))) : 0
-  const scenarioN = Math.min(scenarioIds.length, Math.max(0, antall - stamMål))
-  const stamN = Math.min(stamAvail, Math.max(0, antall - scenarioN))
+  const stamN = stamAvail > 0 ? Math.min(stamAvail, Math.max(1, Math.floor(antall * BALANCE.stamkunder.moteReserveAndel))) : 0
+  const scenarioN = scenarioIds.length > 0 ? Math.max(0, antall - stamN) : 0
 
-  // Engangs-scenarier — trekk uten gjentakelse (ingen refill: aldri reprise).
-  const scenPool = [...scenarioIds]
+  // Scenarier — trekk uten gjentakelse, men FYLL PÅ poolen om den tømmes (så
+  // dagen får nok møter selv om den foretrukne poolen er liten).
   const scenValgt: string[] = []
-  for (let i = 0; i < scenarioN && scenPool.length; i++) {
+  let scenPool: string[] = []
+  for (let i = 0; i < scenarioN; i++) {
+    if (!scenPool.length) scenPool = [...scenarioIds]
     s = nextSeed(s)
     scenValgt.push(scenPool.splice(Math.floor(rand01(s) * scenPool.length), 1)[0]!)
   }

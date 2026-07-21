@@ -6,6 +6,7 @@ import { getIndustryDefinitionFor, getActiveIndustryDefinition } from '../data/i
 import WindowDisplayEditor from '../city/WindowDisplay'
 import { SCENARIOS } from '../sales/scenarios'
 import { stamkundeTrinnLabel } from '../data/stamkundeDialog'
+import { STAMKUNDER_AKTIV } from '../data/featureFlags'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
@@ -1080,6 +1081,8 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
 // ─── KROK 2 — Stamkunde-oversikt (Målgruppe-fanen) ────────────────────────────
 function StamkundeOversikt() {
   const { state } = useGame()
+  // KROK 2 STAMKUNDER er PARKERT (STAMKUNDER_AKTIV) — skjul «kjente fjes»-seksjonen.
+  if (!STAMKUNDER_AKTIV) return null
   const rader = Object.entries(state.stamkunder)
     .filter(([, k]) => k.antallMoter >= 1)
     .map(([id, k]) => ({ navn: SCENARIOS.find(s => s.id === id)?.customerName ?? id, ...k }))
