@@ -21,12 +21,16 @@ export default function DevPanel({ onOpenSim, isInterior }: {
   isInterior: boolean
 }) {
   const { state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev,
-    fagAktiv, fagDev, setFagDev, nullstillDevOverstyringer } = useGame()
+    fagAktiv, fagDev, setFagDev,
+    espenSporStyring, espenSporDev, setEspenSporDevAktiv, setEspenSporDevFag,
+    nullstillDevOverstyringer } = useGame()
   const { open, kalibrering, scenariovelger } = useDevPanel()
   const beredskapAktiv = useErTemaAktivt('beredskap')
   const reiselivAktiv = useErTemaAktivt('reiseliv')
 
   const aktiveTemaIds = Object.entries(aktiveTemaer).filter(([, v]) => v?.aktiv).map(([k]) => k)
+  // «Espen spør»-fagpool (samme fasit som Mentor): valgt av lærer ∩ globalt aktivt.
+  const espenAktiveFag = FAG_KODER.filter(f => espenSporStyring.fag[f] && fagAktiv[f])
   const allPs = state.p1_complete && state.p2_complete && state.p3_complete && state.p4_complete
   const harLeid = !!state.rentedLocationId
   const åpenDag = state.dayPhase === 'åpen'
@@ -85,14 +89,42 @@ export default function DevPanel({ onOpenSim, isInterior }: {
             <div style={hintStyle}>Fag som er av er HELT skjult: faner, temaer, innboks-tilbud, «Espen spør».</div>
           </Group>
 
-          <Group title="Espen spør">
+          <Group title="Espen spør (overstyrer lærer)">
+            {/* Hovedbryter (av/på) — lokal overstyring av lærerens aktiv-flagg. */}
+            <div>
+              <ToggleBtn
+                label="Espen spør på/av" on={espenSporStyring.aktiv}
+                onClick={() => setEspenSporDevAktiv(!espenSporStyring.aktiv)}
+              />
+              <div style={hintStyle}>Nå: {espenSporDev.aktiv !== undefined ? 'DEV' : 'lærer/standard'}</div>
+            </div>
+            {/* Fag det spørres fra — kun fag som er aktive kan velges. */}
+            {FAG_KODER.map(f => {
+              const globaltAv = !fagAktiv[f]
+              const valgt = espenSporStyring.fag[f]
+              const erDev = espenSporDev.fag[f] !== undefined
+              return (
+                <div key={f}>
+                  <ToggleBtn
+                    label={`Spør fra ${FAG_META[f].kort}`}
+                    on={valgt && !globaltAv}
+                    onClick={() => { if (!globaltAv) setEspenSporDevFag(f, !valgt) }}
+                  />
+                  <div style={hintStyle}>
+                    {globaltAv ? `Faget ${FAG_META[f].kort} er slått av` : `Nå: ${erDev ? 'DEV' : 'lærer/standard'}`}
+                  </div>
+                </div>
+              )
+            })}
             <DevBtn
               label="🎓 Still neste spørsmål nå"
               color="#d8b4fe" bg="rgba(168,85,247,0.16)"
-              disabled={!!state.espenSpor.aktivt}
-              reason={state.espenSpor.aktivt ? 'Et spørsmål ligger allerede i mentor-køen.' : undefined}
-              onClick={() => dispatch({ type: 'STILL_ESPEN_SPOR', nivaa: klasseNivaa, aktiveTemaIds, dev: true })}
+              disabled={!!state.espenSpor.aktivt || espenAktiveFag.length === 0}
+              reason={state.espenSpor.aktivt ? 'Et spørsmål ligger allerede i mentor-køen.'
+                : espenAktiveFag.length === 0 ? 'Ingen fag valgt/aktivt å spørre fra.' : undefined}
+              onClick={() => dispatch({ type: 'STILL_ESPEN_SPOR', nivaa: klasseNivaa, aktiveTemaIds, aktiveFag: espenAktiveFag, dev: true })}
             />
+            <div style={hintStyle}>Still-knappen overstyrer av/på lokalt, men respekterer fagvalget.</div>
           </Group>
 
           <Group title="Stamkunder">

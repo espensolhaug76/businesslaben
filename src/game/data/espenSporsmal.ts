@@ -9,9 +9,27 @@
 // [[GLOSSARY_ID|tekst]]-tokens (renderes klikkbare i mentor-bobla).
 
 import type { GameState } from '../types'
+import type { FagKode, FagAktivering } from './fag'
 
 export type EspenKategori = 'kalkyle' | 'malgruppe' | 'markedsmiks' | 'forbrukerlov' | 'drift'
 export type EspenNivaa = 'vg1' | 'vg2'
+
+// FAGTAGGING (fikserunde 3): hvert spørsmål hører til ett programfag. Vurdert per
+// spørsmål — grunnkoblingen følger kategori, men enkelte overstyres eksplisitt
+// (q.fag). kalkyle/drift = Forretningsdrift; markedsmiks/malgruppe = Markedsføring;
+// forbrukerlov = Kultur og samhandling (kundemøte/servicerettigheter) — UNNTATT
+// markedsføringsloven-spørsmål (betalt omtale) som er Markedsføring (q.fag: 'm').
+const KATEGORI_FAG: Record<EspenKategori, FagKode> = {
+  kalkyle: 'fd',
+  drift: 'fd',
+  markedsmiks: 'm',
+  malgruppe: 'm',
+  forbrukerlov: 'ks',
+}
+/** Faget spørsmålet hører til (eksplisitt q.fag vinner over kategorikoblingen). */
+export function fagForSporsmal(q: EspenSporsmal): FagKode {
+  return q.fag ?? KATEGORI_FAG[q.kategori]
+}
 
 /** Det byggede spørsmålet (statisk konstant ELLER avledet av elevens tall). */
 export interface EspenBygg {
@@ -26,6 +44,8 @@ export interface EspenSporsmal {
   temaId?: string            // uten temaId = grunnpool (alltid aktiv)
   nivaa: EspenNivaa
   kategori: EspenKategori
+  /** Overstyr fag-koblingen fra kategori (fikserunde 3). Utelatt = KATEGORI_FAG. */
+  fag?: FagKode
   /** null = ikke stillbar nå (mangler nødvendige data i state). */
   bygg: (state: GameState) => EspenBygg | null
   glossaryId?: string        // 📚-lenke i forklaringen (informativt)
@@ -36,9 +56,9 @@ export interface EspenSporsmal {
 function stat(
   id: string, nivaa: EspenNivaa, kategori: EspenKategori,
   tekst: string, alternativer: string[], riktigIndex: number, forklaring: string,
-  glossaryId?: string, temaId?: string,
+  glossaryId?: string, temaId?: string, fag?: FagKode,
 ): EspenSporsmal {
-  return { id, nivaa, kategori, glossaryId, temaId, bygg: () => ({ tekst, alternativer, riktigIndex, forklaring }) }
+  return { id, nivaa, kategori, glossaryId, temaId, fag, bygg: () => ({ tekst, alternativer, riktigIndex, forklaring }) }
 }
 
 /** Numeriske alternativer: dedupliser, sorter stigende (deterministisk posisjon),
@@ -246,7 +266,7 @@ export const ESPEN_SPORSMAL: EspenSporsmal[] = [
     ['At omtalen merkes tydelig som reklame', 'Ingenting spesielt', 'At influenseren eier produktet', 'At prisen alltid oppgis'],
     0,
     '[[JUS_008|Betalt omtale]] SKAL merkes som reklame (markedsføringsloven). Skjult reklame er ulovlig og svekker tilliten.',
-    'JUS_008'),
+    'JUS_008', undefined, 'm'),   // markedsføringsloven → Markedsføring (ikke KS)
   stat('vg2_forpris', 'vg2', 'markedsmiks',
     'Førpris-regelen ved et salg betyr at …?',
     ['Varen faktisk må ha hatt den «gamle» prisen en periode før', 'Du kan sette gammel pris fritt', 'Prisen må ende på 9', 'Tilbud er forbudt'],
@@ -269,13 +289,17 @@ export interface EspenKontekst {
   feilCooldown: Record<string, number>
   absDag: number
   kategoriHint?: EspenKategori
+  /** Fikserunde 3 — LÆRERSTYRT: fagene det kan spørres fra (fag valgt av lærer ∩
+   *  fag aktivt). Utelatt = alle fag (bakoverkompatibelt / test). Tom = ingen. */
+  aktiveFag?: FagKode[]
 }
 
-/** Spørsmål som KAN stilles nå (nivå, tema, ikke besvart, ikke i cooldown, har
- *  data). Foretrekker kategoriHint hvis noen passer. */
+/** Spørsmål som KAN stilles nå (nivå, fag, tema, ikke besvart, ikke i cooldown,
+ *  har data). Foretrekker kategoriHint hvis noen passer. */
 export function finnKandidater(state: GameState, ctx: EspenKontekst): EspenSporsmal[] {
   const kand = ESPEN_SPORSMAL.filter(q => {
     if (q.nivaa === 'vg2' && ctx.nivaa !== 'vg2') return false
+    if (ctx.aktiveFag && !ctx.aktiveFag.includes(fagForSporsmal(q))) return false
     if (q.temaId && !ctx.aktiveTemaIds.includes(q.temaId)) return false
     if (ctx.besvarteIds.includes(q.id)) return false
     const cd = ctx.feilCooldown[q.id]
@@ -291,3 +315,22 @@ export function finnKandidater(state: GameState, ctx: EspenKontekst): EspenSpors
 
 export const espenSporsmalById = (id: string): EspenSporsmal | undefined =>
   ESPEN_SPORSMAL.find(q => q.id === id)
+
+// ── LÆRERSTYRING (fikserunde 3) — RTDB klasser/{kode}/espenSpor ────────────────
+/** Lærerens «Espen spør»-oppsett: av/på (default AV) + hvilke fag det spørres fra. */
+export interface EspenSporStyring {
+  aktiv: boolean
+  fag: FagAktivering
+}
+export const ESPEN_STYRING_DEFAULT: EspenSporStyring = { aktiv: false, fag: { fd: true, m: true, ks: true } }
+
+/** Normaliser en (mulig delvis/null) RTDB-/localStorage-verdi. aktiv default AV;
+ *  fag default PÅ (manglende nøkkel ⇒ på). */
+export function normaliserEspenStyring(v: unknown): EspenSporStyring {
+  const o = (v && typeof v === 'object') ? v as Record<string, unknown> : {}
+  const f = (o.fag && typeof o.fag === 'object') ? o.fag as Record<string, unknown> : {}
+  return {
+    aktiv: o.aktiv === true,
+    fag: { fd: f.fd !== false, m: f.m !== false, ks: f.ks !== false },
+  }
+}

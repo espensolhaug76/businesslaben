@@ -35,7 +35,7 @@ import {
   mkfFaktor, mkfTreffProsent,
   type KundebestillingPayload, type LeverandortilbudPayload, type MkftilbudPayload,
 } from './data/innboksEpost'
-import { finnKandidater, type EspenKategori, type EspenNivaa } from './data/espenSporsmal'
+import { finnKandidater, type EspenKategori, type EspenNivaa, type EspenSporStyring, ESPEN_STYRING_DEFAULT, normaliserEspenStyring } from './data/espenSporsmal'
 
 // Tom dagsstatistikk (BAKGRUNNSSALG-feltene inkludert) — brukt av initialState,
 // OPEN_DAY (nullstilling).
@@ -346,7 +346,7 @@ type Action =
   // ── KROK 6 — «ESPEN SPØR» (docs/ENGASJEMENT.md) ──
   /** Still neste kunnskapsspørsmål (mentor-køen). No-op hvis ett ligger ubesvart
    *  eller dagens tak er nådd (dev overstyrer taket). nivaa/aktiveTemaIds fra UI. */
-  | { type: 'STILL_ESPEN_SPOR'; nivaa: EspenNivaa; aktiveTemaIds: string[]; kategoriHint?: EspenKategori; dev?: boolean }
+  | { type: 'STILL_ESPEN_SPOR'; nivaa: EspenNivaa; aktiveTemaIds: string[]; aktiveFag?: FagKode[]; kategoriHint?: EspenKategori; dev?: boolean }
   /** Svar på det aktive spørsmålet (index i alternativer). */
   | { type: 'SVAR_ESPEN_SPOR'; index: number }
   /** Lukk spørsmålet etter at forklaringen er lest. */
@@ -1661,7 +1661,7 @@ function reducer(state: GameState, action: Action): GameState {
       if (!action.dev && state.espenSpor.dagTeller >= BALANCE.espenSpor.maksPerDag) return state
       const absNaa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
       const kandidater = finnKandidater(state, {
-        nivaa: action.nivaa, aktiveTemaIds: action.aktiveTemaIds,
+        nivaa: action.nivaa, aktiveTemaIds: action.aktiveTemaIds, aktiveFag: action.aktiveFag,
         besvarteIds: state.espenSpor.besvarteIds, feilCooldown: state.espenSpor.feilCooldown,
         absDag: absNaa, kategoriHint: action.kategoriHint,
       })
@@ -2307,6 +2307,15 @@ interface GameContextValue {
   /** Dev-overstyring per fag (?dev=1). Fravær = ingen overstyring for det faget. */
   fagDev: Partial<Record<FagKode, boolean>>
   setFagDev: (fag: FagKode, val: boolean | null) => void
+  /** «Espen spør»-styring (lærerstyrt) — EFFEKTIV (dev vinner). aktiv default AV;
+   *  læreren skrur den PÅ og velger hvilke fag det spørres fra. */
+  espenSporStyring: EspenSporStyring
+  /** «Espen spør»-styring fra lærer/RTDB (uten dev) — for «Nå: lærer»-labels. */
+  espenSporRaw: EspenSporStyring
+  /** Dev-overstyringer for «Espen spør» (aktiv + per fag). Fravær = ingen. */
+  espenSporDev: { aktiv?: boolean; fag: Partial<Record<FagKode, boolean>> }
+  setEspenSporDevAktiv: (val: boolean | null) => void
+  setEspenSporDevFag: (fag: FagKode, val: boolean | null) => void
   /** ↺ Nullstill ALLE lokale dev-overstyringer (fag, nivå, «Espen spør»). */
   nullstillDevOverstyringer: () => void
 }
@@ -2366,6 +2375,27 @@ function lesFagDev(): Partial<Record<FagKode, boolean>> {
     if (raw) { const v = JSON.parse(raw); if (v && typeof v === 'object') return v as Partial<Record<FagKode, boolean>> }
   } catch { /* utilgjengelig */ }
   return {}
+}
+
+// «ESPEN SPØR»-STYRING (fikserunde 3) — RTDB klasser/{kode}/espenSpor = { aktiv,
+// fag }. Default AV. Uten klassekode: lokal fallback (også av). Dev-overstyring
+// (aktiv + per fag) VINNER lokalt.
+function lesEspenStyringFallback(): EspenSporStyring {
+  try {
+    const raw = localStorage.getItem('espen-spor-laerer')
+    if (raw) return normaliserEspenStyring(JSON.parse(raw))
+  } catch { /* utilgjengelig */ }
+  return { ...ESPEN_STYRING_DEFAULT, fag: { ...ESPEN_STYRING_DEFAULT.fag } }
+}
+function lesEspenStyringDev(): { aktiv?: boolean; fag: Partial<Record<FagKode, boolean>> } {
+  try {
+    const raw = localStorage.getItem('espen-spor-dev-override')
+    if (raw) {
+      const v = JSON.parse(raw)
+      if (v && typeof v === 'object') return { aktiv: typeof v.aktiv === 'boolean' ? v.aktiv : undefined, fag: (v.fag && typeof v.fag === 'object') ? v.fag : {} }
+    }
+  } catch { /* utilgjengelig */ }
+  return { fag: {} }
 }
 
 const BEREDSKAP_KEY = 'beredskap_state_v1'
@@ -2480,6 +2510,47 @@ export function GameProvider({ children }: { children: ReactNode }) {
     ks: fagDev.ks ?? fagRaw.ks,
   }
 
+  // «ESPEN SPØR»-STYRING (lærerstyrt): RTDB-node + fallback + dev-overstyring
+  // (aktiv + per fag). Default AV — læreren må skru den på.
+  const [espenSporRaw, setEspenSporRaw] = useState<EspenSporStyring>(() => lesEspenStyringFallback())
+  const [espenSporDev, setEspenSporDevState] = useState<{ aktiv?: boolean; fag: Partial<Record<FagKode, boolean>> }>(() => lesEspenStyringDev())
+  useEffect(() => {
+    const kode = hentKlassekode()
+    if (!kode) { setEspenSporRaw(lesEspenStyringFallback()); return }
+    return onValue(ref(db, `klasser/${kode}/espenSpor`), snap => {
+      setEspenSporRaw(normaliserEspenStyring(snap.val()))
+    })
+  }, [])
+  const persistEspenDev = (next: { aktiv?: boolean; fag: Partial<Record<FagKode, boolean>> }) => {
+    try {
+      const tom = next.aktiv === undefined && Object.keys(next.fag).length === 0
+      if (tom) localStorage.removeItem('espen-spor-dev-override')
+      else localStorage.setItem('espen-spor-dev-override', JSON.stringify(next))
+    } catch { /* ignore */ }
+  }
+  const setEspenSporDevAktiv = (val: boolean | null) => {
+    setEspenSporDevState(prev => {
+      const next = { ...prev, fag: { ...prev.fag } }
+      if (val === null) delete next.aktiv; else next.aktiv = val
+      persistEspenDev(next); return next
+    })
+  }
+  const setEspenSporDevFag = (fag: FagKode, val: boolean | null) => {
+    setEspenSporDevState(prev => {
+      const next = { ...prev, fag: { ...prev.fag } }
+      if (val === null) delete next.fag[fag]; else next.fag[fag] = val
+      persistEspenDev(next); return next
+    })
+  }
+  const espenSporStyring: EspenSporStyring = {
+    aktiv: espenSporDev.aktiv ?? espenSporRaw.aktiv,
+    fag: {
+      fd: espenSporDev.fag.fd ?? espenSporRaw.fag.fd,
+      m: espenSporDev.fag.m ?? espenSporRaw.fag.m,
+      ks: espenSporDev.fag.ks ?? espenSporRaw.fag.ks,
+    },
+  }
+
   // Et tema hvis fag er AV regnes som INAKTIVT uansett temaAktivering — skjules
   // dermed overalt spillet leser aktiveTemaer (faner, mentor, dev, OPEN_DAY).
   const aktiveTemaer = useMemo(() => {
@@ -2502,19 +2573,26 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // fag lokalt (samme vei som ⚙-panelet) og verifisere fane-/innholdsfilteret.
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    const w = window as unknown as { __SET_FAG_DEV__?: unknown; __NULLSTILL_DEV__?: unknown }
+    const w = window as unknown as {
+      __SET_FAG_DEV__?: unknown; __NULLSTILL_DEV__?: unknown
+      __SET_ESPEN_DEV_AKTIV__?: unknown; __SET_ESPEN_DEV_FAG__?: unknown
+    }
     w.__SET_FAG_DEV__ = setFagDev
     w.__NULLSTILL_DEV__ = nullstillDevOverstyringer
+    w.__SET_ESPEN_DEV_AKTIV__ = setEspenSporDevAktiv
+    w.__SET_ESPEN_DEV_FAG__ = setEspenSporDevFag
   })
 
-  // ↺ Nullstill ALLE lokale dev-overstyringer (fag + klassenivå; «Espen spør» i DEL 3).
+  // ↺ Nullstill ALLE lokale dev-overstyringer (fag, klassenivå, «Espen spør»).
   const nullstillDevOverstyringer = () => {
     try {
       localStorage.removeItem('fag-aktivering-dev-override')
       localStorage.removeItem('klasse-nivaa-dev-override')
+      localStorage.removeItem('espen-spor-dev-override')
     } catch { /* ignore */ }
     setFagDevState({})
     setKlasseNivaaDevState(null)
+    setEspenSporDevState({ fag: {} })
   }
 
   // TEMA 15: når læreren aktiverer reiseliv-temaet OG ingen sesong har startet
@@ -2526,7 +2604,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [aktiveTemaer, state.turistsesong])
 
-  return <GameContext.Provider value={{ state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev, fagAktiv, fagRaw, fagDev, setFagDev, nullstillDevOverstyringer }}>{children}</GameContext.Provider>
+  return <GameContext.Provider value={{ state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev, fagAktiv, fagRaw, fagDev, setFagDev, espenSporStyring, espenSporRaw, espenSporDev, setEspenSporDevAktiv, setEspenSporDevFag, nullstillDevOverstyringer }}>{children}</GameContext.Provider>
 }
 
 export function useGame() {
@@ -2573,6 +2651,15 @@ export function useKlasseNivaa(): TemaNivaa {
  *  HELT skjult for eleven (faner/temaer/innhold). */
 export function useFagAktive(): FagAktivering {
   return useGame().fagAktiv
+}
+/** «Espen spør»-styring (lærerstyrt): av/på + hvilke fag det spørres fra. */
+export function useEspenSporStyring(): EspenSporStyring {
+  return useGame().espenSporStyring
+}
+/** Fagene «Espen spør» kan spørre fra NÅ = valgt av lærer ∩ globalt aktivt fag. */
+export function useEspenSporAktiveFag(): FagKode[] {
+  const { espenSporStyring, fagAktiv } = useGame()
+  return (['fd', 'm', 'ks'] as FagKode[]).filter(f => espenSporStyring.fag[f] && fagAktiv[f])
 }
 /** DEL 0 — EFFEKTIVT nivå for et innholdsstykke. Presedens: er innholdet bundet
  *  til et tema (temaId gitt OG temaet aktivt) styrer TEMAETS nivå; ellers gjelder

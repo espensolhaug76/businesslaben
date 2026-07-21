@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, turistsesongInfo } from '../GameContext'
 import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, MENTOR_INTRO } from '../data/mentorTriggers'
 import { STAMKUNDER_AKTIV } from '../data/featureFlags'
+import { type FagKode } from '../data/fag'
 import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
 import { kanalById, kanalTreffISegmenter } from '../data/kampanje'
@@ -236,7 +237,7 @@ function renderMelding(melding: string): ReactNode {
 }
 
 export default function Mentor({ blocked }: { blocked: boolean }) {
-  const { state, aktiveTemaer, dispatch, klasseNivaa } = useGame()
+  const { state, aktiveTemaer, dispatch, klasseNivaa, espenSporStyring, fagAktiv } = useGame()
   const [fired, setFired] = useState<Set<string>>(loadFired)
   const [queue, setQueue] = useState<string[]>([])          // HENDELSES-kø (peker/kø)
   // KROK 6 — «Espen spør»: er det aktive spørsmålet avslørt (eleven klikket)?
@@ -333,9 +334,14 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   // KROK 6 — «ESPEN SPØR» kadens. Reduceren gater (maks ett ubesvart, maksPerDag),
   // så disse dispatchene er trygge å fyre ofte — de blir no-op når det ikke passer.
   const aktiveTemaIds = Object.entries(aktiveTemaer).filter(([, v]) => v?.aktiv).map(([k]) => k)
+  // LÆRERSTYRT (fikserunde 3): auto-spørsmål fyrer KUN når læreren har skrudd
+  // «Espen spør» på; fagpoolen = fag valgt av lærer ∩ globalt aktivt fag.
+  const espenAktiv = espenSporStyring.aktiv
+  const espenAktiveFag = (['fd', 'm', 'ks'] as FagKode[]).filter(f => espenSporStyring.fag[f] && fagAktiv[f])
   const still = useCallback((kategoriHint: 'kalkyle' | 'drift' | 'malgruppe') => {
-    dispatch({ type: 'STILL_ESPEN_SPOR', nivaa: klasseNivaa, aktiveTemaIds, kategoriHint })
-  }, [dispatch, klasseNivaa, aktiveTemaIds])
+    if (!espenAktiv) return   // av som standard — læreren styrer
+    dispatch({ type: 'STILL_ESPEN_SPOR', nivaa: klasseNivaa, aktiveTemaIds, aktiveFag: espenAktiveFag, kategoriHint })
+  }, [dispatch, klasseNivaa, aktiveTemaIds, espenAktiv, espenAktiveFag])
   // (1) Etter dagsoppgjøret (refleksjonsøyeblikk) → drift/kalkyle. Én gang per dag.
   const spurtDagRef = useRef<string | null>(null)
   useEffect(() => {

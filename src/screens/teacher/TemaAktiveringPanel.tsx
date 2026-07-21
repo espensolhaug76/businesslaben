@@ -3,6 +3,7 @@ import { ref, onValue, set, remove } from 'firebase/database'
 import { db } from '../../lib/firebase'
 import { TEMAER, type TemaAktivering, type TemaNivaa } from '../../game/data/temaer'
 import { type FagAktivering, type FagKode, FAG_KODER, FAG_META, FAG_DEFAULT, normaliserFag } from '../../game/data/fag'
+import { type EspenSporStyring, ESPEN_STYRING_DEFAULT, normaliserEspenStyring } from '../../game/data/espenSporsmal'
 
 // ─── Tema-aktivering (KODEKART steg 1) ───────────────────────────────────────
 // Lærer-UI i «Spillet»-fanen: slå temaer av/på PER KLASSE og velg vg1/vg2.
@@ -16,6 +17,8 @@ export default function TemaAktiveringPanel() {
   const [klasseNivaa, setKlasseNivaa] = useState<TemaNivaa>('vg1')
   // Fikserunde 3 — fagaktivering (fd/m/ks). Default alt på (fritt spill).
   const [fag, setFag] = useState<FagAktivering>({ ...FAG_DEFAULT })
+  // Fikserunde 3 — «Espen spør»-styring. Default AV; læreren skrur den på.
+  const [espen, setEspen] = useState<EspenSporStyring>({ ...ESPEN_STYRING_DEFAULT, fag: { ...ESPEN_STYRING_DEFAULT.fag } })
 
   useEffect(() => {
     if (!kode) return
@@ -28,6 +31,13 @@ export default function TemaAktiveringPanel() {
     if (!kode) return
     return onValue(ref(db, `klasser/${kode}/fagAktivering`), snap => {
       setFag(normaliserFag(snap.val()))
+    })
+  }, [kode])
+
+  useEffect(() => {
+    if (!kode) return
+    return onValue(ref(db, `klasser/${kode}/espenSpor`), snap => {
+      setEspen(normaliserEspenStyring(snap.val()))
     })
   }, [kode])
 
@@ -53,6 +63,15 @@ export default function TemaAktiveringPanel() {
   function skrivFag(f: FagKode, verdi: boolean) {
     if (!kode) return
     set(ref(db, `klasser/${kode}/fagAktivering/${f}`), verdi)   // lokal state følger via onValue
+  }
+
+  function skrivEspenAktiv(verdi: boolean) {
+    if (!kode) return
+    set(ref(db, `klasser/${kode}/espenSpor/aktiv`), verdi)
+  }
+  function skrivEspenFag(f: FagKode, verdi: boolean) {
+    if (!kode) return
+    set(ref(db, `klasser/${kode}/espenSpor/fag/${f}`), verdi)
   }
 
   if (!kode) {
@@ -103,6 +122,51 @@ export default function TemaAktiveringPanel() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ESPEN SPØR — lærerstyrt kunnskapsquiz (fikserunde 3), UNDER Fag. Av som
+          standard; læreren skrur den på og velger hvilke fag det spørres fra
+          (kun fag som er aktive over kan velges). */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="font-medium text-gray-900 text-sm">Espen spør</div>
+            <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+              Mentor-Espen stiller korte fagspørsmål i spillet. Av som standard —
+              skru på og velg fag.
+            </div>
+          </div>
+          <button
+            onClick={() => skrivEspenAktiv(!espen.aktiv)}
+            role="switch"
+            aria-checked={espen.aktiv}
+            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${espen.aktiv ? 'bg-teal-500' : 'bg-gray-300'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${espen.aktiv ? 'translate-x-5' : ''}`} />
+          </button>
+        </div>
+        {espen.aktiv && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {FAG_KODER.map(f => {
+              const globaltAv = !fag[f]
+              const valgt = espen.fag[f] && !globaltAv
+              return (
+                <button
+                  key={f}
+                  disabled={globaltAv}
+                  onClick={() => skrivEspenFag(f, !espen.fag[f])}
+                  title={globaltAv ? `Faget «${FAG_META[f].navn}» er slått av` : FAG_META[f].navn}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors ${
+                    globaltAv ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                      : valgt ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {valgt ? '✓ ' : ''}{FAG_META[f].kort}{globaltAv ? ' (av)' : ''}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* DEL 0 — GLOBALT klassenivå: gjelder alt spillinnhold utenfor et aktivt
