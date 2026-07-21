@@ -18,3 +18,12 @@
  *  historikken bak ✓-markeringen i scenariovelgeren og «uspilt foretrekkes»-
  *  trekkingen) — kun RETUREN som stamkunde er slått av. */
 export const STAMKUNDER_AKTIV = false
+
+/** TEMA 15 TURISTSESONG — PARKERT (Espen-beslutning, fikserunde 3+): venter på
+ *  ferdig Tema 15-innhold. KODEN BEHOLDES (turistsesong-state, scenarier,
+ *  turistkontor/byhotell-scener, pakkebygger). Kun gated bak dette flagget:
+ *   • false ⇒ sesongen kan ikke starte (START_TURISTSESONG er no-op, og auto-
+ *     starten ved reiseliv-tema-aktivering er av), ⚙-panelets «Start turistsesong
+ *     nå»/«Spol til sesongslutt» er deaktivert med «Parkert — venter på Tema
+ *     15-innhold», og de sesong-relaterte mentor-triggerne armeres ikke. */
+export const TURISTSESONG_AKTIV = false

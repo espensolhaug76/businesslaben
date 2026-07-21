@@ -26,7 +26,7 @@ import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinn
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
-import { STAMKUNDER_AKTIV } from './data/featureFlags'
+import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from './data/featureFlags'
 import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS } from './sales/scenarios'
 import { beregnPakke, velgProfil, BESOKSPROFILER, velgPakkeForesporsler } from './data/reiseliv'
 import {
@@ -1205,6 +1205,8 @@ function reducer(state: GameState, action: Action): GameState {
 
     // ── TEMA 15 REISELIV — turistsesong + reiselivsavtaler ──────────────────────
     case 'START_TURISTSESONG': {
+      // TEMA 15 PARKERT (TURISTSESONG_AKTIV): sesongen kan ikke starte — no-op.
+      if (!TURISTSESONG_AKTIV) return state
       // Start (eller restart) en turistsesong fra i dag. Ingen dobbeltstart hvis
       // en sesong alt er aktiv.
       if (turistsesongAktiv(state)) return state
@@ -2597,9 +2599,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // TEMA 15: når læreren aktiverer reiseliv-temaet OG ingen sesong har startet
   // ennå, start turistsesongen. Kun ÉN auto-start (turistsesong != null etterpå);
-  // dev-knappen kan restarte manuelt.
+  // dev-knappen kan restarte manuelt. PARKERT (TURISTSESONG_AKTIV): ingen auto-start.
   useEffect(() => {
-    if (aktiveTemaer['reiseliv']?.aktiv && state.turistsesong === null) {
+    if (TURISTSESONG_AKTIV && aktiveTemaer['reiseliv']?.aktiv && state.turistsesong === null) {
       dispatch({ type: 'START_TURISTSESONG' })
     }
   }, [aktiveTemaer, state.turistsesong])

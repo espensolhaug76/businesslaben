@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, turistsesongInfo } from '../GameContext'
 import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, MENTOR_INTRO } from '../data/mentorTriggers'
-import { STAMKUNDER_AKTIV } from '../data/featureFlags'
+import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from '../data/featureFlags'
 import { type FagKode } from '../data/fag'
 import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
@@ -103,14 +103,18 @@ function oppfylt(id: string, s: GameState): boolean {
     }
     // TEMA 8: leser siste fullførte kampanje (effektrapport + førpris-brudd).
     case 'kampanje_effekt': return s.kampanje.historikk.length > 0
-    // TEMA 15: sesongslutt = en sesong har startet, men er nå UTE av varigheten.
+    // TEMA 15 sesongslutt: sesong startet, nå UTE av varigheten. PARKERT
+    // (TURISTSESONG_AKTIV) ⇒ armes aldri. DATAVAKT: krever minst 1 TILREISENDE
+    // kunde (turistKunder ≥ 1) — uten turister i strømmen er refleksjonen tom.
     case 'turistsesong_slutt': {
+      if (!TURISTSESONG_AKTIV) return false
       const info = turistsesongInfo(s)
-      return !!info && !info.aktiv && (s.turistsesong?.bakgrunnKunder ?? 0) > 0
+      return !!info && !info.aktiv && (s.turistsesong?.turistKunder ?? 0) >= 1
     }
-    case 'hotellavtale_svart': return s.hotellavtale !== 'ingen'
+    // TEMA 15 (PARKERT): sesong-relaterte triggere armes ikke når sesongen er av.
+    case 'hotellavtale_svart': return TURISTSESONG_AKTIV && s.hotellavtale !== 'ingen'
     // TEMA 15 DEL 7: eleven har tilbudt en reiselivspakke (resultat lagret).
-    case 'pakke_bygget': return s.reiselivPakke != null
+    case 'pakke_bygget': return TURISTSESONG_AKTIV && s.reiselivPakke != null
     case 'kampanje_forpris_brudd': return s.kampanje.historikk[s.kampanje.historikk.length - 1]?.forprisBrudd === true
     default: return false
   }
@@ -299,6 +303,9 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     }
     for (const tema of ['budsjett', 'nokkeltall', 'kampanje', 'reiseliv'] as const) {
       if (!aktiveTemaer[tema]?.aktiv) continue
+      // TEMA 15 PARKERT (TURISTSESONG_AKTIV): reiseliv-temaets mentor-melding
+      // (som lover turister i strømmen) armes ikke før sesongen finnes.
+      if (tema === 'reiseliv' && !TURISTSESONG_AKTIV) continue
       const varAktivVedStart = temaVedStart.current[tema]
       if (!varAktivVedStart || dashApnet) fire(`tema_${tema}_aktivert`)
     }

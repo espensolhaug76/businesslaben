@@ -12,7 +12,7 @@
 import { useState } from 'react'
 import { useGame, useErTemaAktivt, turistsesongInfo } from '../GameContext'
 import { useDevPanel, setDevPanel, toggleDevPanel } from './devPanel'
-import { STAMKUNDER_AKTIV } from '../data/featureFlags'
+import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from '../data/featureFlags'
 import { FAG_KODER, FAG_META } from '../data/fag'
 import { SCENARIOS } from '../sales/scenarios'
 
@@ -178,15 +178,17 @@ export default function DevPanel({ onOpenSim, isInterior }: {
             <DevBtn
               label="⏩ Start turistsesong nå"
               color="#7dd3fc" bg="rgba(56,189,248,0.16)"
-              disabled={!reiselivAktiv}
-              reason={!reiselivAktiv ? 'Krever aktivt reiseliv-tema.' : undefined}
+              disabled={!TURISTSESONG_AKTIV || !reiselivAktiv}
+              reason={!TURISTSESONG_AKTIV ? 'Parkert — venter på Tema 15-innhold.'
+                : !reiselivAktiv ? 'Krever aktivt reiseliv-tema.' : undefined}
               onClick={() => dispatch({ type: 'START_TURISTSESONG' })}
             />
             <DevBtn
               label="⏩ Spol til sesongslutt"
               color="#7dd3fc" bg="rgba(56,189,248,0.1)"
-              disabled={!sesongAktiv}
-              reason={!sesongAktiv ? 'Ingen aktiv turistsesong.' : undefined}
+              disabled={!TURISTSESONG_AKTIV || !sesongAktiv}
+              reason={!TURISTSESONG_AKTIV ? 'Parkert — venter på Tema 15-innhold.'
+                : !sesongAktiv ? 'Ingen aktiv turistsesong.' : undefined}
               onClick={() => dispatch({ type: 'DEV_SPOL_TURISTSESONG_SLUTT' })}
             />
           </Group>
