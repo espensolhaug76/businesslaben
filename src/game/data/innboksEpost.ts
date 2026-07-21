@@ -306,6 +306,10 @@ export function aktiveUbesvarte(messages: InboxMessage[]): number {
  *  meldinger (aldri over `maksAktiveUbesvart`). Ren funksjon — ingen bivirkning. */
 export function genererDagensEposter(
   produkter: Product[], dayNumber: number, month: number, year: number, aktiveNaa: number,
+  // Fikserunde 3 — FAGFILTER: kundebestilling (7a) er KJERNE og går alltid;
+  // leverandørtilbud (7b) kun når Forretningsdrift er aktiv; markedsføringstilbud
+  // (7d) kun når Markedsføring er aktiv. Default alt på (fritt spill / test).
+  fag: { fd: boolean; m: boolean } = { fd: true, m: true },
 ): InboxMessage[] {
   const K = BALANCE.innboks
   const rom = Math.max(0, K.maksAktiveUbesvart - aktiveNaa)
@@ -317,7 +321,9 @@ export function genererDagensEposter(
   antall = Math.min(antall, rom)
   if (antall <= 0) return []
   const ctx: GenCtx = { produkter, dayNumber, month, year }
-  const byggere = [byggKundebestilling, byggLeverandortilbud, byggMkftilbud] as const
+  const byggere: ((r: () => number, ctx: GenCtx) => InboxMessage | null)[] = [byggKundebestilling]
+  if (fag.fd) byggere.push(byggLeverandortilbud)
+  if (fag.m) byggere.push(byggMkftilbud)
   const ut: InboxMessage[] = []
   // Roter startpunkt seedet så typene varierer dag til dag.
   const start = Math.floor(r() * byggere.length)

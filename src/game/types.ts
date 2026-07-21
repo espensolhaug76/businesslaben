@@ -1,6 +1,7 @@
 // ─── AdVenture 3.0 — Core Types ───────────────────────────────────────────
 
 import type { RisikoRad, BrannalarmKvalitet, BrannovelseForsok } from './data/beredskap'
+import type { FagAktivering } from './data/fag'
 import type { BudsjettState, NokkeltallSvar } from './data/budsjett'
 import type { KampanjeState } from './data/kampanje'
 import type { EpostPayload, EpostStatus } from './data/innboksEpost'
@@ -510,6 +511,10 @@ export interface MonthSettlement {
 // ── Game state ───────────────────────────────────────────────────────────────
 
 export interface GameState {
+  /** Speil av lærerens fagaktivering (fd/m/ks) fra context — så reduceren kan
+   *  fag-gate innhold (f.eks. hvilke innboks-tilbud som genereres). Settes via
+   *  SET_FAG_AKTIV når context-verdien endres. Default alt på (fritt spill). */
+  fagAktiv: FagAktivering
   // Level / progression
   level: number
   xp: number

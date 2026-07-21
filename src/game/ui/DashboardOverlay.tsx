@@ -7,6 +7,8 @@ import WindowDisplayEditor from '../city/WindowDisplay'
 import { SCENARIOS } from '../sales/scenarios'
 import { stamkundeTrinnLabel } from '../data/stamkundeDialog'
 import { STAMKUNDER_AKTIV } from '../data/featureFlags'
+import { type FagKode, type FagAktivering } from '../data/fag'
+import { type TemaAktivering } from '../data/temaer'
 import { generatePersona, calcPersonaMatchScore, matchLabel, MARKETING_CHANNEL_TIP } from '../data/personas'
 import { DAY_CONFIG } from '../data/dayConfig'
 import { manedligeFasteKostnader, amortiserLaan } from '../data/economy'
@@ -69,34 +71,48 @@ const FAG_FARGER: Record<FagId, { navn: string; kort: string; farge: string }> =
 // «Produkter» er flyttet frem til RETT FØR «Priser» (Espens beslutning): man må
 // ha varer før man kan prise dem. Produkter beholder sitt markedsforing-fag
 // (badge/farge urørt) — kun rekkefølgen endres.
-const TABS: { id: Tab; label: string; emoji: string; fag: FagId; tema?: string }[] = [
+// `fag` = PRIMÆRfag for stripe/badge (visuell koding, uendret). `visFag` = hvilke
+// programfag som gjør fanen SYNLIG (fikserunde 3): en fane vises hvis MINST ETT av
+// dens `visFag` er aktivt. Uten `visFag` er fanen KJERNE (vises alltid). HMS er
+// tema-gated (beredskap) — og siden aktiveTemaer er fag-gated, forsvinner HMS
+// automatisk når faget (fd) er av; ingen egen visFag der.
+const TABS: { id: Tab; label: string; emoji: string; fag: FagId; tema?: string; visFag?: FagKode[] }[] = [
   // ── Forretningsdrift ──
-  { id: 'oversikt',        label: 'Oversikt',         emoji: '📊', fag: 'forretningsdrift' },
-  { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋', fag: 'forretningsdrift' },
-  { id: 'okonomi',         label: 'Økonomi',           emoji: '💰', fag: 'forretningsdrift' },
-  { id: 'produkter',       label: 'Produkter',         emoji: '📦', fag: 'markedsforing' }, // FØR Priser: varer før prising
-  { id: 'priser',          label: 'Priser',            emoji: '🏷️', fag: 'forretningsdrift' }, // prising = kalkyle/lønnsomhet (Pris-P sekundært)
+  { id: 'oversikt',        label: 'Oversikt',         emoji: '📊', fag: 'forretningsdrift' },   // kjerne
+  { id: 'forretningsplan', label: 'Forretningsplan',   emoji: '📋', fag: 'forretningsdrift', visFag: ['fd'] },
+  { id: 'okonomi',         label: 'Økonomi',           emoji: '💰', fag: 'forretningsdrift', visFag: ['fd'] },
+  { id: 'produkter',       label: 'Produkter',         emoji: '📦', fag: 'markedsforing', visFag: ['fd', 'm'] }, // FØR Priser: varer før prising
+  { id: 'priser',          label: 'Priser',            emoji: '🏷️', fag: 'forretningsdrift', visFag: ['fd', 'm'] },
   // ── Markedsføring og innovasjon (markedsmiksens Produkt/Plass/Promosjon) ──
-  { id: 'malgruppe',       label: 'Målgruppe',         emoji: '🎯', fag: 'markedsforing' },
-  { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍', fag: 'markedsforing' },
-  { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢', fag: 'markedsforing' },
-  { id: 'distribusjon',    label: 'Distribusjon',      emoji: '🚚', fag: 'markedsforing' }, // Plass-P (M-merke)
-  { id: 'utstilling',      label: 'Utstilling',        emoji: '🪟', fag: 'markedsforing' },
+  { id: 'malgruppe',       label: 'Målgruppe',         emoji: '🎯', fag: 'markedsforing', visFag: ['m'] },
+  { id: 'lokasjon',        label: 'Lokasjon',          emoji: '📍', fag: 'markedsforing', visFag: ['m'] },
+  { id: 'markedsforing',   label: 'Markedsføring',     emoji: '📢', fag: 'markedsforing', visFag: ['m'] },
+  { id: 'distribusjon',    label: 'Distribusjon',      emoji: '🚚', fag: 'markedsforing', visFag: ['m'] }, // Plass-P (M-merke)
+  { id: 'utstilling',      label: 'Utstilling',        emoji: '🪟', fag: 'markedsforing', visFag: ['m'] },
   // ── Kultur og samhandling ──
-  { id: 'personale',       label: 'Personale',         emoji: '👥', fag: 'kultur' },
+  { id: 'personale',       label: 'Personale',         emoji: '👥', fag: 'kultur', visFag: ['ks', 'fd'] },
   // ── HMS (TEMA-fane: vises KUN når temaet er aktivt, se InnboksTabBar-filteret) ──
   { id: 'hms',             label: 'HMS',               emoji: '🦺', fag: 'hms', tema: 'beredskap' },
-  // ── Verktøy (tverrgående) ──
+  // ── Verktøy (tverrgående) — KJERNE, vises alltid ──
   { id: 'rapporter',       label: 'Rapporter',         emoji: '📋', fag: 'verktoy' },
   { id: 'innboks',         label: 'Innboks',           emoji: '📬', fag: 'verktoy' },
 ]
 
+/** En fane er synlig hvis (a) evt. tema-krav er oppfylt OG (b) minst ett av dens
+ *  `visFag` er aktivt (eller den er kjerne uten visFag). */
+function faneSynlig(t: typeof TABS[number], aktiveTemaer: Record<string, TemaAktivering>, fag: FagAktivering): boolean {
+  if (t.tema && !aktiveTemaer[t.tema]?.aktiv) return false
+  if (t.visFag && !t.visFag.some(f => fag[f])) return false
+  return true
+}
+
 // ── Tab bar (extracted so it can read unreadCount) ────────────────────────────
 
 function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveTab: (t: Tab) => void }) {
-  const { state, aktiveTemaer } = useGame()
-  // TEMA-faner (t.tema satt) vises kun når det temaet er aktivt for klassen.
-  const synligeTabs = TABS.filter(t => !t.tema || !!aktiveTemaer[t.tema]?.aktiv)
+  const { state, aktiveTemaer, fagAktiv } = useGame()
+  // Faner filtreres på tema (som før) OG på fag: en fane hvis fag er av er HELT
+  // borte (ingen gråtonet rest) for eleven.
+  const synligeTabs = TABS.filter(t => faneSynlig(t, aktiveTemaer, fagAktiv))
   // Faglegende: kun de fagene som faktisk har en synlig fane (i visnings-
   // rekkefølge, uten duplikater). Diskret — forklarer stripene under fanene.
   const synligeFag: FagId[] = []
@@ -186,11 +202,36 @@ interface DashboardOverlayProps {
 }
 
 export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt' }: DashboardOverlayProps) {
+  const { aktiveTemaer, fagAktiv } = useGame()
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
+  const [faneMelding, setFaneMelding] = useState<string | null>(null)
+
+  // Åpning / direktenavigasjon til en SKJULT fane → Oversikt (ingen krasj).
+  useEffect(() => {
+    if (!open || !initialTab) return
+    const t = TABS.find(x => x.id === initialTab)
+    setActiveTab(t && faneSynlig(t, aktiveTemaer, fagAktiv) ? (initialTab as Tab) : 'oversikt')
+    // Fag/tema-avhengigheter bevisst utelatt: åpnings-fanen skal ikke re-settes
+    // ved fagbytte midt i økt (det håndteres av vakten under).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialTab])
+
+  // Fagbytte MIDT i økt: står du på en fane som nettopp ble skjult → rolig retur
+  // til Oversikt med en tekstmelding (aldri en hard feil).
+  useEffect(() => {
+    if (!open) return
+    const t = TABS.find(x => x.id === activeTab)
+    if (t && !faneSynlig(t, aktiveTemaer, fagAktiv)) {
+      setActiveTab('oversikt')
+      setFaneMelding('Læreren har endret fagoppsettet — du er tilbake på Oversikt.')
+    }
+  }, [open, activeTab, aktiveTemaer, fagAktiv])
 
   useEffect(() => {
-    if (open && initialTab) setActiveTab(initialTab as Tab)
-  }, [open, initialTab])
+    if (!faneMelding) return
+    const id = window.setTimeout(() => setFaneMelding(null), 6000)
+    return () => window.clearTimeout(id)
+  }, [faneMelding])
 
   // LÆRINGSLAGET — meld AKTIV fane til mentoren (kontekstbundne fane-triggere).
   // Mentoren viser fane-hintet KUN mens fanen er aktiv, og re-armer det hvis det
@@ -246,6 +287,17 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
 
             {/* Tab bar */}
             <InnboksTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
+
+            {/* Rolig melding når læreren endrer fagoppsettet midt i økta. */}
+            {faneMelding && (
+              <div style={{
+                margin: '0.75rem 2rem 0', padding: '0.6rem 0.9rem',
+                background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.35)',
+                borderRadius: 10, color: '#7dd3fc', fontSize: 12.5, fontWeight: 600, flexShrink: 0,
+              }}>
+                ℹ️ {faneMelding}
+              </div>
+            )}
 
             {/* Content */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem 2rem' }}>

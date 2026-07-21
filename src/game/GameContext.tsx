@@ -148,6 +148,7 @@ function makeDefaultGameFlags(
 // ─── Initial state ──────────────────────────────────────────────────────────
 
 const initialState: GameState = {
+  fagAktiv: { ...FAG_DEFAULT },
   level: 1,
   xp: 0,
   xpToNextLevel: XP_THRESHOLDS[1],
@@ -295,6 +296,9 @@ type Action =
   | { type: 'TAKE_LOAN'; loan: Loan }
   | { type: 'SET_PRODUCTS'; products: Product[] }
   | { type: 'SET_MAIN_PRODUCT'; id: string }
+  /** Speil lærerens fagaktivering inn i state (fra context) — reduceren fag-gater
+   *  innhold som genereres reducer-side (innboks-tilbud). */
+  | { type: 'SET_FAG_AKTIV'; fag: FagAktivering }
   | { type: 'SET_WINDOW_DISPLAY'; fixtureId: WindowDisplayItem['fixtureId']; items: WindowDisplayItem[] }
   | { type: 'SET_COUNTER_LAYOUT'; items: TrauItem[] }
   | { type: 'RESOLVE_SALES_SCENARIO'; scenarioId?: string; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number; stockout?: boolean }
@@ -615,6 +619,10 @@ function reducer(state: GameState, action: Action): GameState {
         prisendretDag,
       }
     }
+
+    case 'SET_FAG_AKTIV':
+      // Speil context-verdien (lærerens fagaktivering, evt. dev-overstyrt).
+      return { ...state, fagAktiv: action.fag }
 
     case 'SET_MAIN_PRODUCT':
       // VINDUSLOGIKK TILLEGG: hovedprodukt for vindu/kampanjer. Klikk paa
@@ -2143,7 +2151,7 @@ function reducer(state: GameState, action: Action): GameState {
       const sveip = sveipEposter(state.messages, deliveredProducts, newAbsDag)
       deliveredProducts = sveip.produkter
       const nyeEposter = state.rentedLocationId
-        ? genererDagensEposter(deliveredProducts, newDayNumber, newMonth, newYear, aktiveUbesvarte(sveip.messages))
+        ? genererDagensEposter(deliveredProducts, newDayNumber, newMonth, newYear, aktiveUbesvarte(sveip.messages), state.fagAktiv)
         : []
       const epostMessages = [...sveip.messages, ...nyeEposter]
       const nyRep = Math.max(0, Math.min(100, state.reputation + sveip.reputationDelta))
@@ -2483,6 +2491,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
     return out
   }, [aktiveTemaerRaw, fagAktiv.fd, fagAktiv.m, fagAktiv.ks])
+
+  // Speil fagAktiv inn i reducer-state så innhold som genereres reducer-side
+  // (innboks-tilbud i START_NEW_DAY) kan fag-gates. Kjør ved endring.
+  useEffect(() => {
+    dispatch({ type: 'SET_FAG_AKTIV', fag: { fd: fagAktiv.fd, m: fagAktiv.m, ks: fagAktiv.ks } })
+  }, [fagAktiv.fd, fagAktiv.m, fagAktiv.ks])
+
+  // TEST-BRO (KUN DEV): eksponer fag-dev-setterne så spilltesten kan overstyre
+  // fag lokalt (samme vei som ⚙-panelet) og verifisere fane-/innholdsfilteret.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const w = window as unknown as { __SET_FAG_DEV__?: unknown; __NULLSTILL_DEV__?: unknown }
+    w.__SET_FAG_DEV__ = setFagDev
+    w.__NULLSTILL_DEV__ = nullstillDevOverstyringer
+  })
 
   // ↺ Nullstill ALLE lokale dev-overstyringer (fag + klassenivå; «Espen spør» i DEL 3).
   const nullstillDevOverstyringer = () => {
