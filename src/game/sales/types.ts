@@ -99,6 +99,11 @@ export interface SalesScenario {
    *  'service' = hovedmetrikken er RYKTE (f.eks. klage/reklamasjon): ingen
    *  salgsforventning, og en god løsning kan koste penger. */
   outcomeKind?: 'sale' | 'service'
+  /** Valgfritt TIDSVINDU på dagen der kunden dukker opp (minutter siden 09:00).
+   *  planleggMoter plasserer scenariet innenfor [fra, til] (seedet + jitter,
+   *  klemt til vindusgrensene). Utelatt = kan komme når som helst på dagen (som
+   *  før). Brukes for tidsbundne kunder, f.eks. morgen-/lunsjkunder. */
+  tidsvindu?: { fra: number; til: number }
   /** Ordnet liste steg; første element = startsteg. */
   steps: SalesStep[]
 }

@@ -1811,7 +1811,7 @@ function reducer(state: GameState, action: Action): GameState {
         turistandel = T.turistandel
         vareVekt = T.vareVekt
       }
-      const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed, kapasitetRest: 0, turistandel, vareVekt }
+      const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed, kapasitetRest: 0, kø: [], turistandel, vareVekt }
 
       // SPILLKLOKKE: planlegg dagens kundemøter på klokkeslett (avtagende antall
       // fra dag 3). Scenariene trekkes uten gjentakelse til poolen er tømt.
@@ -1819,10 +1819,15 @@ function reducer(state: GameState, action: Action): GameState {
       // kundemøte-strøm (til turistkontoret + byhotellet) — de filtreres derfor
       // ALLTID bort fra kafépoolen. Sesongeffekten i kaféen er kun økonomisk
       // (trafikkløft + varevekt, satt over): byen har flere folk.
-      const basePool = scenariosForMix(
+      const baseScen = scenariosForMix(
         scenariosForIndustry(getActiveIndustryDefinition().scenariePool),
         DAY_CONFIG.scenarioMix,
-      ).map(s => s.id)
+      )
+      const basePool = baseScen.map(s => s.id)
+      // TIDSVINDU per scenario (min siden 09:00) → planleggMoter plasserer
+      // tidsbundne kunder (morgen/lunsj) innenfor vinduet sitt.
+      const tidsvinduer: Record<string, { fra: number; til: number }> = {}
+      for (const sc of baseScen) if (sc.tidsvindu) tidsvinduer[sc.id] = sc.tidsvindu
       // TREKKEREGEL (fikserunde 3): USPILTE scenarioer foretrekkes ALLTID; når
       // alle i poolen er spilt, nullstilles trekkgrunnlaget (hele poolen igjen).
       // Midlertidig til scenariovariant-jobben gir hver kunde flere forespørsler.
@@ -1846,6 +1851,7 @@ function reducer(state: GameState, action: Action): GameState {
       const dayMeetings = planleggMoter(
         moterForDag(state.dayNumber), poolIds, (Math.imul(seed, 2654435761)) >>> 0,
         stamIds.length ? { ids: stamIds, vekter: stamVekter } : undefined,
+        tidsvinduer,
       )
 
       return {
@@ -1890,9 +1896,36 @@ function reducer(state: GameState, action: Action): GameState {
 
         // Så mange kunder BØR ha kommet innom ved dette klokkeslettet.
         const mål = Math.round(state.dayBackground.total * (nyMinutt / Math.max(1, DAG_VARIGHET)))
-        const ankomne = Math.max(0, mål - state.dayBackground.prosessert)
-        const betjent = Math.min(ankomne, Math.floor(pool))
-        const koKunder = ankomne - betjent
+        const nyeAnkomne = Math.max(0, mål - state.dayBackground.prosessert)
+
+        // KØ-VENTETOLERANSE (FIFO): nye ankomne stiller seg bakerst i køen. Så
+        // betjenes det fra FRONTEN (eldste først) opptil kapasiteten dette
+        // tikket — en kunde som ventet fra et tidligere tick betjenes altså når
+        // kapasitet frigjøres. Til slutt går de som har ventet lenger enn
+        // toleransen (og bare de telles som «gikk»).
+        let kø = nyeAnkomne > 0
+          ? [...state.dayBackground.kø, { ankomstMinutt: nyMinutt, antall: nyeAnkomne }]
+          : state.dayBackground.kø
+        let kap = Math.floor(pool)
+        let betjent = 0
+        if (kap > 0 && kø.length > 0) {
+          const nyKø: { ankomstMinutt: number; antall: number }[] = []
+          for (const bolk of kø) {
+            if (kap <= 0) { nyKø.push(bolk); continue }
+            const ta = Math.min(kap, bolk.antall)
+            betjent += ta; kap -= ta
+            if (ta < bolk.antall) nyKø.push({ ankomstMinutt: bolk.ankomstMinutt, antall: bolk.antall - ta })
+          }
+          kø = nyKø
+        }
+        // «Gikk»: ventende bolker som har oversteget toleransen (etter betjening).
+        let koKunder = 0
+        if (BALANCE.koVentMinutter >= 0 && kø.length > 0) {
+          kø = kø.filter(bolk => {
+            if (nyMinutt - bolk.ankomstMinutt >= BALANCE.koVentMinutter) { koKunder += bolk.antall; return false }
+            return true
+          })
+        }
         pool -= betjent
         // Ubrukt kapasitet bankes ikke opp i det uendelige (staff-tid tapes) —
         // hold igjen inntil ~ett tikk med slakk for å glatte avrunding.
@@ -1936,9 +1969,13 @@ function reducer(state: GameState, action: Action): GameState {
           dayProductStats = mergeProductStats(dayProductStats, r.perProdukt)
           // RULLERENDE «siste salg»-logg: APPEND bolkens ticker-linjer (nyeste
           // øverst), behold de siste 10. Et tick uten salg (tom ticker) lar
-          // loggen stå urørt.
+          // loggen stå urørt. STABIL id per linje (dag+minutt+løpenr) — settes
+          // her, brukes som React-key i dagspulsen så append aldri re-mounter
+          // eksisterende linjer (kun den nye animeres inn). nyMinutt er unik per
+          // tick innen dagen, så id-ene kolliderer ikke.
           if (r.ticker.length > 0) {
-            dayStats = { ...dayStats, sisteSalgLogg: [...r.ticker, ...dayStats.sisteSalgLogg].slice(0, SISTE_SALG_MAX) }
+            const nye = r.ticker.map((l, idx) => ({ ...l, id: `${state.dayNumber}-${nyMinutt}-${idx}` }))
+            dayStats = { ...dayStats, sisteSalgLogg: [...nye, ...dayStats.sisteSalgLogg].slice(0, SISTE_SALG_MAX) }
           }
           // TEMA 15: akkumuler sesongens turist-/bakgrunnstall (mentor-refleksjon).
           if (turistsesong && state.dayBackground.turistandel > 0) {
@@ -1950,9 +1987,10 @@ function reducer(state: GameState, action: Action): GameState {
           }
         }
         if (koKunder > 0) dayStats = { ...dayStats, koKunder: dayStats.koKunder + koKunder }
-        // `prosessert` teller ALLE ankomne (betjent + kø) så drypp-kurven ikke
-        // etterbetjener kø-tapte kunder senere. kapasitetRest persisteres.
-        dayBackground = { ...state.dayBackground, prosessert: state.dayBackground.prosessert + ankomne, seed, kapasitetRest: pool }
+        // `prosessert` teller kun NYE ankomne (de legges i kø-bufferen ved
+        // ankomst); betjening og «gikk» styres via bufferen. kapasitetRest +
+        // kø-buffer persisteres til neste tick.
+        dayBackground = { ...state.dayBackground, prosessert: state.dayBackground.prosessert + nyeAnkomne, seed, kapasitetRest: pool, kø }
       }
 
       // Spawn ETT forfalt kundemøte (klokka pauser til det er ferdig).
@@ -1980,6 +2018,9 @@ function reducer(state: GameState, action: Action): GameState {
       const bortfallStk = stengtTidlig && state.dayBackground
         ? Math.max(0, state.dayBackground.total - state.dayBackground.prosessert)
         : 0
+      // KØ-VENTETOLERANSE: kunder som fortsatt sto og ventet da butikken stengte
+      // fikk aldri hjelp → de teller som «gikk» (samme kø-linje, kun gåtte).
+      const restKø = state.dayBackground ? state.dayBackground.kø.reduce((a, b) => a + b.antall, 0) : 0
       const priced = state.products.filter(p => p.retailPrice > 0)
       const avgRetail = priced.length ? Math.round(priced.reduce((a, p) => a + p.retailPrice, 0) / priced.length) : 0
 
@@ -2060,7 +2101,7 @@ function reducer(state: GameState, action: Action): GameState {
         overprisStk: state.dayStats.overprisStk,
         overprisKr: state.dayStats.overprisKr,
         overprisProdukter,
-        koKunder: state.dayStats.koKunder,
+        koKunder: state.dayStats.koKunder + restKø,
         resultat: soldKr + bakgrunnKr + kunnskapsbonusKr - varekostKr - svinnKr,
         reputationDelta: state.dayStats.reputationDelta,
         xpEarned: state.dayStats.xpEarned,

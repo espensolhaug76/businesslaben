@@ -230,9 +230,13 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(etterMøte.meetingsToday, 'møtet telt som gjennomført').toBeGreaterThanOrEqual(1)
     ctx.ok(`kundemøtet spilt til slutt (meetingsToday=${etterMøte.meetingsToday})`)
 
-    // Auto-klokke-wiring: lukk dashbordet, dayMinute skal avansere av seg selv.
-    await lukkDashbord()
+    // Auto-klokke-wiring: dayMinute skal avansere av seg selv når dashbordet
+    // lukkes. `før` fanges MENS klokka fortsatt er pauset (dashbordet åpent), så
+    // den ikke race-r med første auto-tick — det tikket kan straks spawne neste
+    // (nabo-)kundemøte og fryse klokka igjen (morgen-/lunsjkunder ligger tett i
+    // vinduene sine). Ett tikk (dayMinute +1) er nok til å bevise wiringen.
     const før = (await lesState(page)).dayMinute
+    await lukkDashbord()
     await ventState(page, st => st.dayPhase === 'åpen' && st.dayMinute > før, 'auto-klokka avanserte dayMinute', 8000)
     ctx.ok(`auto-klokka tikket (dayMinute ${før} → økte av seg selv)`)
 
@@ -1451,13 +1455,13 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(s.dayStats.overprisStk, 'for-dyr-tap (coffee 2×)').toBeGreaterThan(0)
     expect(sum, 'tapte-kortets sum > 0').toBeGreaterThan(0)
     // Dagspuls-kortet: lukk dashbord (+ hopp møte) → daypuls vises; «Tapte salg»-kortet
-    // viser fordelingen «uten pris» + «for dyr» (dvs. summerer alle tre, ikke bare tomt lager).
+    // viser fordelingen «uten pris» + «over marked» (dvs. summerer alle tre, ikke bare tomt lager).
     await lukkDashbord()
     if ((await lesState(page)).activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
     const kort = page.getByTestId('puls-tapt')
     await expect(kort, 'daypuls «Tapte salg»-kort synlig').toBeVisible({ timeout: 6000 })
     await expect(kort).toContainText('uten pris')
-    await expect(kort).toContainText('for dyr')
+    await expect(kort).toContainText('over marked')
     ctx.ok(`Utstilte-only: tom disk 0 salg/0 tap (kunder teller); ikke-utstilt croissant aldri solgt/tapt; tapte-kort summerer (${s.dayStats.tapteSalgStk} tomt · ${s.dayStats.manglerPrisStk} pris · ${s.dayStats.overprisStk} dyr = ${sum})`)
   })
 
@@ -1521,6 +1525,128 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await ventState(page, s => s.activeMeetingScenarioId == null, 'møte lukket')
     await expect(toast, 'toast tilbake etter at møtet lukkes').toHaveCount(1)
     ctx.ok('sisteSalgLogg ruller (taket 10, urørt av tick uten salg); leverings-toast venter på møtet (borte under, tilbake etter)')
+  })
+
+  const køSum = (st: SpillState) => st.dayBackground ? st.dayBackground.kø.reduce((a, b) => a + b.antall, 0) : 0
+
+  await steg(page, rapport, 34, 'Kø: nullstilt ved OPEN_DAY (aldri gårsdagens tall) + ventende kunde betjenes innen toleransen (ikke tapt)', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 34')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 800 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager 34')
+    const prods = (await lesFull()).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: p.markedsPris } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'coffee' }] })
+    await åpneDashbord()   // pause auto-klokka (manuell tick-styring)
+
+    // DAG 1: spillervakt dekker KUN 14–17 → kapasitet 0 om morgenen → kunder
+    // stiller seg i kø og GÅR når ventetoleransen (20 min) brytes.
+    await dispatch(page, { type: 'SET_PLAYER_SHIFT', vakt: { fra: 14 * 60, til: 17 * 60 } })
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen dag1 34')
+    let s = await lesState(page)
+    expect(s.dayStats.koKunder, 'kø-teller 0 ved OPEN_DAY').toBe(0)
+    expect(køSum(s), 'kø-buffer tom ved OPEN_DAY').toBe(0)
+    let g = 0
+    while (s.dayStats.koKunder === 0 && s.dayMinute < 90 && g < 200) {
+      if (s.activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
+      else await dispatchN(page, { type: 'TICK' }, 5)
+      s = await lesState(page); g++
+    }
+    expect(s.dayStats.koKunder, 'kunder gikk (kapasitet 0 forbi toleransen)').toBeGreaterThan(0)
+    const gikkDag1 = s.dayStats.koKunder
+
+    // Steng og åpne neste dag → kø-tellerne NULLSTILLES (aldri gårsdagens tall).
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør 34')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag 34')
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen dag2 34')
+    s = await lesState(page)
+    expect(s.dayStats.koKunder, `kø-teller nullstilt (ikke gårsdagens ${gikkDag1})`).toBe(0)
+    expect(køSum(s), 'kø-buffer tom ved ny OPEN_DAY').toBe(0)
+
+    // BUFFER BETJENES INNEN TOLERANSEN: fremdeles kapasitet 0 → tikk til noen VENTER
+    // (men ingen gått ennå → innenfor toleransen).
+    let v = 0
+    while (v < 1 && s.dayMinute < 15 && g < 400) {
+      if (s.activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
+      else await dispatchN(page, { type: 'TICK' }, 1)
+      s = await lesState(page); v = køSum(s); g++
+    }
+    expect(køSum(s), 'kunder VENTER i kø (ikke tapt umiddelbart)').toBeGreaterThan(0)
+    expect(s.dayStats.koKunder, 'ingen gått ennå (innenfor toleransen)').toBe(0)
+    const betjentFør = s.dayStats.bakgrunnKunder
+    // Frigjør kapasitet (spillervakt dekker hele dagen) → bufferen betjenes FIFO.
+    await dispatch(page, { type: 'SET_PLAYER_SHIFT', vakt: { fra: 9 * 60, til: 17 * 60 } })
+    let g2 = 0
+    while (s.dayStats.bakgrunnKunder <= betjentFør && s.dayMinute < 40 && g2 < 120) {
+      if (s.activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
+      else await dispatchN(page, { type: 'TICK' }, 2)
+      s = await lesState(page); g2++
+    }
+    expect(s.dayStats.bakgrunnKunder, 'ventende kunde ble BETJENT etter frigjort kapasitet').toBeGreaterThan(betjentFør)
+    expect(s.dayStats.koKunder, 'ingen gikk — betjent innenfor toleransen').toBe(0)
+    ctx.ok(`kø nullstilt ved OPEN_DAY (dag1 hadde ${gikkDag1} gått); ventende kunde betjent innenfor toleransen uten tap`)
+  })
+
+  await steg(page, rapport, 35, 'Scenario-tidsvindu: Morgenkunden (09–11) / Kryssalget (11–14) spawner innenfor vinduet (seedet)', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 35')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 300 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager 35')
+    const vinduer: Record<string, { fra: number; til: number }> = { morgenkunden: { fra: 0, til: 120 }, kryssalget: { fra: 120, til: 300 } }
+    let sett = 0
+    for (let dag = 0; dag < 18 && sett < 2; dag++) {
+      await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', `åpen dag ${dag} 35`)
+      for (const m of (await lesState(page)).dayMeetings) {
+        const vv = vinduer[m.scenarioId]
+        if (!vv) continue
+        expect(m.minutt, `${m.scenarioId} ≥ ${vv.fra} (vindusstart)`).toBeGreaterThanOrEqual(vv.fra)
+        expect(m.minutt, `${m.scenarioId} ≤ ${vv.til} (vindusslutt)`).toBeLessThanOrEqual(vv.til)
+        sett++
+      }
+      await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', `oppgjør dag ${dag} 35`)
+      await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', `ny dag ${dag} 35`)
+    }
+    expect(sett, 'minst ett tidsbundet scenario (morgen/lunsj) ble planlagt innenfor vinduet').toBeGreaterThan(0)
+    ctx.ok(`tidsbundne scenarier spawnet innenfor vinduet (${sett} observasjoner over dagene)`)
+  })
+
+  await steg(page, rapport, 36, 'Salgslogg: append gir ny id øverst UTEN å endre key på eksisterende linjer (ingen re-mount)', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 36')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 800 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager 36')
+    const prods = (await lesFull()).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: p.markedsPris } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'coffee' }] })
+    await åpneDashbord()
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 36')
+    // Selg til loggen har minst 3 linjer.
+    let s = await lesState(page), n = 0
+    while (s.dayStats.sisteSalgLogg.length < 3 && s.dayMinute < 300 && n < 400) {
+      if (s.activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
+      else await dispatchN(page, { type: 'TICK' }, 5)
+      s = await lesState(page); n += 5
+    }
+    expect(s.dayStats.sisteSalgLogg.length, 'minst 3 logglinjer').toBeGreaterThanOrEqual(3)
+    const idsFør = s.dayStats.sisteSalgLogg.map(l => l.id)
+    expect(idsFør.every(id => typeof id === 'string' && id!.length > 0), 'hver logglinje har en stabil id').toBe(true)
+    const toppFør = idsFør[0]
+    // Tikk (én om gangen) til en NY linje er lagt til øverst (ny id).
+    let m = 0
+    while (s.dayStats.sisteSalgLogg[0]?.id === toppFør && s.dayMinute < 400 && m < 400) {
+      if (s.activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
+      else await dispatchN(page, { type: 'TICK' }, 1)
+      s = await lesState(page); m++
+    }
+    const idsEtter = s.dayStats.sisteSalgLogg.map(l => l.id)
+    expect(idsEtter[0], 'ny linje øverst har ny id (append skjedde)').not.toBe(toppFør)
+    // De gamle id-ene ligger FORTSATT der, i samme rekkefølge, nederst → eksisterende
+    // linjer beholdt sin key (ingen re-mount). (< 10 totalt, så ingen rullet av.)
+    expect(idsEtter.slice(idsEtter.length - idsFør.length), 'eksisterende linjers id-er uendret etter append').toEqual(idsFør)
+    ctx.ok('append gir ny id øverst; eksisterende logglinjers id-er står uendret (stabil key → ingen re-mount)')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

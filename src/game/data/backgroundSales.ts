@@ -148,6 +148,10 @@ export function planleggMoter(
   scenarioIds: string[],
   seed: number,
   stamkunde?: { ids: string[]; vekter: Record<string, number> },
+  /** Valgfrie TIDSVINDU per scenario-id (minutter siden åpning). Et scenario med
+   *  vindu plasseres INNENFOR vinduet i stedet for jevnt utover dagen. Utelatte
+   *  id-er = som før. */
+  tidsvinduer?: Record<string, { fra: number; til: number }>,
 ): ScheduledMeeting[] {
   const apne = BALANCE.klokke.apneMinutt
   const forste = BALANCE.moteForste - apne // minutter siden åpning
@@ -203,8 +207,21 @@ export function planleggMoter(
   for (let i = 0; i < L; i++) {
     s = nextSeed(s)
     const jitter = Math.round((rand01(s) - 0.5) * 2 * BALANCE.moteJitterMinutt)
-    const minutt = clamp(Math.round(forste + steg * (i + 0.5) + jitter), forste, siste)
-    moter.push({ minutt, scenarioId: innhold[i]!.id, kind: innhold[i]!.kind, spawned: false, done: false })
+    const it = innhold[i]!
+    // TIDSVINDU: et scenario med vindu plasseres på en SEEDET posisjon innenfor
+    // [fra, til] (jitter beholdt, klemt til vindusgrensene). Uten vindu = jevn
+    // spredning utover dagen som før (identisk seed-forbruk når ingen vindu gis).
+    const v = it.kind === 'scenario' ? tidsvinduer?.[it.id] : undefined
+    let minutt: number
+    if (v) {
+      const fraV = clamp(v.fra, forste, siste)
+      const tilV = clamp(v.til, forste, siste)
+      s = nextSeed(s)
+      minutt = clamp(Math.round(fraV + rand01(s) * Math.max(0, tilV - fraV) + jitter), fraV, tilV)
+    } else {
+      minutt = clamp(Math.round(forste + steg * (i + 0.5) + jitter), forste, siste)
+    }
+    moter.push({ minutt, scenarioId: it.id, kind: it.kind, spawned: false, done: false })
   }
   return moter.sort((a, b) => a.minutt - b.minutt)
 }

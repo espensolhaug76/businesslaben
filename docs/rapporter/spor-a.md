@@ -2857,3 +2857,90 @@ ville krevd egen mekanikk uansett).
   kundemøte kommer, forsvinner toasten og kommer tilbake etter møtet. Lang
   bestilling vises som «… og N flere». Toasten lukker seg selv etter noen sekunder,
   og med ✕.
+
+---
+
+## Kø-oppstart + salgsliste-animasjon + scenario-tidsvindu + etikett — 2026-07-21
+
+### 1. Kø-ventetoleranse (FIFO-buffer)
+- **(a) Nullstilling ved OPEN_DAY** verifisert: OPEN_DAY setter `dayStats` til
+  `EMPTY_DAY_STATS` (`koKunder: 0`) OG en fersk `dayBackground` (`kø: []`).
+  Banneret leser kun disse → kan aldri vise gårsdagens tall. (Spilltest steg 34
+  kjører en dag som gir «gikk», åpner neste dag og bekrefter 0.)
+- **(b) Ventetoleranse:** ny `BALANCE.koVentMinutter` (20). Kunder som ikke
+  betjenes i sitt tick GÅR IKKE med en gang — de legges i en FIFO-buffer
+  (`dayBackground.kø`, eldste først). Hvert tick betjenes det fra FRONTEN opptil
+  kapasiteten (en som ventet fra et tidligere tick betjenes altså når kapasitet
+  frigjøres). Først når en ventende har stått lenger enn toleransen telles hen
+  som «gikk» (`koKunder`). Ved stenging teller gjenværende ventende som gåtte
+  (de fikk aldri hjelp). `prosessert` teller nå kun NYE ankomne (bufferen eier
+  betjening/tap).
+- **(c) Banner** (dagspulsen) viser begge tilstander med TEKSTLABEL (aldri kun
+  farge): «Kø — N venter» (gul) og «M gikk» (rød) når hhv. noen venter / har
+  gått. Vises når `venter > 0 || gikk > 0`.
+- **(d) Dagsoppgjørets kø-linje** uendret semantikk: teller kun gåtte
+  (`koKunder`, nå inkl. rest-buffer ved stenging — fortsatt «kunder som gikk»).
+
+### 2. «Siste salg» — stabil id per logglinje
+- `TickerLinje` fikk en valgfri `id`. Reduceren setter den ved append til
+  `sisteSalgLogg` = `${dag}-${minutt}-${løpenr}` (nyMinutt er unik per tick innen
+  dagen → ingen kollisjon). DagspulsOverlay bruker `l.id` som React-key.
+  → Append legger nye linjer øverst UTEN å endre key på eksisterende linjer;
+  kun den nye linjen mountes/animeres inn, resten står i ro (ingen re-mount).
+  Maks-høyden fra forrige fiks er beholdt.
+
+### 3. Scenario-tidsvindu
+- Nytt valgfritt `tidsvindu?: { fra; til }` (minutter siden 09:00) på
+  `SalesScenario`. `planleggMoter` fikk en `tidsvinduer`-parameter: scenarier med
+  vindu plasseres på en SEEDET posisjon innenfor `[fra, til]` (jitter beholdt,
+  klemt til vindusgrensene); scenarier UTEN vindu spres jevnt som før (identisk
+  seed-forbruk når ingen vindu er satt).
+- **Vinduer satt (gjennomgang av alle 14 kafé-scenarier):**
+  - `Morgenkunden` → **09–11** (0–120): «pendler PÅ VEI TIL JOBB» = morgenrush.
+  - `Kryssalget` (Amira) → **11–14** (120–300): «kontoransatt PÅ LUNSJPAUSE» =
+    lunsjrush.
+  - **Bevisst UTEN vindu** (innholdet binder dem ikke til et klokkeslett):
+    Reklamasjonen, Allergikeren, Prutekunden, Den usikre, Storbestillingen
+    («møte i MORGEN tidlig» = bestilling nå, ikke tidsbundet), Angreretten,
+    Hastverkskunden (tog går hele dagen — morgen/ettermiddag uklart), Gavekjøpet,
+    Studentrabatten, Likeverd, Ventetiden («stått lenge i kø» = et hvilket som
+    helst travelt øyeblikk), Førstegangskunden. Turist-scenariene bor uansett på
+    turistkontor/byhotell, ikke i kafépoolen.
+
+### 4. Etikett «For høy pris» → «Priset over marked»
+- Dagsoppgjør: detaljlinjen heter nå «Priset over marked» med formatet
+  «[vare] ([din pris] kr · marked ~[markedspris] kr) — N kunder avsto».
+  Summeringslinjas parentes «(for høy pris)» → «(priset over marked)».
+- Dagspulsens tapte-fordeling: «for dyr» → «over marked».
+
+### 5. Spilltest (36/36 GRØNT)
+- **Steg 34:** kø-teller 0 + buffer tom ved OPEN_DAY; en dag med kapasitet 0
+  gir «gikk», neste OPEN_DAY nullstiller (ikke gårsdagens tall); kunde som VENTER
+  (kø > 0, ingen gått) betjenes når kapasitet frigjøres innen toleransen
+  (`bakgrunnKunder` øker, `koKunder` blir 0).
+- **Steg 35:** over dagene spawner `morgenkunden`/`kryssalget` alltid INNENFOR
+  vinduet sitt (seedet).
+- **Steg 36:** salgslogg-append gir ny id øverst mens eksisterende linjers id-er
+  står uendret i samme rekkefølge (stabil key → ingen re-mount).
+- Eksisterende bakgrunnssalg-steg (4/5/14/20) fortsatt grønne — buffer-endringen
+  bevarer dagens totaler (samme kunder betjenes, bare litt forsinket).
+- **Test-robusthet (steg 5):** auto-klokke-sjekken fanget `før`-verdien ETTER at
+  dashbordet ble lukket — en race, siden første auto-tick straks kunne spawne
+  neste (nabo)kundemøte og fryse klokka igjen. Tidsvinduene la morgen-/lunsjkunder
+  tettere, som avslørte race-en. Fikset ved å fange `før` MENS klokka er pauset
+  (før dashbordet lukkes); ett tikk (+1 min) beviser fortsatt wiringen. Ren
+  test-fiks, ikke en spillendring.
+- **Del 4-etikett i spilltesten:** steg 32 sjekket dagspulsteksten «for dyr» →
+  oppdatert til «over marked».
+
+### Chrome-sjekkliste — kø + dagspuls + oppgjør
+- Sett for få på vakt en travel dag: dagspulsen viser «Kø — N venter» (gul) mens
+  folk står, og «M gikk» (rød) når noen gir opp. Sett flere på vakt → «venter»
+  synker (de ventende betjenes) uten at «gikk» øker.
+- Ny dag: køtallene er nullstilt (ingen gårsdagsrester i banneret).
+- «Siste salg»: nye salg glir inn øverst mens linjene under står helt i ro (ingen
+  blaffing/re-animasjon av eksisterende linjer).
+- Morgenkunden dukker opp tidlig på dagen (før ~11), lunsjkunden (Amira) midt på
+  dagen (11–14).
+- Dagsoppgjør: tap-detaljen heter «Priset over marked» og viser «… — N kunder
+  avsto»; dagspulsens tapte-fordeling sier «over marked».

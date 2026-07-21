@@ -153,7 +153,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
           )}
           {/* DEL 7f — kunder som gikk fordi prisen var for høy (priselastisitet). */}
           {r.overprisStk > 0 && (
-            <SalgLinje ikon="💸" tittel={<><Fagord id="SAL_002">Tapte salg</Fagord>: {r.overprisStk} (for høy pris)</>} hoyre="—" color="#f59e0b" />
+            <SalgLinje ikon="💸" tittel={<><Fagord id="SAL_002">Tapte salg</Fagord>: {r.overprisStk} (priset over marked)</>} hoyre="—" color="#f59e0b" />
           )}
           {/* SPILLKLOKKE: stengte eleven før 17:00, bortfalt de resterende
               bakgrunnskundene — egen linje, adskilt fra tomt-lager-tap. */}
@@ -183,7 +183,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
               <DetaljLinje ikon="🏷️" etikett="Mangler pris" tekst={sammendrag(r.uprisedeVarer)} color="#fbbf24" />
             )}
             {r.overprisProdukter.length > 0 && (
-              <DetaljLinje ikon="💸" etikett="For høy pris" tekst={sammendrag(r.overprisProdukter.map(o => `${o.navn} (din ${formatKr(o.pris)} · marked ~${formatKr(o.marked)})`))} color="#fbbf24" />
+              <DetaljLinje ikon="💸" etikett="Priset over marked" tekst={sammendrag(r.overprisProdukter.map(o => `${o.navn} (${formatKr(o.pris)} · marked ~${formatKr(o.marked)}) — ${o.tapte} ${o.tapte === 1 ? 'kunde' : 'kunder'} avsto`))} color="#fbbf24" />
             )}
           </div>
         )}

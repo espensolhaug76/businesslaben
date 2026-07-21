@@ -20,6 +20,8 @@ export const MORGENKUNDEN: SalesScenario = {
   personaTag: 'Karriereorienterte',
   sprite: '/assets/raw/customers/kari.png',
   description: 'En stresset pendler på vei til jobb. Vil ha noe raskt og oppkvikkende, og setter pris på effektiv, vennlig service.',
+  // Pendler PÅ VEI TIL JOBB → morgenrush. Vindu 09:00–11:00 (0–120 min).
+  tidsvindu: { fra: 0, til: 120 },
   hiddenNeed: 'Trenger noe som vekker — helst en kaffe å ta med. Har dårlig tid og vil bli sett.',
   steps: [
     {
@@ -529,6 +531,8 @@ export const KRYSSALGET: SalesScenario = {
   personaTag: 'Karriereorienterte',
   sprite: '/assets/raw/customers/amira.png',
   description: 'En kontoransatt på lunsjpause. Vil ha noe mettende raskt, og er åpen for et godt tips hvis det føles ekte og ikke som en pushet ekstrasalgs-runde.',
+  // Kontoransatt PÅ LUNSJPAUSE → lunsjrush. Vindu 11:00–14:00 (120–300 min).
+  tidsvindu: { fra: 120, til: 300 },
   hiddenNeed: 'Vil ha en enkel, mettende lunsj — og setter pris på et naturlig kryssalg (noe å drikke til) så lenge det ikke oppleves som pushing.',
   steps: [
     {

@@ -199,6 +199,13 @@ export const BALANCE = {
   // kafé alene. Se docs/VERDENSMODELL.md §2.
   kapasitetPerTime: { junior: 20, senior: 28, ekspert: 38 } as Record<string, number>,
 
+  /** BEMANNING — KØ-VENTETOLERANSE: en kunde som ikke blir betjent i sitt tick
+   *  går ikke med en gang, men VENTER i kø i inntil så mange spilleminutter før
+   *  hen gir opp og går. Frigjøres kapasitet innen dette vinduet, betjenes de
+   *  ventende (FIFO) i stedet for å telles som tapt. 0 = ingen tålmodighet
+   *  (gammel oppførsel). Espen finjusterer. */
+  koVentMinutter: 20,
+
   /** KROK 4 — GAME FEEL (docs/ENGASJEMENT.md). Rene «feel»-parametre; ingen
    *  gameplay-effekt (kosmetikk gir ALDRI fordel). Deterministisk der innhold er
    *  seedet (seremoni-høydepunktet). ALT tunbart her. */

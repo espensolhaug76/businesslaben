@@ -43,7 +43,7 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
     ? [
         tapTomtLager > 0 ? `${tapTomtLager} tomt lager` : null,
         tapUtenPris > 0 ? `${tapUtenPris} uten pris` : null,
-        tapForDyr > 0 ? `${tapForDyr} for dyr` : null,
+        tapForDyr > 0 ? `${tapForDyr} over marked` : null,
       ].filter(Boolean).join(' · ')
     : 'ingen'
 
@@ -58,6 +58,10 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
   const maxStock = Math.max(1, ...utstilt.map(p => p.stock))
   // Rullerende «siste salg»-logg (reducer-eid) — nyeste øverst, maks 10.
   const sisteSalg = state.dayStats.sisteSalgLogg
+  // KØ live: hvor mange som står og VENTER akkurat nå (kø-bufferen) + hvor mange
+  // som allerede har GÅTT i dag (kumulativt). Begge nullstilles ved OPEN_DAY.
+  const venter = state.dayBackground ? state.dayBackground.kø.reduce((a, b) => a + b.antall, 0) : 0
+  const gikk = state.dayStats.koKunder
 
   // Minimert: liten pille nede, butikken synlig bak.
   if (minimert) {
@@ -139,17 +143,25 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
           <PulsKort label="Tapte salg" value={`${tapTotalt}`} sub={tapSub} color={tapTotalt > 0 ? '#ef4444' : '#64748b'} testid="puls-tapt" />
         </div>
 
-        {/* BEMANNING: kø live — kunder som gikk fordi kapasiteten på vakt var
-            for lav. Vises kun når det faktisk står folk igjen i kø. */}
-        {state.dayStats.koKunder > 0 && (
+        {/* BEMANNING: kø live. To tilstander med TEKSTLABEL (aldri kun farge):
+            «Kø — N venter» (gul) = står og venter nå (betjenes hvis kapasitet
+            frigjøres innen toleransen); «M gikk» (rød) = ga opp og forlot. */}
+        {(venter > 0 || gikk > 0) && (
           <div style={{
             background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.45)',
-            borderRadius: 12, padding: '0.55rem 0.9rem', display: 'flex', alignItems: 'center', gap: 8,
+            borderRadius: 12, padding: '0.55rem 0.9rem', display: 'flex', alignItems: 'center', gap: 12,
           }}>
             <span style={{ fontSize: 18 }}>⏳</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>
-              Kø — {state.dayStats.koKunder} {state.dayStats.koKunder === 1 ? 'kunde gikk' : 'kunder gikk'}
-            </span>
+            {venter > 0 && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>
+                Kø — {venter} venter
+              </span>
+            )}
+            {gikk > 0 && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#f87171' }}>
+                {gikk} gikk
+              </span>
+            )}
             <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>sett flere på vakt</span>
           </div>
         )}
@@ -167,7 +179,12 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 <AnimatePresence initial={false}>
                   {sisteSalg.map((l, i) => (
-                    <motion.div key={`${l.navn}-${l.qty}-${l.kr}-${i}`} initial={{ opacity: 0, x: -8 }} animate={{ opacity: i === 0 ? 1 : Math.max(0.35, 0.75 - i * 0.05), x: 0 }} exit={{ opacity: 0 }}
+                    // STABIL key = reducer-satt logglinje-id (dag+minutt+løpenr).
+                    // Append legger nye linjer øverst UTEN å endre eksisterende
+                    // key-er → kun den nye linjen mountes/animeres inn; resten
+                    // står i ro (ingen re-mount). Fallback til innhold+indeks for
+                    // eldre lagrede logger uten id.
+                    <motion.div key={l.id ?? `${l.navn}-${l.qty}-${l.kr}-${i}`} initial={{ opacity: 0, x: -8 }} animate={{ opacity: i === 0 ? 1 : Math.max(0.35, 0.75 - i * 0.05), x: 0 }} exit={{ opacity: 0 }}
                       style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                       <span style={{ color: '#cbd5e1' }}>{l.qty} × {l.navn}</span>
                       <span style={{ color: '#22c55e' }}>{formatKr(l.kr)}</span>

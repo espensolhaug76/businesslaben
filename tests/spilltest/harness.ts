@@ -58,7 +58,7 @@ export interface SpillState {
   monthlyPayroll: number
   marketingBudget: Record<string, number>
   businessPlan: { description: string; qualityScore: number; canvas: Record<string, string> }
-  dayStats: { soldKr: number; bakgrunnKr: number; bakgrunnKunder: number; bakgrunnStk: number; tapteSalgStk: number; tapteSalgKr: number; manglerPrisStk: number; overprisStk: number; sisteSalgLogg: { navn: string; qty: number; kr: number }[] }
+  dayStats: { soldKr: number; bakgrunnKr: number; bakgrunnKunder: number; bakgrunnStk: number; tapteSalgStk: number; tapteSalgKr: number; manglerPrisStk: number; overprisStk: number; koKunder: number; sisteSalgLogg: { navn: string; qty: number; kr: number; id?: string }[] }
   dayMeetings: { scenarioId: string; minutt: number; spawned: boolean }[]
   lastDayResult: unknown | null
   lastMonthSettlement: MonthSettlement | null
@@ -73,7 +73,7 @@ export interface SpillState {
   // TEMA 15 — reiseliv/turistsesong
   turistsesong: { startAbsDag: number; varighet: number; turistKunder: number; bakgrunnKunder: number } | null
   hotellavtale: 'ingen' | 'akseptert' | 'avslatt'
-  dayBackground: { total: number; turistandel: number; vareVekt: Record<string, number> } | null
+  dayBackground: { total: number; prosessert: number; kapasitetRest: number; kø: { ankomstMinutt: number; antall: number }[]; turistandel: number; vareVekt: Record<string, number> } | null
   reiselivPakke: { profilId: string; kortIds: string[]; pris: number; treff: number; turister: number; egenKafe: boolean } | null
   phase: string
 }

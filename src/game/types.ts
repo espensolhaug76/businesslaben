@@ -438,6 +438,11 @@ export interface DayBackground {
    *  (flyttall — glatter ut at kapasitet/tick < 1 kunde). Kunder som kommer
    *  når `Math.floor(pool)` er tom → tapt salg med årsak «kø». */
   kapasitetRest: number
+  /** BEMANNING — KØ-VENTETOLERANSE (FIFO): kunder som ankom, men ennå ikke er
+   *  betjent, venter her i inntil BALANCE.koVentMinutter spilleminutter. Hver
+   *  bolk = {ankomstMinutt (min siden åpning), antall}. Eldste først; betjening
+   *  tar fra fronten, «gikk» telles når fronten overstiger ventetoleransen. */
+  kø: { ankomstMinutt: number; antall: number }[]
   /** TEMA 15: andel av dagens bakgrunnskunder som er TURISTER (0 utenom sesong).
    *  Snapshot ved OPEN_DAY så dagen er deterministisk. */
   turistandel: number
@@ -477,8 +482,11 @@ export interface ScheduledMeeting {
   kind?: 'scenario' | 'stamkunde'
 }
 
-/** Én linje i dagspulsens live-ticker (siste bakgrunnssalg). */
-export interface TickerLinje { navn: string; qty: number; kr: number }
+/** Én linje i dagspulsens live-ticker (siste bakgrunnssalg). `id` settes av
+ *  reduceren ved append til `sisteSalgLogg` (dag+minutt+løpenr) og er STABIL —
+ *  brukes som React-key så append aldri re-mounter eksisterende linjer.
+ *  simulerBakgrunnsbolk lar `id` stå tom; kun den lagrede loggen har den satt. */
+export interface TickerLinje { navn: string; qty: number; kr: number; id?: string }
 
 /** Månedsoppgjør (ØKONOMI-SAMLING DEL 2) — bygges ved månedsrull
  *  (START_NEW_DAY) fra månedens dagsresultater, og trekker faste kostnader fra
