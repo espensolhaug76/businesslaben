@@ -1986,7 +1986,7 @@ function ProdukterTab() {
           borderRadius: '1rem', padding: '0.75rem 1rem', marginBottom: '1.25rem',
         }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: '#7dd3fc', letterSpacing: '0.04em', marginBottom: '0.6rem' }}>
-            {getActiveIndustryDefinition().forsyning.underveisTittel}
+            {getActiveIndustryDefinition(state.industry).forsyning.underveisTittel}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
             {state.incomingOrders.map((o, i) => (
@@ -1998,7 +1998,7 @@ function ProdukterTab() {
                 <span style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 12 }}>{productName(o.productId)}</span>
                 <span style={{ color: '#7dd3fc', fontSize: 12 }}>{o.qty} stk</span>
                 <span style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8' }}>
-                  {getActiveIndustryDefinition().forsyning.ankomstEtikett(o.ankomstDag)}
+                  {getActiveIndustryDefinition(state.industry).forsyning.ankomstEtikett(o.ankomstDag)}
                 </span>
               </div>
             ))}
@@ -2811,7 +2811,7 @@ function OrgKartSteg() {
   const [over, setOver] = useState<string | null>(null)           // hover-mål (highlight)
   const [viserRefleksjon, setViserRefleksjon] = useState(false)
 
-  const alleRoller = getActiveIndustryDefinition().roller
+  const alleRoller = getActiveIndustryDefinition(state.industry).roller
   // Funksjonene som finnes i kartet (orgRoller + migrering fra disponerte).
   const funksjoner = aktiveFunksjoner(state.orgRoller, state.employees)
   const opprettede = alleRoller.filter(r => funksjoner.includes(r.id))
@@ -3151,7 +3151,7 @@ function HvemGjorHvaSteg({ onNeste }: { onNeste: () => void }) {
   const [dragRole, setDragRole] = useState<EmployeeRole | null>(null)
   const [over, setOver] = useState<string | null>(null)
 
-  const alleRoller = getActiveIndustryDefinition().roller
+  const alleRoller = getActiveIndustryDefinition(state.industry).roller
   const fordeling = state.oppgaveFordeling ?? {}
   const personer = [
     { id: 'meg', navn: 'Deg', undertittel: 'Daglig leder', emoji: '👑', farge: '#ffd700' },

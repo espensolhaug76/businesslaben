@@ -30,6 +30,7 @@ import { CAFE_SPEND, FASHION_BUDGETS, type PersonaBudsjett } from './personas'
 // docs/AUTONOM_PIPELINE.md §7). Re-eksporteres så bransje-kode kan importere
 // `Hyllelinje` herfra på lik linje med de øvrige geometri-typene.
 import type { Hyllelinje } from '../geometry/hyllelinje'
+import { KLESBUTIKK_AKTIV } from './featureFlags'
 export type { Hyllelinje }
 
 /** Lager-flaten (disk-monter): trau-geometri + hvilket bilde de er kalibrert
@@ -389,11 +390,13 @@ export const KLESBUTIKK: IndustryDefinition = {
   ],
 }
 
-/** Registeret over bransjer som FAKTISK har en definisjon. Bevisst kun
- *  { cafe: CAFE } — KLESBUTIKK er skrevet (DEL 3) men ikke registrert, se
- *  filkommentaren øverst. */
+/** Registeret over bransjer som FAKTISK har en definisjon. `cafe` er alltid med;
+ *  `fashion` (KLESBUTIKK) registreres KUN bak `KLESBUTIKK_AKTIV` (skall-synk
+ *  2026-07-22). Med flagget av faller getActiveIndustryDefinition('fashion')
+ *  trygt til CAFE (motorene rendrer kafé-geometri), akkurat som før. */
 const INDUSTRY_DEFINITIONS: Partial<Record<Industry, IndustryDefinition>> = {
   cafe: CAFE,
+  ...(KLESBUTIKK_AKTIV ? { fashion: KLESBUTIKK } : {}),
 }
 
 /** Slår opp definisjonen for EN GITT bransje — undefined hvis bransjen ikke
@@ -405,13 +408,16 @@ export function getIndustryDefinitionFor(industry: Industry): IndustryDefinition
   return INDUSTRY_DEFINITIONS[industry]
 }
 
-/** Den ENE bransjen city-/interiør-/monter-motorene rendrer mot i dag —
- *  ALLTID CAFE (se filkommentaren øverst: dette er en eksisterende
- *  ett-bransje-begrensning i kunst/geometri, ikke noe denne omleggingen
- *  innfører). Brukes av InteriorView, MonterScene og GameContext sin
- *  CLOSE_DAY — IKKE av personas.ts (som trenger den bransje-SPESIFIKKE
- *  oppslaget over for å bevare fashion/tech/sports sin eksisterende,
- *  forskjellige oppførsel). */
-export function getActiveIndustryDefinition(): IndustryDefinition {
-  return CAFE
+/** Definisjonen city-/interiør-/monter-/kassevy-motorene rendrer mot for den
+ *  AKTIVE bransjen (`state.industry`). Leser registeret over; en bransje uten
+ *  registrert definisjon (tech/sports, eller 'fashion' med KLESBUTIKK_AKTIV=false)
+ *  faller trygt til CAFE — kaféen er byte-identisk uansett.
+ *
+ *  `industry` DEFAULTER til 'cafe' så eldre, ikke-oppdaterte kallesteder beholder
+ *  nøyaktig gammel oppførsel. Motorene sender inn `state.industry` for å bytte
+ *  geometri når klesbutikken er aktiv. Brukes av InteriorView, MonterScene,
+ *  WindowDisplay, kassevyen og GameContext sin CLOSE_DAY — IKKE av personas.ts
+ *  (som bruker getIndustryDefinitionFor for den bransje-SPESIFIKKE budsjettmodellen). */
+export function getActiveIndustryDefinition(industry: Industry = 'cafe'): IndustryDefinition {
+  return INDUSTRY_DEFINITIONS[industry] ?? CAFE
 }

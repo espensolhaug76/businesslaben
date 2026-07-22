@@ -40,9 +40,8 @@ const MENU_BOARD_FLATE = ACTIVE_DEF.ekstraFlater.find(f => f.id === 'tavla')
 // dev-panel. Espen drar kunden + diskkanten på plass visuelt; verdiene vises på
 // skjermen og logges til konsollen ved hver endring for permanent lagring.
 
-// BRANSJE-DEFINISJON: scenebildet er den aktive bransjens speil-scenebilde
-// (i dag alltid kafeens interior-kasse.png, se CAFE.flater.lager.speil).
-const INTERIOR_IMG = ACTIVE_DEF.flater.lager.speil.sceneImage
+// BRANSJE-DEFINISJON: scenebildet leses render-tids fra den AKTIVE bransjens
+// speil-scenebilde (se `interiorImg` inne i InteriorView, drevet av state.industry).
 const ASPECT = 16 / 9
 /** Tavle-sonen (drikkemeny) — den aktive bransjens «tavla»-ekstraflate, med
  *  en trygg [0,0,0,0]-fallback (uerklærlig i praksis: CAFE har alltid denne
@@ -126,6 +125,15 @@ export default function InteriorView({ districtId, lokaleId }: {
 }) {
   const navigate = useNavigate()
   const { state, dispatch } = useGame()
+  // BRANSJE-DEFINISJON (skall-synk): motorene leser scene-geometri fra den AKTIVE
+  // bransjens definisjon (state.industry), IKKE fra kafé-konstanter direkte. Med
+  // KLESBUTIKK_AKTIV=false faller 'fashion' til CAFE ⇒ byte-identisk med før.
+  // Modul-konstantene ACTIVE_DEF/INTERIOR_IMG/MENU_BOARD_* beholdes KUN for
+  // ?dev=1-sonetraceren (kafé-kalibrering); render bruker disse render-tids-verdiene.
+  const activeDef = getActiveIndustryDefinition(state.industry)
+  const interiorImg = activeDef.flater.lager.speil.sceneImage
+  const menuBoardFlate = activeDef.ekstraFlater.find(f => f.id === 'tavla')
+  const menuBoardZone: Rect = menuBoardFlate?.zone ?? [0, 0, 0, 0]
   // DEL 2 — meld rute-scenen (uten engangs-trigger) så et scenebytte hit forkaster
   // en ulest scene-melding for forrige scene (bydel/disk/vindu).
   useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { scene: 'interior' } })) }, [])
@@ -180,7 +188,7 @@ export default function InteriorView({ districtId, lokaleId }: {
   // ?dev=1: flere speil-soner enn de faste (trace-bare, samme mønster som
   // trau-tracer'en i MonterScene).
   const [devMirrorTrau, setDevMirrorTrau] = useState<InteriorMirrorTrau[]>([])
-  const activeMirrorTrau = ACTIVE_DEF.flater.lager.speil.trau
+  const activeMirrorTrau = activeDef.flater.lager.speil.trau
   const mirrorTrau = devMirrorTrau.length ? [...activeMirrorTrau, ...devMirrorTrau] : activeMirrorTrau
 
   function addDevMirrorTrau() {
@@ -378,7 +386,7 @@ export default function InteriorView({ districtId, lokaleId }: {
         const linjer = state.lastDelivery!.lines
         const vist = linjer.slice(0, 3).map(l => `${l.qty} × ${l.name}`)
         const flere = linjer.length - vist.length
-        const tekst = ACTIVE_DEF.forsyning.klarMelding(vist.join(', ') + (flere > 0 ? ` … og ${flere} flere` : ''))
+        const tekst = activeDef.forsyning.klarMelding(vist.join(', ') + (flere > 0 ? ` … og ${flere} flere` : ''))
         return (
           <div data-testid="levering-toast" style={{
             position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 82,
@@ -466,7 +474,7 @@ export default function InteriorView({ districtId, lokaleId }: {
         {/* BAKGRUNN (z=0) */}
         {!imgFailed ? (
           <img
-            src={INTERIOR_IMG}
+            src={interiorImg}
             alt="Interiør"
             draggable={false}
             onError={() => setImgFailed(true)}
@@ -521,8 +529,8 @@ export default function InteriorView({ districtId, lokaleId }: {
           const product = entry ? state.products.find(p => p.id === entry.productId) : null
           if (!product || product.stock <= 0) return null
           const density = entry?.density ?? 'standard'
-          const n = tileCount(product, m.mirrorsTrauId, density)
-          const cols = Math.min(n, trauCols(m.mirrorsTrauId))
+          const n = tileCount(product, m.mirrorsTrauId, density, state.industry)
+          const cols = Math.min(n, trauCols(m.mirrorsTrauId, state.industry))
           const rows = Math.ceil(n / cols)
           const itemScale = (product.displayScale ?? 1) * (entry?.sizeAdjust ?? 1) * (m.mirrorScale ?? 1)
           const tiltX = m.mirrorTiltX ?? 0
@@ -593,7 +601,7 @@ export default function InteriorView({ districtId, lokaleId }: {
           // BRANSJE-DEFINISJON: hvilke sortimentsvarer havner på tavla
           // avgjøres av den aktive bransjens ekstraflate-regel (kafé: alt
           // som ikke er trau-vare = drikke), ikke en fast trauVare-sjekk her.
-          const drinks = MENU_BOARD_FLATE ? state.products.filter(MENU_BOARD_FLATE.matches) : []
+          const drinks = menuBoardFlate ? state.products.filter(menuBoardFlate.matches) : []
           if (drinks.length === 0) return null
           const shown = drinks.length > 6 ? drinks.slice(0, 5) : drinks
           const overflow = drinks.length > 6
@@ -601,8 +609,8 @@ export default function InteriorView({ districtId, lokaleId }: {
             <div
               style={{
                 position: 'absolute',
-                left: `${MENU_BOARD_ZONE[0]}%`, top: `${MENU_BOARD_ZONE[1]}%`,
-                width: `${MENU_BOARD_ZONE[2]}%`, height: `${MENU_BOARD_ZONE[3]}%`,
+                left: `${menuBoardZone[0]}%`, top: `${menuBoardZone[1]}%`,
+                width: `${menuBoardZone[2]}%`, height: `${menuBoardZone[3]}%`,
                 zIndex: 15, pointerEvents: 'none',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 gap: '0.35em', padding: '6%',
@@ -752,7 +760,7 @@ export default function InteriorView({ districtId, lokaleId }: {
             skråkanten. Sømløst med bakgrunnen, okkluderer kundens underkropp. */}
         {!imgFailed && (
           <img
-            src={INTERIOR_IMG}
+            src={interiorImg}
             alt=""
             aria-hidden
             draggable={false}

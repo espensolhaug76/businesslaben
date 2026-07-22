@@ -9,7 +9,7 @@ import { DAY_CONFIG } from '../data/dayConfig'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
-import type { Product, TrauDensity, TrauItem } from '../types'
+import type { Product, TrauDensity, TrauItem, Industry } from '../types'
 
 // ── MonterScene (FRONTAL MONTER — kunde-siden) ───────────────────────────────
 // Frontal vy av disk-monteren. Disken er en LAGER-flate: hvert TRAU fylles med
@@ -68,8 +68,8 @@ const MAX_ROWS = 3
 // er nå en tynn videreformidling til den AKTIVE bransjens regel, ikke en
 // hardkodet kafé-antagelse her.
 // eslint-disable-next-line react-refresh/only-export-components
-export function trauCols(trauId: string): number {
-  return getActiveIndustryDefinition().flater.lager.trauCols(trauId)
+export function trauCols(trauId: string, industry: Industry = 'cafe'): number {
+  return getActiveIndustryDefinition(industry).flater.lager.trauCols(trauId)
 }
 // Presentasjonsvalg (DEL 3, spillermekanikk) — tetthet justerer kapasiteten
 // (+40 %/−40 %); mellomrommet mellom fliser FØLGER av dette automatisk siden
@@ -83,9 +83,9 @@ const DENSITY_OPTIONS: TrauDensity[] = ['tett', 'standard', 'luftig']
  *  tetthetsvalg) etter lagermengde (full / halv / lav / tom). Hvert trau er
  *  en egen, selvstendig flate — ingen overflyt til naboer. */
 // eslint-disable-next-line react-refresh/only-export-components
-export function tileCount(product: Product, trauId: string, density: TrauDensity): number {
+export function tileCount(product: Product, trauId: string, density: TrauDensity, industry: Industry = 'cafe'): number {
   if (product.stock <= 0) return 0
-  const capacity = Math.max(1, Math.round(trauCols(trauId) * MAX_ROWS * DENSITY_MULT[density]))
+  const capacity = Math.max(1, Math.round(trauCols(trauId, industry) * MAX_ROWS * DENSITY_MULT[density]))
   // «Full» trau måles mot et rimelig DAGSLAGER, ikke en hel måneds
   // etterspørsel. REGRESJONSFIKS (2026-07-07): før innkjøp/levering-runden ga
   // «dra vare til trau» en full startbatch (= maxDemandPerMonth, ~220 stk), så
@@ -130,7 +130,7 @@ export default function MonterScene({ districtId, lokaleId }: {
   // hver re-fylling.
   const autoHintShownRef = useRef<Set<string>>(new Set())
 
-  const activeDef = getActiveIndustryDefinition()
+  const activeDef = getActiveIndustryDefinition(state.industry)
   const monterImg = activeDef.flater.lager.sceneImage
   const monterTrau = activeDef.flater.lager.trau
   // Paletten = FØRTE trau-varer (bestilt i Produkter-fanen), IKKE hele
@@ -283,7 +283,7 @@ export default function MonterScene({ districtId, lokaleId }: {
           const density = placed?.density ?? 'standard'
           const sizeAdjust = placed?.sizeAdjust ?? 1
           const skewAdjust = placed?.skewAdjust ?? 0
-          const n = product ? tileCount(product, t.id, density) : 0
+          const n = product ? tileCount(product, t.id, density, state.industry) : 0
           const hot = overTrau === t.id
           // Hint («Klikk for å tilpasse plassering») — kun fylte trau, kun ved
           // hover ELLER det korte auto-visningsvinduet første gang trauet ble

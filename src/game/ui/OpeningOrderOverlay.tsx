@@ -17,7 +17,7 @@ function formatKr(n: number) { return `${Math.round(n).toLocaleString('nb-NO')} 
 
 export default function OpeningOrderOverlay() {
   const { state, dispatch } = useGame()
-  const def = getActiveIndustryDefinition()
+  const def = getActiveIndustryDefinition(state.industry)
   const catalog = def.katalog
   const forsyning = def.forsyning
 

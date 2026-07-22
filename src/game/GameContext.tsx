@@ -931,7 +931,7 @@ function reducer(state: GameState, action: Action): GameState {
       // åpningsdagen», ingen ventetid. Kjøres én gang (openingOrderPlaced
       // gater OpeningOrderOverlay). Tom bestilling er lov (eleven ble advart):
       // ingen varer, ingen kostnad, men flagget settes så overlayet lukkes.
-      const def = getActiveIndustryDefinition()
+      const def = getActiveIndustryDefinition(state.industry)
       const products: Product[] = []
       let cost = 0
       for (const { productId, qty } of action.items) {
@@ -1841,7 +1841,7 @@ function reducer(state: GameState, action: Action): GameState {
       // ALLTID bort fra kafépoolen. Sesongeffekten i kaféen er kun økonomisk
       // (trafikkløft + varevekt, satt over): byen har flere folk.
       const baseScen = scenariosForMix(
-        scenariosForIndustry(getActiveIndustryDefinition().scenariePool),
+        scenariosForIndustry(getActiveIndustryDefinition(state.industry).scenariePool),
         DAY_CONFIG.scenarioMix,
       )
       const basePool = baseScen.map(s => s.id)
@@ -2057,7 +2057,7 @@ function reducer(state: GameState, action: Action): GameState {
 
       // BRANSJE-DEFINISJON — svinn per svinnRegel. 'ferskvare-daglig': usolgt
       // ferskvare kastes ved stenging (per-produkt logget for dagsoppgjøret).
-      const svinnRegel = getActiveIndustryDefinition().svinnRegel
+      const svinnRegel = getActiveIndustryDefinition(state.industry).svinnRegel
       let svinnStk = 0
       let svinnKr = 0
       const dps: ProductStats = { ...state.dayProductStats }

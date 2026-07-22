@@ -27,3 +27,18 @@ export const STAMKUNDER_AKTIV = false
  *     nå»/«Spol til sesongslutt» er deaktivert med «Parkert — venter på Tema
  *     15-innhold», og de sesong-relaterte mentor-triggerne armeres ikke. */
 export const TURISTSESONG_AKTIV = false
+
+/** BRANSJE 2 KLESBUTIKK — PARKERT bak flagg (skall-synk 2026-07-22): all
+ *  klesbutikk-DATA (katalog, scenarier, brandPull, vareplasser, kassevy) er
+ *  bygget og reconciled på main, men bransjen er IKKE reelt aktiv før dette
+ *  flagget er true OG Espen har validert i Chrome. Gater:
+ *   • false ⇒ KLESBUTIKK registreres IKKE i INDUSTRY_DEFINITIONS
+ *     (getActiveIndustryDefinition('fashion') faller trygt til CAFE), bransje-
+ *     velgeren i oppstarten viser Klesbutikk med «Kommer»-merke (ikke valgbar),
+ *     og klesbutikk-scenariene er utenfor enhver aktiv scenariePool.
+ *   • true ⇒ 'fashion' får sin egen geometri/katalog/scenarier; kaféen er
+ *     uendret (byte-identisk — spilltesten er vakta).
+ *  MERK: motorene leser nå ALLTID geometri fra aktiv IndustryDefinition (ikke
+ *  fra kafé-konstanter direkte), så selve omleggingen er byte-identisk for
+ *  kaféen uavhengig av dette flagget — flagget styrer kun OM 'fashion' finnes. */
+export const KLESBUTIKK_AKTIV = false

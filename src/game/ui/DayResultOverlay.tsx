@@ -252,7 +252,7 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
                   borderRadius: '0.75rem', padding: '0.7rem 0.9rem', fontSize: 13, color: '#7dd3fc', lineHeight: 1.5,
                 }}
               >
-                💡 {getActiveIndustryDefinition().forsyning.utsolgtHint} <span style={{ textDecoration: 'underline' }}>Bestill nå →</span>
+                💡 {getActiveIndustryDefinition(state.industry).forsyning.utsolgtHint} <span style={{ textDecoration: 'underline' }}>Bestill nå →</span>
               </button>
             )}
           </div>

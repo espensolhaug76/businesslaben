@@ -4,6 +4,7 @@
 // 2026-07-06: tier-per-vare er PARKET, ikke slettet — se `tiers` under).
 
 import type { Industry, Product, ProductCategory } from '../types'
+import { KLESBUTIKK_AKTIV } from './featureFlags'
 
 export interface IndustryCatalogItem {
   id: string
@@ -218,9 +219,10 @@ export const INDUSTRY_META: Record<Industry, { name: string; emoji: string; desc
 }
 
 /** SPILLBARE bransjer på main. Bare disse kan velges i oppstarten — de øvrige
- *  vises nedtonet med «Kommer». Tunbar: legg til f.eks. 'fashion' når
- *  klesbutikk-grenen merges inn. */
-export const ACTIVE_INDUSTRIES: Industry[] = ['cafe']
+ *  vises nedtonet med «Kommer». `fashion` (klesbutikk) blir valgbar KUN bak
+ *  `KLESBUTIKK_AKTIV` (skall-synk 2026-07-22) — Espen slår på når validert i
+ *  Chrome; til da vises den med «Kommer»-merke som før. */
+export const ACTIVE_INDUSTRIES: Industry[] = KLESBUTIKK_AKTIV ? ['cafe', 'fashion'] : ['cafe']
 export function isIndustryActive(id: Industry): boolean {
   return ACTIVE_INDUSTRIES.includes(id)
 }
