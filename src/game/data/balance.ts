@@ -277,6 +277,30 @@ export const BALANCE = {
     ryktVellykketLevering: 2,
   },
 
+  /** KROK 7c — SENTRUMSPOSTEN (lokalavisen, docs/ENGASJEMENT.md). Ukentlig avis i
+   *  innboksen: nyheter om elevens butikk, byens trender med SPILLBARE effekter, og
+   *  byens aktører. Hver utgave peker FREMOVER (planleggingsverktøy). ALT tunbart. */
+  avis: {
+    /** Én «uke» = så mange spilldager. 12-dagersmåneden → 3 uker (dag 1–4, 5–8,
+     *  9–12); avisen kommer «mandag» = dag 1, 5, 9 (hver 4. dag). */
+    dagerPerUke: 4,
+    /** Notiser per utgave (min–maks), seedet. */
+    notiserMin: 2,
+    notiserMaks: 4,
+    /** Trend-effektenes styrke (KONSERVATIV, ±10–25 %). Notisene i data/avis.ts
+     *  refererer disse — juster HER, ikke i notisene. */
+    effekt: {
+      /** Trafikk-multiplikatorer (på dagens forventede kundestrøm). */
+      trafikkOpp: 1.15,       // +15 % forbipasserende (f.eks. gågate-liv)
+      trafikkStorOpp: 1.20,   // +20 % (russetid/arrangement)
+      trafikkNed: 0.85,       // −15 % (influensasesong/uvær)
+      /** Vare-vekt-multiplikatorer per berørt varekategori (vrir etterspørselen). */
+      vektOpp: 1.25,          // +25 % på kategorien trenden løfter
+      vektStorOpp: 1.35,      // +35 % (sterk bølge)
+      vektNed: 0.80,          // −20 % på kategorien trenden demper
+    },
+  },
+
   /** KROK 6 — «ESPEN SPØR» (docs/ENGASJEMENT.md). Kunnskapsquiz via mentoren:
    *  liten pengebelønning for riktig svar, tak per dag. Belønningen ligger i P&L
    *  (egen «Kunnskapsbonus»-linje i dagsoppgjøret), ikke utenom. ALT tunbart. */

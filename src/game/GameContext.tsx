@@ -27,6 +27,7 @@ import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, plan
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
 import { dagligRefleksjon } from './data/mentorDaglig'
+import { genererAvisutgave, avisEffektAktiv, avisUke, erAvisdag, byggAvisMelding, devUtlosTrend } from './data/avis'
 import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from './data/featureFlags'
 import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS } from './sales/scenarios'
 import { beregnPakke, velgProfil, BESOKSPROFILER, velgPakkeForesporsler } from './data/reiseliv'
@@ -262,6 +263,9 @@ const initialState: GameState = {
   kampanje: { aktiv: null, historikk: [], visRapportFor: null },
   prisendretDag: {},
   mkfBoost: null,
+  avisEffekt: null,
+  avisSisteUke: -1,
+  avisSisteHandlingDag: 0,
   espenSpor: { aktivt: null, sisteSvar: null, besvarteIds: [], feilCooldown: {}, dagTeller: 0, dagBelonning: 0 },
   stamkunder: {},
   sisteMoteKundeId: null,
@@ -392,6 +396,9 @@ type Action =
   | { type: 'DISMISS_KAMPANJE_RAPPORT' }
   | { type: 'SET_KAMPANJE_ROI_SVAR'; id: string; svar: number }
   | { type: 'DEV_SPOL_KAMPANJE' }   // ?dev=1: spol aktiv kampanje til slutt
+  // KROK 7c — Sentrumsposten (dev).
+  | { type: 'DEV_GENERER_AVIS' }    // ?dev=1: generer ukens utgave nå
+  | { type: 'DEV_UTLOS_AVIS_EFFEKT' } // ?dev=1: aktiver en seedet trend-effekt straks
   // TEMA 15 Reiseliv — turistsesong + reiselivsavtaler.
   | { type: 'START_TURISTSESONG' }        // auto (tema aktivert) + ?dev=1
   | { type: 'DEV_SPOL_TURISTSESONG_SLUTT' } // ?dev=1: spol til sesongslutt
@@ -610,12 +617,15 @@ function reducer(state: GameState, action: Action): GameState {
       // retailPrice — brukes til førpris-sjekken ved salgskampanje.
       const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
       const prisendretDag = { ...state.prisendretDag }
+      let prisEndret = false
       for (const np of action.products) {
         const gammel = state.products.find(o => o.id === np.id)
-        if (gammel && gammel.retailPrice !== np.retailPrice && np.retailPrice > 0) prisendretDag[np.id] = naa
+        if (gammel && gammel.retailPrice !== np.retailPrice && np.retailPrice > 0) { prisendretDag[np.id] = naa; prisEndret = true }
       }
       return {
         ...state,
+        // KROK 7c: registrer AKTIV prisstyring (mentorens «så du trenden?»-refleksjon).
+        avisSisteHandlingDag: prisEndret ? naa : state.avisSisteHandlingDag,
         products: action.products,
         p1_complete: action.products.length > 0,
         prisendretDag,
@@ -898,6 +908,8 @@ function reducer(state: GameState, action: Action): GameState {
 
       return {
         ...state,
+        // KROK 7c: registrer AKTIV bestillingsstyring (mentorens «så du trenden?»).
+        avisSisteHandlingDag: absDag(state.currentYear, state.currentMonth, state.dayNumber),
         money: state.money - totalCost,
         products,
         incomingOrders,
@@ -1719,6 +1731,22 @@ function reducer(state: GameState, action: Action): GameState {
         ? { ...state, espenSpor: { ...state.espenSpor, aktivt: null, sisteSvar: null } }
         : state
 
+    // ── KROK 7c — SENTRUMSPOSTEN (dev) ───────────────────────────────────────
+    case 'DEV_GENERER_AVIS': {
+      const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      const gen = genererAvisutgave(state, naa, state.fagAktiv)
+      if (!gen) return state
+      const melding = byggAvisMelding(gen.utgave, state.dayNumber, state.currentMonth)
+      const messages = [...state.messages.filter(m => m.id !== melding.id), melding]
+      return { ...state, messages, unreadCount: messages.filter(m => !m.read).length,
+        avisEffekt: gen.effekt ?? state.avisEffekt, avisSisteUke: avisUke(naa) }
+    }
+    case 'DEV_UTLOS_AVIS_EFFEKT': {
+      // Aktiver en seedet trend-effekt fra I DAG (så effekten synes i dagstallene nå).
+      const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      return { ...state, avisEffekt: devUtlosTrend(naa) }
+    }
+
     // ── KROK 2 — STAMKUNDER (dev) ────────────────────────────────────────────
     case 'DEV_SPAWN_MOTE':
       return state.dayPhase === 'åpen'
@@ -1812,6 +1840,15 @@ function reducer(state: GameState, action: Action): GameState {
         kunder = Math.round(kunder * (1 + T.trafikkLoft + hotellBonus + pakkeBonus))
         turistandel = T.turistandel
         vareVekt = T.vareVekt
+      }
+      // KROK 7c: aktiv AVIS-TREND-effekt (varslet i Sentrumsposten) løfter/demper
+      // trafikken og vrir etterspørselen per varekategori i sitt tidsvindu. Fasit i
+      // dagstallene — eleven som leste varselet og handlet, vinner.
+      const avisE = avisEffektAktiv(state, idagAbs)
+      if (avisE) {
+        kunder = Math.round(kunder * avisE.trafikkFaktor)
+        vareVekt = { ...vareVekt }
+        for (const [kat, m] of Object.entries(avisE.vareVekt)) vareVekt[kat] = (vareVekt[kat] ?? 1) * m
       }
       const dayBackground: DayBackground = { total: kunder, prosessert: 0, seed, kapasitetRest: 0, kø: [], turistandel, vareVekt }
 
@@ -2231,9 +2268,25 @@ function reducer(state: GameState, action: Action): GameState {
       const nyeEposter = state.rentedLocationId
         ? genererDagensEposter(deliveredProducts, newDayNumber, newMonth, newYear, aktiveUbesvarte(sveip.messages), state.fagAktiv)
         : []
-      const epostMessages = [...sveip.messages, ...nyeEposter]
       const nyRep = Math.max(0, Math.min(100, state.reputation + sveip.reputationDelta))
       const mkfBoost = state.mkfBoost && state.mkfBoost.sluttAbsDag >= newAbsDag ? state.mkfBoost : null
+
+      // KROK 7c — SENTRUMSPOSTEN: ny ukentlig utgave hver «mandag» (erAvisdag),
+      // maks én per uke. Genereres deterministisk mot uke-seed; en ev. trend-effekt
+      // tidfestes (aktiv i sitt vindu, leses av OPEN_DAY). Ankommer som type 'avis'.
+      let avisEffekt = state.avisEffekt
+      let avisSisteUke = state.avisSisteUke
+      let avisMeldinger: InboxMessage[] = []
+      if (state.rentedLocationId && erAvisdag(newAbsDag) && avisUke(newAbsDag) !== state.avisSisteUke) {
+        avisSisteUke = avisUke(newAbsDag)
+        const genState: GameState = { ...state, currentYear: newYear, currentMonth: newMonth, dayNumber: newDayNumber, reputation: nyRep, products: deliveredProducts }
+        const gen = genererAvisutgave(genState, newAbsDag, state.fagAktiv)
+        if (gen) {
+          avisMeldinger = [byggAvisMelding(gen.utgave, newDayNumber, newMonth)]
+          if (gen.effekt) avisEffekt = gen.effekt
+        }
+      }
+      const epostMessages = [...sveip.messages, ...nyeEposter, ...avisMeldinger]
 
       // ØKONOMI-SAMLING (DEL 2) + LÅNEAVDRAG: ved MÅNEDSRULL bygges et
       // månedsoppgjør fra månedens dagsresultater, og de faste kostnadene +
@@ -2314,6 +2367,8 @@ function reducer(state: GameState, action: Action): GameState {
         unreadCount: epostMessages.filter(m => !m.read).length,
         reputation: nyRep,
         mkfBoost,
+        avisEffekt,
+        avisSisteUke,
         // KROK 6: nullstill dagens quiz-teller/belønning; lukk ev. uåpnet spørsmål.
         espenSpor: { ...state.espenSpor, aktivt: null, sisteSvar: null, dagTeller: 0, dagBelonning: 0 },
         dayPhase: 'stengt',
@@ -2495,6 +2550,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall,
           kampanje: v.kampanje ?? s.kampanje, prisendretDag: v.prisendretDag ?? s.prisendretDag,
           mkfBoost: v.mkfBoost ?? s.mkfBoost,
+          avisEffekt: v.avisEffekt ?? s.avisEffekt, avisSisteUke: v.avisSisteUke ?? s.avisSisteUke,
+          avisSisteHandlingDag: v.avisSisteHandlingDag ?? s.avisSisteHandlingDag,
           espenSpor: v.espenSpor ?? s.espenSpor,
           // REDESIGN: gamle lagringer mangler `utviklingstrinn` → default 0.
           stamkunder: v.stamkunder
@@ -2510,8 +2567,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
   useEffect(() => {
-    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, mkfBoost: state.mkfBoost, espenSpor: state.espenSpor, stamkunder: state.stamkunder, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt, reiselivPakke: state.reiselivPakke })) } catch { /* ignore */ }
-  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.mkfBoost, state.espenSpor, state.stamkunder, state.turistsesong, state.hotellavtale, state.opplevByenPameldt, state.reiselivPakke])
+    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, mkfBoost: state.mkfBoost, avisEffekt: state.avisEffekt, avisSisteUke: state.avisSisteUke, avisSisteHandlingDag: state.avisSisteHandlingDag, espenSpor: state.espenSpor, stamkunder: state.stamkunder, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt, reiselivPakke: state.reiselivPakke })) } catch { /* ignore */ }
+  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.mkfBoost, state.avisEffekt, state.avisSisteUke, state.avisSisteHandlingDag, state.espenSpor, state.stamkunder, state.turistsesong, state.hotellavtale, state.opplevByenPameldt, state.reiselivPakke])
 
   // TEST-BRO (KUN DEV): speil hele spilltilstanden + dispatch på window, så det
   // automatiserte spilltest-løpet (Playwright — se docs/SPILLTESTER.md) kan LESE

@@ -279,6 +279,8 @@ export interface InboxMessage {
   type: 'customer_complaint' | 'pest_event' | 'teacher_task' | 'supplier' | 'mentor' | 'game_event' | 'beredskap' | 'kampanje' | 'hotellavtale' | 'pakkeforesporsel'
     // KROK 7 — DEN LEVENDE INNBOKSEN (docs/ENGASJEMENT.md): quest-bærende e-poster.
     | 'kundebestilling' | 'leverandortilbud' | 'mkftilbud'
+    // KROK 7c — SENTRUMSPOSTEN (lokalavisen): ukentlig utgave, åpning viser AvisOverlay.
+    | 'avis'
   title: string
   body: string
   date: string
@@ -305,6 +307,42 @@ export interface InboxMessage {
   epost?: EpostPayload
   /** Utfall-/refleksjonslinje satt ETTER beslutning/levering (aldri fasit før). */
   epostRefleksjon?: string
+  /** KROK 7c — SENTRUMSPOSTEN: utgaven denne meldingen bærer (kun type 'avis').
+   *  Åpning viser AvisOverlay. */
+  avis?: AvisUtgave
+}
+
+/** KROK 7c — én ferdig-rendret notis i en avisutgave. Teksten bygges ved
+ *  generering (deterministisk) og lagres, så utgaven er stabil. */
+export interface RenderedNotis {
+  id: string
+  kilde: 'butikk' | 'trend' | 'aktor'
+  tittel: string
+  tekst: string
+  /** true = notisen omtaler NESTE uke (hver utgave peker fremover). */
+  fremover: boolean
+}
+
+/** KROK 7c — én utgave av Sentrumsposten (lagret på InboxMessage.avis). */
+export interface AvisUtgave {
+  /** Absolutt uke-nummer (monoton) + ukenr i måneden (1..3) for utgavelinja. */
+  uke: number
+  ukeIMaaned: number
+  maaned: number
+  aar: number
+  notiser: RenderedNotis[]
+}
+
+/** KROK 7c — planlagt/aktiv trend-effekt (maks én om gangen). Leses av OPEN_DAY:
+ *  i vinduet [fraAbsDag, tilAbsDag] løftes/dempes trafikk (trafikkFaktor) og
+ *  etterspørsel per varekategori (vareVekt). */
+export interface AvisEffektAktiv {
+  notisId: string
+  label: string
+  fraAbsDag: number
+  tilAbsDag: number
+  trafikkFaktor: number
+  vareVekt: Record<string, number>
 }
 
 // ── Business Model Canvas ─────────────────────────────────────────────────────
@@ -767,6 +805,15 @@ export interface GameState {
    *  Løfter bakgrunnstrafikken (som kampanjen) til og med `sluttAbsDag`. Null =
    *  ingen aktiv boost. Persistert. */
   mkfBoost: { faktor: number; sluttAbsDag: number; kanalNavn: string } | null
+
+  // ── KROK 7c — SENTRUMSPOSTEN (lokalavisen). Persistert. ──
+  /** Aktiv/planlagt trend-effekt fra en avisutgave (maks én). Null = ingen. */
+  avisEffekt: AvisEffektAktiv | null
+  /** Siste absolutte uke en utgave ble generert (unngår dobbel-utgave samme uke). */
+  avisSisteUke: number
+  /** Absolutt dag da eleven sist endret bestilling/priser — brukes av mentorens
+   *  «så du trenden?»-refleksjon (handlet eleven i forkant av en varslet effekt?). */
+  avisSisteHandlingDag: number
 
   // ── KROK 6 — «Espen spør» (kunnskapsquiz via mentoren). Persistert. ──
   espenSpor: {
