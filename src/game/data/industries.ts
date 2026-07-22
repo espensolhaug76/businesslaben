@@ -136,7 +136,7 @@ export const INDUSTRY_CATALOG: Record<Industry, IndustryCatalogItem[]> = {
     { id: 'smoothie',  name: 'Smoothie',    icon: '🥤', maxDemandPerMonth: 200, quality: 9, sustainability: 8, windowDisplay: false, category: 'drikke', trauVare: false,
       costPrice: 18, markedsPris: 45,
       tiers: { premium: { costPrice: 30, markedsPris: 75 }, standard: { costPrice: 18, markedsPris: 45 }, budget: { costPrice: 10, markedsPris: 29 } } /* PARKET */ },
-    { id: 'tea',       name: 'Te / Spesial',icon: '🍵', maxDemandPerMonth: 180, quality: 8, sustainability: 8, windowDisplay: false, category: 'drikke', trauVare: false,
+    { id: 'tea',       name: 'Te',          icon: '🍵', maxDemandPerMonth: 180, quality: 8, sustainability: 8, windowDisplay: false, category: 'drikke', trauVare: false,
       costPrice: 12, markedsPris: 29,
       tiers: { premium: { costPrice: 20, markedsPris: 49 }, standard: { costPrice: 12, markedsPris: 29 }, budget: { costPrice: 6, markedsPris: 19 } } /* PARKET */ },
 
