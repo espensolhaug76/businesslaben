@@ -4,6 +4,7 @@ import { useGame, useErTemaAktivt, useTemaNivaa, useKlasseNivaa } from '../GameC
 import { INDUSTRY_CATALOG, catalogToProduct } from '../data/industries'
 import { getIndustryDefinitionFor, getActiveIndustryDefinition } from '../data/industryDefinition'
 import WindowDisplayEditor from '../city/WindowDisplay'
+import InnkjopKatalog from '../city/InnkjopKatalog'
 import { SCENARIOS } from '../sales/scenarios'
 import { stamkundeTrinnLabel } from '../data/stamkundeDialog'
 import { STAMKUNDER_AKTIV } from '../data/featureFlags'
@@ -35,7 +36,7 @@ import {
 } from '../data/innboksEpost'
 import MarkedsplanOppsummering from './MarkedsplanOppsummering'
 import { aktiveFunksjoner, evaluerRefleksjon, oppgaveRefleksjoner } from '../data/orgRefleksjon'
-import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift, InboxMessage } from '../types'
+import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift, InboxMessage, Industry } from '../types'
 import type { Loan } from '../types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des']
@@ -217,7 +218,7 @@ interface DashboardOverlayProps {
 }
 
 export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt' }: DashboardOverlayProps) {
-  const { aktiveTemaer, fagAktiv } = useGame()
+  const { state, aktiveTemaer, fagAktiv } = useGame()
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
   const [faneMelding, setFaneMelding] = useState<string | null>(null)
   // DEL 4 — LAGRE-KVITTERINGER: utkast + «sist lagret»-tid for Priser og Målgruppe
@@ -355,7 +356,10 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                 <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                   {activeTab === 'oversikt'        && <OversiktTab onNavigate={setActiveTab} />}
                   {activeTab === 'forretningsplan' && <ForretningsplanTab onNavigate={setActiveTab} />}
-                  {activeTab === 'produkter'       && <ProdukterTab />}
+                  {/* Produkter-fanen: klesbutikken (bak KLESBUTIKK_AKTIV) fører
+                      sortiment fra leverandørkatalogen (InnkjopKatalog) i det DELTE
+                      dashbordet; kaféen beholder sin uendrede ProdukterTab. */}
+                  {activeTab === 'produkter'       && (state.industry === 'fashion' ? <InnkjopKatalog /> : <ProdukterTab />)}
                   {activeTab === 'utstilling'      && <WindowDisplayEditor />}
                   {activeTab === 'malgruppe'       && <MalgruppeTab utkast={malgruppeUtkast} setUtkast={setMalgruppeUtkast} lagretMin={malgruppeLagretMin} setLagretMin={setMalgruppeLagretMin} />}
                   {activeTab === 'okonomi'         && <OkonomiTab />}
@@ -2746,12 +2750,14 @@ const LEVEL_INFO: Record<EmployeeLevel, { label: string; salary: number }> = {
   ekspert: { label: 'Ekspert', salary: 40_000 },
 }
 
-// Rollepalett fra den aktive bransjen (IndustryDefinition.roller) — oppslag.
-function rolleDef(id: EmployeeRole): RolleDef | undefined {
-  return getActiveIndustryDefinition().roller.find(r => r.id === id)
+// Rollepalett fra den AKTIVE bransjen (IndustryDefinition.roller) — oppslag.
+// `industry` tres inn (default 'cafe') så klesbutikk-roller (visuell merchandiser
+// m.fl.) får riktig tittel/emoji; kaféen er uendret.
+function rolleDef(id: EmployeeRole, industry: Industry = 'cafe'): RolleDef | undefined {
+  return getActiveIndustryDefinition(industry).roller.find(r => r.id === id)
 }
-function rolleTittel(id: EmployeeRole): string { return rolleDef(id)?.tittel ?? id }
-function rolleEmoji(id: EmployeeRole): string { return rolleDef(id)?.emoji ?? '👤' }
+function rolleTittel(id: EmployeeRole, industry: Industry = 'cafe'): string { return rolleDef(id, industry)?.tittel ?? id }
+function rolleEmoji(id: EmployeeRole, industry: Industry = 'cafe'): string { return rolleDef(id, industry)?.emoji ?? '👤' }
 
 // Norske navn til nyansatte (BEMANNING) — fornavn + etternavn, valgt tilfeldig
 // i ansett-handleren (ikke i render).
@@ -2817,7 +2823,7 @@ function OrgKartSteg() {
   const opprettede = alleRoller.filter(r => funksjoner.includes(r.id))
   const paletten = alleRoller.filter(r => !funksjoner.includes(r.id))
   const benk = state.employees.filter(e => !e.grenId)
-  const salgsIVakt = state.employees.filter(e => e.grenId && rolleDef(e.role)?.vaktrolle)
+  const salgsIVakt = state.employees.filter(e => e.grenId && rolleDef(e.role, state.industry)?.vaktrolle)
 
   // Ansett-rolle: kun opprettede funksjoner kan ansettes; fall til første.
   const valgtRolle = opprettede.some(r => r.id === role) ? role : (opprettede[0]?.id ?? null)
@@ -2910,7 +2916,7 @@ function OrgKartSteg() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                     {folk.map(e => (
-                      <DragCard key={e.id} emp={e} farge={r.farge}
+                      <DragCard key={e.id} emp={e} farge={r.farge} industry={state.industry}
                         onDragStart={startDrag({ kind: 'emp', id: e.id })}
                         onFire={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })} />
                     ))}
@@ -2974,7 +2980,7 @@ function OrgKartSteg() {
         {benk.length > 0 ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
             {benk.map(e => (
-              <DragCard key={e.id} emp={e} farge="#94a3b8" compact
+              <DragCard key={e.id} emp={e} farge="#94a3b8" compact industry={state.industry}
                 onDragStart={startDrag({ kind: 'emp', id: e.id })}
                 onFire={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })} />
             ))}
@@ -3001,7 +3007,7 @@ function OrgKartSteg() {
         <VaktRad navn="👑 Deg" sub="Daglig leder · gratis" farge="#ffd700" vakt={state.playerShift}
           onSet={v => dispatch({ type: 'SET_PLAYER_SHIFT', vakt: v })} />
         {salgsIVakt.map(e => (
-          <VaktRad key={e.id} navn={e.navn} sub={`${rolleTittel(e.role)} · ${LEVEL_INFO[e.level].label}`}
+          <VaktRad key={e.id} navn={e.navn} sub={`${rolleTittel(e.role, state.industry)} · ${LEVEL_INFO[e.level].label}`}
             farge="#00d4aa" vakt={e.vakt ?? null}
             onSet={v => dispatch({ type: 'SET_EMPLOYEE_SHIFT', id: e.id, vakt: v })} />
         ))}
@@ -3090,9 +3096,9 @@ function OrgKartSteg() {
                 ))}
               </div>
               <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
-                {valgtRolle && rolleDef(valgtRolle)?.vaktrolle
+                {valgtRolle && rolleDef(valgtRolle, state.industry)?.vaktrolle
                   ? 'Går på gulvvakt og betjener bakgrunnskunder (kapasitet stiger med nivå).'
-                  : valgtRolle && rolleDef(valgtRolle)?.maanedseffekt
+                  : valgtRolle && rolleDef(valgtRolle, state.industry)?.maanedseffekt
                     ? 'Bidrar til månedseffekten sin — går ikke på gulvvakt.'
                     : 'Organisasjonsrolle — ingen direkte motoreffekt, men en del av kartet.'}
               </div>
@@ -3110,7 +3116,7 @@ function OrgKartSteg() {
                   }}>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{LEVEL_INFO[lv].label}</div>
                     <div style={{ fontSize: 11, color: '#64748b' }}>{formatKr(LEVEL_INFO[lv].salary)}/mnd</div>
-                    {valgtRolle && rolleDef(valgtRolle)?.vaktrolle && (
+                    {valgtRolle && rolleDef(valgtRolle, state.industry)?.vaktrolle && (
                       <div style={{ fontSize: 10, color: '#00d4aa', marginTop: 1 }}>{BALANCE.kapasitetPerTime[lv]}/t</div>
                     )}
                   </button>
@@ -3126,7 +3132,7 @@ function OrgKartSteg() {
               fontWeight: 700, fontSize: 15, cursor: canAfford ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
             }}>
               {canAfford && valgtRolle
-                ? `✅ Ansett ${LEVEL_INFO[level].label} ${rolleTittel(valgtRolle)} — ${formatKr(salary)}/mnd`
+                ? `✅ Ansett ${LEVEL_INFO[level].label} ${rolleTittel(valgtRolle, state.industry)} — ${formatKr(salary)}/mnd`
                 : '💸 Ikke råd til denne ansettelsen'}
             </button>
           </>
@@ -3282,8 +3288,8 @@ function SectionTittel({ emoji, tekst }: { emoji: string; tekst: string }) {
   )
 }
 
-function DragCard({ emp, farge, compact, onDragStart, onFire }: {
-  emp: Employee; farge: string; compact?: boolean; onDragStart: (e: React.DragEvent) => void; onFire: () => void
+function DragCard({ emp, farge, compact, onDragStart, onFire, industry = 'cafe' }: {
+  emp: Employee; farge: string; compact?: boolean; onDragStart: (e: React.DragEvent) => void; onFire: () => void; industry?: Industry
 }) {
   return (
     <div
@@ -3297,7 +3303,7 @@ function DragCard({ emp, farge, compact, onDragStart, onFire }: {
         maxWidth: compact ? 190 : '100%',
       }}
     >
-      <span style={{ fontSize: 15 }}>{rolleEmoji(emp.role)}</span>
+      <span style={{ fontSize: 15 }}>{rolleEmoji(emp.role, industry)}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 11.5, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.navn}</div>
         <div style={{ fontSize: 9.5, color: '#94a3b8' }}>{LEVEL_INFO[emp.level].label} · {formatKr(emp.monthlySalary)}</div>

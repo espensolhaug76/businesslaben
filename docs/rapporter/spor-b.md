@@ -1535,3 +1535,95 @@ main). Committet (`f2316a2`), pushet med `--force-with-lease`.
   brandPull-fasiten (steg 43) kjører uten flagg. 
 - **Glossary-commit** når Espen har godkjent ordlyden over.
 - Aktivering (`KLESBUTIKK_AKTIV=true`) skjer når Espen har validert i Chrome.
+
+---
+
+# SKALL-SYNK OPPFØLGING 2026-07-22 — rest-lista (CC B)
+
+> Oppfølging etter skall-synken. Alt klesbutikk-spesifikt er gated bak
+> `KLESBUTIKK_AKTIV` (default false). Kafé-regresjonen (spilltest) grønn etter hver
+> del. **IKKE merge.**
+
+## DEL 1 — Scenariesett: KLESBUTIKK_SCENARIOS er kanon ✅
+Espen-beslutning: jobb-grenens sett (Angrekjøpet/Jobbintervjuet/Størrelsen/Gaven/
+Prøverommet/Mobilbildet, med `avsluttesVedKasse` + spriteCal) er kanon.
+- `KLESBUTIKK_SCENARIO_IDS` eksportert; `KLESBUTIKK.scenariePool` → dette settet.
+- `KLESBUTIKK_SCENARIOS` koblet inn i `getScenario` (`ALLE_SCENARIER`) så pool-en
+  resolver. Main sitt `FASHION_SCENARIOS` er **koblet UT av poolen** men beholdt i
+  koden (`sales/scenarios.ts`, fortsatt i oppslaget) — **slettes etter Espens
+  Chrome-dom**.
+- **Tidsvindu:** vurdert alle 6 → **ingen** er innholdsmessig tidsbundet (retur/
+  intervju/størrelse/gave/prøverom/mobilbilde kan komme når som helst), så ingen
+  får `tidsvindu` (ville vært gjettet innhold). Dokumentert i koden.
+- **`avsluttesVedKasse`-flyten i hovedflyten:** krever klesbutikk-kassevy-scenen
+  (DEL 2) — se der. Mekanikken (`onStep` → 'kasse'-steg) finnes i
+  `SalesScenarioOverlay`; koblingen i `GamePage` lander med DEL 2.
+
+## DEL 2 — Klesbutikk-kassevy i hovedflyten ⏳ UTSATT (presist spesifisert)
+**Ærlig vurdering:** dette er en KJERNE-scene-integrasjon med reell risiko for
+kafé-kassevyen, og den eneste biten som fundamentalt trenger Espens visuelle
+validering. Jeg valgte å IKKE forhaste den under tidspress (kafé-kassevyen deles
+av alle). Designet er klart og klart til gjennomføring:
+
+- **To divergerende kassevy-implementasjoner** finnes i dag: kafeens `InteriorView`
+  (inline «bak-disken», egne DEFAULT-konstanter + per-scenario `spriteCal` i
+  `{scale,centerX,waistY}`-format) og klesbutikkens `KassevyLayer` (KlesbutikkStillas,
+  `kassevyBase`-modul + `KLESBUTIKK_KASSE_*` + per-kunde `spriteCal` i
+  `{dx,dy,scale}`-format). **spriteCal-konvensjonene er ULIKE.**
+- **Anbefalt gjennomføring (kafé byte-identisk ved konstruksjon):**
+  1. Nytt felt `kassevy?: { sceneImage: string; konstanter: KassevyKonstanter }` på
+     `IndustryDefinition`. CAFE = `{ interior-kasse.png, DEFAULT-verdiene }` (=
+     dagens), KLESBUTIKK = `{ klesbutikk-kassevy.png, KLESBUTIKK_KASSE_* }`.
+  2. I `InteriorView`: **gate på `state.industry === 'fashion'`** — la kafé-stien
+     stå HELT urørt (else-gren), og render klesbutikk-kassevyen i en egen gren via
+     `kassevyBase` (`customerAnchorStyle` + `occlusionClipPath` + klesbutikk-
+     kassevy.png), med per-kunde `spriteCal` slått opp fra `klesbutikkKunder.ts`
+     via `KLESBUTIKK_SCENARIO_KUNDE[scenario.id]`.
+  3. `GamePage`: send `onStep` til `SalesScenarioOverlay`; når et
+     `avsluttesVedKasse`-scenario når 'kasse'-steget → naviger til `/inne`
+     (kassevy-scenen). Da virker Angrekjøpet/Gaven ende-til-ende i hovedflyten.
+- **`KLESBUTIKK_KUNDE_BASE`-sonen er IKKE Espen-låst** (fortsatt førstepasning
+  `[34,40,28,30]`). ➡️ **Espen låser i `/dev/klesbutikk?dev=1` → 💰 Kasse → 🧭 Soner.**
+
+## DEL 3 — Innkjøpskatalogen i det delte dashbordet ✅
+- Produkter-fanen (`DashboardOverlay`) rendrer **`InnkjopKatalog`** når
+  `state.industry === 'fashion'`; kaféen beholder sin uendrede `ProdukterTab`.
+- **Bestillings-UX-notat:** `InnkjopKatalog` er i dag et FØRING-lag (marker plagg
+  som ført i sortimentet), ikke et bestillings-/lager-lag. Main sitt bestillings-
+  UX-mønster («I bestilling: N», kvittering i knappen) hører til en LAGER-flyt som
+  klesbutikken ikke har ennå — flagget som senere arbeid (klesbutikkens
+  vare-ordre/lager kobles på når sesong-/lager-mekanikken bygges).
+
+## DEL 4 — Rollelabels industri-tredd ✅
+- `rolleDef`/`rolleTittel`/`rolleEmoji` tar nå `industry`-param (default 'cafe');
+  tredd `state.industry` på alle kallesteder + `DragCard` fikk `industry`-prop.
+  Klesbutikk-roller (visuell merchandiser m.fl.) får riktig tittel/emoji; kafé-
+  labels uendret (`state.industry === 'cafe'` ⇒ samme CAFE-roller).
+
+## DEL 5 — Spilltest + rapport
+- **brandPull-steget renummerert 43 → 44** (A-grenens avis eier 43 — kollisjon
+  løst på forhånd).
+- **Kafé-regresjon (flagg av):** `npm run spilltest` **43/43** grønt etter hver del
+  (42 kafé-steg byte-identiske + steg 44 brandPull-fasit). `tsc -b` grønt per commit.
+- **Flagg-på-steg (bransjebytte-geometri/kassevy/katalog + ett scenario ende-til-
+  ende inkl. `avsluttesVedKasse`):** ⏳ UTSATT sammen med DEL 2 — de krever et eget
+  testoppsett med `KLESBUTIKK_AKTIV=true` (kompilerings-flagg, egen kjøring), og
+  scenario-ende-til-ende avhenger av kassevy-scenen (DEL 2). Spesifisert som neste
+  steg når DEL 2 lander.
+
+### Gjenstår før `KLESBUTIKK_AKTIV = true`
+1. **DEL 2** — klesbutikk-kassevy i hovedflyten (design over) + `avsluttesVedKasse`-
+   navigasjon i `GamePage`.
+2. **`KLESBUTIKK_KUNDE_BASE`-lås** (Espen tracer i `?dev=1` → 💰 Kasse → 🧭 Soner).
+3. **Espens Chrome-validering** (kafé-regresjon FØRST, deretter klesbutikk bak flagget).
+4. **Glossary-commit** når ordlyden i forslaget (skall-synk-rapporten over) er godkjent.
+5. Rydd: slett main sitt `FASHION_SCENARIOS` etter Chrome-dommen.
+
+### Chrome-sjekkliste (Espen)
+**Kafé-regresjon FØRST (flagg AV):** `/game` — interiør/kassevy/disk, kundemøter,
+dagsoppgjør, Produkter/Priser/Innkjøp, org-kart uendret. Bransjevelger: Klesbutikk
+har «Kommer».
+**Deretter klesbutikk (`KLESBUTIKK_AKTIV=true`, hard-reload):** Klesbutikk valgbar;
+Produkter-fanen viser Innkjøpskatalogen; org-kartet viser klesbutikk-roller; før
+merker + velg segmenter → besøksvilje svarer (brandPull). (Kassevy/scenario-oppgjør
+ved kassen kommer med DEL 2.)
