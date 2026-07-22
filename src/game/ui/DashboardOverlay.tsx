@@ -220,6 +220,13 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
   const { aktiveTemaer, fagAktiv } = useGame()
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
   const [faneMelding, setFaneMelding] = useState<string | null>(null)
+  // DEL 4 — LAGRE-KVITTERINGER: utkast + «sist lagret»-tid for Priser og Målgruppe
+  // løftes HIT så de overlever fanebytte (fane-komponentene unmountes ved bytte;
+  // et lokalt utkast ville gått tapt). Nullstilles ved lagring (utkast → null).
+  const [priserUtkast, setPriserUtkast] = useState<Product[] | null>(null)
+  const [priserLagretMin, setPriserLagretMin] = useState<number | null>(null)
+  const [malgruppeUtkast, setMalgruppeUtkast] = useState<MalgruppeUtkast | null>(null)
+  const [malgruppeLagretMin, setMalgruppeLagretMin] = useState<number | null>(null)
 
   // Åpning / direktenavigasjon til en SKJULT fane → Oversikt (ingen krasj).
   useEffect(() => {
@@ -255,6 +262,12 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('mentor:fane', { detail: { fane: open ? activeTab : null } }))
   }, [open, activeTab])
+
+  // Mentor: scene-orientering første gang dashbordet åpnes (fyres én gang; køes bak
+  // en ev. fane-trigger som re-armer). Egen kanal fra fane-meldingen.
+  useEffect(() => {
+    if (open) window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_dashbord' } }))
+  }, [open])
 
   return (
     <AnimatePresence>
@@ -344,10 +357,10 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                   {activeTab === 'forretningsplan' && <ForretningsplanTab onNavigate={setActiveTab} />}
                   {activeTab === 'produkter'       && <ProdukterTab />}
                   {activeTab === 'utstilling'      && <WindowDisplayEditor />}
-                  {activeTab === 'malgruppe'       && <MalgruppeTab />}
+                  {activeTab === 'malgruppe'       && <MalgruppeTab utkast={malgruppeUtkast} setUtkast={setMalgruppeUtkast} lagretMin={malgruppeLagretMin} setLagretMin={setMalgruppeLagretMin} />}
                   {activeTab === 'okonomi'         && <OkonomiTab />}
                   {activeTab === 'lokasjon'        && <LokasjonTab />}
-                  {activeTab === 'priser'          && <PriserTab />}
+                  {activeTab === 'priser'          && <PriserTab utkast={priserUtkast} setUtkast={setPriserUtkast} lagretMin={priserLagretMin} setLagretMin={setPriserLagretMin} />}
                   {activeTab === 'markedsforing'   && <MarkedsforingTab />}
                   {activeTab === 'distribusjon'    && <DistribusjonTab />}
                   {activeTab === 'personale'       && <PersonaleTab />}
@@ -880,16 +893,28 @@ const GENDERS     = ['Kvinner','Menn','Begge']
 const PSYCHO_OPTS = ['Miljøbevisste','Karriereorienterte','Trendsettere','Prisbevisste','Helsebevisste','Familieorienterte']
 const GEO_OPTS    = ['Lokalt','Regionalt','Nasjonalt']
 
-function MalgruppeTab() {
+function MalgruppeTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
+  utkast: MalgruppeUtkast | null
+  setUtkast: (a: MalgruppeUtkast | null) => void
+  lagretMin: number | null
+  setLagretMin: (m: number) => void
+}) {
   const { state, dispatch } = useGame()
-  const [audience, setAudience] = useState({ ...state.targetAudience })
+  // Arbeidsverdi: elevens utkast (i PARENT → overlever fanebytte, DEL 4), ellers
+  // en fersk kopi av lagret målgruppe.
+  const audience = utkast ?? { ...state.targetAudience }
+  const dirty = utkast != null && JSON.stringify(audience) !== JSON.stringify(state.targetAudience)
+  const [nyligLagret, setNyligLagret] = useState(false)
+  const lagretTimer = useRef<number>(0)
+  // Oppdater utkastet (base = gjeldende utkast, ev. lagret state ved første valg).
+  const oppdater = (fn: (a: MalgruppeUtkast) => MalgruppeUtkast) => setUtkast(fn(audience))
 
   function toggleArr<T>(arr: T[], item: T): T[] {
     return arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item]
   }
 
   function togglePsycho(p: string) {
-    setAudience(prev => {
+    oppdater(prev => {
       const has = prev.psychographics.includes(p)
       if (has) return { ...prev, psychographics: prev.psychographics.filter(x => x !== p) }
       if (prev.psychographics.length >= 3) return prev   // max 3
@@ -899,6 +924,11 @@ function MalgruppeTab() {
 
   function save() {
     dispatch({ type: 'SET_TARGET_AUDIENCE', audience })
+    setUtkast(null)
+    setLagretMin(state.dayMinute)
+    setNyligLagret(true)
+    window.clearTimeout(lagretTimer.current)
+    lagretTimer.current = window.setTimeout(() => setNyligLagret(false), 2000)
   }
 
   // Auto-generate persona (deterministic, live). BRANSJE-DEFINISJON: den
@@ -924,9 +954,7 @@ function MalgruppeTab() {
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>🎯 Målgruppe</h3>
           <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Hvem selger du til? Kunden genereres automatisk basert på valgene dine.</p>
         </div>
-        <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-          Lagre ✓
-        </button>
+        <LagreBar label="Lagre målgruppe" dirty={dirty} nyligLagret={nyligLagret} lagretMin={lagretMin} onSave={save} />
       </div>
 
       <AudienceSection label="Geografi">
@@ -934,7 +962,7 @@ function MalgruppeTab() {
           {GEO_OPTS.map(g => {
             const active = audience.geography === g
             return (
-              <button key={g} onClick={() => setAudience(prev => ({ ...prev, geography: active ? null : g }))}
+              <button key={g} onClick={() => oppdater(prev => ({ ...prev, geography: active ? null : g }))}
                 style={{
                   background: active ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
                   border: `1px solid ${active ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
@@ -952,12 +980,12 @@ function MalgruppeTab() {
 
       <AudienceSection label="Aldersgruppe (velg alle som gjelder)">
         <ToggleGroup options={AGE_GROUPS} selected={audience.ageGroups} color="#38bdf8"
-          onToggle={a => setAudience(prev => ({ ...prev, ageGroups: toggleArr(prev.ageGroups, a) }))} />
+          onToggle={a => oppdater(prev => ({ ...prev, ageGroups: toggleArr(prev.ageGroups, a) }))} />
       </AudienceSection>
 
       <AudienceSection label="Kjønn">
         <ToggleGroup options={GENDERS} selected={audience.genders} color="#a855f7"
-          onToggle={g => setAudience(prev => ({ ...prev, genders: toggleArr(prev.genders, g) }))} />
+          onToggle={g => oppdater(prev => ({ ...prev, genders: toggleArr(prev.genders, g) }))} />
       </AudienceSection>
 
       <AudienceSection label={`Psykografiske egenskaper (maks 3, valgt: ${audience.psychographics.length}/3)`}>
@@ -1985,6 +2013,10 @@ function ProdukterTab() {
           const canAfford = totalCost <= state.money
           const existingStock = state.products.find(p => p.id === item.id)?.stock ?? 0
           const gikkTom = tomtNavn.has(item.name)
+          // DEL 3 — LØPENDE BESTILLINGSSTATUS: sum av alle uleverte ordrer for varen
+          // (levering neste morgen, leveringstid 1 dag). Oppdateres umiddelbart ved
+          // nytt «Bestill»-klikk (merges reducer-side per vare+ankomstdag).
+          const iBestilling = state.incomingOrders.filter(o => o.productId === item.id).reduce((a, o) => a + o.qty, 0)
 
           return (
             <div key={item.id} style={{
@@ -2006,6 +2038,14 @@ function ProdukterTab() {
                         borderRadius: 99, padding: '1px 8px', fontSize: 10, fontWeight: 800, color: '#fca5a5',
                       }}>
                         Gikk tomt i går
+                      </span>
+                    )}
+                    {iBestilling > 0 && (
+                      <span style={{
+                        background: 'rgba(59,130,246,0.16)', border: '1px solid rgba(59,130,246,0.5)',
+                        borderRadius: 99, padding: '1px 8px', fontSize: 10, fontWeight: 800, color: '#93c5fd',
+                      }}>
+                        I bestilling
                       </span>
                     )}
                   </div>
@@ -2057,13 +2097,17 @@ function ProdukterTab() {
                     fontFamily: 'inherit', whiteSpace: 'nowrap',
                   }}
                 >
-                  {sistBestilt?.id === item.id ? '✓ Bestilt' : canAfford ? '📦 Bestill' : '💸 Ikke råd'}
+                  {/* DEL 3: knappen er alltid «Bestill» — etter klikk en KORT
+                      kvittering («+N lagt til») i ~2 s, så tilbake. Den varige
+                      totalen bæres av «I bestilling»-linja under. */}
+                  {sistBestilt?.id === item.id ? `+${sistBestilt.qty} lagt til` : canAfford ? '📦 Bestill' : '💸 Ikke råd'}
                 </button>
               </div>
-              {/* KROK 4 — bestill-kvittering (transient). */}
-              {sistBestilt?.id === item.id && (
-                <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: '#4ade80' }}>
-                  ✓ Bestilt — {sistBestilt.qty} stk, levering i morgen (se «Underveis» under)
+              {/* DEL 3 — LØPENDE BESTILLINGSSTATUS (varig linje mens N > 0). */}
+              {iBestilling > 0 && (
+                <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 6 }} data-testid={`ibestilling-${item.id}`}>
+                  <span>📦</span>
+                  <span>I bestilling: {iBestilling} stk — levering i morgen</span>
                 </div>
               )}
             </div>
@@ -2088,48 +2132,82 @@ function competitorRange(markedsPris: number): { low: number; high: number } {
   }
 }
 
-function PriserTab() {
-  const { state, dispatch } = useGame()
-  const [products, setProducts] = useState<Product[]>(() => state.products.map(p => ({ ...p })))
+// DEL 4 — utkast-type for Målgruppe (targetAudience er en inline-type i types.ts).
+type MalgruppeUtkast = { geography: string | null; genders: string[]; ageGroups: string[]; psychographics: string[] }
 
-  // LÆRINGSLAGET: fane-hintene (forste_prising + priser_fane) er nå kontekst-
-  // bundne og styres av mentorens 'mentor:fane'-kanal (se DashboardOverlay-
-  // effekten) — ikke en egen mount-dispatch her.
+// DEL 4 — DELT LAGRE-LINJE (Priser + Målgruppe). Aldri bare farge — alltid tekst:
+// «Ulagrede endringer» når noe er endret, «Lagret ✓» i ~2 s etter lagring, og en
+// VARIG «Sist lagret kl. HH:MM (spilltid)» når det finnes en lagring.
+function LagreBar({ label, dirty, nyligLagret, lagretMin, onSave }: {
+  label: string; dirty: boolean; nyligLagret: boolean; lagretMin: number | null; onSave: () => void
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {dirty && <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24' }}>● Ulagrede endringer</span>}
+        <button onClick={onSave} style={{
+          background: nyligLagret ? 'rgba(34,197,94,0.2)' : 'linear-gradient(135deg,#00d4aa,#0d9488)',
+          border: nyligLagret ? '1px solid rgba(34,197,94,0.6)' : 'none', borderRadius: 99, padding: '0.6rem 1.5rem',
+          color: nyligLagret ? '#4ade80' : '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+        }}>
+          {nyligLagret ? 'Lagret ✓' : label}
+        </button>
+      </div>
+      {lagretMin != null && (
+        <span style={{ fontSize: 11, color: '#64748b' }}>Sist lagret kl. {hhmm(BALANCE.klokke.apneMinutt + lagretMin)} (spilltid)</span>
+      )}
+    </div>
+  )
+}
+
+function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
+  utkast: Product[] | null
+  setUtkast: (p: Product[] | null) => void
+  lagretMin: number | null
+  setLagretMin: (m: number) => void
+}) {
+  const { state, dispatch } = useGame()
+  // Arbeidslista: elevens utkast hvis hen har begynt å redigere, ellers en fersk
+  // kopi av lagret state. Utkastet ligger i PARENT → overlever fanebytte (DEL 4).
+  const products = utkast ?? state.products.map(p => ({ ...p }))
+  // Ulagret = utkast finnes OG minst én pris avviker fra lagret state.
+  const dirty = utkast != null && products.some(p => {
+    const lagret = state.products.find(s => s.id === p.id)
+    return !lagret || lagret.retailPrice !== p.retailPrice
+  })
+  // Transient «Lagret ✓» (lokal — forsvinner ved fanebytte, det er greit).
+  const [nyligLagret, setNyligLagret] = useState(false)
+  const lagretTimer = useRef<number>(0)
 
   if (products.length === 0) {
     return <div style={{ textAlign: 'center', color: '#475569', padding: '3rem' }}>Ingen produkter bestilt. Gå til Produkter-fanen.</div>
   }
 
   function setPrice(id: string, price: number) {
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, retailPrice: Math.max(0, price) } : p))
+    setUtkast(products.map(p => p.id === id ? { ...p, retailPrice: Math.max(0, price) } : p))
   }
 
   function save() {
     dispatch({ type: 'SET_PRODUCTS', products })
-  }
-
-  // Persister prisen SÅ SNART eleven forlater feltet (blur) — ellers lå den
-  // typede verdien kun i lokal state til «Lagre priser»-klikket, som var lett å
-  // gå glipp av (varen viste «mangler pris» og solgte ikke). Bruker `neste` fordi
-  // setProducts er asynkron; vi committer verdien vi nettopp satte.
-  function persistBlur(id: string, price: number) {
-    const neste = products.map(p => p.id === id ? { ...p, retailPrice: Math.max(0, price) } : p)
-    dispatch({ type: 'SET_PRODUCTS', products: neste })
+    setUtkast(null)                 // synk tilbake til (nå lagret) state
+    setLagretMin(state.dayMinute)
+    setNyligLagret(true)
+    window.clearTimeout(lagretTimer.current)
+    lagretTimer.current = window.setTimeout(() => setNyligLagret(false), 2000)
   }
 
   const researchedIds = new Set(state.priceResearch.purchasedProductIds)
   const allResearched = products.every(p => researchedIds.has(p.id))
+  const lagreBar = <LagreBar label="Lagre priser" dirty={dirty} nyligLagret={nyligLagret} lagretMin={lagretMin} onSave={save} />
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
         <div>
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Prissetting</h3>
           <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Sett <Fagord id="ECO_031">utsalgspris</Fagord> per produkt</p>
         </div>
-        <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-          Lagre priser ✓
-        </button>
+        {lagreBar}
       </div>
 
       {/* LÆRINGSLAGET — prissettingsstrategier (klikkbare fagord). Ikke en fasit;
@@ -2190,9 +2268,9 @@ function PriserTab() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <input
+                    data-testid={`pris-${p.id}`}
                     type="number" min={0} step={1} value={p.retailPrice || ''} placeholder="sett pris"
                     onChange={e => setPrice(p.id, parseInt(e.target.value) || 0)}
-                    onBlur={e => persistBlur(p.id, parseInt(e.target.value) || 0)}
                     style={{
                       width: 100, textAlign: 'right', background: 'rgba(255,255,255,0.08)',
                       border: `1px solid ${p.retailPrice > 0 ? 'rgba(255,255,255,0.18)' : 'rgba(245,158,11,0.6)'}`, borderRadius: 6,
@@ -2226,6 +2304,12 @@ function PriserTab() {
             </div>
           )
         })}
+      </div>
+
+      {/* DEL 4 — lagre-knapp OGSÅ nederst (lista er lang); speiler samme tilstand
+          som knappen øverst. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+        {lagreBar}
       </div>
     </div>
   )
