@@ -7,7 +7,7 @@ import { type FagKode, type FagAktivering, FAG_DEFAULT, normaliserFag } from './
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
-  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement, DayBackground,
+  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, KlesbutikkFixtureItem, KlesbutikkPlaggItem, DayResult, Bestilling, DeliveryNote, MonthSettlement, DayBackground,
   EmployeeRole, Shift, TickerLinje,
 } from './types'
 import { EMPTY_CANVAS } from './types'
@@ -191,6 +191,9 @@ const initialState: GameState = {
   channels: ['physicalStore'],
   windowDisplayLayout: [],
   counterLayout: [],
+  klesbutikkFixtureLayout: [],
+  klesbutikkPlaggLayout: [],
+  klesbutikkSortiment: [],
   marketingBudget: { tiktok: 0, instagram: 0, snapchat: 0, facebook: 0, byposten: 0, 'radio-innlandet': 0 },
   appealType: null,
 
@@ -303,6 +306,9 @@ type Action =
   | { type: 'SET_FAG_AKTIV'; fag: FagAktivering }
   | { type: 'SET_WINDOW_DISPLAY'; fixtureId: WindowDisplayItem['fixtureId']; items: WindowDisplayItem[] }
   | { type: 'SET_COUNTER_LAYOUT'; items: TrauItem[] }
+  | { type: 'SET_KLESBUTIKK_FIXTURES'; items: KlesbutikkFixtureItem[] }
+  | { type: 'SET_KLESBUTIKK_PLAGG'; items: KlesbutikkPlaggItem[] }
+  | { type: 'SET_KLESBUTIKK_SORTIMENT'; items: string[] }
   | { type: 'RESOLVE_SALES_SCENARIO'; scenarioId?: string; sales: SaleLine[]; reputationDelta: number; xpEarned: number; cost?: number; stockout?: boolean }
   /** KROK 2-redesign — løs et STAMKUNDEMØTE (kort gjenkjenningsmøte): påslag med
    *  kjøpsbonus, hev utviklingstrinnet, service recovery. */
@@ -852,6 +858,19 @@ function reducer(state: GameState, action: Action): GameState {
       // Disk-monterens trau-oppsett (frontal scene). Hele lista erstattes ved
       // hver endring — ingen egen lagre-knapp.
       return { ...state, counterLayout: action.items }
+
+    case 'SET_KLESBUTIKK_FIXTURES':
+      // Klesbutikkens frie møbelplassering (butikkveggen, KlesbutikkStillas).
+      // Hele lista erstattes ved hver endring — samme mønster som layoutene over.
+      return { ...state, klesbutikkFixtureLayout: action.items }
+
+    case 'SET_KLESBUTIKK_PLAGG':
+      // Plagg auto-snappet til vareplasser på møblene (presentasjonslag).
+      return { ...state, klesbutikkPlaggLayout: action.items }
+
+    case 'SET_KLESBUTIKK_SORTIMENT':
+      // Ført sortiment (leverandørkatalog, Innkjøp-fanen) — katalogvare-id-er.
+      return { ...state, klesbutikkSortiment: action.items }
 
     case 'ORDER_PRODUCT': {
       // Innkjøp med LEVERINGSTID (docs/INNKJOP_LEVERING.md): pengene trekkes

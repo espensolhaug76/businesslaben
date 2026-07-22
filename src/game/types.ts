@@ -197,6 +197,52 @@ export interface TrauItem {
   skewAdjust?: number
 }
 
+// ── Klesbutikk-inventar (BRANSJE 2, jobb/klesbutikk) ──────────────────────────
+
+/** De 8 splittede møbel-spritene (public/assets/raw/fixtures/). Definisjonene
+ *  (sprite, størrelse, vareplasser) bor i game/data/klesbutikkFixtures.ts. */
+export type KlesbutikkFixtureId =
+  | 'stativ' | 'stativ-liten' | 'hylle' | 'bord' | 'bord-podium'
+  | 'dukke' | 'dukke-mann' | 'dukke-barn'
+
+/** Fotpunkt (der møbelets bunn står) i PROSENT av scenebildet (interiøret). */
+export interface Fotpunkt { x: number; y: number }
+
+/** Ett møbel plassert på GULVPLANET (perspektivmodell). Møbelet plasseres fritt
+ *  på gulv-trapeset (eller på veggen for hylla); `fotpunkt` er bunn-punktet i %
+ *  av scenebildet. Skalaen lagres IKKE — den interpoleres av dybden i
+ *  gulvplanet (KLESBUTIKK.gulvplan) ved opptegning, så alt reskalerer riktig når
+ *  Espen kalibrerer front/bak-skala. Tegnerekkefølge sorteres på `fotpunkt.y`
+ *  (møbler foran dekker møbler bak). Samme møbeltype kan plasseres flere ganger,
+ *  derav unik `id`. */
+export interface KlesbutikkFixtureItem {
+  id: string
+  fixtureId: KlesbutikkFixtureId
+  fotpunkt: Fotpunkt
+  /** SPEILING: møbelet (m/plagg+dukker) rendres horisontalt speilvendt
+   *  (scaleX(-1)) i scenen. Toggle i plantegningen (klikk = ↔). Boolsk nå;
+   *  kan senere utvides til en `retning`-streng (f.eks. 'front'|'venstre'|
+   *  'høyre'|'bak') hvis flere vinkler trengs — behold da `vendt` som avledet. */
+  vendt?: boolean
+}
+
+/** Ett plagg auto-snappet til en vareplass på et plassert møbel (BRANSJE 2,
+ *  presentasjonslag). `plassId` identifiserer ÉN vareplass på ett møbel:
+ *  `${fixtureItemId}:${slotIndex}`. Én vare per plass. Rendres med riktig
+ *  sprite-variant (profil/brett/antrekk) fra plaggets definisjon. */
+/** Elevens finjustering av et antrekk OPPÅ den kalibrerte grunnlinja
+ *  (antrekkFit) — kun antrekk på dukker. `dx/dy` legges til grunnlinjas
+ *  offset (klemte grenser), `dScale` er ±0.2 relativt til grunnlinjas scale.
+ *  Pedagogisk visuell profilering; ingen scoring. «Tilbakestill» = fjern denne. */
+export interface ElevFit { dx: number; dy: number; dScale: number }
+
+export interface KlesbutikkPlaggItem {
+  plassId: string
+  plaggId: string
+  /** Elevens justering (kun antrekk på dukke). Fravær = grunnlinjefit. */
+  elevFit?: ElevFit
+}
+
 // ── Staff ────────────────────────────────────────────────────────────────────
 
 /** Rolle-id (BEMANNING/ORGANISASJONSDESIGN). Rollene er nå DATADREVNE per
@@ -661,6 +707,17 @@ export interface GameState {
   /** TEMA 8 (DEL D): LØPENDE synlighet — månedlig budsjett per kanal, harmonisert
    *  til de samme 6 navngitte kanalene som kampanjen (kanal-id → kr/mnd). */
   marketingBudget: Record<string, number>
+  /** Klesbutikkens frie møbelplassering i butikkvegg-sonen (BRANSJE 2,
+   *  KlesbutikkStillas dev-scene). Tom liste = ingen møbler. Se
+   *  KlesbutikkFixtureItem. Ikke koblet til onboarding/spillflyten ennå. */
+  klesbutikkFixtureLayout: KlesbutikkFixtureItem[]
+  /** Plagg auto-snappet til vareplasser på møblene (presentasjonslag,
+   *  KlesbutikkStillas). Tom liste = ingen plagg. Se KlesbutikkPlaggItem. */
+  klesbutikkPlaggLayout: KlesbutikkPlaggItem[]
+  /** FØRT sortiment (BRANSJE 2, leverandørkatalog) — katalogvare-id-er
+   *  (`${plaggId}@${brandId}`) eleven har «ført» i Innkjøp-fanen. Styrer hvilke
+   *  plagg styling-paletten viser. Tom liste = ingen varer ført. */
+  klesbutikkSortiment: string[]
   appealType: 'rational' | 'emotional' | 'combined' | null
 
   // Staff

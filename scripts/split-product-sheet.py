@@ -8,9 +8,14 @@ Pipeline per ark:
   3) sorter blobs i lese-rekkefølge (rad for rad, venstre->høyre)
   4) kropp hver blob til sin alfa-bounding-box (+pad) og lagre som <navn>.png
 
-To ark-familier, skilt på filnavn-prefiks (avgjør både mappe og navnekart):
+Fire ark-familier, skilt på filnavn-prefiks (avgjør både mappe og navnekart):
   products-ark-NN-raw.png  -> public/assets/raw/products/<navn>.png
   customers-ark-NN-raw.png -> public/assets/raw/customers/<navn>.png
+  fixtures-ark-NN-raw.png  -> public/assets/raw/fixtures/<navn>.png  (klesbutikk-
+                              møbler: stativ/dukke/bord/hylle — jobb/klesbutikk)
+  klar-ark-NN-raw.png      -> public/assets/raw/klar/<navn>.png  (klesbutikk-
+                              PLAGG — jobb/klesbutikk; rå-arkene ligger i
+                              raw/, utklippene skrives til raw/klar/)
 
 Re-kjørbar for flere ark: legg nye ark i riktig mappe under public/assets/raw/
 og legg navnekartet i PRODUCTS_NAME_MAPS/CUSTOMERS_NAME_MAPS under ark-nummeret
@@ -27,7 +32,26 @@ import sys, os
 from collections import deque
 
 PRODUCTS_DIR  = "/home/espen/adventure-web/public/assets/raw/products"
-CUSTOMERS_DIR = "/home/espen/adventure-web/public/assets/raw/customers"
+# customers-arkene: café-kundene (ark-02) ble historisk splittet i main-worktreen,
+# men FASHION-kundene (ark-03/04, jobb/klesbutikk) bor i DENNE worktreen — les/skriv
+# derfor mot worktree-mappa, ikke main (samme regel som fixtures/klar-familiene).
+CUSTOMERS_DIR = "/home/espen/adventure-web-klesbutikk/public/assets/raw/customers"
+# Fixtures-arkene (klesbutikk-møbler) er BRANSJE-2-arbeid som bor på grenen
+# jobb/klesbutikk — les fra og skriv til DEN worktreen, ikke main-worktreen.
+FIXTURES_DIR  = "/home/espen/adventure-web-klesbutikk/public/assets/raw/fixtures"
+# Klar-arkene (klesbutikk-PLAGG): rå-arkene ligger i raw/ (klar-ark-NN-raw.png),
+# men utklippene skrives til en egen raw/klar/-mappe (mange filer). Derfor er
+# raw-mappe (input) og out-mappe (output) ULIKE for denne familien.
+KLAR_RAW_DIR  = "/home/espen/adventure-web-klesbutikk/public/assets/raw"
+KLAR_DIR      = "/home/espen/adventure-web-klesbutikk/public/assets/raw/klar"
+# Klar-dukke-arkene (PÅKLEDDE DUKKER): rå-ark i raw/ (klar-dukke-ark-NN-raw.png),
+# utklipp til raw/klar-dukke/. 4 påkledde dukker per ark (1 rad).
+KLAR_DUKKE_RAW_DIR = "/home/espen/adventure-web-klesbutikk/public/assets/raw"
+KLAR_DUKKE_DIR     = "/home/espen/adventure-web-klesbutikk/public/assets/raw/klar-dukke"
+# Klar-profil-arkene (HENG PROFIL): rå-ark i raw/ (klar-profil-ark-NN-raw.png),
+# utklipp til raw/klar-profil/. Profil-heng-plagg (koples som spriteHengProfil).
+KLAR_PROFIL_RAW_DIR = "/home/espen/adventure-web-klesbutikk/public/assets/raw"
+KLAR_PROFIL_DIR     = "/home/espen/adventure-web-klesbutikk/public/assets/raw/klar-profil"
 
 # Navnekart per ark-nummer, i LESE-rekkefølge (rad for rad, venstre->høyre).
 PRODUCTS_NAME_MAPS = {
@@ -69,6 +93,97 @@ CUSTOMERS_NAME_MAPS = {
     "03": ["amira", "bjorn", "camilla", "david"],
     "04": ["emil", "live", "petter", "oda"],
     "05": ["turist-familie", "turist-par", "turist-eldre-stokk", "turist-backpacker", "turist-kamera", "turist-eldrepar"],
+}
+
+# FASHION-kunder (klesbutikk) — ALLEREDE splittet til raw/customers/<navn>.png:
+# dame-camel-veske, mann-skjegg-pakke, forretningsdame-klokke, mann-strikk-mobil,
+# ung-mann-sekk, dame-forerhund, arbeidsmann-korslagt, ung-dame-skjerf. De ble
+# splittet fra ark som FYSISK het customers-ark-03/04 FØR main tok de numrene i
+# bruk til kafé/turist-kundene over. Sprites er committet og brukes av
+# klesbutikkKunder.ts; en RE-splitt krever at fashion-råarkene legges inn under
+# et EGET navn (så 03/04-numrene ikke kolliderer med kafé/turist over).
+# Klesbutikk-møbler (DEL 1, jobb/klesbutikk). Ark 01 = 2x2, lese-rekkefølge
+# (rad for rad, v->h): rad 1 = klesstativ, dame-dukke; rad 2 = bord, hylle.
+# ✦-glyfen nederst til høyre er nano-bananas AI-vannmerke — den blir en egen
+# blob og skal IKKE inn i noe møbel-utklipp (kastes etterpå, se rapporten).
+# Ark 02 har ANNET innhold (herre-/barne-dukke, to stativstørrelser, to bord)
+# og mangler foreløpig navnekart — legges til når Espen har bekreftet navnene.
+FIXTURES_NAME_MAPS = {
+    "01": ["stativ", "dukke", "bord", "hylle"],
+    # Ark 02 (lese-rekkefølge v->h, øverst->nederst): herre-dukke, barne-dukke,
+    # stort stativ (DUPLIKAT av ark-01s stativ -> SKIP), lite stativ, enkelt
+    # bord (DUPLIKAT av ark-01s bord -> SKIP), podium-bord. 'SKIP' skriver ingen
+    # fil for den bloben (se skrive-løkka).
+    "02": ["dukke-mann", "dukke-barn", "SKIP", "stativ-liten", "SKIP", "bord-podium"],
+}
+
+# Klesbutikk-PLAGG (klar-ark-NN, jobb/klesbutikk). VIKTIG: de fysiske ark-numrene
+# (filnavnet) matcher IKKE oppdragets logiske nummerering — innholdet er stokket
+# om, ark-05 er en DUPLIKAT av ark-04, og «heng profil»-arket (logisk 03) MANGLER
+# helt. Navnekartene under er derfor keyet på FYSISK arknr., matchet visuelt mot
+# faktisk innhold 2026-07-07. Alle ark er 4x2 (lese-rekkefølge: rad 1 v->h, rad 2
+# v->h). ✦-VANNMERKET (nano-banana) OVERLAPPER det nederste-høyre plagget på 6
+# ark (fysisk 01/02/03/04/06/08) og havner INNE i det plaggets crop — det ble
+# fjernet MANUELT etter split (klone-patch/diffusjon) fra sport-antrekk-2,
+# dunvest-dame, ullfrakk, kjeledress-barn, vattert-vest, luer-stabel. Re-splitt
+# = gjenta ✦-fjerningen. MANGLER: «heng profil»-arket (logisk 03); fysisk 05 er
+# en DUPLIKAT av 04 — derfor intet "05"-navnekart.
+KLAR_NAME_MAPS = {
+    # fysisk 01 = brettede stabler (topprad) + herre-antrekk (bunnrad)
+    "01": ["t-skjorter-stabel", "jeans-stabel", "gensere-stabel", "cardigan-stabel",
+           "casual-antrekk", "dress-antrekk", "sport-antrekk-1", "sport-antrekk-2"],
+    # fysisk 02 = heng front DAME
+    "02": ["bluse", "cardigan-dame", "blazer-dame", "maxikjole",
+           "denimskjort", "trenchcoat", "strikkekjole", "dunvest-dame"],
+    # fysisk 03 = heng front (herre)
+    "03": ["denimjakke", "hvit-skjorte", "graa-genser", "brun-genser",
+           "sommerkjole", "hoodie", "blaa-genser", "ullfrakk"],
+    # fysisk 04 = heng front BARN
+    "04": ["regnjakke-barn", "hoodie-barn", "denimjakke-barn", "genser-barn",
+           "sommerkjole-barn", "parkas-barn", "tskjorte-barn", "kjeledress-barn"],
+    # fysisk 05 = DUPLIKAT av 04 (barn) — bevisst uten kart, ikke splitt den.
+    # fysisk 06 = heng VINTER
+    "06": ["dunparkas", "ullkaape", "skijakke", "fleecejakke",
+           "tykk-genser", "dunjakke", "softshell", "vattert-vest"],
+    # fysisk 07 = heng SOMMER
+    "07": ["linskjorte", "sommerkjole-2", "badeshorts", "tskjorte",
+           "bomberjakke", "singlet", "linbukse", "kimono"],
+    # fysisk 08 = brettede stabler
+    "08": ["skjorter-stabel", "chinos-stabel", "hoodies-stabel", "flanell-stabel",
+           "shorts-stabel", "cardigans-stabel", "skjerf-stabel", "luer-stabel"],
+    # fysisk 09 = antrekk (topprad dame, bunnrad barn)
+    "09": ["casual-dame", "business-dame", "sommer-dame", "vinter-dame",
+           "casual-barn", "sport-barn", "sommer-barn-antrekk", "vinter-barn-antrekk"],
+    # klesark-10 = 4 brettede stabler HERRE (2x2: topprad, bunnrad; v->h).
+    # Filnavnet er «klesark-10» (ikke «klar-ark-10»), men hører til klar-familien.
+    "10": ["jeans-mork", "tskjorter-marine-graa", "gensere-jordtoner", "flanell-rutet"],
+}
+
+# HENG PROFIL (klar-profil-ark-NN, jobb/klesbutikk). Plaggene henger i PROFIL
+# (3/4-vinkel) på bøyle — koples som `spriteHengProfil` på nye plagg-oppføringer.
+# Keyet på FYSISK arknr. ✦-vannmerket ligger i TOM bunn-h. (under nederste plagg)
+# og er for lite til å bli egen blob (< MIN_AREA_FRAC) → havner ikke i noe utklipp.
+# NB: profil-plaggene henger TETT/STAGET og blir ÉN blob her (bøyle + overlapp).
+# Bruk derfor scripts/split-profil-ark.py (vertikal-strip + kulør-sliver-fjerning)
+# for disse arkene; navnekartet under beholdes kun for referanse.
+KLAR_PROFIL_NAME_MAPS = {
+    # fysisk 04 = 4 HERRE-plagg (staggered, lese-rekkefølge v->h):
+    "04": ["frakk-morkgraa", "strikkegenser-marine", "flanellskjorte-brun", "bomberjakke-svart"],
+}
+
+# PÅKLEDDE DUKKER (klar-dukke-ark-NN, jobb/klesbutikk). 5 ark × 4 blobs = 20
+# påkledde dukke-sprites. Keyet på FYSISK arknr. (04 hoppet over av Espen).
+# Navn = beskrivende bokmål kebab-case etter FAKTISK innhold, verifisert visuelt
+# 2026-07-07. Dukketype (dame/herre/barn) er notert i klesbutikkDukker.ts.
+# NB: ark 02 blob 4 (blazer+jeans) = visuelt kjønns-tvetydig, antatt DAME (arket
+# er ellers dame) — flagget i spor-b.md. ✦-vannmerket nederst t.h. fjernes etter
+# split (som klar-familien).
+KLAR_DUKKE_NAME_MAPS = {
+    "01": ["blazer-herre", "sommerkjole-dame", "denim-herre", "joggedress-herre"],
+    "02": ["bluse-skjort-dame", "trenchcoat-dame", "strikkekjole-dame", "blazer-jeans-dame"],
+    "03": ["vinterkappe-dame", "linskjortekjole-dame", "treningsjakke-dame", "velurkjole-dame"],
+    "05": ["dress-herre", "ullfrakk-herre", "hoodie-herre", "dunparkas-herre"],
+    "06": ["regnfrakk-barn", "hoodie-jeans-barn", "blomsterkjole-barn", "vinterdress-barn"],
 }
 
 ALPHA_THRESHOLD = 40      # alfa over dette = «vare-piksel»
@@ -140,6 +255,17 @@ def resolve_family(path):
     base = os.path.basename(path)
     if base.startswith("customers-ark"):
         return CUSTOMERS_DIR, CUSTOMERS_NAME_MAPS, CUSTOMERS_DIR
+    if base.startswith("fixtures-ark"):
+        return FIXTURES_DIR, FIXTURES_NAME_MAPS, FIXTURES_DIR
+    if base.startswith("klar-profil-ark"):
+        return KLAR_PROFIL_RAW_DIR, KLAR_PROFIL_NAME_MAPS, KLAR_PROFIL_DIR
+    if base.startswith("klar-dukke-ark"):
+        return KLAR_DUKKE_RAW_DIR, KLAR_DUKKE_NAME_MAPS, KLAR_DUKKE_DIR
+    if base.startswith("klar-ark"):
+        return KLAR_RAW_DIR, KLAR_NAME_MAPS, KLAR_DIR
+    # klesark-NN hører til klar-familien (utklipp til raw/klar/), tross navnet.
+    if base.startswith("klesark"):
+        return KLAR_RAW_DIR, KLAR_NAME_MAPS, KLAR_DIR
     return PRODUCTS_DIR, PRODUCTS_NAME_MAPS, PRODUCTS_DIR
 
 
@@ -180,8 +306,12 @@ def main():
         nn = ark_number(inp)
         names = name_maps.get(nn or "", [])
         if not names:
-            print(f"FEIL: ingen navn oppgitt og intet kart for ark '{nn}'. Legg til i "
-                  f"{'CUSTOMERS_NAME_MAPS' if out_dir == CUSTOMERS_DIR else 'PRODUCTS_NAME_MAPS'}.")
+            map_name = {CUSTOMERS_DIR: 'CUSTOMERS_NAME_MAPS',
+                        FIXTURES_DIR: 'FIXTURES_NAME_MAPS',
+                        KLAR_DIR: 'KLAR_NAME_MAPS',
+                        KLAR_DUKKE_DIR: 'KLAR_DUKKE_NAME_MAPS',
+                        KLAR_PROFIL_DIR: 'KLAR_PROFIL_NAME_MAPS'}.get(out_dir, 'PRODUCTS_NAME_MAPS')
+            print(f"FEIL: ingen navn oppgitt og intet kart for ark '{nn}'. Legg til i {map_name}.")
             sys.exit(1)
 
     import numpy as np
@@ -216,6 +346,12 @@ def main():
     area_by_idx = {b[0]: b[5] for b in boxes}
     for k, (idx, x0, y0, x1, y1) in enumerate(ordered):
         name = names[k] if k < len(names) else f"ukjent-{k+1}"
+        # 'SKIP' i navnekartet = blob som IKKE skal lagres (f.eks. et møbel som
+        # er duplikat av et allerede splittet fra et annet ark). Vi teller den
+        # fortsatt i lese-rekkefølgen så etterfølgende navn treffer riktig blob.
+        if name.upper() == "SKIP":
+            print(f"  {'(SKIP)':18s} {x1-x0:>4}x{y1-y0:<4}  -> hopper over blob #{k+1} (duplikat)")
+            continue
         l = max(0, x0 - PAD); t = max(0, y0 - PAD); r = min(W, x1 + PAD); b = min(H, y1 + PAD)
         clip = cut.crop((l, t, r, b))
         # rapport: halo-sjekk (whiteish semi-transparente kantpiksler)

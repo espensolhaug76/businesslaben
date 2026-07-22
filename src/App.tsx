@@ -41,6 +41,7 @@ import ExamResults from './screens/exam/ExamResults'
 
 // AdVenture 3.0
 import GamePage from './game/GamePage'
+import KlesbutikkStillas from './game/city/KlesbutikkStillas'
 
 
 // Guards
@@ -446,6 +447,11 @@ function App() {
           <Route path="/game/d/:districtId/l/:lokaleId" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId/inne" element={<GamePage />} />
           <Route path="/game/d/:districtId/l/:lokaleId/disk" element={<GamePage />} />
+
+          {/* ── Dev: KLESBUTIKK-stillas (BRANSJE 2) ───────────────────────────
+              Frittstående sone-tracing-scene, IKKE koblet til onboarding/
+              spillflyten. /dev/klesbutikk?dev=1 for tracer. */}
+          <Route path="/dev/klesbutikk" element={<KlesbutikkStillas />} />
 
 
           {/* ── AVPUBLISERT v1 (KODEKART §2 skjermflyt-familie) → /game ──────

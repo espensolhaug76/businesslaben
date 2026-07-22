@@ -301,6 +301,60 @@ export const STASJON_REISELIV_HOTSPOTS: Record<'turistkontor' | 'byhotell', [num
  *  Trace-t av Espen. */
 export const STOREFRONT_KAMPANJE: [number, number, number, number] = [73, 66, 12.1, 19.1]
 
+// ── KLESBUTIKK (BRANSJE 2, jobb/klesbutikk) — Espen-trace-de soner ────────────
+// [x, y, b, h] i prosent av SITT bilde. Trace-t av Espen med ?dev=1-sone-
+// traceren på dev-ruta /dev/klesbutikk (KlesbutikkStillas) 2026-07-07 og LÅST —
+// samme kilde-disiplin som STOREFRONT_HOTSPOTS/INTERIOR_*. Rør ikke; bransjen
+// er ikke aktiv ennå, men sonene er ferdig kalibrert.
+
+/** Vindusutstillingens sone på klesbutikk-fasade.png (1376×768) — venstre store
+ *  utstillingsvindu under markisen. Trace-t av Espen (?dev=1) 2026-07-07. */
+export const KLESBUTIKK_VINDU: [number, number, number, number] = [13, 53.9, 26.1, 30.1]
+
+/** Butikkvegg-/eksponeringssonen inne på klesbutikk-interior.jpg (1024×572) —
+ *  hovedflaten kunden møter (der stativ/hylle/bord/dukke skal stå). Trace-t av
+ *  Espen (?dev=1) 2026-07-07. */
+export const KLESBUTIKK_BUTIKKVEGG: [number, number, number, number] = [39.6, 29, 25, 36.5]
+
+// ── KASSEVY (bak-disken-vy, klesbutikk-kassevy.png 1296×832) ──────────────────
+// Samme okklusjons-/kunde-base-modell som kafeen (InteriorView), men med EGNE
+// klesbutikk-konstanter (delt base: src/game/geometry/kassevyBase.ts). Disken i
+// pilot-bildet gir én jevn, rett okklusjonslinje over hele bredden, så
+// venstre/høyre-verdiene er tilnærmet like.
+//
+// ✅ LÅST av Espen 2026-07-17 (kalibrert per kunde i /dev/klesbutikk?dev=1 →
+// 💰 Kasse). Disk-okklusjonen (WAIST_Y/OCCLUDE_*) er IDENTISK for alle 8 kundene
+// (disken er kunde-uavhengig) ⇒ de er den DELTE basen her. Kun kundens SCALE +
+// CENTER_X varierte per kunde ⇒ lagt som per-kunde `spriteCal` i
+// klesbutikkKunder.ts (base = 1.28 / 50; spriteCal = delta). Base-verdiene under
+// er Espens verdi for de vanligste kundene (SCALE 1.28, sentrert).
+/** Kundehøyde som andel av scenehøyden (base — per-kunde `spriteCal.scale`). */
+export const KLESBUTIKK_KASSE_SCALE = 1.28
+/** Kundens senter-x (% av scenebredden) (base — per-kunde `spriteCal.dx`). */
+export const KLESBUTIKK_KASSE_CENTER_X = 50
+/** Kundens livlinje (% av scenehøyden) — der livet møter disk-kanten. DELT (lik
+ *  for alle kunder). */
+export const KLESBUTIKK_KASSE_WAIST_Y = 78
+/** Disk-kantens y ved venstre/høyre scenekant (% høyde) — DELT (kunde-uavhengig).
+ *  Nær like ⇒ jevn, rett disk over hele bredden. */
+export const KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT = 80
+export const KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT = 79
+/** Kunde-basen — sonen kunden står i (midtfeltet av gulvflaten bak disken).
+ *  [x, y, b, h] i % av scenebildet. ⚠️ FORTSATT FØRSTEPASNING (Espen låste
+ *  kunde-plasseringen over, men ikke denne sonen ennå — trace i 🧭 Soner). */
+export const KLESBUTIKK_KUNDE_BASE: [number, number, number, number] = [34, 40, 28, 30]
+
+// ── OPPSØKENDE SALG: gulv-ståpunkter (interiør-scenen, 1375×768) ──────────────
+// Faste punkter der en kunde spawner og venter på å bli kontaktet (DEL 1).
+// Bunn-ankret (fotpunkt), scale = kundehøyde som andel av scenehøyden.
+// ✅ LÅST av Espen 2026-07-17 (📍-ståpunkt-traceren i 🛒 Salg, ?dev=1).
+export interface Stapunkt { id: string; navn: string; x: number; y: number; scale: number }
+export const KLESBUTIKK_KUNDE_STAPUNKTER: Stapunkt[] = [
+  { id: 'stativ',   navn: 'Ved stativ',   x: 56, y: 78.9, scale: 0.44 },
+  { id: 'midtgang', navn: 'Midtgang',     x: 37, y: 84.5, scale: 0.46 },
+  { id: 'proverom', navn: 'Nær prøverom', x: 75, y: 86.5, scale: 0.48 },
+]
+
 /** Produkt-sprites (VINDUSHUD) — klippet fra bakery_assets.png
  *  (scripts/cut-pedestrians.py, 3×3 --smart). Matches mot produktNAVN
  *  (lowercase contains) så både demo- og katalogprodukter treffer;
@@ -446,7 +500,10 @@ export const INTERIOR_MIRROR_TRAU: InteriorMirrorTrau[] = [
  *  `displayRotation` på katalogvaren (industries.ts) og spillerens
  *  justeringspanel per trau-plassering (`TrauItem.sizeAdjust`/`skewAdjust`
  *  i counterLayout, MonterScene). */
-export interface MonterTrau { id: string; rect: [number, number, number, number]; scale?: number }
+// skewX/skewY (grader, valgfri, default 0) = content-lean (CSS-skjær) for det
+// som står PÅ sonen — bygget for klesbutikkens butikkvegg-sone (dev-kalibreres
+// i KlesbutikkStillas, ?dev=1). Kafeens trau setter dem ikke (⇒ 0, ingen skjær).
+export interface MonterTrau { id: string; rect: [number, number, number, number]; scale?: number; skewX?: number; skewY?: number }
 export const MONTER_TRAU: MonterTrau[] = [
   { id: 'trau-1', rect: [2.8, 67.4, 12, 5.9] },
   { id: 'trau-2', rect: [12.2, 70.5, 7.7, 3.6] },

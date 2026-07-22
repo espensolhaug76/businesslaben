@@ -54,6 +54,17 @@ export interface IndustryCatalogItem {
    *  sandwich). Usolgt lager av ferskvare kastes ved stenging (CLOSE_DAY).
    *  Drikke er IKKE ferskvare — lager beholdes over natten. Utelatt = false. */
   ferskvare?: boolean
+
+  // ── BRANSJE 2 (klesbutikk) — leverandørkatalog-felt (docs/BRANSJE2_LEVERANDORER.md) ──
+  /** Merket varen kjøpes fra (Brand.id, klesbutikkBrands.ts). Samme plaggtype
+   *  finnes fra flere merker med ulik `costPrice` — eleven sammenligner. */
+  brandId?: string
+  /** Kobling til plaggdata (sprite-settet) — Plagg.id i klesbutikkPlagg.ts. */
+  plaggId?: string
+  /** Målgruppe-kjønn (fra plaggets gender) — filter i innkjøpskatalogen. */
+  gender?: 'dame' | 'herre' | 'barn' | 'unisex'
+  /** Klesbutikk-kategori for filtrering (overdel/kjole/ytterplagg/…). */
+  klesKategori?: string
 }
 
 /** Generisk bygger for trau-/ferskvarer (BRANSJE-DEFINISJON: generalisert fra

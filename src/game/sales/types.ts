@@ -104,6 +104,12 @@ export interface SalesScenario {
    *  klemt til vindusgrensene). Utelatt = kan komme når som helst på dagen (som
    *  før). Brukes for tidsbundne kunder, f.eks. morgen-/lunsjkunder. */
   tidsvindu?: { fra: number; til: number }
+  /** Klesbutikk (oppsøkende salg): når true flyttes SLUTTSTEGET til kassevyen
+   *  (oppgjørsscenen) — brukes der oppgjøret naturlig skjer ved kassen (f.eks.
+   *  angrekjøp/retur, gavekjøp med kvittering). Ignoreres av kafeens flyt (bak-
+   *  disken-scenen ER kassen). Kun et scene-hint til stillaset; endrer ikke
+   *  scoringen. */
+  avsluttesVedKasse?: boolean
   /** Ordnet liste steg; første element = startsteg. */
   steps: SalesStep[]
 }

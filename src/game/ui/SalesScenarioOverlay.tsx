@@ -42,12 +42,23 @@ interface Pending {
   next?: string
 }
 
-export default function SalesScenarioOverlay({ open, onClose, scenarioId }: {
+export default function SalesScenarioOverlay({ open, onClose, scenarioId, scenario: scenarioProp, onStep }: {
   open: boolean
   onClose: () => void
-  scenarioId: string
+  /** Café-inngangen: slår opp scenariet via getScenario. */
+  scenarioId?: string
+  /** Gjenbruk (klesbutikk-stillaset): send scenario-objektet DIREKTE — da slipper
+   *  vi å registrere INAKTIVE bransje-scenarier i kafeens getScenario. */
+  scenario?: SalesScenario
+  /** Valgfri: fyres når steget endres (stegets id). Stillaset bruker det til å
+   *  flytte scenen til kassevyen når et `avsluttesVedKasse`-scenario når
+   *  'kasse'-steget. */
+  onStep?: (stepId: string) => void
 }) {
-  const scenario = getScenario(scenarioId)
+  // Klesbutikk-stillaset sender scenario-objektet DIREKTE (scenarioProp) så
+  // INAKTIVE bransje-scenarier slipper å registreres i kafeens getScenario;
+  // kafé-inngangen slår fortsatt opp via scenarioId.
+  const scenario = scenarioProp ?? (scenarioId ? getScenario(scenarioId) : undefined)
   // DEV (?dev=1): «👁 Vis kunde» skjuler dialogkortet midlertidig så kunde-
   // spriten i scenen bak blir fullt synlig for inspeksjon/kalibrering. SalesRun
   // forblir montert (dialog-state bevares) — det er bare visningen som skjules.
@@ -99,9 +110,9 @@ export default function SalesScenarioOverlay({ open, onClose, scenarioId }: {
             }}
           >
             {scenario
-              ? <SalesRun key={scenario.id} scenario={scenario} onClose={onClose} />
+              ? <SalesRun key={scenario.id} scenario={scenario} onClose={onClose} onStep={onStep} />
               : <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
-                  Fant ikke salgsscenarioet «{scenarioId}».
+                  Fant ikke salgsscenarioet «{scenarioId ?? scenarioProp?.id}».
                   <div style={{ marginTop: '1rem' }}>
                     <PrimaryButton onClick={onClose} label="Lukk" />
                   </div>
@@ -115,10 +126,12 @@ export default function SalesScenarioOverlay({ open, onClose, scenarioId }: {
 
 // ── Selve gjennomspillingen (fersk state ved hver åpning via key) ─────────────
 
-function SalesRun({ scenario, onClose }: { scenario: SalesScenario; onClose: () => void }) {
+function SalesRun({ scenario, onClose, onStep }: { scenario: SalesScenario; onClose: () => void; onStep?: (stepId: string) => void }) {
   const { state, dispatch } = useGame()
 
   const [stepId, setStepId] = useState(scenario.steps[0]!.id)
+  // Varsle vert-scenen (stillaset) om stegbytte — for avsluttesVedKasse-hoppet.
+  useEffect(() => { onStep?.(stepId) }, [stepId, onStep])
   const [picks, setPicks] = useState<ScoredPick[]>([])
   const [sales, setSales] = useState<SaleLine[]>([])
   const [costs, setCosts] = useState(0)            // DEL 3: kroner ut (omlevering/refusjon)

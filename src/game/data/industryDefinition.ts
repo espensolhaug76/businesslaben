@@ -18,12 +18,19 @@
 
 import type { Industry, RolleDef } from '../types'
 import { INDUSTRY_CATALOG, INDUSTRY_META, type IndustryCatalogItem } from './industries'
+import { KLESBUTIKK_KATALOG } from './klesbutikkKatalog'
 import {
   MONTER_TRAU, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, STOREFRONT_HOTSPOTS,
+  KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG,
   type MonterTrau, type InteriorMirrorTrau,
 } from '../../data/districts'
 import { CAFE_SCENARIO_IDS } from '../sales/scenarios'
 import { CAFE_SPEND, FASHION_BUDGETS, type PersonaBudsjett } from './personas'
+// Portabel scene-geometri (delt med eksperiment/autonom-sport, se
+// docs/AUTONOM_PIPELINE.md §7). Re-eksporteres så bransje-kode kan importere
+// `Hyllelinje` herfra på lik linje med de øvrige geometri-typene.
+import type { Hyllelinje } from '../geometry/hyllelinje'
+export type { Hyllelinje }
 
 /** Lager-flaten (disk-monter): trau-geometri + hvilket bilde de er kalibrert
  *  mot, pluss speil-sonene som viser SAMME lager i interiør-scenen
@@ -64,10 +71,10 @@ export interface EkstraFlate {
  *  stenging. 'ferskvare-daglig' er kafeens regel og den ENESTE som faktisk er
  *  implementert i dag (Product.ferskvare nullstilles hver kveld). Nye regler
  *  legges til i denne unionen ETTER HVERT som de faktisk implementeres i
- *  CLOSE_DAY (se GameContext.tsx) — 'sesong/kolleksjon' er ren dokumentasjon
- *  av retningen (et fremtidig gradvis verditap over en sesong for en
- *  klesbutikk), IKKE en virkemåte som finnes ennå. */
-export type SvinnRegel = 'ferskvare-daglig' | 'sesong/kolleksjon'
+ *  CLOSE_DAY (se GameContext.tsx) — 'sesong' er ren dokumentasjon av retningen
+ *  (et fremtidig gradvis verditap over en sesong/kolleksjon for en klesbutikk,
+ *  se docs/BRANSJE2_SESONG.md), IKKE en virkemåte som finnes ennå. */
+export type SvinnRegel = 'ferskvare-daglig' | 'sesong'
 
 /** Én linje i åpningssortimentet (docs/INNKJOP_LEVERING.md, DEL 1) —
  *  refererer en katalogvare (`catalogId`) og et antall som ligger FERDIG
@@ -103,6 +110,58 @@ export interface ForsyningTekst {
   utsolgtHint: string
 }
 
+/** Et punkt i PROSENT av scenebildet (interiøret). */
+export interface GulvPunkt { x: number; y: number }
+
+/** GULVPLANET (perspektivmodell) møbler plasseres på. Et trapes definert av 4
+ *  hjørner (i % av scenebildet): fremkant venstre/høyre (nærmest kamera) og
+ *  bakkant venstre/høyre (lengst bak). Et møbels fotpunkt klemmes inn i trapeset.
+ *  `scaleFront`/`scaleBack` beskriver hvor bredt trapeset er foran (v=0) vs. bak
+ *  (v=1); møbel-sprite-bredden utledes av møbelets `fotavtrykk.b` × trapesbredden
+ *  ved møbelets dybde (se klesbutikkFixtures.ts). Kalibreres med ?dev=1-gulvplan-
+ *  traceren i KlesbutikkStillas og låses her. */
+export interface Gulvplan {
+  hjørner: {
+    fremV: GulvPunkt
+    fremH: GulvPunkt
+    bakV: GulvPunkt
+    bakH: GulvPunkt
+  }
+  scaleFront: number
+  scaleBack: number
+}
+
+/** VAREPLASS — en fast, kalibrert plass i det BAKTE interiøret (kafé-modellen)
+ *  der elevene styler ETT element, som monter-trauene. Generaliserer det gamle
+ *  vegghengpunktet til tre typer. `x`/`y` = % av scenebildet (elementets anker),
+ *  `scale` = bredde som brøk av scenebildet. `type`:
+ *   'heng'  — hengeplagg (front), topp-ankret ved punktet (gullstenger på vegg).
+ *   'brett' — brettet stabel, bunn-ankret på flaten (hyller/bord).
+ *   'dukke' — påkledd dukke, bunn-ankret over den BAKTE dukka (se `dukketype`).
+ *  Usynlig i spillet (elementet dekker plassen). Kalibreres med ?dev=1-
+ *  vareplass-traceren i KlesbutikkStillas og låses her. */
+export type PlassType = 'heng' | 'brett' | 'dukke'
+export type PlassDukketype = 'dame' | 'herre' | 'barn'
+export type HengVariant = 'front' | 'profil'
+export interface Vareplass {
+  id: string
+  type: PlassType
+  x: number
+  y: number
+  scale: number
+  /** kun type='dukke': dukketypen den bakte dukka har (matchende snap-filter). */
+  dukketype?: PlassDukketype
+  /** kun type='heng': hvilken plagg-variant plassen tar. 'front' (default) tar
+   *  front-plagg, 'profil' tar profil-plagg (plagg med profil-sprite). */
+  variant?: HengVariant
+  /** Valgfri transform på det snappede plagget (grader, default 0). Ankeret
+   *  (transform-origin) er bunn for brett/dukke, senter for heng. Typisk bruk:
+   *  vri/skjære brett-stabler så de følger perspektivet på et bord. */
+  rot?: number
+  skewX?: number
+  skewY?: number
+}
+
 export interface IndustryDefinition {
   id: Industry
   navn: string
@@ -133,6 +192,18 @@ export interface IndustryDefinition {
    *  Innkjøpsansvarlig, HMS-ansvarlig). Kjerne-salgsrollens id er 'selger' i
    *  alle bransjer (bakgrunnssalgs-kapasiteten nøkler på den). */
   roller: RolleDef[]
+  /** Gulvplanet (perspektivmodell) møbler plasseres fritt på — kun klesbutikk
+   *  i dag (kafeen bruker trau-monteren). */
+  gulvplan?: Gulvplan
+  /** Faste, kalibrerte vareplasser i det bakte interiøret (heng/brett/dukke) der
+   *  elevene styler — kun klesbutikk. Kalibreres med ?dev=1-vareplass-traceren. */
+  vareplasser?: Vareplass[]
+  /** Valgfrie hyllelinjer (perspektiv-interpolert skala langs en hyllekant) fra
+   *  den portable `geometry/hyllelinje.ts`-modulen (docs/AUTONOM_PIPELINE.md §6–7).
+   *  Klesbutikken bruker i dag DISKRETE `vareplasser` (+ DOM-anker-snap), ikke
+   *  linjer — feltet er del av modul-adopsjonen og står klart for evt. senere
+   *  linje-basert kalibrering. */
+  hyllelinjer?: Hyllelinje[]
 }
 
 export const CAFE: IndustryDefinition = {
@@ -209,32 +280,40 @@ export const KLESBUTIKK: IndustryDefinition = {
   emoji: INDUSTRY_META.fashion.emoji,
   beskrivelse: INDUSTRY_META.fashion.description,
   startingMoney: INDUSTRY_META.fashion.startingMoney,
-  katalog: INDUSTRY_CATALOG.fashion,
-  // Klesbutikk-ordlyd (stub, DEL 2): plagg BESTILLES mot sesong, ikke bakes.
-  // Nøytral/generisk tekst inntil bransje 2 bygges ut.
+  // Leverandør-/merkekatalog (docs/BRANSJE2_LEVERANDORER.md): plagg × 4 merker
+  // = katalogvarer med ulik costPrice per merke (klesbutikkKatalog.ts). Erstatter
+  // det parkerte tier-systemet — merkeposisjon er kvalitetssignalet.
+  katalog: KLESBUTIKK_KATALOG,
+  // Klesbutikk-ordlyd (stub, DEL 2): plagg BESTILLES mot sesong (docs/
+  // BRANSJE2_SESONG.md), ikke bakes. Nøytral tekst inntil bransje 2 bygges ut.
   forsyning: {
     åpningsordreTittel: '👗 Åpningsbestilling',
-    åpningsordreLøfte: 'Plaggene henger klare i butikken til åpningsdagen.',
+    åpningsordreLøfte: 'Plaggene bestilles mot sesongen og henger klare i butikken til åpningsdagen.',
     åpningsordreKnapp: 'Bestill til åpningsdagen',
-    underveisTittel: '📦 BESTILT',
+    underveisTittel: '📦 BESTILT MOT SESONG',
     ankomstEtikett: dag => `Klart dag ${dag}`,
-    klarMelding: linjer => `📦 Nye varer i hyllene: ${linjer}`,
-    utsolgtHint: 'Du gikk tom — tapte salg. Bestill mer av det som selger.',
+    klarMelding: linjer => `📦 Nye plagg i butikken: ${linjer}`,
+    utsolgtHint: 'Du gikk tom — tapte salg. Bestill mer av sesongens plagg som selger.',
   },
-  // Ingen åpningssortiment definert for stubben ennå (en ekte klesbutikk ville
-  // fått sitt eget startlager her).
+  // Ingen åpningssortiment definert for stubben ennå (kommer med
+  // leverandørkatalogen — en ekte klesbutikk ville fått sitt startlager her).
   oppstartssortiment: [],
   flater: {
-    // Samme fysiske vindu som kafeen (én storefront-fasade i dag) — en ekte
-    // bransje 2 ville sannsynligvis fått egne fasadebilder/soner her.
-    styling: { zone: STOREFRONT_HOTSPOTS.vindu },
+    // Vindusutstillingen (mot gata) — Espen-trace-t sone på klesbutikk-fasaden
+    // (KLESBUTIKK_VINDU i districts.ts). Styling-flate med fri komposisjon der
+    // sprites står oppreist (jf. WindowDisplay).
+    styling: { zone: KLESBUTIKK_VINDU },
     lager: {
-      // Ingen klesbutikk-fotografert monter finnes ennå — tom geometri,
-      // ikke en gjettet plassholder-sone.
-      sceneImage: '',
-      trau: [],
+      // Interiør-scenen (klesbutikk-interior.jpg). Butikkveggen er IKKE et trau:
+      // møbler plasseres FRITT (bunn-ankret) i KLESBUTIKK_BUTIKKVEGG-sonen —
+      // state.klesbutikkFixtureLayout, redigert i KlesbutikkStillas. Denne ene
+      // «trau»-oppføringen beholdes kun som sonens geometri-referanse for typen;
+      // trauCols/skew brukes ikke for klesbutikk. Speilingen gjenbruker samme
+      // interiørbilde (ingen egen bakfra-vy tegnet ennå).
+      sceneImage: '/assets/raw/klesbutikk-interior.jpg',
+      trau: [{ id: 'butikkvegg', rect: KLESBUTIKK_BUTIKKVEGG }],
       trauCols: () => 1,
-      speil: { sceneImage: '', trau: [] },
+      speil: { sceneImage: '/assets/raw/klesbutikk-interior.jpg', trau: [] },
     },
   },
   ekstraFlater: [],
@@ -242,13 +321,71 @@ export const KLESBUTIKK: IndustryDefinition = {
   // pool, IKKE kafeens.
   scenariePool: [],
   personaBudsjett: { kind: 'kategori', table: FASHION_BUDGETS, step: 100 },
-  svinnRegel: 'sesong/kolleksjon',
+  svinnRegel: 'sesong',
   roller: [
     { id: 'selger',       funksjon: 'Salg',          tittel: 'Butikkmedarbeider',   emoji: '🛍️', farge: '#00d4aa', vaktrolle: true,  maanedseffekt: null,            kjerne: true },
     { id: 'markedsforer', funksjon: 'Markedsføring', tittel: 'Markedsfører',        emoji: '📢', farge: '#38bdf8', vaktrolle: false, maanedseffekt: 'markedsforing', kjerne: true },
     { id: 'okonom',       funksjon: 'Økonomi',       tittel: 'Økonom',              emoji: '📊', farge: '#f59e0b', vaktrolle: false, maanedseffekt: 'okonomi',       kjerne: true },
     { id: 'innkjop',      funksjon: 'Innkjøp',       tittel: 'Innkjøpsansvarlig',   emoji: '📦', farge: '#a78bfa', vaktrolle: false, maanedseffekt: null,            kjerne: false },
     { id: 'visuell',      funksjon: 'Visuell',       tittel: 'Visuell merchandiser', emoji: '🪟', farge: '#f472b6', vaktrolle: false, maanedseffekt: null,           kjerne: false },
+  ],
+  // Gulvplan — GROVE default-hjørner (% av klesbutikk-interior.jpg): tregulvet
+  // som trapes, fremkant nederst (nær kamera), bakkant der gulvet møter veggene.
+  // IKKE Espen-kalibrert ennå: dra hjørnene + juster front/bak-skala med ?dev=1-
+  // gulvplan-traceren i KlesbutikkStillas og lim det loggede objektet inn HIT.
+  gulvplan: {
+    hjørner: {
+      fremV: { x: 8, y: 98 }, fremH: { x: 98, y: 92 },
+      bakV: { x: 40, y: 66 }, bakH: { x: 82, y: 63 },
+    },
+    scaleFront: 0.42, scaleBack: 0.24,
+  },
+  // Vareplasser (% av klesbutikk-interior-mobler.png) — Espen-KALIBRERT v2
+  // (43 plasser: heng/brett/dukke + profil-heng, låst 2026-07). Rediger videre
+  // med ?dev=1-vareplass-traceren («Logg array» / «Kopier array» → lim inn HIT).
+  vareplasser: [
+    { id: 'heng-1', type: 'heng', x: 44.9, y: 41.5, scale: 0.05 },
+    { id: 'heng-2', type: 'heng', x: 46.6, y: 41.5, scale: 0.05 },
+    { id: 'heng-3', type: 'heng', x: 48.1, y: 41.4, scale: 0.05 },
+    { id: 'heng-4', type: 'heng', x: 50.3, y: 41.5, scale: 0.05 },
+    { id: 'heng-5', type: 'heng', x: 55.5, y: 43.9, scale: 0.05 },
+    { id: 'heng-6', type: 'heng', x: 58, y: 43.9, scale: 0.05 },
+    { id: 'heng-7', type: 'heng', x: 59.9, y: 44.1, scale: 0.05 },
+    { id: 'heng-8', type: 'heng', x: 61.6, y: 44.1, scale: 0.05 },
+    { id: 'heng-9', type: 'heng', x: 67.2, y: 42.2, scale: 0.075 },
+    { id: 'dukke-1', type: 'dukke', x: 41.2, y: 66.9, scale: 0.04, dukketype: 'dame' },
+    { id: 'dukke-2', type: 'dukke', x: 80, y: 86.1, scale: 0.085, dukketype: 'dame' },
+    { id: 'brett-b401', type: 'brett', x: 55.1, y: 84, scale: 0.055 },
+    { id: 'brett-cbf2', type: 'brett', x: 62.2, y: 83.9, scale: 0.055 },
+    { id: 'brett-0684', type: 'brett', x: 48, y: 83.9, scale: 0.055 },
+    { id: 'brett-78a5', type: 'brett', x: 44.9, y: 60.1, scale: 0.025 },
+    { id: 'brett-96ab', type: 'brett', x: 48.4, y: 60.2, scale: 0.025 },
+    { id: 'brett-9701', type: 'brett', x: 92.1, y: 61.2, scale: 0.03 },
+    { id: 'brett-eaf2', type: 'brett', x: 89, y: 61.2, scale: 0.035 },
+    { id: 'brett-125f', type: 'brett', x: 67.9, y: 73.7, scale: 0.03 },
+    { id: 'brett-e7b2', type: 'brett', x: 84.9, y: 59.9, scale: 0.025 },
+    { id: 'brett-db53', type: 'brett', x: 92.4, y: 67.3, scale: 0.035, rot: 0.5, skewX: 2.5 },
+    { id: 'brett-ae53', type: 'brett', x: 89, y: 66.7, scale: 0.035 },
+    { id: 'heng-52ef', type: 'heng', x: 55.9, y: 32.8, scale: 0.045 },
+    { id: 'heng-6bc9', type: 'heng', x: 60.3, y: 32.6, scale: 0.045 },
+    { id: 'brett-9525', type: 'brett', x: 35, y: 100, scale: 0.1 },
+    { id: 'brett-6489', type: 'brett', x: 24.4, y: 100, scale: 0.095 },
+    { id: 'brett-7d98', type: 'brett', x: 76.9, y: 100, scale: 0.1 },
+    { id: 'brett-bee7', type: 'brett', x: 88.3, y: 100, scale: 0.1 },
+    { id: 'heng-aea1', type: 'heng', x: 68.2, y: 42.1, scale: 0.08 },
+    { id: 'heng-13bd', type: 'heng', x: 69.1, y: 41.7, scale: 0.085 },
+    { id: 'heng-p-d8d3', type: 'heng', x: 83.5, y: 41.9, scale: 0.03, variant: 'profil' },
+    { id: 'heng-p-3f3c', type: 'heng', x: 84.8, y: 42, scale: 0.035, variant: 'profil' },
+    { id: 'heng-p-0dd3', type: 'heng', x: 85.7, y: 41.8, scale: 0.035, variant: 'profil' },
+    { id: 'heng-p-3176', type: 'heng', x: 87, y: 41.8, scale: 0.035, variant: 'profil' },
+    { id: 'heng-p-c623', type: 'heng', x: 88.4, y: 41.8, scale: 0.035, variant: 'profil' },
+    { id: 'brett-3aa9', type: 'brett', x: 45.8, y: 100, scale: 0.1 },
+    { id: 'brett-e10b', type: 'brett', x: 56.8, y: 100, scale: 0.1 },
+    { id: 'brett-bcdc', type: 'brett', x: 66.7, y: 99.7, scale: 0.1 },
+    { id: 'heng-p-1bd7', type: 'heng', x: 52.7, y: 53.6, scale: 0.05, variant: 'profil' },
+    { id: 'heng-p-f01b', type: 'heng', x: 54.5, y: 53.6, scale: 0.05, variant: 'profil' },
+    { id: 'heng-p-9aaf', type: 'heng', x: 56.2, y: 53.8, scale: 0.05, variant: 'profil' },
+    { id: 'heng-p-6010', type: 'heng', x: 51, y: 53.4, scale: 0.05, variant: 'profil' },
   ],
 }
 
