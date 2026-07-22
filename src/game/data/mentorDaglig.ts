@@ -22,8 +22,9 @@ export interface DagligRefleksjon {
 const kr = (n: number) => `${Math.round(n).toLocaleString('nb-NO')} kr`
 
 /** Velg dagens refleksjon fra dagsoppgjøret. `forrigeDag` = forrige dags resultat
- *  (for «svinn to dager på rad»). `personaleSynlig` = FD på (Personale-fanen
- *  synlig) — bemannings-/kø-signalet kommenteres bare da (fagfilter/datavakt). */
+ *  (for «svinn to dager på rad»). `personaleSynlig` = Personale-fanen synlig (delt
+ *  FD+M ⇒ FD ELLER M på) — bemannings-/kø-signalet kommenteres bare da
+ *  (fagfilter/datavakt). */
 export function dagligRefleksjon(
   r: DayResult,
   forrigeDag: DayResult | undefined,

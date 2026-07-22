@@ -102,10 +102,10 @@ const TABS: { id: Tab; label: string; emoji: string; fag: FagId; tema?: string; 
   { id: 'distribusjon',    label: 'Distribusjon',      emoji: '🚚', fag: 'markedsforing', visFag: ['m'] }, // Plass-P (M-merke)
   { id: 'utstilling',      label: 'Utstilling',        emoji: '🪟', fag: 'markedsforing', visFag: ['m'] },
   // ── Kultur og samhandling ──
-  // Personale er REN FD: hub-modulen «Ansvarsfordeling, roller og organisasjonskart»
-  // ligger under Forretningsdrift (Espen-gjennomgang). Badge OG synlighet = FD;
-  // forsvinner når FD er av (uavhengig av KS).
-  { id: 'personale',       label: 'Personale',         emoji: '👥', fag: 'forretningsdrift', visFag: ['fd'] },
+  // Personale er DELT FD+M (Espens fagbeslutning): bemanning av salgs-/serviceflater
+  // ligger også i markedsføringsløpet på yrkesfag. Badge-PRIMÆR forblir FD; fanen er
+  // synlig når MINST ETT av FD/M er på, og forsvinner først når BEGGE er av.
+  { id: 'personale',       label: 'Personale',         emoji: '👥', fag: 'forretningsdrift', visFag: ['fd', 'm'] },
   // ── HMS (TEMA-fane: vises KUN når temaet er aktivt, se InnboksTabBar-filteret) ──
   { id: 'hms',             label: 'HMS',               emoji: '🦺', fag: 'hms', tema: 'beredskap' },
   // ── Verktøy (tverrgående) — KJERNE, vises alltid ──

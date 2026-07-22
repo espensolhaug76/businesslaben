@@ -1905,13 +1905,13 @@ function reducer(state: GameState, action: Action): GameState {
         // tikket — en kunde som ventet fra et tidligere tick betjenes altså når
         // kapasitet frigjøres. Til slutt går de som har ventet lenger enn
         // toleransen (og bare de telles som «gikk»).
-        // FAGFILTER (samme prinsipp som datavakten): når Personale-fanen er SKJULT
-        // (FD av) finnes ikke bemanning/kø for eleven — en konsekvens hen ikke kan
-        // handle på. Da settes kapasiteten effektivt ubegrenset: ALLE ankomne (og
-        // evt. rester i bufferen) betjenes med en gang, ingen kø-tap, ingen buffer.
-        // Bemannings-state (employees/playerShift) røres IKKE — den ligger urørt til
-        // FD slås på igjen.
-        const køAktiv = state.fagAktiv.fd
+        // FAGFILTER (samme prinsipp som datavakten): kø/kapasitet er aktiv når
+        // PERSONALE-FANEN er SYNLIG. Personale er delt FD+M, så fanen er synlig når
+        // MINST ETT av fagene er på — kø gjelder altså også i ren M-modus. Er BEGGE
+        // av (fanen skjult) finnes ikke bemanning for eleven: da settes kapasiteten
+        // effektivt ubegrenset (alle ankomne + evt. buffer betjenes straks, ingen
+        // kø-tap). Bemannings-state (employees/playerShift) røres ALDRI.
+        const køAktiv = state.fagAktiv.fd || state.fagAktiv.m
         let kø = nyeAnkomne > 0
           ? [...state.dayBackground.kø, { ankomstMinutt: nyMinutt, antall: nyeAnkomne }]
           : state.dayBackground.kø
@@ -2132,7 +2132,9 @@ function reducer(state: GameState, action: Action): GameState {
       // kommenteres bare når Personale-fanen er synlig (FD på). Datavakt: null =
       // ingenting å si. Lagres så det overlever at lastDayResult nullstilles.
       const forrigeDag = state.dayHistory[state.dayHistory.length - 1]
-      const dagligRefl = dagligRefleksjon(result, forrigeDag, state.fagAktiv.fd)
+      // Personale-fanen synlig = FD ELLER M på (delt fane) → kø-refleksjonen følger
+      // samme port som selve kø-mekanikken.
+      const dagligRefl = dagligRefleksjon(result, forrigeDag, state.fagAktiv.fd || state.fagAktiv.m)
       const mentorDagligHint = dagligRefl
         ? { dag: `${result.year}-${result.month}-${result.dayNumber}`, signal: dagligRefl.signal, melding: dagligRefl.melding }
         : null
