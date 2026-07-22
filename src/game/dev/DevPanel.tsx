@@ -169,6 +169,20 @@ export default function DevPanel({ onOpenSim, isInterior }: {
             />
           </Group>
 
+          <Group title="Avis">
+            <DevBtn
+              label="📰 Generer utgave nå"
+              color="#e7d5a8" bg="rgba(200,182,136,0.16)"
+              onClick={() => dispatch({ type: 'DEV_GENERER_AVIS' })}
+            />
+            <DevBtn
+              label="⏩ Utløs trend-effekt nå"
+              color="#e7d5a8" bg="rgba(200,182,136,0.1)"
+              onClick={() => dispatch({ type: 'DEV_UTLOS_AVIS_EFFEKT' })}
+            />
+            <div style={hintStyle}>Utgaven havner i innboksen (📰 Les hele utgaven). Effekten slår inn i neste åpne dag — se «Kunder i dag» / varevekt.</div>
+          </Group>
+
           <Group title="Tema">
             <DevBtn
               label="🔥 Utløs brannalarm"
