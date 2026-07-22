@@ -2944,3 +2944,99 @@ ville krevd egen mekanikk uansett).
   dagen (11–14).
 - Dagsoppgjør: tap-detaljen heter «Priset over marked» og viser «… — N kunder
   avsto»; dagspulsens tapte-fordeling sier «over marked».
+
+---
+
+## Mentor-liv + fagfiltrert kø + bestillings-UX + lagre-kvitteringer + motordok — 2026-07-22
+
+### DEL 1 — Mentoren får tilbakevendende stemme
+- **(a) Ny triggerklasse «daglig»:** dagsoppgjøret velger dagens STØRSTE signal
+  (reducer-side, `mentorDaglig.ts`) og legger det i `state.mentorDagligHint`
+  (overlever at `lastDayResult` nullstilles). Mentoren fyrer en dag-scopet trigger
+  `daglig|<dag>` (maks én per dag via id-en) som vises når oppgjøret lukkes.
+  Prioritet (terskler i `BALANCE.mentorDaglig`): kø-tap > 5 (KUN når Personale
+  synlig) → samme vare i svinn ≥ 2 dager på rad → priset over marked ≥ 3 avståtte
+  → tomt for ≥ 2 varer → ellers anerkjennelse ved plussdag. Datavakt: null (ingen
+  melding) når ingenting treffer. Fagordtokens brukt der de finnes.
+- **(b) Scene-triggere:** bykart og disk fantes fra før (`forste_bykart`,
+  `forste_disk_stell`). La til **`forste_bydel`** (DistrictView) og
+  **`forste_dashbord`** (DashboardOverlay) — kort «hva er dette til» ved første
+  besøk. Ingen duplisering.
+- **(c) Fane-triggere etter fagfilter — VERIFISERT:** en fane hvis fag er AV er
+  helt skjult → `mentor:fane` fyrer aldri for den → triggeren forblir armet (aldri
+  konsumert) til faget slås på. For SYNLIGE faner fyrer `handleFane` den første
+  ikke-fyrte triggeren og re-armer bare hvis den ikke rekker frem (ordbok/blokkert/
+  aktiv hendelsesboble). Re-arm-mekanismen kveler altså IKKE synlige faners
+  triggere. Ingen kodeendring nødvendig.
+- **(d) Prisstrategi-gjentak:** dynamisk dag-scopet trigger `prisstrategi_gjentak|
+  <dag>` som re-armes på Priser-besøk når sist oppgjorte dag ga «priset over
+  marked»-tap OG prisstrategi-introen alt er sett (over-marked-tap krever en
+  oppgjort salgsdag, så introen er per definisjon eldre). Kort påminnelse, maks én
+  per dag.
+- **(e) Fagord-pose:** et åpent Fagord-kort melder `mentor:fagord` → Espen tar
+  lese-posen (v3/pose 03), samme visuelle «forklarer»-kobling som når ordboka er
+  åpen. Cleanup melder lukket så posen aldri henger igjen.
+- **(f) ⚙ DEV «Nullstill mentor-triggere»:** dispatcher `mentor:reset` →
+  mentoren glemmer ALT (engangs/daglige/scene + intro), kun lokalt (localStorage).
+  Lar Espen teste mentoropplevelsen som fersk elev.
+
+### DEL 2 — Kø og bemanning i fagfiltrert modus
+Når Personale-fanen er skjult (FD av) settes kapasiteten effektivt ubegrenset i
+TICK: alle ankomne (og evt. buffer) betjenes med en gang — ingen kø-buffer, ingen
+kø-tap, ingen kø-banner. Bemannings-state (employees/playerShift) røres IKKE.
+Dagsoppgjørets kø-linje vises kun når `koKunder > 0`, så den utelates automatisk.
+Mentorens kø-refleksjon (DEL 1a pkt 1) armes bare når Personale er synlig.
+
+### DEL 3 — Bestillings-UX (Produkter-fanen)
+Per vare vises en varig linje «📦 I bestilling: N stk — levering i morgen» når
+N > 0 (sum av uleverte ordrer, oppdateres umiddelbart ved klikk). Knappen er
+alltid «📦 Bestill» (ikke permanent «✓ Bestilt») — etter klikk en KORT kvittering
+«+N lagt til» i ~2 s, så tilbake. Varer med aktiv bestilling får tekstmerket «I
+bestilling» i lista (som «Gikk tomt i går»).
+
+### DEL 4 — Lagre-kvitteringer (Priser + Målgruppe)
+Delt `LagreBar`: knapp «Lagre priser»/«Lagre målgruppe» (uten ✓), «● Ulagrede
+endringer» så snart noe endres, «Lagret ✓» i ~2 s etter lagring, og en VARIG
+«Sist lagret kl. HH:MM (spilltid)». Priser har lagre-knapp ØVERST OG NEDERST
+(begge speiler samme tilstand). Utkast + «sist lagret» er LØFTET til
+DashboardOverlay-parent, så de overlever fanebytte (endringer beholdes i minnet,
+indikatoren står ved retur). Auto-lagre ved blur er FJERNET — endringer er utkast
+til eleven lagrer (bevisst tydeliggjøring). Merk: å LUKKE dashbordet med ulagrede
+endringer forkaster dem (indikatoren varsler); det å forlate FANEN bevarer dem.
+
+### DEL 5 — docs/SPILLETS_MOTORER.md
+Ny lærerrettet motordokumentasjon (norsk, ingen kode): 10 seksjoner
+(kundestrøm, målgruppe/persona, pris/marked, kapasitet/kø, lager/bestilling/svinn,
+rykte/XP, scenariomøter, mentor, fagfilter, dagsoppgjør), hver med «Hva eleven kan
+påvirke». Tallene er hentet fra `balance.ts` (verdier oppgitt, ikke variabelnavn).
+Appendiks: kildeoversikt. Parkerte mekanikker nevnt i én linje.
+
+### DEL 6 — Spilltest (39/39 GRØNT)
+- **Steg 37:** daglig-refleksjon — FD på: kø-tap + svinn 2 dager på rad → **kø
+  vinner** (Personale synlig); FD av: **0 kø-tap** (ubegrenset kapasitet) + svinn 2
+  dager på rad → **svinn vinner** (kø-signal filtrert); daglig-hint er dag-scopet;
+  ⚙-nullstill tømmer det persisterte fyrt-settet.
+- **Steg 38:** «I bestilling»-total vises og akkumulerer 10 → 20 ved to klikk;
+  knappen forblir «Bestill».
+- **Steg 39:** endring → «Ulagrede endringer», «Lagre priser» → «Sist lagret kl.»,
+  indikator forsvinner; utkast + indikator bevart ved fanebytte.
+- Steg 20 oppdatert til det nye lagre-knapp-mønsteret (auto-lagre ved blur fjernet).
+
+### Chrome-sjekkliste — denne runden
+- **Mentor daglig:** kjør en dag med tydelig kø-tap → når oppgjøret lukkes,
+  kommenterer Espen kø (og spør om bemanning). Kjør en dag med svinn på samme vare
+  to dager → Espen tar opp svinn/bestilling. En rolig plussdag → kort anerkjennelse.
+  En dag uten tydelig signal → Espen sier ingenting.
+- **Scene-orientering:** åpne en bydel og dashbordet første gang → kort «hva er
+  dette» fra Espen.
+- **Fagord-pose:** klikk et fagord i en mentormelding/tekst → Espen tar
+  lese-posen mens kortet er åpent.
+- **⚙ Nullstill mentor-triggere** (krever `?dev=1`): trykk knappen → Espen
+  «glemmer» alt og introen kommer igjen.
+- **Fagfilter kø:** slå FD av (⚙) → travel dag gir INGEN «kø»-linje/-banner og
+  ingen kø-refleksjon. Slå FD på → kø oppfører seg som før.
+- **Bestilling:** bestill en vare to ganger → «I bestilling: N» øker med en gang;
+  knappen viser «+N lagt til» kort, så «Bestill»; merket «I bestilling» i lista.
+- **Lagre:** endre en pris → «Ulagrede endringer» dukker opp; trykk «Lagre priser»
+  (øverst eller nederst) → «Lagret ✓» + «Sist lagret kl. …»; bytt fane og tilbake
+  → endringen og indikatoren står. Samme for Målgruppe.

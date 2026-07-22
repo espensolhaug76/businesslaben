@@ -905,7 +905,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
   // Steg 14 tester prismodellen via test-broen (SET_PRODUCTS). Dette steget
   // driver den EKTE Priser-fanen (input → blur/Lagre) så en UI-regresjon (prisen
   // når ikke state, varen viser «mangler pris» og selger 0) fanges.
-  await steg(page, rapport, 20, 'Priser-fanen (UI): elevsatt pris persisteres (input→blur + Lagre) og den prisede varen selges', async ctx => {
+  await steg(page, rapport, 20, 'Priser-fanen (UI): elevsatt pris persisteres via «Lagre priser» og den prisede varen selges', async ctx => {
     await page.goto('/game?skip=1')
     await ventState(page, s => s.phase !== 'startup', 'frisk boot for steg 20')
     await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
@@ -913,16 +913,15 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager (coffee, upriset)')
     expect((await lesState(page)).products.find(p => p.id === 'coffee')!.retailPrice, 'coffee starter upriset').toBe(0)
 
-    // Sett pris i den EKTE Priser-fanen: skriv i input-feltet + forlat feltet (blur).
+    // Sett pris i den EKTE Priser-fanen: skriv i input-feltet + «Lagre priser».
+    // DEL 4 (lagre-kvitteringer): pris lagres nå EKSPLISITT via knappen — ikke
+    // lenger auto-lagre ved blur (endringer er utkast til eleven trykker Lagre).
     await page.getByRole('button', { name: /Dashbord/ }).first().click()
     await page.getByTestId('fane-priser').click()
-    const inp = page.locator('input[placeholder="sett pris"]').first()
+    const inp = page.getByTestId('pris-coffee')
     await inp.fill('50')
-    await inp.blur()   // auto-lagre ved blur
-    await ventState(page, s => s.products.find(p => p.id === 'coffee')!.retailPrice === 50, 'pris persistert ved blur')
-    // «Lagre priser ✓» skal også fungere (idempotent).
-    await page.getByRole('button', { name: /Lagre priser/ }).click()
-    await page.waitForTimeout(200)
+    await page.getByRole('button', { name: /Lagre priser/ }).first().click()
+    await ventState(page, s => s.products.find(p => p.id === 'coffee')!.retailPrice === 50, 'pris persistert ved «Lagre priser»')
     expect((await lesState(page)).products.find(p => p.id === 'coffee')!.retailPrice, 'elevsatt pris (50) persistert i state').toBe(50)
 
     // Still ut coffee, åpne dag, tikk til bakgrunnssalget faktisk drypper inn
@@ -1647,6 +1646,104 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // linjer beholdt sin key (ingen re-mount). (< 10 totalt, så ingen rullet av.)
     expect(idsEtter.slice(idsEtter.length - idsFør.length), 'eksisterende linjers id-er uendret etter append').toEqual(idsFør)
     ctx.ok('append gir ny id øverst; eksisterende logglinjers id-er står uendret (stabil key → ingen re-mount)')
+  })
+
+  await steg(page, rapport, 37, 'Mentor daglig-refleksjon: kø vinner (Personale synlig) · FD av → 0 kø-tap + svinn vinner · nullstill re-armer', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 37')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'croissant', qty: 100 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'croissant'), 'croissant ført')
+    await åpneDashbord()   // pause auto-klokka
+
+    // Én kapasitet-0-dag med rikelig utstilt croissant (ferskvare): kø bygger seg
+    // opp (kø-tap) OG usolgt croissant kastes (svinn). Croissant tvinges på lager
+    // hver dag (ferskvare kastes hver kveld).
+    async function kjørSvinnDag() {
+      const prods = (await lesFull()).products.map(p => p.id === 'croissant' ? { ...p, stock: 400, retailPrice: p.markedsPris } : p)
+      await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+      await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-1', productId: 'croissant' }] })
+      await dispatch(page, { type: 'SET_PLAYER_SHIFT', vakt: { fra: 14 * 60, til: 17 * 60 } })   // dekker ikke morgenen
+      await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 37')
+      let s = await lesState(page), g = 0
+      while (s.dayMinute < 200 && g < 260) {
+        if (s.activeMeetingScenarioId) await dispatch(page, { type: 'SKIP_MEETING' })
+        else await dispatchN(page, { type: 'TICK' }, 10)
+        s = await lesState(page); g++
+      }
+      await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør 37')
+      return await lesState(page)
+    }
+
+    // Dag 1 (FD på): bygg svinn-historikk.
+    await kjørSvinnDag()
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag 37a')
+    // Dag 2 (FD på): kø-tap + svinn 2 dager på rad → KØ vinner (Personale synlig).
+    let s = await kjørSvinnDag()
+    expect(s.dayStats.koKunder, 'FD på: kø-tap oppstod').toBeGreaterThan(5)
+    expect(s.mentorDagligHint?.signal, 'kø vinner over svinn når Personale er synlig').toBe('ko')
+    const dagKo = s.mentorDagligHint?.dag
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag 37b')
+    // Skru FD AV → bemanning/kø finnes ikke lenger for eleven.
+    await dispatch(page, { type: 'SET_FAG_AKTIV', fag: { fd: false, m: true, ks: true } })
+    // Dag 3 (FD av): 0 kø-tap, svinn 2 dager på rad → SVINN vinner (kø-signal filtrert).
+    s = await kjørSvinnDag()
+    expect(s.dayStats.koKunder, 'FD av: INGEN kø-tap (ubegrenset kapasitet)').toBe(0)
+    expect(køSum(s), 'FD av: tom kø-buffer').toBe(0)
+    expect(s.mentorDagligHint?.signal, 'FD av: kø-signal filtrert → svinn vinner').toBe('svinn')
+    expect(s.mentorDagligHint?.dag, 'daglig-hint er dag-scopet (ny dag ≠ forrige)').not.toBe(dagKo)
+
+    // ⚙ DEV «Nullstill mentor-triggere» (dispatches 'mentor:reset') → tømmer det
+    // persisterte fyrt-settet (engangs-triggere re-armes).
+    await page.evaluate(() => { try { localStorage.setItem('mentor_fired_v1', JSON.stringify(['forste_apning', 'forste_bykart'])) } catch { /* */ } })
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:reset')))
+    await expect.poll(async () => page.evaluate(() => localStorage.getItem('mentor_fired_v1'))).toBeNull()
+    ctx.ok('kø vinner (FD på), FD av → 0 kø-tap + svinn vinner (daglig-hint dag-scopet); nullstill tømmer fyrt-settet')
+  })
+
+  await steg(page, rapport, 38, 'Bestillings-UX: «I bestilling»-total vises og akkumulerer ved to klikk', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 38')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    // Åpningsbestilling for en ANNEN vare → lukker OpeningOrderOverlay; kaffe starter på 0.
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'smoothie', qty: 50 }] })
+    await gåTilFane('produkter')
+    const bestill = page.getByTestId('bestill-coffee')
+    await expect(bestill).toBeVisible()
+    await bestill.click()
+    const linje = page.getByTestId('ibestilling-coffee')
+    await expect(linje, 'ett klikk → 10 stk').toContainText('I bestilling: 10 stk')
+    await expect(linje).toContainText('levering i morgen')
+    await bestill.click()
+    await expect(linje, 'to klikk akkumulerer til 20').toContainText('I bestilling: 20 stk')
+    // Knappen er «Bestill» (ikke permanent «✓ Bestilt») — kvitteringen er transient.
+    await expect.poll(async () => (await bestill.textContent()) ?? '').toContain('Bestill')
+    ctx.ok('«I bestilling: N stk — levering i morgen» vises og akkumulerer 10 → 20; knappen forblir «Bestill»')
+  })
+
+  await steg(page, rapport, 39, 'Lagre-kvittering (Priser): endring → «Ulagrede endringer» → lagre → «Sist lagret»; utkast bevart ved fanebytte', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 39')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 100 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'coffee ført 39')
+    await gåTilFane('priser')
+    const pris = page.getByTestId('pris-coffee')
+    await expect(pris).toBeVisible()
+    await expect(page.getByText('Ulagrede endringer'), 'ingen ulagrede endringer i utgangspunktet').toHaveCount(0)
+    await pris.fill('55')
+    await expect(page.getByText('Ulagrede endringer').first(), 'endring → indikator').toBeVisible()
+    await page.getByRole('button', { name: /Lagre priser/ }).first().click()
+    await expect(page.getByText(/Sist lagret kl\./).first(), 'etter lagring → varig «Sist lagret»').toBeVisible()
+    await expect(page.getByText('Ulagrede endringer'), 'indikator forsvinner ved lagring').toHaveCount(0)
+    expect((await lesState(page)).products.find(p => p.id === 'coffee')?.retailPrice, 'prisen faktisk lagret').toBe(55)
+    // Fanebytte med ulagret endring → utkast + indikator bevart.
+    await pris.fill('61')
+    await expect(page.getByText('Ulagrede endringer').first()).toBeVisible()
+    await gåTilFane('produkter'); await gåTilFane('priser')
+    await expect(page.getByTestId('pris-coffee'), 'utkast bevart ved fanebytte').toHaveValue('61')
+    await expect(page.getByText('Ulagrede endringer').first(), 'indikator bevart ved retur').toBeVisible()
+    ctx.ok('endring → «Ulagrede endringer», lagre → «Sist lagret kl.», utkast + indikator bevart ved fanebytte')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
