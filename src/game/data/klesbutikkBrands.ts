@@ -129,3 +129,47 @@ export const BRAND_PULL_MATRIX: Record<string, Record<PsykografiskEgenskap, numb
 export function brandPullFor(brandId: string, egenskap: PsykografiskEgenskap): number {
   return BRAND_PULL_MATRIX[brandId]?.[egenskap] ?? 1.0
 }
+
+// ─── brandPull → BESØKSVILJE (skall-synk 2026-07-22) ─────────────────────────
+// Ren funksjon som aggregerer merke-trekket til ÉN multiplikator på
+// besøksviljen (bakgrunnstrafikken), gitt de FØRTE merkene og elevens VALGTE
+// psykografiske segmenter. Kobles på trafikkmotoren (backgroundSales.ts) via
+// GameContext — KUN for klesbutikken; kaféen sender aldri denne faktoren
+// (defaulter til 1.0 ⇒ byte-identisk).
+//
+// FORMEL:
+//   For hvert VALGT segment s: ta den STERKESTE trekkfaktoren blant de førte
+//   merkene — pull(s) = max_m brandPullFor(m, s). Ett godt merke for et segment
+//   «drar» hele det segmentet. Faktoren er SNITTET over de valgte segmentene,
+//   klemt til matrisens bånd [0.85, 1.35] (konservativt — trafikken vektes,
+//   stenges aldri). Ingen førte merker ELLER ingen valgte segmenter ⇒ 1.0.
+//
+//   faktor = clamp( (1/|S|) · Σ_{s∈S} max_{m∈M} brandPullFor(m, s),  0.85, 1.35 )
+//
+// FASIT-EKSEMPLER (referanse for fasit-test):
+//   M=['nordheim','basiq'], S=['Trendsettere','Prisbevisste']
+//     → Trend max(1.34, 0.90)=1.34 · Pris max(0.88, 1.16)=1.16 · snitt=1.25 → 1.25
+//   M=['basiq'],            S=['Trendsettere']            → max(0.90)=0.90 → 0.90
+//   M=['fjellrev'],         S=['Miljøbevisste','Helsebevisste'] → (1.34+1.26)/2=1.30 → 1.30
+//   M=[],                   S=['Trendsettere']            → 1.00 (ingen merker)
+//   M=['nordheim'],         S=[]                          → 1.00 (ingen segmenter)
+const PULL_MIN = 0.85
+const PULL_MAX = 1.35
+
+/** Aggregert trekkfaktor på besøksvilje. `merker` = førte Brand.id-er,
+ *  `segmenter` = elevens valgte psykografier (Målgruppe-fanen). Ren + klemt. */
+export function brandPullTrafikkfaktor(merker: string[], segmenter: string[]): number {
+  if (merker.length === 0 || segmenter.length === 0) return 1.0
+  const gyldige = segmenter.filter(
+    (s): s is PsykografiskEgenskap => (PSYKOGRAFISKE_EGENSKAPER as string[]).includes(s),
+  )
+  if (gyldige.length === 0) return 1.0
+  let sum = 0
+  for (const s of gyldige) {
+    let best = 0
+    for (const m of merker) best = Math.max(best, brandPullFor(m, s))
+    sum += best
+  }
+  const snitt = sum / gyldige.length
+  return Math.min(PULL_MAX, Math.max(PULL_MIN, snitt))
+}

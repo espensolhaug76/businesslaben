@@ -24,6 +24,8 @@ import { manedligeFasteKostnader, amortiserLaan } from './data/economy'
 import { maanedNokkel, TOM_BUDSJETT, BUDSJETT_LINJER, faktiskeLinjer, bokfortNokkeltall, type BudsjettLinjeKey, type BudsjettTall, type NokkeltallSvar } from './data/budsjett'
 import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinntekt, kampanjeRoi, MARKEDSFORINGSLOVEN_RUTE, type KampanjeAktiv, type KampanjeResultat, type KampanjeSalgsvare, type KampanjeKanalValg } from './data/kampanje'
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
+import { brandPullTrafikkfaktor } from './data/klesbutikkBrands'
+import { katalogVareById } from './data/klesbutikkKatalog'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
 import { dagligRefleksjon } from './data/mentorDaglig'
@@ -1800,6 +1802,18 @@ function reducer(state: GameState, action: Action): GameState {
       // BAKGRUNNSSALG (snapshot ved OPEN_DAY): dagens passive kundestrøm
       // beregnes NÅ og DRYPPES løpende per klokke-tick (se TICK).
       const seed = dagSeed(state.dayNumber, state.currentMonth, state.currentYear)
+      // BRANSJE 2 (klesbutikk): merke-trekk på besøksvilje fra førte merker mot
+      // elevens psykografier. KUN 'fashion' — kaféen utelater den (⇒ 1.0).
+      const brandPullFaktor = state.industry === 'fashion'
+        ? brandPullTrafikkfaktor(
+            [...new Set(
+              state.klesbutikkSortiment
+                .map(id => katalogVareById(id)?.brandId)
+                .filter((b): b is string => !!b),
+            )],
+            state.targetAudience.psychographics,
+          )
+        : undefined
       const baseKunder = beregnBakgrunnskunder({
         lokaleId: state.rentedLocationId,
         rykte: state.reputation,
@@ -1808,6 +1822,7 @@ function reducer(state: GameState, action: Action): GameState {
         windowDisplayLayout: state.windowDisplayLayout,
         marketingBudget: state.marketingBudget,
         segmenter: state.targetAudience.ageGroups,
+        brandPullFaktor,
       })
       // TEMA 8: aktiv kampanje løfter trafikken med sin (låste) faktor.
       const kampAktiv = state.kampanje.aktiv && state.kampanje.aktiv.dagerKjort < state.kampanje.aktiv.varighet

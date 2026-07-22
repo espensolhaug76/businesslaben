@@ -24,7 +24,7 @@ import {
   KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG,
   type MonterTrau, type InteriorMirrorTrau,
 } from '../../data/districts'
-import { CAFE_SCENARIO_IDS } from '../sales/scenarios'
+import { CAFE_SCENARIO_IDS, FASHION_SCENARIO_IDS } from '../sales/scenarios'
 import { CAFE_SPEND, FASHION_BUDGETS, type PersonaBudsjett } from './personas'
 // Portabel scene-geometri (delt med eksperiment/autonom-sport, se
 // docs/AUTONOM_PIPELINE.md §7). Re-eksporteres så bransje-kode kan importere
@@ -318,9 +318,13 @@ export const KLESBUTIKK: IndustryDefinition = {
     },
   },
   ekstraFlater: [],
-  // Ingen klesbutikk-scenarier skrevet ennå (se sales/scenarios.ts) — tom
-  // pool, IKKE kafeens.
-  scenariePool: [],
+  // Klesbutikkens salgsscenarier (aktiveres når KLESBUTIKK er registrert, dvs.
+  // bak KLESBUTIKK_AKTIV). Bruker main sitt FASHION_SCENARIOS-sett (allerede koblet
+  // i getScenario/ALLE_SCENARIER). ⚠️ Det finnes OGSÅ et parallelt sett i
+  // sales/klesbutikkScenarios.ts (KLESBUTIKK_SCENARIOS: angrekjopet/jobbintervjuet/…
+  // med avsluttesVedKasse + spriteCal) fra jobb-grenen — Espen velger hvilket sett
+  // som er kanon (se rapport). IKKE kafeens pool.
+  scenariePool: FASHION_SCENARIO_IDS,
   personaBudsjett: { kind: 'kategori', table: FASHION_BUDGETS, step: 100 },
   svinnRegel: 'sesong',
   roller: [

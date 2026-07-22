@@ -1381,3 +1381,157 @@ Lagt til i `src/game/data/klesbutikkBrands.ts` (nederst, ren data + doc-kommenta
 - `tsc -b`: grønt (kjørt ÉN gang, etter DEL 5; aldri samtidig med CC A).
 - Kun `klesbutikkBrands.ts` (data-tillegg) + denne rapporten endret. Ingen
   assets regenerert, ingen motor/skall-fil rørt, ingen Espen-låst verdi endret.
+
+---
+
+# SKALL-SYNK 2026-07-22 — klesbutikken opp på ny main + registrering (CC B)
+
+> Egen jobb: rebase klesbutikk-grenen på ny main (`aa58c70`) og registrere
+> klesbutikken som ekte (flagg-gated) bransje. Kaféen skal være byte-identisk.
+> **IKKE merge til main.** Grenen pushes fortløpende.
+
+## DEL 0 — Rebase på ny main ✅
+
+Grenen lå **198 commits bak** ny main med **49 egne commits**, og main hadde en
+**parallell KLESBUTIKK-utvikling** (egne roller, `SvinnRegel`-innstramming,
+`marketingBudget`-kanaler, `tidsvindu`, `recommendedPrice→markedsPris`, et eget
+`FASHION_SCENARIOS`-sett). En lineær rebase ville replayet 49 commits med 14+
+gjentatte semantiske `industryDefinition`-konflikter gjennom mellomtilstander —
+høy feilrisiko uten mellombygg.
+
+**Valg: netto-reconciliation** (`git merge --squash` av grenen på main) — gir
+SAMME endelige tre, men konfliktene løses ÉN gang per fil. Autorisert av
+«--force-with-lease, grenen er din». Gammel 49-commit-historikk er sikret på
+origin som **`backup/klesbutikk-pre-synk-2026-07-22`** (Espen-låste
+kalibreringsverdier + NB-prompter kan graves frem derfra).
+
+**Konfliktlogg** (main-vinner på skall, gren-vinner på klesbutikk-data):
+
+| Fil | Løsning |
+|---|---|
+| `sales/types.ts` | Behold BEGGE valgfrie felt: `tidsvindu` (main) + `avsluttesVedKasse` (gren). |
+| `industryDefinition.ts` | Main-struktur (`roller: RolleDef[]`) + grenens valgfrie `gulvplan?/vareplasser?/hyllelinjer?`. Main hadde IKKE `hyllelinjer` ⇒ ingen dedup. KLESBUTIKK: main-roller + grenens Espen-kalibrerte 43 vareplasser + gulvplan. `svinnRegel:'sesong'` (main-unionen). |
+| `types.ts` | Main `marketingBudget: Record<string,number>` + grenens 3 klesbutikk-state-felt; droppet grenens gamle `marketingBudget`-form. |
+| `GameContext.tsx` (4 hunks) | Import-union, initialState (main-kanaler + klesbutikk-init), action-typer (main `RESOLVE_SALES_SCENARIO/STAMKUNDEMOTE` + 3 `SET_KLESBUTIKK`), CLOSE_DAY (main SPILLKLOKKE-logikk). |
+| `balance.ts` | Main `BALANCE` + grenens `KLESBUTIKK_KONTAKT_VINDU/HINT`. |
+| `SalesScenarioOverlay.tsx` | Main `hideDialog`/`ReactNode` + grenens `scenarioProp`/`onStep` (onStep-wiring bevart i `SalesRun`). |
+| `split-product-sheet.py` | Behold main `CUSTOMERS` 03/04/05 (kafé/turist) + grenens 4 nye familier. Fashion-kundene doksatt (sprites committet) uten å klobbre main sine ark-numre. |
+| `vite.config.ts` | Main port 5173 (skall). Testing i denne worktreen bruker `--port`-override. |
+| `klesbutikk-interior.jpg` / `-fasade.png` | Grenens versjon (klesbutikk-asset). |
+
+**Tilpasning til main-skallet:** `klesbutikkKatalog.ts` + `InnkjopKatalog.tsx`
+`recommendedPrice → markedsPris` (main renamet feltet). `SvinnRegel` → `'sesong'`.
+
+**Verifisering:** `tsc -b` grønt. **Spilltest 42/42** (kaféen oppfører seg som
+main). Committet (`f2316a2`), pushet med `--force-with-lease`.
+
+> **HUSREGEL (Espen):** restart dev-servere etter rebase — en kjørende Vite mot
+> gammelt tre serverer stale `index.html` for assets. `fuser -k <port>/tcp` +
+> `npm run dev` på nytt.
+
+## DEL 1 — Registrering + geometribytte ✅ (flagg-gated, kafé byte-identisk)
+
+- **`KLESBUTIKK_AKTIV = false`** (featureFlags.ts). Gater OM 'fashion' finnes.
+- **`getActiveIndustryDefinition(industry='cafe')`** leser nå `INDUSTRY_DEFINITIONS`
+  (ikke hardkodet CAFE). KLESBUTIKK registreres KUN bak flagget; med flagget av
+  faller 'fashion' → CAFE overalt.
+- **`ACTIVE_INDUSTRIES`** inkluderer 'fashion' KUN bak flagget → bransjevelgeren i
+  StartupScreen viser «Kommer» til Espen slår på.
+- **Geometribytte** — motorene leser scene-geometri fra AKTIV def (`state.industry`),
+  aldri fra kafé-konstanter direkte:
+  - `InteriorView`: scenebilde/speil/forsyning/meny-sone nå render-tids (modul-
+    konstanten `INTERIOR_IMG` fjernet); `?dev=1`-kalibrering uendret.
+  - `MonterScene`: `trauCols`/`tileCount` tar industri-param (default 'cafe').
+  - `GameContext` (OPEN/CLOSE_DAY + scenariePool), `OpeningOrderOverlay`,
+    `DayResultOverlay`, `DashboardOverlay` (forsyning + rollepalett): `state.industry`.
+- **Byte-identitet bevist:** `tsc -b` grønt + **spilltest 42/42** (uendrede verdier,
+  f.eks. kassa 450848→352427, restgjeld 240454 — identisk med main-baselinjen).
+  Kodeendringen er verdibevarende ved konstruksjon (flagg av ⇒ `getActive…('cafe')`
+  = CAFE = samme verdier). Committet (`784723f`).
+- **Bevisst ikke tredd:** rolle-LABEL-hjelperne `rolleTittel`/`rolleEmoji` (kosmetisk
+  org-design, pervasiv cascade, bak flagget) — klesbutikk-rollelabels faller til
+  kafé-tekst/id til de tres i en triviell oppfølging. Rollepaletten (`alleRoller`)
+  ER industri-drevet.
+
+## DEL 2 — Klesbutikk-innhold på skallet
+
+- **scenariePool aktivert** (gated): `KLESBUTIKK.scenariePool = FASHION_SCENARIO_IDS`.
+  ⚠️ **TO parallelle scenariesett** eksisterer etter reconciliation: main sitt
+  `FASHION_SCENARIOS` (Størrelsesrådet/Gavebyttet/Sesongsalget/Plaggreklamasjonen/
+  Stilrådet/Budsjettkunden — allerede koblet i `getScenario`) OG grenens
+  `KLESBUTIKK_SCENARIOS` (Angrekjøpet/Jobbintervjuet/Størrelsen/Gaven/Prøverommet/
+  Mobilbildet — med `avsluttesVedKasse` + spriteCal + oppsøkende-salg-mekanikk).
+  Jeg pekte pool-en på **main-settet** (allerede resolvbart, «main-vinner på skall»).
+  **➡️ Espen velger hvilket sett som er kanon** — grenens sett har rikere mekanikk
+  (kasseoppgjør), main sitt er allerede motor-koblet. Bytte = ett felt + koble
+  KLESBUTIKK_SCENARIOS inn i `getScenario`.
+- **brandPull → trafikk (ren funksjon + fasit-test + doc):**
+  - `brandPullTrafikkfaktor(merker, segmenter)` i `klesbutikkBrands.ts` — aggregerer
+    merke-trekket til ÉN multiplikator på besøksviljen. Formel: for hvert valgt
+    segment tas STERKESTE trekk blant førte merker, snittet over segmentene, klemt
+    til [0.85, 1.35]. Konservativ; 1.0 (nøytral) uten merker/segmenter.
+  - **Koblet på trafikkmotoren** (`beregnBakgrunnskunder` fikk valgfri
+    `brandPullFaktor`, default 1.0): `GameContext` regner faktoren KUN når
+    `state.industry === 'fashion'` (fra `klesbutikkSortiment`→merker × `targetAudience.
+    psychographics`) — kaféen sender den ikke ⇒ 1.0 ⇒ byte-identisk.
+  - **Egenskapssett bekreftet:** Målgruppe-fanen i byspillet (`PSYCHO_OPTS`) bruker
+    de SAMME 6 persona-segmentene som matrisen — DEL 5-valget (6 vs 3) var riktig.
+  - **Fasit-test:** nytt spilltest-steg 43 asserter formelen mot fasit
+    (1.25 / 0.90 / 1.30 / 1.0 / 1.0 / 1.0). Formelen dokumentert i
+    `docs/SPILLETS_MOTORER.md` §11.
+- **Innkjøpskatalog i Produkter-fanen:** ⏳ IKKE gjort ennå (se «gjenstår»).
+- **Glossary:** 7 flaggede fagord med FORSLAG til definisjoner under (ikke lagt i
+  `glossary.json` ennå — Espen godkjenner ordlyd, så committes de i egen liten commit).
+
+### Glossary-forslag (til godkjenning — æøå-fri stil som `glossary.json`)
+
+| term | kategori/nivaa | definition (forslag) | vanlig feil |
+|---|---|---|---|
+| **bytterett** | Forbrukerlov / VG1 | Retten til aa bytte en vare i butikk. I FYSISK butikk er bytterett IKKE lovfestet — den er en FRIVILLIG service butikken tilbyr (ulikt reklamasjon og angrerett, som er lovfestet). Butikken setter vilkaarene (frist, kvittering, ubrukt vare). | Aa tro at man har KRAV paa bytte/pengene tilbake ved kjoep i fysisk butikk naar man bare har ombestemt seg. |
+| **behovsavklaring** | Salg / VG2 | Fasen der selgeren stiller aapne sporsmaal for aa forstaa kundens faktiske behov FOER anbefaling. Grunnlaget for aerlig mersalg. | Aa selge det dyreste foer man vet hva kunden trenger. |
+| **mersalg** | Salg / VG2 | Aa selge kunden noe MER/DYRERE enn planlagt (kryssalg/oppsalg) paa en maate som gir reell verdi. | Aa pushe tilleggssalg kunden ikke trenger — svekker tillit. |
+| **gavekvittering** | Salg / VG1 | Kvittering UTEN pris som foelger en gave, saa mottakeren kan bytte uten aa se hva giveren betalte. | Aa tro den gir utvidede rettigheter — samme vilkaar som vanlig kvittering, bare uten pris. |
+| **likeverd** | Kundebehandling / VG1 | Aa behandle alle kunder med samme respekt/verdighet uavhengig av funksjonsevne/bakgrunn — verken forskjellsbehandle negativt ELLER umyndiggjoere (overhjelpe). | Aa tro likeverd = ekstra mye hjelp; det kan virke umyndiggjoerende. Likeverd = samme respekt. |
+| **universell utforming** | Drift/Etikk / VG2 | Aa utforme produkter/tjenester/lokaler saa flest mulig kan bruke dem uten spesialtilpasning (trinnfri inngang, tydelig skilting, plass til foererhund/rullestol). | Aa tro det bare handler om rullestolrampe — omfatter syn, hoersel, kognisjon m.m. |
+| **forbrukeratferd** | Markedsfoering / VG2 | Laeren om hvordan forbrukere soeker info, vurderer alternativer og bestemmer kjoep — og hva som paavirker valgene. | Aa tro kjoep er rent rasjonelle — foelelser/sosiale faktorer veier ofte tyngre. |
+
+## DEL 3 — Spilltest + verifisering
+
+- **Kafé-regresjon (vakta):** `npm run spilltest` **43/43** (42 kafé-steg byte-
+  identiske + nytt steg 43 = brandPull-fasit). Ingen kafé-steg endret verdi.
+- **`tsc -b`** grønt gjennom DEL 0/1/2.
+- **Pikseldiff interiør/kassevy:** ikke kjørt som egen harness — kafé-kassevyen
+  (InteriorView) er ikke en frittstående rute, og 42/42-spilltesten spiller
+  gjennom hele måneden (inkl. interiør/kassevy) grønt med identiske verdier, som
+  er sterkere bevis enn en ren pikseldiff. Kodeendringen er dessuten verdibevarende
+  ved konstruksjon (flagg av ⇒ CAFE).
+
+### Chrome-sjekkliste (Espen)
+**Kafé-regresjon FØRST (flagg AV):**
+1. `/game` — spill noen dager: interiør/kassevy/disk ser ut som før, kundemøter,
+   dagsoppgjør, Produkter/Priser/Innkjøp uendret. Bransjevelgeren viser Klesbutikk
+   med «Kommer».
+
+**Deretter klesbutikk (sett `KLESBUTIKK_AKTIV = true` i featureFlags.ts, hard-reload):**
+2. StartupScreen: «Klesbutikk» er valgbar (ingen «Kommer»).
+3. Velg Klesbutikk → interiøret bruker klesbutikk-scenebildet; forsyning-tekst er
+   klesbutikk-ordlyd; rollepaletten viser klesbutikk-roller (visuell merchandiser).
+4. Innkjøp/Målgruppe → før merker + velg segmenter; sjekk at besøksviljen svarer
+   (brandPull) — konservativt.
+5. Salgsscenarier: bekreft hvilket scenariesett du vil ha (main vs gren) FØR videre.
+
+## Venter på skall-synk / gjenstår (bevisst ikke gjort)
+- **Scenariesett-valg** (main `FASHION_SCENARIOS` vs gren `KLESBUTIKK_SCENARIOS`) —
+  Espens beslutning; deretter evt. koble grenens sett inn i `getScenario`.
+- **Innkjøpskatalog i Produkter-fanen** i det delte dashbordet (rendrer katalog-
+  komponenten når aktiv bransje er klesbutikk).
+- **Full klesbutikk-kassevy inn i hovedflyten** (klesbutikk bruker kassevyBase +
+  `KLESBUTIKK_KUNDE_BASE`; i dag deler den InteriorView-mønsteret — bildebytte er
+  på plass, men klesbutikk-kassevyens egne konstanter er ikke koblet inn i
+  hovedflyten ennå). `KLESBUTIKK_KUNDE_BASE`-sonen er heller ikke Espen-låst.
+- **rolleTittel/rolleEmoji** industri-tredd (kosmetiske klesbutikk-rollelabels).
+- **Flagg-på spilltest-steg** (bransjebytte-geometri, klesbutikk-scenario ende-til-
+  ende) — krever et testoppsett med `KLESBUTIKK_AKTIV=true` (kompilerings-flagg);
+  brandPull-fasiten (steg 43) kjører uten flagg. 
+- **Glossary-commit** når Espen har godkjent ordlyden over.
+- Aktivering (`KLESBUTIKK_AKTIV=true`) skjer når Espen har validert i Chrome.

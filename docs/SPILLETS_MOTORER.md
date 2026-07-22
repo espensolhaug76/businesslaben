@@ -248,6 +248,44 @@ fasiten på gårsdagens valg — og utgangspunktet for dagens.
 
 ---
 
+## 11. Merke-trekk på besøksvilje (klesbutikk)
+
+*Gjelder KUN klesbutikken (bransje 2), bak `KLESBUTIKK_AKTIV`. Kaféen bruker den
+ikke — faktoren utelates der og er da nøytral (1,0), så kundestrømmen er uendret.*
+
+I klesbutikken sier **merkene du fører** noe om hvem butikken trekker. Et sterkt
+premium-merke drar trendsettere og karriere-kunder; et bærekraftsmerke drar de
+miljø- og helsebevisste; et billigmerke drar de prisbevisste. Dette er lagt inn
+som **rene data** (`BRAND_PULL_MATRIX` i `klesbutikkBrands.ts`): per merke, per
+psykografisk segment (de samme seks som Målgruppe-fanen), en **trekkfaktor** rundt
+nøytral 1,0 (konservativt bånd 0,85–1,35).
+
+**Formelen** (`brandPullTrafikkfaktor`, ren funksjon) kobler førte merker mot
+elevens valgte segmenter og gir ÉN multiplikator på besøksviljen (ganges inn i
+kundestrømmen sammen med rykte, pris, eksponering og markedsføring):
+
+> For hvert **valgt** segment *s* tas den **sterkeste** trekkfaktoren blant de
+> **førte** merkene — `pull(s) = maxₘ brandPullFor(m, s)`. Faktoren er **snittet**
+> over de valgte segmentene, klemt til [0,85 – 1,35]. Ingen førte merker eller
+> ingen valgte segmenter ⇒ 1,0.
+>
+> `faktor = clamp( (1/|S|)·Σ_{s∈S} maxₘ brandPullFor(m, s), 0,85, 1,35 )`
+
+**Pedagogisk poeng:** å føre merker som passer målgruppen din løfter trafikken;
+et sortiment som spriker fra segmentene du sikter mot, gir mindre drahjelp. Det
+kobler innkjøps-/merkevalget (Innkjøp-fanen) direkte til hvem som kommer innom.
+
+**Fasit-eksempler** (referanse for fasit-test):
+
+| Førte merker | Valgte segmenter | Faktor |
+|---|---|---|
+| Nordheim + Basiq | Trendsettere, Prisbevisste | **1,25** |
+| Basiq | Trendsettere | **0,90** |
+| Fjellrev | Miljøbevisste, Helsebevisste | **1,30** |
+| (ingen) | Trendsettere | **1,00** |
+
+---
+
 ## Appendiks — kildeoversikt (for utviklere)
 
 Alle tall og terskler er samlet i innstillingsfilen; motorene leser fra den.

@@ -18,6 +18,7 @@ import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS, 
 import { bestillingBetaling, tilbudsprisPerEnhet, leverandorNettoBesparelse, epostAbsDag, type KundebestillingPayload, type LeverandortilbudPayload } from '../../src/game/data/innboksEpost'
 import { finnKandidater, fagForSporsmal } from '../../src/game/data/espenSporsmal'
 import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from '../../src/game/data/featureFlags'
+import { brandPullTrafikkfaktor } from '../../src/game/data/klesbutikkBrands'
 import type { InboxMessage, GameState } from '../../src/game/types'
 
 // ─── SPILLTEST: «En full måned» ──────────────────────────────────────────────
@@ -1815,6 +1816,22 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await expect.poll(posefil).toContain('noytral')
     expect(await boks(), 'bounding-box uendret v2 (nøytral)').toEqual(box0)
     ctx.ok(`figur-containeren låst til ${box0.cw}×${box0.ch} — pose-bytte (v5/v3/v2) endrer ikke bounding-box; poser preloades`)
+  })
+
+  await steg(page, rapport, 43, 'Klesbutikk brandPull: trekkfaktor på besøksvilje == fasit (ren funksjon)', async ctx => {
+    // Ren funksjon (klesbutikkBrands.ts) — samme fasit-mønster som økonomi-motorene.
+    // Ingen browser/flagg nødvendig: multiplikatoren kobles på trafikk KUN for
+    // klesbutikken (GameContext), kaféen utelater den (⇒ 1,0, byte-identisk).
+    expect(brandPullTrafikkfaktor(['nordheim', 'basiq'], ['Trendsettere', 'Prisbevisste']),
+      'Nordheim+Basiq × Trend+Pris = snitt(max(1.34,0.90), max(0.88,1.16)) = 1.25').toBeCloseTo(1.25, 4)
+    expect(brandPullTrafikkfaktor(['basiq'], ['Trendsettere']),
+      'Basiq × Trend (billig ≠ status) = 0.90').toBeCloseTo(0.90, 4)
+    expect(brandPullTrafikkfaktor(['fjellrev'], ['Miljøbevisste', 'Helsebevisste']),
+      'Fjellrev × Miljø+Helse = (1.34+1.26)/2 = 1.30').toBeCloseTo(1.30, 4)
+    expect(brandPullTrafikkfaktor([], ['Trendsettere']), 'ingen førte merker → nøytral').toBe(1.0)
+    expect(brandPullTrafikkfaktor(['nordheim'], []), 'ingen valgte segmenter → nøytral').toBe(1.0)
+    expect(brandPullTrafikkfaktor(['nordheim'], ['UkjentSegment']), 'ukjent segment → nøytral').toBe(1.0)
+    ctx.ok('brandPullTrafikkfaktor == fasit (1.25 / 0.90 / 1.30 / 1.0 / 1.0 / 1.0), klemt til [0.85, 1.35]')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

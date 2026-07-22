@@ -110,6 +110,10 @@ export function beregnBakgrunnskunder(input: {
   /** LØPENDE synlighet (DEL D): månedlig markedsbudsjett per kanal + målgruppe. */
   marketingBudget: Record<string, number>
   segmenter: string[]
+  /** BRANSJE 2 (klesbutikk): merke-trekk på besøksvilje fra førte merker mot
+   *  elevens psykografier (klesbutikkBrands.brandPullTrafikkfaktor). Kaféen
+   *  sender den ikke ⇒ 1.0 ⇒ byte-identisk. Klemt til [0.85, 1.35] av kilden. */
+  brandPullFaktor?: number
 }): number {
   const base = (input.lokaleId ? BALANCE.basetrafikk[input.lokaleId] : undefined) ?? BALANCE.basetrafikkDefault
   const fylte = tellFylteDisplayPlasser(input.products, input.counterLayout, input.windowDisplayLayout)
@@ -118,6 +122,7 @@ export function beregnBakgrunnskunder(input: {
     prisfaktor(input.products) *
     eksponeringsfaktor(fylte) *
     lopendeMarkedsforingsfaktor(input.marketingBudget, input.segmenter) *
+    (input.brandPullFaktor ?? 1.0) *
     BALANCE.baseMultiplier
   return Math.max(0, Math.round(base * faktor))
 }
