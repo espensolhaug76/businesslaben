@@ -1818,7 +1818,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`figur-containeren låst til ${box0.cw}×${box0.ch} — pose-bytte (v5/v3/v2) endrer ikke bounding-box; poser preloades`)
   })
 
-  await steg(page, rapport, 43, 'Klesbutikk brandPull: trekkfaktor på besøksvilje == fasit (ren funksjon)', async ctx => {
+  await steg(page, rapport, 44, 'Klesbutikk brandPull: trekkfaktor på besøksvilje == fasit (ren funksjon)', async ctx => {
     // Ren funksjon (klesbutikkBrands.ts) — samme fasit-mønster som økonomi-motorene.
     // Ingen browser/flagg nødvendig: multiplikatoren kobles på trafikk KUN for
     // klesbutikken (GameContext), kaféen utelater den (⇒ 1,0, byte-identisk).

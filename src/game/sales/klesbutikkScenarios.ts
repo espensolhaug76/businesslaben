@@ -555,10 +555,25 @@ export const MOBILBILDET: SalesScenario = {
   ],
 }
 
-// ── Registser (INAKTIVT) ─────────────────────────────────────────────────────
+// ── Registser ────────────────────────────────────────────────────────────────
+// KANON for klesbutikken (Espen-beslutning skall-synk-oppfølging 2026-07-22):
+// KLESBUTIKK.scenariePool peker på disse. Aktiveres kun bak KLESBUTIKK_AKTIV.
+// (main sitt parallelle FASHION_SCENARIOS er koblet UT av poolen, se
+// industryDefinition.ts + sales/scenarios.ts.)
 export const KLESBUTIKK_SCENARIOS: SalesScenario[] = [
   ANGREKJOPET, JOBBINTERVJUET, STORRELSEN, GAVEN, PROVEROMMET, MOBILBILDET,
 ]
+
+/** Id-ene til klesbutikk-scenariene — KLESBUTIKK.scenariePool. Samme mønster som
+ *  CAFE_SCENARIO_IDS/FASHION_SCENARIO_IDS. */
+export const KLESBUTIKK_SCENARIO_IDS: string[] = KLESBUTIKK_SCENARIOS.map(s => s.id)
+
+// TIDSVINDU (vurdert 2026-07-22): INGEN av de 6 setter `tidsvindu`. Ingen av dem
+// er innholdsmessig tidsbundet slik kaféens morgen-/lunsjkunder er — en retur
+// (Angrekjøpet), et intervjuantrekk (Jobbintervjuet), størrelsesråd, en gave,
+// prøverom eller et mobilbilde kan komme når som helst i åpningstiden. Å påtvinge
+// et vindu ville vært gjettet innhold (CLAUDE.md «aldri gjett»). Legges til per
+// scenario HVIS Espen senere vil tidsbinde et av dem.
 
 /** scenario-id → kunde-id (klesbutikkKunder.ts) — for spriteCal-oppslag i
  *  kassevyen (DEL 3). Sprite er allerede satt via S(kundeId) over. */

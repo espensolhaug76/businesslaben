@@ -7,6 +7,7 @@
 
 import type { SalesScenario } from './types'
 import type { ScenarioMix } from '../data/dayConfig'
+import { KLESBUTIKK_SCENARIOS } from './klesbutikkScenarios'
 
 /** Nøkkelord som identifiserer kundens hovedbehov (oppkvikkende drikke). */
 const KAFFE_TAGS = ['kaffe', 'coffee', 'espresso', 'cappuccino', 'latte']
@@ -1833,7 +1834,12 @@ export const CAFE_SCENARIO_IDS: string[] = SCENARIOS.map(s => s.id)
 /** Alle scenarier på tvers av bransjer — for oppslag (getScenario). SCENARIOS
  *  (kafé) holdes UENDRET, så eksisterende motorbruk (dev-pool, randomScenario,
  *  scenariosForMix-fallbacks) er upåvirket; fashion legges kun til i oppslaget. */
-const ALLE_SCENARIER: SalesScenario[] = [...SCENARIOS, ...FASHION_SCENARIOS]
+// Oppslag på tvers av bransjer (getScenario). SCENARIOS (kafé) er UENDRET.
+// KLESBUTIKK_SCENARIOS er KANON for klesbutikken (skall-synk-oppfølging); main
+// sitt FASHION_SCENARIOS beholdes i oppslaget (koden lever, id-ene resolver),
+// men er KOBLET UT AV POOLEN — KLESBUTIKK.scenariePool bruker KLESBUTIKK_SCENARIO_IDS,
+// ikke FASHION_SCENARIO_IDS. FASHION_SCENARIOS slettes først etter Espens Chrome-dom.
+const ALLE_SCENARIER: SalesScenario[] = [...SCENARIOS, ...FASHION_SCENARIOS, ...KLESBUTIKK_SCENARIOS]
 
 export function getScenario(id: string): SalesScenario | undefined {
   return ALLE_SCENARIER.find(s => s.id === id)
