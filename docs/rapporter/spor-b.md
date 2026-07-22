@@ -1264,3 +1264,120 @@ dem (legg id-ene i en `scenariePool`).
 3. Sesong-mekanikk (docs/BRANSJE2_SESONG.md) → implementer `svinnRegel: 'sesong'`.
 4. Registrer `KLESBUTIKK` i `INDUSTRY_DEFINITIONS` + geometri-bytte i motorene
    når bransjen skal bli reelt aktiv (se docs/BRANSJE_DEFINISJON.md).
+
+---
+
+## CC B-ØKT 2026-07-22 — ASSETS+DATA-mandat (kassevy · hyllelinje · fashion-kunder · scenarier · brandPull)
+
+> Egen økt («CC B») med et rent **assets+data**-mandat (IKKE
+> `INDUSTRY_DEFINITIONS`-registrering, geometribytte eller delte skall-filer —
+> det kommer i egen skall-synk-jobb etter at spor-a er merget til main). CC A
+> kjørte tung jobb parallelt, så bygg ble kjørt sparsomt (aldri samtidig).
+
+### Utgangspunkt — det meste var ALLEREDE gjort i tidligere økter
+Mandatets DEL 1–4 var i praksis **ferdig fra før** (dokumentert i seksjonene over
++ commits `3d38879`, `7421201`, `489bebe`, `59afa92`, `1445ab8`). Denne økten
+**verifiserte** de ferdige delene og bygde den ENE reelle mangelen (DEL 5 —
+brandPull-matrisen). Ingen assets ble regenerert, ingen Espen-låst kalibrering
+rørt.
+
+| Del | Funn denne økten |
+|---|---|
+| DEL 1 — Kassevy (kamera 2) | ✅ Ferdig fra før. Espen valgte `klesbutikk-kassevy.png` (1296×832); kassevy-fane + `kassevyBase.ts` (delt modul) + okklusjon (boks-klipp) bygget; per-kunde `spriteCal` Espen-låst 2026-07-17; ✦ fjernet (`dewatermark-scene.py`). Selvkalibrerings-førstepasning kjørt (SCALE/CENTER_X/WAIST_Y/OCCLUDE). **Gjenstår for Espen:** lås `KLESBUTIKK_KUNDE_BASE`-sonen (fortsatt førstepasning). Ingen pilot-generering nødvendig (bildet er valgt). |
+| DEL 2 — Hyllelinje-modul fra C | ✅ Ferdig fra før. `src/game/geometry/hyllelinje.ts` portert piksel-identisk fra `eksperiment/autonom-sport` (B-RUNDE-seksjonen). Klesbutikken har ingen egen shelf-line-geometri å migrere; modulen ligger tilgjengelig + adapter i stillaset. |
+| DEL 3 — Fashion-kundeark | ✅ Ferdig fra før. 2 ark splittet → 8 kunde-sprites i `raw/customers/`; `klesbutikkKunder.ts`-register (`KasseKunde` + `spriteCal`). Oversikt i tabellen under. |
+| DEL 4 — Scenarioinnhold | ✅ Ferdig fra før + **gjennomgått denne økten** (se under). 6 scenarier, skjema-kompatible, koblet til sprites. |
+| DEL 5 — brandPull/persona-data | 🆕 **Bygget denne økten** (var eksplisitt utsatt tidligere). |
+
+### DEL 3 — fashion-kunde-sprites (oversiktstabell)
+`public/assets/raw/customers/` (fra `customers-ark-03/04-raw.png`, rembg u2net):
+
+| Filnavn | Beskrivelse | Ark |
+|---|---|---|
+| `dame-camel-veske.png` | Dame i camel-frakk med veske | 03 |
+| `mann-skjegg-pakke.png` | Mann med skjegg, bærer pose/pakke | 03 |
+| `forretningsdame-klokke.png` | Forretningsdame, ser på klokka | 03 |
+| `mann-strikk-mobil.png` | Mann i strikkegenser med mobil | 03 |
+| `ung-mann-sekk.png` | Ung mann med ryggsekk | 04 |
+| `dame-forerhund.png` | Dame med førerhund (universell utforming) | 04 |
+| `arbeidsmann-korslagt.png` | Arbeidsmann, korslagte armer | 04 |
+| `ung-dame-skjerf.png` | Ung dame med skjerf | 04 |
+
+Navnekonvensjon = samme som kafé-kundene (`raw/customers/<beskrivende-id>.png`,
+`id === sprite-filnavn`). Registrert i `klesbutikkKunder.ts` med `spriteCal`.
+
+### DEL 4 — scenario-gjennomgang mot kafé-skjema (konklusjon)
+De 6 scenariene (`sales/klesbutikkScenarios.ts`) ble gjennomgått mot dagens
+`SalesScenario`-interface (`src/game/sales/types.ts`):
+- **Skjema-kompatible allerede** — hvert scenario bruker nøyaktig kafé-feltsettet
+  (`id · customerName · personaTag · sprite · outcomeKind · avsluttesVedKasse ·
+  description · hiddenNeed · steps`). Ingen ekstra/ukjente felt. `tsc -b` grønt.
+- **`spriteCal`-mønsteret** er allerede fulgt: `sprite` settes via `S(kundeId)`
+  (henter fra `klesbutikkKunder.ts`), og `KLESBUTIKK_SCENARIO_KUNDE` mapper
+  scenario→kunde-id så kassevyens Espen-låste `spriteCal` gjenbrukes ved oppgjør.
+- **⚠️ «tidsvindu-feltet» FINNES IKKE i skjemaet** (verifisert: `grep` over
+  `src/game/sales/` — ingen `tidsvindu`, verken kafé eller klesbutikk). Mandatet
+  antok et slikt felt; jeg har **IKKE funnet det opp** (CLAUDE.md: «aldri gjett»).
+  Om et tidsvindu (f.eks. når på dagen kunden dukker opp) skal inn, må feltet
+  først defineres på `SalesScenario` + konsumeres av motoren — det er en
+  skjema-endring som hører til skall-synk/aktivering, ikke dette assets+data-
+  mandatet. **Åpent spørsmål til Espen** (se under).
+- **Dialogrikdom:** ingen scenarier er tynne (5–7 steg, 12–18 valg hver), så jeg
+  la IKKE til «manglende dialogvarianter» — å fylle på i Espen-godkjent innhold
+  uten et konkret hull ville vært støy. Om et bestemt scenario oppleves tynt,
+  pek på det, så skriver jeg varianten.
+- Scenariene forblir **INAKTIVE** (utenfor enhver `scenariePool`).
+
+### DEL 5 — brandPull som ren data (per merke × psykografisk egenskap) 🆕
+Lagt til i `src/game/data/klesbutikkBrands.ts` (nederst, ren data + doc-kommentar):
+- **`PsykografiskEgenskap`** (type) + **`PSYKOGRAFISKE_EGENSKAPER`** = de 6
+  persona-segmentene fra `personas.ts` (Karriere/Trend/Miljø/Pris/Helse/Familie).
+- **`BRAND_PULL_MATRIX`** = `Record<merkeId, Record<egenskap, number>>` — én
+  eksportert struktur: **trekkfaktor på besøksvilje** som multiplikator rundt
+  nøytral **1.0**. **`brandPullFor(brandId, egenskap)`** slår opp (1.0 default).
+- **Tallmodell (konservativ, snevert bånd):** sterk affinitet ≈ 1.28–1.34 ·
+  moderat ≈ 1.12–1.18 · nøytral 1.0 · mild mismatch ≈ 0.88–0.96. Ingen verdi
+  utenfor 0.85–1.35 — et merke vekter et segment, stenger det aldri ute.
+- **Begrunnelse per merke (toppene er konsistente med `personaAffinity` +
+  `brandPull`-styrke):**
+  - **Basiq** (billigvolum, pull 'ingen'): Pris **1.16**, Familie 1.08 (volum),
+    demper Trend **0.90** / Karriere 0.95 / Miljø 0.94 (billig ≠ status/bærekraft).
+    'ingen' = merkeNAVNET trekker ikke som statussignal; pris-passform gir likevel utslag.
+  - **Strøm & Berg** (norsk-midt, 'moderat'): bredt hverdagsmerke, mild positiv
+    over hele linja, sterkest Familie **1.18** + Karriere **1.15**.
+  - **Nordheim Atelier** (premium, 'sterk'): statusmerke — Trend **1.34** +
+    Karriere **1.26**; demper Pris **0.88** (premium-terskel).
+  - **Fjellrev Works** (nisje-kvalitet, 'sterk'): bærekraft/tur — Miljø **1.34** +
+    Helse **1.26**, slitesterkt for Familie 1.08; mild demper Pris 0.92.
+- **Bevisst IKKE gjort:** ingen kobling mot trafikkmotoren (multipliseringen inn i
+  besøksvilje/spawn skjer i skall-synk). Den eldre grov-enumen `brandPull`
+  ('ingen/moderat/sterk') + `personaAffinity` er BEHOLDT som oppsummering/UI-chip;
+  matrisen er det detaljerte datalaget oppå.
+
+### Åpne spørsmål (til Espen)
+1. **DEL 5 egenskapssett — 6 vs 3.** Mandatet sa «samme egenskapssett som
+   Målgruppe-fanen». Selve `TargetAudienceScreen` (learning-hub) har bare **3**
+   psykografier (Miljøbevisste/Statusbevisste/Prisfokuserte), mens **spillets
+   persona-generator** (`personas.ts`) + eksisterende `personaAffinity` bruker
+   **6** segmenter. Jeg valgte **de 6** (det trafikkmotoren faktisk konsumerer, og
+   konsistent med `personaAffinity`). Si fra hvis du heller vil ha 3-aksen — da
+   endrer jeg strukturens nøkler (verdiene tuner du uansett).
+2. **`tidsvindu` på scenarier.** Skal det inn som eget felt (når kunden dukker
+   opp)? Da definerer skall-synk-jobben feltet + motorkonsum. Ikke oppfunnet nå.
+3. **brandPull-verdiene er førstepasning** — konservative øyemål. Du eier
+   tuningen; strukturen er stabil.
+
+### Bevisst utelatt / VENTER PÅ SKALL-SYNK
+- Koble `BRAND_PULL_MATRIX` inn i trafikk-/besøksvilje-motoren (multipliser pull
+  per persona-segment × ført merke).
+- Registrere `KLESBUTIKK` i `INDUSTRY_DEFINITIONS` + geometribytte i motorene.
+- Aktivere de 6 scenariene (legge id-ene i en `scenariePool`).
+- Låse `KLESBUTIKK_KUNDE_BASE`-sonen (Espen tracer i `?dev=1` → 💰 Kasse → 🧭 Soner).
+- Evt. `tidsvindu`-felt på `SalesScenario` (avventer beslutning, pkt. 2 over).
+- Glossary-oppføringer for de flaggede fagordene (bytterett, behovsavklaring,
+  mersalg, gavekvittering, likeverd, universell utforming, forbrukeratferd).
+
+### Verifisering (denne økten)
+- `tsc -b`: grønt (kjørt ÉN gang, etter DEL 5; aldri samtidig med CC A).
+- Kun `klesbutikkBrands.ts` (data-tillegg) + denne rapporten endret. Ingen
+  assets regenerert, ingen motor/skall-fil rørt, ingen Espen-låst verdi endret.
