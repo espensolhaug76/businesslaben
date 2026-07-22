@@ -66,8 +66,8 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
   },
   {
     id: 'forste_avis',
-    betingelse: 'Første Sentrumsposten-utgave i innboksen (KROK 7c)',
-    melding: 'Sentrumsposten har begynt å skrive om byen — og om deg. Det lønner seg å lese den: nyheter, byens trender som påvirker etterspørselen, og varsler om hva som kommer. En god driver planlegger etter avisen.',
+    betingelse: 'Første Sentrumsposten-utgave publisert (KROK 7c) — leses via 📰-ikonet',
+    melding: 'Sentrumsposten er ute! Klikk 📰-ikonet oppe til høyre for å lese den. Der finner du nyheter om byen og deg, trender som påvirker etterspørselen, og varsler om hva som kommer. En god driver planlegger etter avisen.',
   },
   {
     id: 'forste_svinn',

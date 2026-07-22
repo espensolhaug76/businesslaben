@@ -27,7 +27,7 @@ import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, plan
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
 import { dagligRefleksjon } from './data/mentorDaglig'
-import { genererAvisutgave, avisEffektAktiv, avisUke, erAvisdag, byggAvisMelding, devUtlosTrend, kvalifiserteNotiser } from './data/avis'
+import { genererAvisutgave, avisEffektAktiv, avisUke, erAvisdag, løpendeNotiser, devUtlosTrend, kvalifiserteNotiser } from './data/avis'
 import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from './data/featureFlags'
 import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS } from './sales/scenarios'
 import { beregnPakke, velgProfil, BESOKSPROFILER, velgPakkeForesporsler } from './data/reiseliv'
@@ -263,6 +263,8 @@ const initialState: GameState = {
   kampanje: { aktiv: null, historikk: [], visRapportFor: null },
   prisendretDag: {},
   mkfBoost: null,
+  avisArkiv: [],
+  avisUlest: 0,
   avisEffekt: null,
   avisSisteUke: -1,
   avisSisteHandlingDag: 0,
@@ -396,7 +398,8 @@ type Action =
   | { type: 'DISMISS_KAMPANJE_RAPPORT' }
   | { type: 'SET_KAMPANJE_ROI_SVAR'; id: string; svar: number }
   | { type: 'DEV_SPOL_KAMPANJE' }   // ?dev=1: spol aktiv kampanje til slutt
-  // KROK 7c — Sentrumsposten (dev).
+  // KROK 7c — Sentrumsposten.
+  | { type: 'CLEAR_AVIS_ULEST' }    // 📰-overlay lukket → nullstill ulest-badgen
   | { type: 'DEV_GENERER_AVIS' }    // ?dev=1: generer ukens utgave nå
   | { type: 'DEV_UTLOS_AVIS_EFFEKT' } // ?dev=1: aktiver en seedet trend-effekt straks
   // TEMA 15 Reiseliv — turistsesong + reiselivsavtaler.
@@ -1736,11 +1739,12 @@ function reducer(state: GameState, action: Action): GameState {
       const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
       const gen = genererAvisutgave(state, naa, state.fagAktiv)
       if (!gen) return state
-      const melding = byggAvisMelding(gen.utgave, state.dayNumber, state.currentMonth)
-      const messages = [...state.messages.filter(m => m.id !== melding.id), melding]
-      return { ...state, messages, unreadCount: messages.filter(m => !m.read).length,
+      const avisArkiv = [gen.utgave, ...state.avisArkiv].slice(0, BALANCE.avis.arkivUtgaver)
+      return { ...state, avisArkiv, avisUlest: state.avisUlest + gen.utgave.notiser.length,
         avisEffekt: gen.effekt ?? state.avisEffekt, avisSisteUke: avisUke(naa) }
     }
+    case 'CLEAR_AVIS_ULEST':
+      return state.avisUlest === 0 ? state : { ...state, avisUlest: 0 }
     case 'DEV_UTLOS_AVIS_EFFEKT': {
       // Aktiver en seedet trend-effekt fra I DAG (så effekten synes i dagstallene nå).
       const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
@@ -2271,22 +2275,36 @@ function reducer(state: GameState, action: Action): GameState {
       const nyRep = Math.max(0, Math.min(100, state.reputation + sveip.reputationDelta))
       const mkfBoost = state.mkfBoost && state.mkfBoost.sluttAbsDag >= newAbsDag ? state.mkfBoost : null
 
-      // KROK 7c — SENTRUMSPOSTEN: ny ukentlig utgave hver «mandag» (erAvisdag),
-      // maks én per uke. Genereres deterministisk mot uke-seed; en ev. trend-effekt
-      // tidfestes (aktiv i sitt vindu, leses av OPEN_DAY). Ankommer som type 'avis'.
+      // KROK 7c — SENTRUMSPOSTEN (eget 📰-ikon, ikke innboks): TO publiseringstempo.
+      // (1) HOVEDUTGAVE hver «mandag» (erAvisdag) — trend-varsler bor KUN her
+      //     (ukesrytmen er planleggingsmekanikken). Ny utgave unshiftes inn i arkivet
+      //     (nyeste først), beholder de siste arkivUtgaver. Trend-effekt tidfestes.
+      // (2) LØPENDE notiser mellom utgaver — butikk/aktør-notiser hvis vilkår har
+      //     blitt sanne, appendes til GJELDENDE utgave (maks lopendePerDag/dag).
+      // Hver publisering tenner 📰-badgen (avisUlest).
       let avisEffekt = state.avisEffekt
       let avisSisteUke = state.avisSisteUke
-      let avisMeldinger: InboxMessage[] = []
-      if (state.rentedLocationId && erAvisdag(newAbsDag) && avisUke(newAbsDag) !== state.avisSisteUke) {
-        avisSisteUke = avisUke(newAbsDag)
-        const genState: GameState = { ...state, currentYear: newYear, currentMonth: newMonth, dayNumber: newDayNumber, reputation: nyRep, products: deliveredProducts }
-        const gen = genererAvisutgave(genState, newAbsDag, state.fagAktiv)
-        if (gen) {
-          avisMeldinger = [byggAvisMelding(gen.utgave, newDayNumber, newMonth)]
-          if (gen.effekt) avisEffekt = gen.effekt
+      let avisArkiv = state.avisArkiv
+      let avisUlest = state.avisUlest
+      if (state.rentedLocationId) {
+        const genState: GameState = { ...state, currentYear: newYear, currentMonth: newMonth, dayNumber: newDayNumber, reputation: nyRep, products: deliveredProducts, avisArkiv }
+        if (erAvisdag(newAbsDag) && avisUke(newAbsDag) !== state.avisSisteUke) {
+          avisSisteUke = avisUke(newAbsDag)
+          const gen = genererAvisutgave(genState, newAbsDag, state.fagAktiv)
+          if (gen) {
+            avisArkiv = [gen.utgave, ...avisArkiv].slice(0, BALANCE.avis.arkivUtgaver)
+            avisUlest += gen.utgave.notiser.length
+            if (gen.effekt) avisEffekt = gen.effekt
+          }
+        } else if (avisArkiv.length > 0) {
+          const nye = løpendeNotiser(genState, avisArkiv[0], state.fagAktiv, newAbsDag, BALANCE.avis.lopendePerDag)
+          if (nye.length > 0) {
+            avisArkiv = [{ ...avisArkiv[0], notiser: [...avisArkiv[0].notiser, ...nye] }, ...avisArkiv.slice(1)]
+            avisUlest += nye.length
+          }
         }
       }
-      const epostMessages = [...sveip.messages, ...nyeEposter, ...avisMeldinger]
+      const epostMessages = [...sveip.messages, ...nyeEposter]
 
       // ØKONOMI-SAMLING (DEL 2) + LÅNEAVDRAG: ved MÅNEDSRULL bygges et
       // månedsoppgjør fra månedens dagsresultater, og de faste kostnadene +
@@ -2367,6 +2385,8 @@ function reducer(state: GameState, action: Action): GameState {
         unreadCount: epostMessages.filter(m => !m.read).length,
         reputation: nyRep,
         mkfBoost,
+        avisArkiv,
+        avisUlest,
         avisEffekt,
         avisSisteUke,
         // KROK 6: nullstill dagens quiz-teller/belønning; lukk ev. uåpnet spørsmål.
@@ -2550,6 +2570,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         s = { ...s, budsjett: v.budsjett ?? s.budsjett, nokkeltall: v.nokkeltall ?? s.nokkeltall,
           kampanje: v.kampanje ?? s.kampanje, prisendretDag: v.prisendretDag ?? s.prisendretDag,
           mkfBoost: v.mkfBoost ?? s.mkfBoost,
+          avisArkiv: v.avisArkiv ?? s.avisArkiv, avisUlest: v.avisUlest ?? s.avisUlest,
           avisEffekt: v.avisEffekt ?? s.avisEffekt, avisSisteUke: v.avisSisteUke ?? s.avisSisteUke,
           avisSisteHandlingDag: v.avisSisteHandlingDag ?? s.avisSisteHandlingDag,
           espenSpor: v.espenSpor ?? s.espenSpor,
@@ -2567,8 +2588,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
   useEffect(() => {
-    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, mkfBoost: state.mkfBoost, avisEffekt: state.avisEffekt, avisSisteUke: state.avisSisteUke, avisSisteHandlingDag: state.avisSisteHandlingDag, espenSpor: state.espenSpor, stamkunder: state.stamkunder, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt, reiselivPakke: state.reiselivPakke })) } catch { /* ignore */ }
-  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.mkfBoost, state.avisEffekt, state.avisSisteUke, state.avisSisteHandlingDag, state.espenSpor, state.stamkunder, state.turistsesong, state.hotellavtale, state.opplevByenPameldt, state.reiselivPakke])
+    try { localStorage.setItem(BUDSJETT_KEY, JSON.stringify({ budsjett: state.budsjett, nokkeltall: state.nokkeltall, kampanje: state.kampanje, prisendretDag: state.prisendretDag, mkfBoost: state.mkfBoost, avisArkiv: state.avisArkiv, avisUlest: state.avisUlest, avisEffekt: state.avisEffekt, avisSisteUke: state.avisSisteUke, avisSisteHandlingDag: state.avisSisteHandlingDag, espenSpor: state.espenSpor, stamkunder: state.stamkunder, turistsesong: state.turistsesong, hotellavtale: state.hotellavtale, opplevByenPameldt: state.opplevByenPameldt, reiselivPakke: state.reiselivPakke })) } catch { /* ignore */ }
+  }, [state.budsjett, state.nokkeltall, state.kampanje, state.prisendretDag, state.mkfBoost, state.avisArkiv, state.avisUlest, state.avisEffekt, state.avisSisteUke, state.avisSisteHandlingDag, state.espenSpor, state.stamkunder, state.turistsesong, state.hotellavtale, state.opplevByenPameldt, state.reiselivPakke])
 
   // TEST-BRO (KUN DEV): speil hele spilltilstanden + dispatch på window, så det
   // automatiserte spilltest-løpet (Playwright — se docs/SPILLTESTER.md) kan LESE

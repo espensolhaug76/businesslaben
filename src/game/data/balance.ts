@@ -284,9 +284,15 @@ export const BALANCE = {
     /** Én «uke» = så mange spilldager. 12-dagersmåneden → 3 uker (dag 1–4, 5–8,
      *  9–12); avisen kommer «mandag» = dag 1, 5, 9 (hver 4. dag). */
     dagerPerUke: 4,
-    /** Notiser per utgave (min–maks), seedet. */
+    /** Notiser per HOVEDUTGAVE (min–maks), seedet. */
     notiserMin: 2,
     notiserMaks: 4,
+    /** LØPENDE notiser: maks så mange butikk-/aktør-notiser kan publiseres inn i
+     *  gjeldende utgave per dag MELLOM hovedutgaver (når vilkår slår til). */
+    lopendePerDag: 1,
+    /** ARKIV: hvor mange utgaver som er lesbare bakover i avis-overlayet
+     *  (inkl. gjeldende). «Hva varslet avisen forrige uke?» */
+    arkivUtgaver: 3,
     /** Trend-effektenes styrke (KONSERVATIV, ±10–25 %). Notisene i data/avis.ts
      *  refererer disse — juster HER, ikke i notisene. */
     effekt: {

@@ -131,8 +131,8 @@ function oppfylt(id: string, s: GameState): boolean {
     case 'forste_svinn': return (s.lastDayResult?.svinnStk ?? 0) > 0
     case 'forste_tomt_trau': return (s.lastDayResult?.tomtProdukter.length ?? 0) > 0
     case 'forste_ko': return (s.lastDayResult?.koKunder ?? 0) > 0
-    // KROK 7c — første Sentrumsposten-utgave i innboksen.
-    case 'forste_avis': return s.messages.some(m => m.type === 'avis')
+    // KROK 7c — første Sentrumsposten-utgave publisert (leses via 📰-ikonet).
+    case 'forste_avis': return s.avisArkiv.length > 0
     case 'forste_p_fullfort': return s.p1_complete || s.p2_complete || s.p3_complete || s.p4_complete
     case 'alle_p_fullfort': return s.p1_complete && s.p2_complete && s.p3_complete && s.p4_complete
     // TEMA 1: Beredskap (tema_beredskap_aktivert fyres via aktiveTemaer-effekten).

@@ -13,7 +13,7 @@
 // Motoren (levering/effekt-anvendelse) bor i reduceren (GameContext); her bor
 // DATA + rene kalkyler + de seedede malene. Terskler/tall: BALANCE.avis.
 
-import type { GameState, InboxMessage, RenderedNotis, AvisUtgave, AvisEffektAktiv, DayResult } from '../types'
+import type { GameState, RenderedNotis, AvisUtgave, AvisEffektAktiv, DayResult } from '../types'
 import type { FagKode } from './fag'
 import { BALANCE } from './balance'
 import { DAY_CONFIG } from './dayConfig'
@@ -322,24 +322,26 @@ export function genererAvisutgave(
   return { utgave, effekt }
 }
 
-/** Pakk en utgave inn i en InboxMessage (type 'avis'). Åpning viser AvisOverlay;
- *  ulest teller i ulest-badgen som annen post. */
-export function byggAvisMelding(utgave: AvisUtgave, dayNumber: number, month: number): InboxMessage {
-  const forside = utgave.notiser.find(n => n.fremover) ?? utgave.notiser[0]
-  const antall = utgave.notiser.length
-  return {
-    id: `avis_${utgave.uke}`,
-    type: 'avis',
-    title: `📰 Sentrumsposten — uke ${utgave.ukeIMaaned}`,
-    body: forside
-      ? `«${forside.tittel}» — og ${antall - 1} ${antall - 1 === 1 ? 'sak' : 'saker'} til. Åpne avisen for å lese hele utgaven.`
-      : 'Ukens utgave er ute.',
-    date: `Dag ${dayNumber} · Måned ${month}`,
-    read: false,
-    competenceGoal: 'Les byens trender og planlegg neste uke',
-    avsender: 'Sentrumsposten',
-    avis: utgave,
-  }
+/** LØPENDE notiser (mellom hovedutgaver): butikk-/aktør-notiser hvis vilkår har
+ *  blitt sanne, som IKKE alt ligger i gjeldende utgave. Trend-notiser er
+ *  UTGAVE-BUNDET (bare i hovedutgaven — ukesrytmen er planleggingsmekanikken) og
+ *  ekskluderes her. Seedet rekkefølge, maks `maks` per kall (per dag). */
+export function løpendeNotiser(
+  s: GameState,
+  gjeldende: AvisUtgave | undefined,
+  fagAktiv: { fd: boolean; m: boolean; ks: boolean },
+  utgaveAbsDag: number,
+  maks: number,
+): RenderedNotis[] {
+  if (!gjeldende || maks <= 0) return []
+  const iUtgaven = new Set(gjeldende.notiser.map(n => n.id))
+  const r = mulberry32((Math.imul(utgaveAbsDag + 1, 40503) ^ 0x10fe) >>> 0)
+  const kand = NOTISER.filter(n =>
+    n.kilde !== 'trend' && (!n.fag || fagAktiv[n.fag]) && n.vilkaar(s) && !iUtgaven.has(n.id))
+  return shuffle(kand, r).slice(0, maks).map(n => {
+    const { tittel, tekst } = n.bygg(s, r)
+    return { id: n.id, kilde: n.kilde, tittel, tekst, fremover: n.fremover }
+  })
 }
 
 /** Test-/introspeksjon: id-ene til notisene som er KVALIFISERT (datavakt + fag-

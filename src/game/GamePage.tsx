@@ -12,6 +12,7 @@ import MonthResultOverlay from './ui/MonthResultOverlay'
 import KampanjeRapportOverlay from './ui/KampanjeRapportOverlay'
 import DagspulsOverlay from './ui/DagspulsOverlay'
 import OpeningOrderOverlay from './ui/OpeningOrderOverlay'
+import AvisOverlay from './ui/AvisOverlay'
 import Mentor from './ui/Mentor'
 import { BALANCE } from './data/balance'
 
@@ -87,6 +88,9 @@ function GameContent() {
   const [simOpen, setSimOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [dashboardTab, setDashboardTab] = useState<string>('oversikt')
+  // KROK 7c — Sentrumsposten: åpnes fra 📰-ikonet i HUD-en. Lukking nullstiller
+  // ulest-badgen (CLEAR_AVIS_ULEST).
+  const [avisOpen, setAvisOpen] = useState(false)
   const [vacantInfo, setVacantInfo] = useState<VacantInfo | null>(null)
   const [tutorialDismissed, setTutorialDismissed] = useState(false)
   // Salgssituasjon-overlay (DEL 4: midlertidig dev-inngang via CustomEvent fra
@@ -198,6 +202,13 @@ function GameContent() {
     setOverlay(dashboardOpen)
   }
 
+  // KROK 7c — lukk Sentrumsposten og nullstill ulest-badgen.
+  function closeAvis() {
+    setAvisOpen(false)
+    setOverlay(dashboardOpen)
+    dispatch({ type: 'CLEAR_AVIS_ULEST' })
+  }
+
   function onVacantClick({ district, lokale, rent }: LokaleClick) {
     setVacantInfo({
       id: lokale.id,
@@ -246,6 +257,7 @@ function GameContent() {
       <HUD
         onMaster={onMaster}
         onOpenDashboard={() => { setDashboardTab('oversikt'); setDashboardOpen(true); setOverlay(true) }}
+        onOpenAvis={() => { setAvisOpen(true); setOverlay(true) }}
       />
 
       {/* KROK 4 — Game feel: lyd-observatør (rendrer ingenting) */}
@@ -315,6 +327,10 @@ function GameContent() {
       {/* Åpningsbestilling — vises straks etter leie (gates internt på
           rentedLocationId && !openingOrderPlaced). */}
       <OpeningOrderOverlay />
+
+      {/* KROK 7c — SENTRUMSPOSTEN: bla-bart avisoverlay åpnet fra 📰-ikonet i
+          HUD-en. Leser state.avisArkiv (gjeldende utgave + arkiv). */}
+      <AvisOverlay open={avisOpen} onClose={closeAvis} />
 
       {vacantInfo && (
         <RentPanel

@@ -12,10 +12,10 @@ function formatKr(n: number) {
   return n.toLocaleString('nb-NO') + ' kr'
 }
 
-export default function HUD({ onMaster, onOpenDashboard }: { onMaster: boolean; onOpenDashboard: () => void }) {
+export default function HUD({ onMaster, onOpenDashboard, onOpenAvis }: { onMaster: boolean; onOpenDashboard: () => void; onOpenAvis: () => void }) {
   const { state } = useGame()
   const { money, reputation, currentMonth, currentYear, companyName, industry,
-          unreadCount, level, xp, xpToNextLevel, rentedLocationId, shopOpen, dayNumber, meetingsToday } = state
+          unreadCount, level, xp, xpToNextLevel, rentedLocationId, shopOpen, dayNumber, meetingsToday, avisUlest } = state
 
   const meta = INDUSTRY_META[industry]
   const xpPct = Math.round((xp / xpToNextLevel) * 100)
@@ -76,6 +76,32 @@ export default function HUD({ onMaster, onOpenDashboard }: { onMaster: boolean; 
           Oversikt-fanen, ikke i HUD-en). */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
         <LydToggle />
+
+        {/* KROK 7c — SENTRUMSPOSTEN: alltid synlig når spillet er i gang.
+            Ulest-badge (tall) når det finnes upubliserte/uleste notiser;
+            nullstilles når avisoverlayet lukkes (CLEAR_AVIS_ULEST). */}
+        {rentedLocationId && (
+          <button
+            onClick={onOpenAvis}
+            title={avisUlest > 0 ? `Sentrumsposten — ${avisUlest} uleste notiser` : 'Sentrumsposten — les avisen'}
+            aria-label={avisUlest > 0 ? `Åpne Sentrumsposten, ${avisUlest} uleste notiser` : 'Åpne Sentrumsposten'}
+            style={{
+              position: 'relative', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 99, width: 30, height: 30, cursor: 'pointer', color: '#f1f5f9', fontSize: 16, lineHeight: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
+            }}
+          >
+            📰
+            {avisUlest > 0 && (
+              <span style={{
+                position: 'absolute', top: -5, right: -5,
+                background: '#ef4444', color: '#fff', borderRadius: 99,
+                fontSize: 10, fontWeight: 800, padding: '1px 5px', lineHeight: 1.4,
+              }}>{avisUlest}</span>
+            )}
+          </button>
+        )}
+
         {unreadCount > 0 && (
           <div style={{ position: 'relative', cursor: 'pointer' }} title={`${unreadCount} uleste meldinger`}>
             <span style={{ fontSize: 20 }}>🔔</span>

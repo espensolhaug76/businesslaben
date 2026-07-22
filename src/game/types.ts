@@ -806,10 +806,17 @@ export interface GameState {
    *  ingen aktiv boost. Persistert. */
   mkfBoost: { faktor: number; sluttAbsDag: number; kanalNavn: string } | null
 
-  // ── KROK 7c — SENTRUMSPOSTEN (lokalavisen). Persistert. ──
+  // ── KROK 7c — SENTRUMSPOSTEN (lokalavisen, eget 📰-ikon). Persistert. ──
+  /** Utgave-arkiv, NYESTE FØRST (index 0 = gjeldende utgave). Beholder de siste
+   *  BALANCE.avis.arkivUtgaver utgavene (lesbare bakover i avis-overlayet).
+   *  Løpende notiser appendes til index 0; hovedutgaver unshiftes inn. */
+  avisArkiv: AvisUtgave[]
+  /** Ulest-teller (📰-badgen): antall notiser publisert siden overlayet sist ble
+   *  lukket. Nullstilles ved lukking. */
+  avisUlest: number
   /** Aktiv/planlagt trend-effekt fra en avisutgave (maks én). Null = ingen. */
   avisEffekt: AvisEffektAktiv | null
-  /** Siste absolutte uke en utgave ble generert (unngår dobbel-utgave samme uke). */
+  /** Siste absolutte uke en HOVEDUTGAVE ble generert (unngår dobbel-utgave samme uke). */
   avisSisteUke: number
   /** Absolutt dag da eleven sist endret bestilling/priser — brukes av mentorens
    *  «så du trenden?»-refleksjon (handlet eleven i forkant av en varslet effekt?). */
