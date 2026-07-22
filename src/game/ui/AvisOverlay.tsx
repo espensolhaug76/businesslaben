@@ -6,12 +6,15 @@ import { BALANCE } from '../data/balance'
 
 // ─── KROK 7c — SENTRUMSPOSTEN, det bla-bare avisoverlayet ────────────────────
 // Åpnes fra 📰-ikonet i HUD-en. Leser state.avisArkiv (NYESTE FØRST):
-//   Side 1  = FORSIDE (portrett) — gjeldende utgave, HTML-notiser over papiret.
-//   Side 2+ = OPPSLAG (landskap) — ett arkiv-oppslag per ELDRE utgave bakover,
+//   Side 1  = FORSIDE (portrett) — GJELDENDE utgave, aldri i arkivet.
+//   Side 2+ = OPPSLAG (landskap) — arkiv: utgaver ELDRE enn gjeldende, pakket
+//             TO per dobbeltside (én per spalte, egen utgavelinje + ARKIV-merke),
 //             så eleven kan sjekke «hva varslet avisen forrige uke?».
 // Papiret er BAKGRUNN; ALL tekst legges på som HTML/CSS (avishode i avis-serif,
 // ikke i bildet). Show-through fra papirets svake bakgrunnstekst dempes med ett
 // halvtransparent, papirfarget lag bak tekstflatene — juster ÉN konstant.
+// Notisene fyller spalten vertikalt; blir det plass til overs, fyller en
+// dekorativ «annonse»-plassholder (ren CSS-tekstur, INGEN lesbar tekst) resten.
 
 const FORSIDE = '/assets/raw/sentrumsposten-forside.png'
 const OPPSLAG = '/assets/raw/sentrumsposten-oppslag.png'
@@ -33,10 +36,12 @@ function utgavelinje(u: AvisUtgave) {
 
 export default function AvisOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { state } = useGame()
-  // NYESTE FØRST: index 0 = gjeldende utgave, resten = arkiv bakover (maks arkivUtgaver).
-  const arkiv = state.avisArkiv.slice(0, BALANCE.avis.arkivUtgaver)
-  // Sidene: forside for gjeldende utgave + ett oppslag per eldre utgave.
-  const antallSider = Math.max(1, arkiv.length)
+  // NYESTE FØRST: index 0 = gjeldende, resten = arkiv (eldre enn gjeldende).
+  const arkiv = state.avisArkiv.slice(0, BALANCE.avis.arkivUtgaver + 1)
+  const gjeldende = arkiv[0]
+  const eldre = arkiv.slice(1)                       // KUN eldre utgaver → arkiv-oppslagene
+  const antallOppslag = Math.ceil(eldre.length / 2)  // to arkivutgaver per dobbeltside
+  const antallSider = 1 + antallOppslag              // side 1 = forside, resten = oppslag
   const [side, setSide] = useState(0)
 
   // Nullstill til forsiden hver gang overlayet åpnes.
@@ -56,10 +61,11 @@ export default function AvisOverlay({ open, onClose }: { open: boolean; onClose:
 
   if (!open) return <AnimatePresence />
 
-  const gjeldende = arkiv[0]
   const erForside = side === 0
-  // Side 0 = gjeldende (forside). Side k>0 = arkiv[k] (eldre utgave, oppslag).
-  const visesUtgave = arkiv[side]
+  // Oppslag-side k (k≥1) viser eldre[2(k-1)] og eldre[2(k-1)+1].
+  const idx = (side - 1) * 2
+  const venstre = eldre[idx]
+  const hoyre = eldre[idx + 1]
 
   return (
     <AnimatePresence>
@@ -85,7 +91,7 @@ export default function AvisOverlay({ open, onClose }: { open: boolean; onClose:
               onClick={e => e.stopPropagation()}
               style={{
                 position: 'relative',
-                height: erForside ? 'min(84vh, 1040px)' : 'min(74vh, 780px)',
+                height: erForside ? 'min(84vh, 1040px)' : 'min(76vh, 820px)',
                 aspectRatio: `${erForside ? FORSIDE_ASPEKT : OPPSLAG_ASPEKT}`,
                 maxWidth: '96vw', backgroundImage: `url(${erForside ? FORSIDE : OPPSLAG})`,
                 backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: 6,
@@ -106,8 +112,8 @@ export default function AvisOverlay({ open, onClose }: { open: boolean; onClose:
               >✕</button>
 
               {erForside
-                ? <Forside utgave={visesUtgave} />
-                : <Oppslag utgave={visesUtgave} />}
+                ? <Forside utgave={gjeldende} />
+                : <Oppslag venstre={venstre} hoyre={hoyre} />}
             </motion.div>
 
             {/* Bla-kontroll: ‹/› + sideindikator som TEKST (aldri kun ikon). */}
@@ -139,45 +145,93 @@ function Forside({ utgave }: { utgave: AvisUtgave }) {
 
       <div style={{ position: 'absolute', left: '10.5%', right: '10.5%', top: '23%', bottom: '5%', display: 'flex', flexDirection: 'column' }}>
         <div style={{ position: 'absolute', inset: '-1.5% -2%', background: `rgba(244,238,224,${SHOW_THROUGH_DEMPING})`, borderRadius: 2 }} />
-        <div style={{ position: 'relative', overflowY: 'auto', paddingRight: 6, columnGap: '5%', columnCount: 1 }}>
-          {utgave.notiser.map((n, i) => (
-            <Notis key={n.id} n={n} forst={i === 0} />
-          ))}
-          <div style={{ textAlign: 'center', fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 11, color: '#6b5d45', marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(74,63,44,0.25)' }}>
-            — Neste hovedutgave kommer neste mandag —
-          </div>
-        </div>
+        <NotisSpalte
+          notiser={utgave.notiser}
+          footer={
+            <div style={{ flexShrink: 0, textAlign: 'center', fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 11, color: '#6b5d45', marginTop: 8, paddingTop: 6, borderTop: '1px solid rgba(74,63,44,0.25)' }}>
+              — Neste hovedutgave kommer neste mandag —
+            </div>
+          }
+        />
       </div>
     </>
   )
 }
 
-/** Arkiv-oppslag (landskap) — en eldre utgave, notiser i to kolonner. */
-function Oppslag({ utgave }: { utgave: AvisUtgave }) {
+/** Arkiv-oppslag (landskap): to ELDRE utgaver side om side (én per spalte). Er den
+ *  høyre tom (ulikt antall arkivutgaver), vises «eldre utgaver er kastet». */
+function Oppslag({ venstre, hoyre }: { venstre: AvisUtgave; hoyre: AvisUtgave | undefined }) {
   return (
-    <>
-      {/* ARKIV-merke øverst — alltid TEKST. */}
-      <div style={{ position: 'absolute', left: '6%', right: '6%', top: '5%', height: '11%', display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center', color: '#241d12' }}>
-        <div style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(9px, 1.4vh, 13px)', fontWeight: 800, letterSpacing: '0.12em', color: '#8a6d3b' }}>
+    <div style={{ position: 'absolute', left: '5%', right: '5%', top: '5%', bottom: '5%', display: 'flex', gap: '4%' }}>
+      <ArkivSpalte utgave={venstre} />
+      {hoyre ? <ArkivSpalte utgave={hoyre} /> : <TomSpalte />}
+    </div>
+  )
+}
+
+/** Én arkivspalte: ARKIV-merke + utgavelinje + notiser (vertikal fyll + annonse). */
+function ArkivSpalte({ utgave }: { utgave: AvisUtgave }) {
+  return (
+    <div style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'absolute', inset: '-1% -2.5%', background: `rgba(244,238,224,${SHOW_THROUGH_DEMPING})`, borderRadius: 2 }} />
+      <div style={{ position: 'relative', flexShrink: 0, textAlign: 'center', color: '#241d12', marginBottom: '0.5rem' }}>
+        <div style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(8px, 1.3vh, 12px)', fontWeight: 800, letterSpacing: '0.12em', color: '#8a6d3b' }}>
           ARKIV · TIDLIGERE UTGAVE
         </div>
-        <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 900, letterSpacing: '0.05em', fontSize: 'clamp(15px, 2.6vh, 30px)', lineHeight: 1.1 }}>
+        <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 900, letterSpacing: '0.05em', fontSize: 'clamp(13px, 2.2vh, 26px)', lineHeight: 1.1 }}>
           SENTRUMSPOSTEN
         </div>
-        <div style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 'clamp(8px, 1.3vh, 13px)', color: '#4a3f2c' }}>
+        <div style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 'clamp(8px, 1.2vh, 12px)', color: '#4a3f2c' }}>
           {utgavelinje(utgave)}
         </div>
       </div>
+      <NotisSpalte notiser={utgave.notiser} />
+    </div>
+  )
+}
 
-      <div style={{ position: 'absolute', left: '6%', right: '6%', top: '19%', bottom: '5%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ position: 'absolute', inset: '-1.5% -2%', background: `rgba(244,238,224,${SHOW_THROUGH_DEMPING})`, borderRadius: 2 }} />
-        <div style={{ position: 'relative', overflowY: 'auto', paddingRight: 6, columnGap: '6%', columnCount: 2 }}>
-          {utgave.notiser.map((n, i) => (
-            <Notis key={n.id} n={n} forst={i === 0} />
-          ))}
-        </div>
+/** Tom arkivspalte (ulikt antall arkivutgaver): eldre er skjøvet ut av arkivet. */
+function TomSpalte() {
+  return (
+    <div style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', inset: '-1% -2.5%', background: `rgba(244,238,224,${SHOW_THROUGH_DEMPING * 0.7})`, borderRadius: 2 }} />
+      <div style={{ position: 'relative', fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 'clamp(10px, 1.5vh, 14px)', color: '#6b5d45', textAlign: 'center', padding: '0 12%' }}>
+        — eldre utgaver er kastet —
       </div>
-    </>
+    </div>
+  )
+}
+
+/** Notiser som fyller spalten vertikalt; annonse-plassholder tar plassen til
+ *  overs (så det døde papirfeltet under forsvinner). Overflyt → egen scroll. */
+function NotisSpalte({ notiser, footer }: { notiser: RenderedNotis[]; footer?: React.ReactNode }) {
+  return (
+    <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingRight: 6 }}>
+      {notiser.map((n, i) => (
+        <Notis key={n.id} n={n} forst={i === 0} />
+      ))}
+      <Annonse />
+      {footer}
+    </div>
+  )
+}
+
+/** Dekorativ «annonse»-plassholder: ren CSS-tekstur (ruteliner som antyder tekst),
+ *  INGEN ekte merker og ingen lesbar tekst — bare avis-tekstur som fyller dødplass.
+ *  flexGrow ⇒ tar all plass til overs; krymper til minHeight når notisene er mange. */
+function Annonse() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        flexGrow: 1, minHeight: 46, marginTop: 10, borderRadius: 3,
+        border: '1px dashed rgba(74,63,44,0.32)', opacity: 0.5,
+        backgroundColor: 'rgba(244,238,224,0.15)',
+        backgroundImage:
+          'repeating-linear-gradient(0deg, rgba(74,63,44,0.16) 0, rgba(74,63,44,0.16) 1.5px, rgba(0,0,0,0) 1.5px, rgba(0,0,0,0) 9px)',
+        backgroundClip: 'content-box', padding: '10px 14px',
+      }}
+    />
   )
 }
 
@@ -227,8 +281,8 @@ function TomAvis({ onClick, onClose }: { onClick: (e: React.MouseEvent) => void;
 
 function Notis({ n, forst }: { n: RenderedNotis; forst: boolean }) {
   return (
-    <div style={{ breakInside: 'avoid', marginBottom: forst ? '0.9rem' : '0.8rem', paddingBottom: '0.7rem', borderBottom: '1px solid rgba(74,63,44,0.22)', color: '#241d12' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+    <div style={{ flexShrink: 0, breakInside: 'avoid', marginBottom: forst ? '0.9rem' : '0.8rem', paddingBottom: '0.7rem', borderBottom: '1px solid rgba(74,63,44,0.22)', color: '#241d12' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: 'Georgia, serif', fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', color: '#8a6d3b', border: '1px solid rgba(138,109,59,0.5)', borderRadius: 3, padding: '1px 5px' }}>
           {KILDE_ETIKETT[n.kilde]}
         </span>

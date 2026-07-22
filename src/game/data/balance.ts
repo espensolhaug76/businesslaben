@@ -290,8 +290,10 @@ export const BALANCE = {
     /** LØPENDE notiser: maks så mange butikk-/aktør-notiser kan publiseres inn i
      *  gjeldende utgave per dag MELLOM hovedutgaver (når vilkår slår til). */
     lopendePerDag: 1,
-    /** ARKIV: hvor mange utgaver som er lesbare bakover i avis-overlayet
-     *  (inkl. gjeldende). «Hva varslet avisen forrige uke?» */
+    /** ARKIV: hvor mange ELDRE utgaver (eldre enn gjeldende) som er lesbare
+     *  bakover i avis-overlayets arkiv-oppslag. Gjeldende utgave vises KUN på
+     *  forsiden — aldri i arkivet. Total lagret = arkivUtgaver + 1 (gjeldende).
+     *  «Hva varslet avisen forrige uke?» */
     arkivUtgaver: 3,
     /** Trend-effektenes styrke (KONSERVATIV, ±10–25 %). Notisene i data/avis.ts
      *  refererer disse — juster HER, ikke i notisene. */

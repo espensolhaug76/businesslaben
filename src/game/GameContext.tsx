@@ -1739,7 +1739,8 @@ function reducer(state: GameState, action: Action): GameState {
       const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
       const gen = genererAvisutgave(state, naa, state.fagAktiv)
       if (!gen) return state
-      const avisArkiv = [gen.utgave, ...state.avisArkiv].slice(0, BALANCE.avis.arkivUtgaver)
+      // Beholder gjeldende + arkivUtgaver ELDRE = arkivUtgaver + 1 totalt.
+      const avisArkiv = [gen.utgave, ...state.avisArkiv].slice(0, BALANCE.avis.arkivUtgaver + 1)
       return { ...state, avisArkiv, avisUlest: state.avisUlest + gen.utgave.notiser.length,
         avisEffekt: gen.effekt ?? state.avisEffekt, avisSisteUke: avisUke(naa) }
     }
@@ -2292,7 +2293,7 @@ function reducer(state: GameState, action: Action): GameState {
           avisSisteUke = avisUke(newAbsDag)
           const gen = genererAvisutgave(genState, newAbsDag, state.fagAktiv)
           if (gen) {
-            avisArkiv = [gen.utgave, ...avisArkiv].slice(0, BALANCE.avis.arkivUtgaver)
+            avisArkiv = [gen.utgave, ...avisArkiv].slice(0, BALANCE.avis.arkivUtgaver + 1)
             avisUlest += gen.utgave.notiser.length
             if (gen.effekt) avisEffekt = gen.effekt
           }
