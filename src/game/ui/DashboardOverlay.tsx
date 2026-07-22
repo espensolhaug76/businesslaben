@@ -16,6 +16,8 @@ import Fagord from './Fagord'
 import HmsTab from './HmsTab'
 import BrannalarmOvelse, { BrannalarmSammenligning } from './BrannalarmOvelse'
 import Pakkebygger from './Pakkebygger'
+import AvisOverlay from './AvisOverlay'
+import type { AvisUtgave } from '../types'
 import { BESOKSPROFILER, type Besoksprofil } from '../data/reiseliv'
 import { kassePling } from '../gamefeel/lyd'
 import { BRANNALARM } from '../data/beredskap'
@@ -3437,6 +3439,8 @@ function InnboksTab() {
   const [choiceMade, setChoiceMade] = useState<Record<string, string>>({}) // messageId → choiceId
   // TEMA 15 DEL d — åpen pakke-forespørsel (pakkebyggeren mot forespørselens profil).
   const [pakkeReq, setPakkeReq] = useState<{ profil: Besoksprofil; tittel: string } | null>(null)
+  // KROK 7c — åpen avisutgave (AvisOverlay over dashbordet).
+  const [visAvis, setVisAvis] = useState<AvisUtgave | null>(null)
 
   const msgs = [...state.messages].reverse()
 
@@ -3576,6 +3580,15 @@ function InnboksTab() {
                     </button>
                   )}
 
+                  {/* KROK 7c — SENTRUMSPOSTEN: åpne hele utgaven i avis-visningen. */}
+                  {msg.type === 'avis' && msg.avis && (
+                    <button
+                      onClick={() => setVisAvis(msg.avis!)}
+                      style={{ background: 'linear-gradient(135deg,#c8b688,#a8925f)', border: 'none', borderRadius: 99, padding: '0.5rem 1.1rem', color: '#241d12', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      📰 Les hele utgaven
+                    </button>
+                  )}
+
                   {/* KROK 7 — DEN LEVENDE INNBOKSEN: quest-e-poster (bestilling/
                       leverandør-/markedsføringstilbud) med beslutning + refleksjon. */}
                   {msg.epost && <EpostQuestBlokk msg={msg} />}
@@ -3624,6 +3637,10 @@ function InnboksTab() {
       {pakkeReq && (
         <Pakkebygger profil={pakkeReq.profil} foresporselTittel={pakkeReq.tittel} onLukk={() => setPakkeReq(null)} />
       )}
+      {/* KROK 7c — Sentrumsposten (avis-visning) over dashbordet. */}
+      <AnimatePresence>
+        {visAvis && <AvisOverlay utgave={visAvis} onClose={() => setVisAvis(null)} />}
+      </AnimatePresence>
     </div>
   )
 }
