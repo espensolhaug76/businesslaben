@@ -28,6 +28,7 @@ import GameFeelAudio from './gamefeel/GameFeelAudio'
 import MonterScene from './city/MonterScene'
 import LobbyView from './city/LobbyView'
 import { districtOfLokale } from '../data/districts'
+import { getScenario } from './sales/scenarios'
 import { IS_DEV_COORDS } from './city/DevCoordHelper'
 import DevPanel from './dev/DevPanel'
 
@@ -293,7 +294,17 @@ function GameContent() {
       <DashboardOverlay open={dashboardOpen} onClose={closeDashboard} initialTab={dashboardTab as any} />
       {salesKind === 'stamkunde'
         ? <StamkundeMoteOverlay open={salesOpen} onClose={closeSales} scenarioId={salesScenarioId} />
-        : <SalesScenarioOverlay open={salesOpen} onClose={closeSales} scenarioId={salesScenarioId} />}
+        : <SalesScenarioOverlay open={salesOpen} onClose={closeSales} scenarioId={salesScenarioId}
+            onStep={stepId => {
+              // avsluttesVedKasse (klesbutikk: Angrekjøpet/Gaven): når dialogen når
+              // 'kasse'-steget flyttes oppgjøret til kassevyen (/inne). Kafé-scenarier
+              // setter ikke avsluttesVedKasse ⇒ no-op (byte-identisk).
+              if (stepId !== 'kasse') return
+              const sc = getScenario(salesScenarioId)
+              if (sc?.avsluttesVedKasse && districtId && lokaleId && !isInterior) {
+                navigate(`/game/d/${districtId}/l/${lokaleId}/inne`)
+              }
+            }} />}
       <YearEndOverlay />
       {/* Dagsoppgjør: «Bestill til i morgen» åpner dashbordet på Produkter uten
           å avansere dagen; oppgjøret skjules mens dashbordet ligger over (det

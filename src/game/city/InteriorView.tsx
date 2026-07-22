@@ -9,6 +9,8 @@ import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
 import { tileCount, trauCols } from './MonterScene'
 import { useGame, turistsesongInfo } from '../GameContext'
 import { getActiveIndustryDefinition } from '../data/industryDefinition'
+import { kasseKundeById } from '../data/klesbutikkKunder'
+import { KLESBUTIKK_SCENARIO_KUNDE } from '../sales/klesbutikkScenarios'
 import { BALANCE } from '../data/balance'
 import './cityAnim.css'
 import { dagSeed } from '../data/backgroundSales'
@@ -224,12 +226,18 @@ export default function InteriorView({ districtId, lokaleId }: {
     setRev(r => r + 1)
   }
 
-  // Live-kalibrerbare plasserings-konstanter (slidere ved ?dev=1).
-  const [occludeYLeft, setOccludeYLeft] = useState(DEFAULT_OCCLUDE_Y_LEFT)
-  const [occludeYRight, setOccludeYRight] = useState(DEFAULT_OCCLUDE_Y_RIGHT)
-  const [centerX, setCenterX] = useState(DEFAULT_CENTER_X)
-  const [waistY, setWaistY] = useState(DEFAULT_WAIST_Y)
-  const [scale, setScale] = useState(DEFAULT_SCALE)
+  // BRANSJE-DEFINISJON (skall-synk DEL 2): den aktive bransjens kassevy leverer
+  // scenebilde + de fem kunde-/disk-konstantene. UTELATT (kafeen) ⇒ DEFAULT-verdiene
+  // + speil-bildet, byte-identisk. Klesbutikk: klesbutikk-kassevy.png + KLESBUTIKK_KASSE_*.
+  const kassevy = activeDef.kassevy
+  const kasseImg = kassevy?.sceneImage ?? interiorImg
+  // Live-kalibrerbare plasserings-konstanter (slidere ved ?dev=1). Init fra aktiv
+  // bransjes kassevy-konstanter (kafeen: DEFAULT).
+  const [occludeYLeft, setOccludeYLeft] = useState(kassevy?.konstanter.OCCLUDE_Y_LEFT ?? DEFAULT_OCCLUDE_Y_LEFT)
+  const [occludeYRight, setOccludeYRight] = useState(kassevy?.konstanter.OCCLUDE_Y_RIGHT ?? DEFAULT_OCCLUDE_Y_RIGHT)
+  const [centerX, setCenterX] = useState(kassevy?.konstanter.CENTER_X ?? DEFAULT_CENTER_X)
+  const [waistY, setWaistY] = useState(kassevy?.konstanter.WAIST_Y ?? DEFAULT_WAIST_Y)
+  const [scale, setScale] = useState(kassevy?.konstanter.SCALE ?? DEFAULT_SCALE)
   // PER-KUNDE override (dev): kalibrering av KUN den viste kunden (f.eks. Live),
   // keyet på scenario-id. Overstyrer den delte base-kalibreringen for den kunden.
   // Init fra localStorage så kalibrering overlever reload.
@@ -341,9 +349,16 @@ export default function InteriorView({ districtId, lokaleId }: {
   const shownId = activeScenario?.id ?? null
   const scenCal = activeScenario?.spriteCal
   const ovr = shownId ? custOverrides[shownId] : undefined
-  const effScale = ovr?.scale ?? scenCal?.scale ?? scale
-  const effCenterX = ovr?.centerX ?? scenCal?.centerX ?? centerX
-  const effWaistY = ovr?.waistY ?? scenCal?.waistY ?? waistY
+  // Klesbutikk: per-kunde spriteCal bor i klesbutikkKunder.ts (DELTA-format
+  // {dx,dy,scale} rundt de Espen-låste KLESBUTIKK_KASSE-basen), ikke på scenariet.
+  // Slås opp via scenario→kunde. Kafeen bruker scenariets absolutte spriteCal
+  // {scale,centerX,waistY} som før (klesCal = undefined ⇒ eff uendret).
+  const klesCal = kassevy && shownId
+    ? kasseKundeById(KLESBUTIKK_SCENARIO_KUNDE[shownId] ?? '')?.spriteCal
+    : undefined
+  const effScale = ovr?.scale ?? (klesCal ? scale * (klesCal.scale ?? 1) : scenCal?.scale ?? scale)
+  const effCenterX = ovr?.centerX ?? (klesCal ? centerX + (klesCal.dx ?? 0) : scenCal?.centerX ?? centerX)
+  const effWaistY = ovr?.waistY ?? (klesCal ? waistY + (klesCal.dy ?? 0) : scenCal?.waistY ?? waistY)
 
   // Dev: drar man en kunde-slider mens EN KUNDE VISES, skrives verdien til DENNE
   // kundens override (og spriteCal logges for innliming) — den delte basen (og de
@@ -474,7 +489,7 @@ export default function InteriorView({ districtId, lokaleId }: {
         {/* BAKGRUNN (z=0) */}
         {!imgFailed ? (
           <img
-            src={interiorImg}
+            src={kasseImg}
             alt="Interiør"
             draggable={false}
             onError={() => setImgFailed(true)}
@@ -760,7 +775,7 @@ export default function InteriorView({ districtId, lokaleId }: {
             skråkanten. Sømløst med bakgrunnen, okkluderer kundens underkropp. */}
         {!imgFailed && (
           <img
-            src={interiorImg}
+            src={kasseImg}
             alt=""
             aria-hidden
             draggable={false}

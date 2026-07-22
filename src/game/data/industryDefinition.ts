@@ -22,8 +22,11 @@ import { KLESBUTIKK_KATALOG } from './klesbutikkKatalog'
 import {
   MONTER_TRAU, INTERIOR_MIRROR_TRAU, INTERIOR_MENU_BOARD, STOREFRONT_HOTSPOTS,
   KLESBUTIKK_VINDU, KLESBUTIKK_BUTIKKVEGG,
+  KLESBUTIKK_KASSE_SCALE, KLESBUTIKK_KASSE_CENTER_X, KLESBUTIKK_KASSE_WAIST_Y,
+  KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT, KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT,
   type MonterTrau, type InteriorMirrorTrau,
 } from '../../data/districts'
+import type { KassevyKonstanter } from '../geometry/kassevyBase'
 import { CAFE_SCENARIO_IDS } from '../sales/scenarios'
 import { KLESBUTIKK_SCENARIO_IDS } from '../sales/klesbutikkScenarios'
 import { CAFE_SPEND, FASHION_BUDGETS, type PersonaBudsjett } from './personas'
@@ -206,6 +209,12 @@ export interface IndustryDefinition {
    *  linjer — feltet er del av modul-adopsjonen og står klart for evt. senere
    *  linje-basert kalibrering. */
   hyllelinjer?: Hyllelinje[]
+  /** «Bak-disken»-kassevyen (InteriorView, /inne) leser scenebilde + kunde-/disk-
+   *  okklusjons-konstanter herfra via den delte `kassevyBase`-modulen. UTELATT for
+   *  kafeen ⇒ InteriorView faller til sine egne DEFAULT-verdier + speil-bildet
+   *  (byte-identisk). Klesbutikken setter den (klesbutikk-kassevy.png + Espen-låste
+   *  KLESBUTIKK_KASSE_*). Per-kunde spriteCal bor i klesbutikkKunder.ts. */
+  kassevy?: { sceneImage: string; konstanter: KassevyKonstanter }
 }
 
 export const CAFE: IndustryDefinition = {
@@ -392,6 +401,20 @@ export const KLESBUTIKK: IndustryDefinition = {
     { id: 'heng-p-9aaf', type: 'heng', x: 56.2, y: 53.8, scale: 0.05, variant: 'profil' },
     { id: 'heng-p-6010', type: 'heng', x: 51, y: 53.4, scale: 0.05, variant: 'profil' },
   ],
+  // Kassevy (bak-disken, /inne): klesbutikk-kassevy.png + Espen-låste kunde-/disk-
+  // konstanter (districts.ts, KLESBUTIKK_KASSE_*). Per-kunde spriteCal i
+  // klesbutikkKunder.ts. KLESBUTIKK_KUNDE_BASE-SONEN er fortsatt førstepasning
+  // (ikke en del av disse konstantene — Espen låser den i ?dev=1 → 💰 Kasse → 🧭 Soner).
+  kassevy: {
+    sceneImage: '/assets/raw/klesbutikk-kassevy.png',
+    konstanter: {
+      SCALE: KLESBUTIKK_KASSE_SCALE,
+      CENTER_X: KLESBUTIKK_KASSE_CENTER_X,
+      WAIST_Y: KLESBUTIKK_KASSE_WAIST_Y,
+      OCCLUDE_Y_LEFT: KLESBUTIKK_KASSE_OCCLUDE_Y_LEFT,
+      OCCLUDE_Y_RIGHT: KLESBUTIKK_KASSE_OCCLUDE_Y_RIGHT,
+    },
+  },
 }
 
 /** Registeret over bransjer som FAKTISK har en definisjon. `cafe` er alltid med;
