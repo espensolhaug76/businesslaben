@@ -1202,7 +1202,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await ventState(page, s => s.fagAktiv?.m === false, 'M av speilet til state')
 
     // (A) Faner: rene M-faner HELT borte; FD-faner + FD-delte + kjerne igjen.
-    // Personale (ren FD), Forretningsplan + Lokasjon (FD+M) STÅR fordi FD er på.
+    // Personale + Forretningsplan + Lokasjon (alle FD+M) STÅR fordi FD er på.
     await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
     for (const id of ['malgruppe', 'markedsforing', 'utstilling', 'distribusjon']) {
       await expect(page.getByTestId(`fane-${id}`), `M-fane ${id} skjult`).toHaveCount(0)
@@ -1330,7 +1330,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok('Datavakt (beredskap_risiko_levert): tomt/ulagret grunnlag → fyrer ikke; ≥1 tiltak → fyrer')
   })
 
-  await steg(page, rapport, 31, 'Fagmapping-korreksjon: Personale=REN FD, Forretningsplan=FD+M, KS styrer ingen fane', async ctx => {
+  await steg(page, rapport, 31, 'Fagmapping: Personale=FD+M, Forretningsplan=FD+M, Økonomi=ren FD, KS styrer ingen fane', async ctx => {
     await page.goto('/game?skip=1')
     await ventState(page, s => s.phase !== 'startup', 'boot steg 31')
     await page.waitForFunction(() => !!(window as unknown as { __SET_FAG_DEV__?: unknown }).__SET_FAG_DEV__, null, { timeout: 8000 })
@@ -1341,30 +1341,30 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     const nullstill = () => page.evaluate(() => (window as unknown as { __NULLSTILL_DEV__: () => void }).__NULLSTILL_DEV__())
     const dash = () => page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
 
-    // (A) FD av (M/KS på): Personale (ren FD) + Økonomi (FD) SKJULT; Forretningsplan
-    //     (FD+M) og Målgruppe (M) STÅR fordi M er på.
+    // (A) FD av (M/KS på): Økonomi (ren FD) SKJULT; Personale (delt FD+M),
+    //     Forretningsplan (FD+M) og Målgruppe (M) STÅR fordi M er på.
     await setFag('fd', false)
     await ventState(page, s => s.fagAktiv?.fd === false, 'FD av')
     await dash()
-    await expect(page.getByTestId('fane-personale'), 'Personale skjult (ren FD)').toHaveCount(0)
-    await expect(page.getByTestId('fane-okonomi'), 'Økonomi skjult (FD)').toHaveCount(0)
+    await expect(page.getByTestId('fane-okonomi'), 'Økonomi skjult (ren FD)').toHaveCount(0)
+    await expect(page.getByTestId('fane-personale'), 'Personale står (delt FD+M, M på)').toBeVisible()
     await expect(page.getByTestId('fane-forretningsplan'), 'Forretningsplan står (FD+M, M på)').toBeVisible()
     await expect(page.getByTestId('fane-malgruppe'), 'Målgruppe står (M)').toBeVisible()
     await page.getByTestId('dashbord-lukk').click()
     await nullstill(); await ventState(page, s => s.fagAktiv?.fd === true, 'FD tilbake')
 
-    // (B) M av (FD/KS på): Personale (FD) + Forretningsplan/Lokasjon (FD-delen) STÅR.
+    // (B) M av (FD/KS på): Personale (FD+M) + Forretningsplan/Lokasjon (FD-delen) STÅR.
     await setFag('m', false)
     await ventState(page, s => s.fagAktiv?.m === false, 'M av')
     await dash()
-    await expect(page.getByTestId('fane-personale'), 'Personale står (FD på)').toBeVisible()
+    await expect(page.getByTestId('fane-personale'), 'Personale står (delt FD+M, FD på)').toBeVisible()
     await expect(page.getByTestId('fane-forretningsplan'), 'Forretningsplan står (FD på)').toBeVisible()
     await expect(page.getByTestId('fane-lokasjon'), 'Lokasjon står (FD+M, FD på)').toBeVisible()
-    // Slå FD av OGSÅ (begge av): de FD+M-delte fanene forsvinner nå (dashbordet
-    // åpent, JS-toggle → ingen redirect siden Oversikt (kjerne) er aktiv).
+    // Slå FD av OGSÅ (begge av): de FD+M-delte fanene (inkl. Personale) forsvinner nå
+    // (dashbordet åpent, JS-toggle → ingen redirect siden Oversikt (kjerne) er aktiv).
     await setFag('fd', false)
     await ventState(page, s => s.fagAktiv?.fd === false, 'FD av også')
-    for (const id of ['lokasjon', 'forretningsplan', 'produkter', 'priser']) {
+    for (const id of ['personale', 'lokasjon', 'forretningsplan', 'produkter', 'priser']) {
       await expect(page.getByTestId(`fane-${id}`), `${id} borte når BÅDE FD og M er av`).toHaveCount(0)
     }
     await nullstill(); await ventState(page, s => s.fagAktiv?.fd === true && s.fagAktiv?.m === true, 'fag tilbake')
@@ -1387,7 +1387,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(utenKs.some(q => fagForSporsmal(q) === 'ks'), 'KS av → ingen ks-spørsmål').toBe(false)
     expect(medKs.some(q => fagForSporsmal(q) === 'ks'), 'KS på → ks-spørsmål finnes').toBe(true)
     await nullstill()
-    ctx.ok('Personale=FD (skjult ved FD av, står ved M av); Forretningsplan=FD+M (står så lenge FD el. M er på); KS av → 0 faner endres, men ks-spørsmål stilles ikke')
+    ctx.ok('Personale=FD+M (står så lenge FD el. M er på, borte når begge av); Forretningsplan=FD+M; Økonomi=ren FD (skjult ved FD av); KS av → 0 faner endres, men ks-spørsmål stilles ikke')
   })
 
   await steg(page, rapport, 32, 'Vareeksponering: bakgrunnssalg selger KUN utstilte varer; tom disk → 0 salg/tap; tapte-kort = sum av tre', async ctx => {
@@ -1648,7 +1648,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok('append gir ny id øverst; eksisterende logglinjers id-er står uendret (stabil key → ingen re-mount)')
   })
 
-  await steg(page, rapport, 37, 'Mentor daglig-refleksjon: kø vinner (Personale synlig) · FD av → 0 kø-tap + svinn vinner · nullstill re-armer', async ctx => {
+  await steg(page, rapport, 37, 'Mentor daglig-refleksjon: kø vinner (Personale synlig, også ren M) · FD+M av → 0 kø-tap + svinn vinner · nullstill re-armer', async ctx => {
     await page.goto('/game?skip=1')
     await ventState(page, s => s.phase !== 'startup', 'boot 37')
     await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
@@ -1684,13 +1684,21 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(s.mentorDagligHint?.signal, 'kø vinner over svinn når Personale er synlig').toBe('ko')
     const dagKo = s.mentorDagligHint?.dag
     await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag 37b')
-    // Skru FD AV → bemanning/kø finnes ikke lenger for eleven.
+    // Skru FD AV, men behold M → Personale er DELT FD+M, så fanen er FORTSATT
+    // synlig i ren M. Kø/kapasitet skal derfor være AKTIV (kø-tap oppstår).
     await dispatch(page, { type: 'SET_FAG_AKTIV', fag: { fd: false, m: true, ks: true } })
-    // Dag 3 (FD av): 0 kø-tap, svinn 2 dager på rad → SVINN vinner (kø-signal filtrert).
+    // Dag 3 (ren M): Personale synlig → kø aktiv → kø-tap + svinn → KØ vinner igjen.
     s = await kjørSvinnDag()
-    expect(s.dayStats.koKunder, 'FD av: INGEN kø-tap (ubegrenset kapasitet)').toBe(0)
-    expect(køSum(s), 'FD av: tom kø-buffer').toBe(0)
-    expect(s.mentorDagligHint?.signal, 'FD av: kø-signal filtrert → svinn vinner').toBe('svinn')
+    expect(s.dayStats.koKunder, 'ren M: kø aktiv (Personale synlig) → kø-tap').toBeGreaterThan(5)
+    expect(s.mentorDagligHint?.signal, 'ren M: kø vinner (Personale synlig)').toBe('ko')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag 37c')
+    // Skru OGSÅ M av → BEGGE av → Personale skjult → ubegrenset kapasitet.
+    await dispatch(page, { type: 'SET_FAG_AKTIV', fag: { fd: false, m: false, ks: true } })
+    // Dag 4 (FD+M av): 0 kø-tap, svinn 2 dager på rad → SVINN vinner (kø-signal filtrert).
+    s = await kjørSvinnDag()
+    expect(s.dayStats.koKunder, 'FD+M av: INGEN kø-tap (ubegrenset kapasitet)').toBe(0)
+    expect(køSum(s), 'FD+M av: tom kø-buffer').toBe(0)
+    expect(s.mentorDagligHint?.signal, 'FD+M av: kø-signal filtrert → svinn vinner').toBe('svinn')
     expect(s.mentorDagligHint?.dag, 'daglig-hint er dag-scopet (ny dag ≠ forrige)').not.toBe(dagKo)
 
     // ⚙ DEV «Nullstill mentor-triggere» (dispatches 'mentor:reset') → tømmer det
@@ -1698,7 +1706,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await page.evaluate(() => { try { localStorage.setItem('mentor_fired_v1', JSON.stringify(['forste_apning', 'forste_bykart'])) } catch { /* */ } })
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:reset')))
     await expect.poll(async () => page.evaluate(() => localStorage.getItem('mentor_fired_v1'))).toBeNull()
-    ctx.ok('kø vinner (FD på), FD av → 0 kø-tap + svinn vinner (daglig-hint dag-scopet); nullstill tømmer fyrt-settet')
+    ctx.ok('kø vinner (FD på OG ren M — Personale synlig), FD+M av → 0 kø-tap + svinn vinner (daglig-hint dag-scopet); nullstill tømmer fyrt-settet')
   })
 
   await steg(page, rapport, 38, 'Bestillings-UX: «I bestilling»-total vises og akkumulerer ved to klikk', async ctx => {
@@ -1744,6 +1752,69 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await expect(page.getByTestId('pris-coffee'), 'utkast bevart ved fanebytte').toHaveValue('61')
     await expect(page.getByText('Ulagrede endringer').first(), 'indikator bevart ved retur').toBeVisible()
     ctx.ok('endring → «Ulagrede endringer», lagre → «Sist lagret kl.», utkast + indikator bevart ved fanebytte')
+  })
+
+  const firedSet = () => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] as string[] } })
+
+  await steg(page, rapport, 40, 'Scene-melding: scenebytte forkaster ulest scene-melding og re-armer triggeren', async ctx => {
+    await page.evaluate(() => { try { localStorage.removeItem('mentor_fired_v1') } catch { /* */ } })
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 40')
+    // /game mountes CityMapView → forste_bykart fyrer (aktiv scene = bykart).
+    await expect.poll(firedSet).toContain('forste_bykart')
+    const scene = (id: string | null, sc: string) => page.evaluate(([i, s]: [string | null, string]) => window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { ...(i ? { id: i } : {}), scene: s } })), [id, sc] as [string | null, string])
+    // Gå til bydel → forste_bydel fyrer (ulest i køen).
+    await scene('forste_bydel', 'bydel')
+    await expect.poll(firedSet).toContain('forste_bydel')
+    // Bytt scene til bykart UTEN å lese → forste_bydel forkastes + re-armes.
+    await scene('forste_bykart', 'bykart')
+    await expect.poll(firedSet, { message: 'forste_bydel re-armet' }).not.toContain('forste_bydel')
+    expect(await firedSet(), 'forste_bykart fyrte i ny scene').toContain('forste_bykart')
+    // Tilbake til bydel → kan fyre igjen (engangs-forsøket ikke brent).
+    await scene('forste_bydel', 'bydel')
+    await expect.poll(firedSet).toContain('forste_bydel')
+    ctx.ok('scenebytte forkaster ulest scene-melding fra køen og re-armer triggeren (kan fyre igjen ved retur)')
+  })
+
+  await steg(page, rapport, 41, 'Tema-fag-gating (HMS-bug): beredskap aktiv + FD av → ingen tema-trigger; FD på → fyrer', async ctx => {
+    // Rein tavle + aktiver beredskap FØR reload (leses ved mount).
+    await page.evaluate(() => { try { localStorage.removeItem('mentor_fired_v1'); localStorage.setItem('tema-aktivering-dev', JSON.stringify({ beredskap: { aktiv: true, nivaa: 'vg1' } })) } catch { /* */ } })
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 41')
+    await page.waitForFunction(() => !!(window as unknown as { __SET_FAG_DEV__?: unknown }).__SET_FAG_DEV__, null, { timeout: 8000 })
+    const setFag = (f: string, v: boolean) => page.evaluate(([ff, vv]) => (window as unknown as { __SET_FAG_DEV__: (f: string, v: boolean) => void }).__SET_FAG_DEV__(ff as string, vv as boolean), [f, v] as const)
+    // FD AV (beredskap-temaets fag) → temaet inaktivt.
+    await setFag('fd', false)
+    await ventState(page, s => s.fagAktiv?.fd === false, 'FD av')
+    await dispatch(page, { type: 'CONFIRM_BEREDSKAP_PLAN' })
+    await ventState(page, s => (s as unknown as { beredskap: { planBekreftet: boolean } }).beredskap.planBekreftet === true, 'plan bekreftet')
+    await page.waitForTimeout(400)
+    expect(await firedSet(), 'FD av: beredskap-trigger armes IKKE (fag-gated)').not.toContain('beredskap_plan_bekreftet')
+    // FD PÅ → temaet aktivt → trigger fyrer.
+    await setFag('fd', true)
+    await ventState(page, s => s.fagAktiv?.fd === true, 'FD på')
+    await expect.poll(firedSet, { message: 'FD på: beredskap-trigger fyrer' }).toContain('beredskap_plan_bekreftet')
+    await page.evaluate(() => { try { localStorage.setItem('tema-aktivering-dev', JSON.stringify({})) } catch { /* */ } })
+    ctx.ok('tema-trigger fag-gated: beredskap aktiv + FD av → ingen HMS-melding; FD på → melding tilbake (Espen spør + innboks var alt fag-gated)')
+  })
+
+  await steg(page, rapport, 42, 'Mentor-pose: pose-bytte endrer ikke figurens bounding-box (computed style + rect)', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 42')
+    await expect(page.getByTestId('mentor-figur')).toBeVisible()
+    const boks = () => page.evaluate(() => { const el = document.querySelector('[data-testid="mentor-figur"]')!; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return { w: Math.round(r.width), h: Math.round(r.height), cw: cs.width, ch: cs.height } })
+    const posefil = () => page.evaluate(() => (document.querySelector('[data-testid="mentor-figur"] img') as HTMLImageElement)?.src.split('/').pop() ?? '')
+    const box0 = await boks()
+    // v3 (leser): åpne et Fagord-kort.
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:fagord', { detail: { open: true } })))
+    await expect.poll(posefil).toContain('leser')
+    expect(await boks(), 'bounding-box uendret v3 (leser)').toEqual(box0)
+    // v2 (nøytral): en aktiv melding.
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:fagord', { detail: { open: false } })))
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_laan' } })))
+    await expect.poll(posefil).toContain('noytral')
+    expect(await boks(), 'bounding-box uendret v2 (nøytral)').toEqual(box0)
+    ctx.ok(`figur-containeren låst til ${box0.cw}×${box0.ch} — pose-bytte (v5/v3/v2) endrer ikke bounding-box; poser preloades`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

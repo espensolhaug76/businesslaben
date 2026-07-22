@@ -3040,3 +3040,88 @@ Appendiks: kildeoversikt. Parkerte mekanikker nevnt i én linje.
 - **Lagre:** endre en pris → «Ulagrede endringer» dukker opp; trykk «Lagre priser»
   (øverst eller nederst) → «Lagret ✓» + «Sist lagret kl. …»; bytt fane og tilbake
   → endringen og indikatoren står. Samme for Målgruppe.
+
+---
+
+## Personale FD→FD+M + scene-kontekst + tema-fag-gating + pose-boks — 2026-07-22 (siste før merge)
+
+### DEL 1 — Personale remappet FD → FD+M
+Espens fagbeslutning: bemanning av salgs-/serviceflater ligger også i
+markedsføringsløpet på yrkesfag. `visFag: ['fd'] → ['fd','m']` (badge-primær
+forblir FD). Fanen er nå synlig når MINST ETT av FD/M er på, borte først når begge
+er av.
+
+**Konsekvens for kø-regelen (forrige runde):** kø/kapasitet er aktiv når
+Personale-fanen er SYNLIG — altså nå også i ren M-modus. Ubegrenset-kapasitet
+gjelder kun når BÅDE FD og M er av (`køAktiv = fagAktiv.fd || fagAktiv.m` i TICK).
+Mentorens kø-refleksjon følger samme port (`personaleSynlig = fd || m`).
+
+**Oppdatert fagmapping (faner):**
+
+| Fane | visFag | Synlig når |
+|------|--------|-----------|
+| Personale | FD+M | FD **eller** M på |
+| Forretningsplan, Produkter, Priser, Lokasjon | FD+M | FD **eller** M på |
+| Økonomi | FD | FD på |
+| Målgruppe, Markedsføring, Distribusjon, Utstilling | M | M på |
+| KS | — | (KS styrer ingen fane; kun tema/Espen spør) |
+
+### DEL 2 — Scene-orienteringer er kontekstbundne
+Scene-triggerne (`forste_bykart/forste_bydel/forste_disk_stell/forste_vindu`) er
+merket med scene-id (`SCENE_AV_TRIGGER`). Rute-scenene er gjensidig utelukkende, så
+hver scene-mount = ett scene-bytte. Ved bytte forkastes en ULEST scene-melding for
+en ANNEN scene stille fra køen OG re-armes (engangs-forsøket brennes ikke — den
+kommer igjen neste gang eleven er i riktig scene). Gjelder både kø (N-badge) og en
+åpen boble (fjernes fra køen → boblen lukkes). Dashbordet er et OVERLAY (ikke rute):
+`forste_dashbord` forkastes/re-armes når dashbordet lukkes ulest (via mentor:fane).
+Rute-scenene melder scene også uten trigger (interiør/storefront) så et bytte dit
+også rydder forrige scenes melding.
+
+### DEL 3 — Tema-innhold gates av temaets fag (HMS-buggen)
+**Rotårsak:** beredskap-triggerne (og de andre tema-triggerne) i mentorens
+hovedløkke leste bare `state.beredskap.*` og sjekket verken fag eller
+tema-aktivering → de fyrte selv med FD/HMS av. **Fiks:** generell port i løkka —
+`TEMA_AV_TRIGGER` mapper tema-trigger → tema-id, og `aktiveTemaer` (som ALT er
+fag-gated i GameContext) må ha temaet aktivt før triggeren armes. Reprodusert case:
+beredskap aktiv + FD av → INGEN beredskap-/HMS-melding; FD på → tilbake.
+
+**Funn ved gjennomgang av andre lekkasjer:**
+- **Espen spør:** allerede korrekt gated — `finnKandidater` filtrerer
+  tema-spørsmål på `aktiveTemaIds`, som utledes fra `aktiveTemaer` (fag-gated).
+- **Innboks-hendelser:** allerede fag-gated — `genererDagensEposter` legger bare
+  til leverandørtilbud når FD er på og mkf-tilbud når M er på; ingen tema-/HMS-
+  spesifikke e-poster finnes.
+- **`tema_X_aktivert`-triggerne:** fyres via egen effekt som alt sjekker
+  `aktiveTemaer[...]` (fag-gated) — ingen lekkasje (og nå dekket av porten også).
+- **Parkerte tema (reiseliv):** allerede gated av `TURISTSESONG_AKTIV` i `oppfylt`.
+
+Konklusjon: den eneste reelle lekkasjen var mentorens hovedløkke — nå tettet.
+
+### DEL 4 — Mentor-figurens størrelseshopp ved pose-bytte
+Figur-containeren (knappen, `data-testid="mentor-figur"`) har LÅST størrelse
+(150×170). Posebildet ligger ABSOLUTT inni og bunn-forankret, så pose-bytte aldri
+endrer containerens bounding-box. Alle poser PRELOADES ved mount, så et bytte aldri
+venter på bildelast (var den viktigste kilden til «hoppet»). Verifisert:
+`getBoundingClientRect` + `getComputedStyle` er identiske på tvers av v5/v3/v2.
+
+### DEL 5 — Spilltest (42/42 GRØNT)
+- **Steg 26/31 (oppdatert):** Personale=FD+M — står i ren M (M på, FD av), borte
+  først når BEGGE er av.
+- **Steg 37 (oppdatert):** kø vinner daglig-refleksjonen når Personale synlig — FD
+  på OG ren M; FD+M av → 0 kø-tap + svinn vinner.
+- **Steg 40 (nytt):** scenebytte forkaster ulest scene-melding + re-armer triggeren
+  (kan fyre igjen ved retur).
+- **Steg 41 (nytt):** beredskap aktiv + FD av → ingen tema-trigger; FD på → fyrer.
+- **Steg 42 (nytt):** pose-bytte (v5/v3/v2) → figur-containerens bounding-box uendret.
+
+### Chrome-sjekkliste — siste runde
+- **Personale i ren M:** slå FD av / M på (⚙) → Personale-fanen står, og en travel
+  dag med for få på vakt gir fortsatt «kø»-linje/-tap. Slå BEGGE (FD+M) av →
+  Personale borte, ingen kø.
+- **Scene-melding:** åpne en bydel (Espen har en orientering bak peker), naviger
+  videre uten å lese den → den forsvinner stille; kom tilbake til bydelen → den
+  kommer igjen.
+- **HMS-bug:** med beredskap-temaet aktivt, slå FD av → Espen sier INGENTING om
+  beredskap/HMS; slå FD på → meldingene er tilbake.
+- **Pose-bytte:** klikk et fagord (Espen tar lese-posen), lukk det, få en melding
+  (nøytral pose) → figuren står bom stille, ingen størrelses-/posisjonshopp.
