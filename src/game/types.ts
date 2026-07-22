@@ -750,6 +750,10 @@ export interface GameState {
     storstAvvik: { navn: string; budsjett: number; faktisk: number } | null
     dekningsgradAvvik: { ditt: number; bok: number } | null
   } | null
+  /** MENTOR DAGLIG REFLEKSJON: satt ved CLOSE_DAY (dagsoppgjøret), leses av den
+   *  daglige mentor-triggeren. Overlever at lastDayResult nullstilles ved dagsbytte.
+   *  `dag` = «år-måned-dag» (per-dag re-arm). Null når dagen ikke ga noe å si. */
+  mentorDagligHint: { dag: string; signal: string; melding: string } | null
 
   // ── TEMA 8 Kampanje og markedsplan (kun i bruk når temaet er aktivt) ──
   /** Aktiv kampanje + effektrapport-historikk. Persistert. */

@@ -26,6 +26,7 @@ import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinn
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
+import { dagligRefleksjon } from './data/mentorDaglig'
 import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from './data/featureFlags'
 import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS } from './sales/scenarios'
 import { beregnPakke, velgProfil, BESOKSPROFILER, velgPakkeForesporsler } from './data/reiseliv'
@@ -257,6 +258,7 @@ const initialState: GameState = {
   budsjett: { maaneder: {} },
   nokkeltall: {},
   budsjettOppgjorHint: null,
+  mentorDagligHint: null,
   kampanje: { aktiv: null, historikk: [], visRapportFor: null },
   prisendretDag: {},
   mkfBoost: null,
@@ -1903,10 +1905,17 @@ function reducer(state: GameState, action: Action): GameState {
         // tikket — en kunde som ventet fra et tidligere tick betjenes altså når
         // kapasitet frigjøres. Til slutt går de som har ventet lenger enn
         // toleransen (og bare de telles som «gikk»).
+        // FAGFILTER (samme prinsipp som datavakten): når Personale-fanen er SKJULT
+        // (FD av) finnes ikke bemanning/kø for eleven — en konsekvens hen ikke kan
+        // handle på. Da settes kapasiteten effektivt ubegrenset: ALLE ankomne (og
+        // evt. rester i bufferen) betjenes med en gang, ingen kø-tap, ingen buffer.
+        // Bemannings-state (employees/playerShift) røres IKKE — den ligger urørt til
+        // FD slås på igjen.
+        const køAktiv = state.fagAktiv.fd
         let kø = nyeAnkomne > 0
           ? [...state.dayBackground.kø, { ankomstMinutt: nyMinutt, antall: nyeAnkomne }]
           : state.dayBackground.kø
-        let kap = Math.floor(pool)
+        let kap = køAktiv ? Math.floor(pool) : Number.MAX_SAFE_INTEGER
         let betjent = 0
         if (kap > 0 && kø.length > 0) {
           const nyKø: { ankomstMinutt: number; antall: number }[] = []
@@ -1919,14 +1928,17 @@ function reducer(state: GameState, action: Action): GameState {
           kø = nyKø
         }
         // «Gikk»: ventende bolker som har oversteget toleransen (etter betjening).
+        // Kun når kø er aktiv (FD på) — ellers er bufferen tom og ingen går.
         let koKunder = 0
-        if (BALANCE.koVentMinutter >= 0 && kø.length > 0) {
+        if (køAktiv && BALANCE.koVentMinutter >= 0 && kø.length > 0) {
           kø = kø.filter(bolk => {
             if (nyMinutt - bolk.ankomstMinutt >= BALANCE.koVentMinutter) { koKunder += bolk.antall; return false }
             return true
           })
         }
-        pool -= betjent
+        // Tapp kapasitet-resten bare når kø er aktiv (ellers er betjent «ubegrenset»
+        // og skal ikke trekke ned den bankede kapasiteten).
+        if (køAktiv) pool -= betjent
         // Ubrukt kapasitet bankes ikke opp i det uendelige (staff-tid tapes) —
         // hold igjen inntil ~ett tikk med slakk for å glatte avrunding.
         pool = Math.min(pool, kapPerTick + 1)
@@ -2114,6 +2126,17 @@ function reducer(state: GameState, action: Action): GameState {
         refleksjon,
       }
 
+      // MENTOR DAGLIG REFLEKSJON: velg dagens største signal (kø/svinn/overpris/
+      // tomt/anerkjennelse) FØR dagens resultat legges i historikken, så
+      // «svinn to dager på rad» kan sammenligne med forrige dag. Kø-signalet
+      // kommenteres bare når Personale-fanen er synlig (FD på). Datavakt: null =
+      // ingenting å si. Lagres så det overlever at lastDayResult nullstilles.
+      const forrigeDag = state.dayHistory[state.dayHistory.length - 1]
+      const dagligRefl = dagligRefleksjon(result, forrigeDag, state.fagAktiv.fd)
+      const mentorDagligHint = dagligRefl
+        ? { dag: `${result.year}-${result.month}-${result.dayNumber}`, signal: dagligRefl.signal, melding: dagligRefl.melding }
+        : null
+
       // TEMA 8: akkumuler kampanjedagen; fullfør ved siste dag (effektrapport +
       // restaurer priser + ev. tilsynsbrev/bot).
       let kampanje = state.kampanje
@@ -2148,6 +2171,7 @@ function reducer(state: GameState, action: Action): GameState {
         shopOpen: false,
         dayPhase: 'oppgjør',
         lastDayResult: result,
+        mentorDagligHint,
         dayHistory: [...state.dayHistory, result],
         dayBackground: null,
         activeMeetingScenarioId: null,

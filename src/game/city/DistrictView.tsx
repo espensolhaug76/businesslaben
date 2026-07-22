@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGame, useAktiveTemaer } from '../GameContext'
 import { useDevPanel } from '../dev/devPanel'
@@ -43,6 +43,10 @@ export default function DistrictView({
   const [zoomOrigin, setZoomOrigin] = useState<[number, number] | null>(null)
   // Turistkontoret + byhotellet er nå ROM-scener (naviger inn), ikke paneler.
   const [, setRev] = useState(0)   // re-render når sone-traceren skriver (?dev=1)
+  // Mentor: scene-orientering ved første besøk i en bydel (fyres én gang).
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_bydel' } }))
+  }, [])
 
   if (!district) {
     return (

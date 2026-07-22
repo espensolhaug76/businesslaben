@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode } from 'react'
+import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useGame } from '../GameContext'
 import { byId, byTerm, categoryLabel, type GlossaryTerm } from '../data/glossary'
@@ -130,6 +130,14 @@ export default function Fagord({ id, children }: { id: string; children: ReactNo
   const [shownId, setShownId] = useState<string | null>(null)
   const ref = useRef<HTMLSpanElement>(null)
   const term = shownId ? byId(shownId) : null
+
+  // DEL 1e — meld til mentoren når et Fagord-kort åpnes/lukkes → Espen tar
+  // lese-posen (samme visuelle «forklarer»-kobling som når ordboka er åpen).
+  // Cleanup melder LUKKET så posen aldri henger igjen om kortet unmountes åpent.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('mentor:fagord', { detail: { open: shownId != null } }))
+    return () => { if (shownId != null) window.dispatchEvent(new CustomEvent('mentor:fagord', { detail: { open: false } })) }
+  }, [shownId])
 
   function open(e: React.MouseEvent) {
     e.stopPropagation()

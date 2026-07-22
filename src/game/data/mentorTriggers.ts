@@ -98,6 +98,16 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     betingelse: 'Første gang bykartet åpnes',
     melding: 'Her er byen — og hvor du legger butikken betyr mye. Sentrale, folksomme steder koster mer i leie, men gir flere kunder forbi. Hvor tror du folk går mest?',
   },
+  {
+    id: 'forste_bydel',
+    betingelse: 'Første gang en bydel åpnes (ledige lokaler)',
+    melding: 'Dette er én bydel med de ledige lokalene her. Hvert lokale har sin egen leie og forventede kundestrøm — dyrere sentralt, roligere i utkanten. Klikk et lokale for å se detaljene før du bestemmer deg.',
+  },
+  {
+    id: 'forste_dashbord',
+    betingelse: 'Første gang dashbordet åpnes',
+    melding: 'Dette er dashbordet — kontoret ditt. Her styrer du alt utenom selve disken: produkter, priser, målgruppe, økonomi og folk. Fanene øverst deler det opp; ta én ting av gangen.',
+  },
 
   // ── TEMA 1: BEREDSKAP (kun når temaet er aktivt) ────────────────────────────
   {
@@ -250,6 +260,15 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     betingelse: 'Første gang Lokasjon-fanen åpnes',
     fane: 'lokasjon',
     melding: 'Lokasjon er en avveining: en sentral, folksom adresse gir flere kunder forbi, men høyere [[ECO_007|husleie]] hver måned. En billig krok sparer penger — men får du nok folk innom? Hva veier tyngst for DIN butikk?',
+  },
+  // DEL 1d — PRISSTRATEGI-GJENTAK (dynamisk, dag-scopet id: prisstrategi_gjentak|<dag>).
+  // Kortversjon som re-armes på Priser-besøk når et dagsoppgjør viste «priset over
+  // marked»-tap og prisstrategi-introen alt er sett. Ikke `fane`-satt (velges ikke
+  // automatisk som førstegangs-intro); vises via handleFane-spesialtilfellet.
+  {
+    id: 'prisstrategi_gjentak',
+    betingelse: 'Priser-besøk etter et dagsoppgjør med «priset over marked»-tap (intro alt sett)',
+    melding: 'Husk prisstrategien: du taper salg på varer som ligger over markedet. [[MKT_049|Konkurransebasert]] pris — et blikk på hva naboene tar — kan hente de kundene tilbake. Verdt å sjekke [[ECO_011|påslaget]] mot markedet?',
   },
 ]
 

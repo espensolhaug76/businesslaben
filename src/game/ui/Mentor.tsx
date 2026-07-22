@@ -145,6 +145,15 @@ const RISIKO_RANG: Record<string, number> = { lav: 1, middels: 2, høy: 3 }
  *  Faller tilbake på den statiske teksten for andre id-er. */
 function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
   const kr = (n: number) => `${Math.round(n).toLocaleString('nb-NO')} kr`
+  // MENTOR DAGLIG REFLEKSJON (dagsoppgjøret): teksten er bygget reducer-side
+  // (mentorDaglig.ts) og lagret i state.mentorDagligHint, så den overlever at
+  // lastDayResult nullstilles ved dagsbytte. Datavakt: undefined om dagen/id ikke matcher.
+  if (id.startsWith('daglig|')) {
+    const h = s.mentorDagligHint
+    return h && id === `daglig|${h.dag}` ? h.melding : undefined
+  }
+  // DEL 1d — prisstrategi-gjentak: dag-scopet id → statisk kortversjon.
+  if (id.startsWith('prisstrategi_gjentak|')) return mentorMelding('prisstrategi_gjentak')
   // KROK 2 — STAMKUNDER: navngi den første kunden som ble stamkunde.
   if (id === 'stamkunde_forste') {
     const entry = Object.entries(s.stamkunder).find(([, k]) => k.erStamkunde)
@@ -276,12 +285,14 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const [activeFane, setActiveFane] = useState<string | null>(null)
   const [failedImg, setFailedImg] = useState(false)
   const [ordbokOpen, setOrdbokOpen] = useState(false)
+  const [fagordOpen, setFagordOpen] = useState(false)   // et Fagord-kort er åpent → lese-pose (DEL 1e)
   const [forceShow, setForceShow] = useState(false)   // bruker klikket peker-figuren
   const [paused, setPaused] = useState(false)         // melding lukket, neste venter bak peker
   // INTRO ved spillstart (null = ferdig/skjult, 0..2 = steg). Vises én gang.
   const [introStep, setIntroStep] = useState<number | null>(() => introDone() ? null : 0)
   function finishIntro() { saveIntroDone(); setIntroStep(null) }
   const firedRef = useRef(fired); firedRef.current = fired
+  const stateRef = useRef(state); stateRef.current = state   // fersk state for event-lyttere
   // Refs så event-lyttere (mentor:fane) leser FERSKE verdier uten å re-bindes.
   const ordbokOpenRef = useRef(ordbokOpen); ordbokOpenRef.current = ordbokOpen
   const blockedRef = useRef(blocked); blockedRef.current = blocked
@@ -336,12 +347,42 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     }
   }, [aktiveTemaer, dashApnet, fire])
 
-  // Scene-signaler (disk_stell/vindu/bykart) → hendelses-kø.
+  // Scene-signaler (disk_stell/vindu/bykart/bydel/dashbord) → hendelses-kø.
   useEffect(() => {
     const h = (e: Event) => fire((e as CustomEvent).detail?.id)
     window.addEventListener('mentor:signal', h)
     return () => window.removeEventListener('mentor:signal', h)
   }, [fire])
+
+  // DEL 1a — DAGLIG REFLEKSJON: reduceren la dagens signal i state.mentorDagligHint
+  // (ett per dag, valgt + datavaktet reducer-side). Fyr den dag-scopede triggeren
+  // (re-armes per dag via id-en). Vises som en vanlig hendelses-boble når oppgjøret
+  // lukkes (blokkert under oppgjøret → køes + peker, dukker opp når flaten lukkes).
+  useEffect(() => {
+    if (state.mentorDagligHint) fire(`daglig|${state.mentorDagligHint.dag}`)
+  }, [state.mentorDagligHint, fire])
+
+  // DEL 1e — et Fagord-kort er åpent (Fagord.tsx melder via 'mentor:fagord') → samme
+  // lese-pose som når ordboka er åpen. Rent visuelt: «mentoren forklarer».
+  useEffect(() => {
+    const h = (e: Event) => setFagordOpen(!!(e as CustomEvent).detail?.open)
+    window.addEventListener('mentor:fagord', h)
+    return () => window.removeEventListener('mentor:fagord', h)
+  }, [])
+
+  // DEL 1f (KUN DEV) — nullstill ALLE mentor-triggere (engangs/daglige/scene) +
+  // introen, så Espen kan testes som en fersk elev. Kun lokalt (localStorage).
+  useEffect(() => {
+    const h = () => {
+      const tom = new Set<string>()
+      firedRef.current = tom; setFired(tom); saveFired(tom)
+      try { localStorage.removeItem(KEY); localStorage.removeItem(INTRO_KEY) } catch { /* ignore */ }
+      setQueue([]); setFaneMsg(null); setForceShow(false); setPaused(false)
+      setIntroStep(0)
+    }
+    window.addEventListener('mentor:reset', h)
+    return () => window.removeEventListener('mentor:reset', h)
+  }, [])
 
   // DEL 7 — PRISINGS-MENTORER. Dag-scopede id-er (|år-mnd-dag) re-armes per dag;
   // overpris er per VARE-episode (id per varenavn). Meldingene resolves dynamisk.
@@ -418,7 +459,20 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     if (!fane) return                                    // dashbordet lukket
     if (ordbokOpenRef.current || blockedRef.current || eventShowingRef.current) return  // kan ikke vises → re-arm
     const t = faneTriggere(fane).find(t => !firedRef.current.has(t.id))
-    if (t && persistFired(t.id)) setFaneMsg(t.id)
+    if (t && persistFired(t.id)) { setFaneMsg(t.id); return }
+    // DEL 1d — PRISSTRATEGI-GJENTAK: prisstrategi-introen er alt sett, og sist
+    // oppgjorte dag ga «priset over marked»-tap → kort påminnelse ved neste besøk i
+    // Priser-fanen. Dag-scopet id ⇒ re-armes per dag (maks én påminnelse/dag).
+    // (Over-marked-tap krever en oppgjort salgsdag, så introen er per definisjon
+    // eldre enn dagen tapet oppsto — «>1 dag gammel».)
+    if (fane === 'priser') {
+      const s = stateRef.current
+      const introSett = firedRef.current.has('priser_fane') || firedRef.current.has('forste_prising')
+      if (introSett && (s.lastDayResult?.overprisStk ?? 0) > 0) {
+        const gid = `prisstrategi_gjentak|${s.currentYear}-${s.currentMonth}-${s.dayNumber}`
+        if (persistFired(gid)) setFaneMsg(gid)
+      }
+    }
   }, [persistFired])
 
   useEffect(() => {
@@ -444,7 +498,9 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   eventShowingRef.current = !!eventMelding
   // Fane-melding: kun når INGEN event ligger i kø (så aldri to bobler), og ikke
   // under ordbok/blokkering/quiz.
-  const faneMelding = (faneMsg && !ordbokOpen && !blocked && !hasQueued && !quizVises) ? mentorMelding(faneMsg) : null
+  // Dag-scopede fane-id-er (prisstrategi-gjentak) løses til sin statiske kortversjon.
+  const faneMeldingTekst = (id: string) => id.startsWith('prisstrategi_gjentak|') ? mentorMelding('prisstrategi_gjentak') : mentorMelding(id)
+  const faneMelding = (faneMsg && !ordbokOpen && !blocked && !hasQueued && !quizVises) ? faneMeldingTekst(faneMsg) : null
   const melding = eventMelding ?? faneMelding     // én boble; hendelse har forrang
 
   // VENTER: meldinger/quiz står i kø men ingen boble vises ⇒ figuren PEKER +
@@ -453,8 +509,9 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const venter = queueVenter || quizPending
   const badge = (queueVenter ? queue.length : 0) + (quizPending ? 1 : 0)
 
-  // Pose-prioritet: leser > nøytral (aktiv melding/quiz) > peker (venter) > vanlig.
-  const poseKey: keyof typeof POSE = ordbokOpen ? 'leser' : (melding || quizVises) ? 'noytral' : venter ? 'peker' : 'vanlig'
+  // Pose-prioritet: leser (ordbok ELLER Fagord-kort åpent) > nøytral (aktiv melding/
+  // quiz) > peker (venter) > vanlig.
+  const poseKey: keyof typeof POSE = (ordbokOpen || fagordOpen) ? 'leser' : (melding || quizVises) ? 'noytral' : venter ? 'peker' : 'vanlig'
   const pose = POSE[poseKey]
   // Normaliser høyde + fotlinje (se POSE_JUSTERING): rendret canvashøyde så
   // synlig figur = MENTOR_FIGUR_HOYDE, og heng transparent bunnpadding under

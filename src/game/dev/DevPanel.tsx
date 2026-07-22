@@ -248,6 +248,12 @@ export default function DevPanel({ onOpenSim, isInterior }: {
               onClick={nullstillDevOverstyringer}
             />
             <div style={hintStyle}>Fjerner lokale overstyringer (fag, nivå, «Espen spør») → tilbake til lærer/standard.</div>
+            <DevBtn
+              label="↺ Nullstill mentor-triggere"
+              color="#93c5fd" bg="rgba(59,130,246,0.14)"
+              onClick={() => window.dispatchEvent(new CustomEvent('mentor:reset'))}
+            />
+            <div style={hintStyle}>Glemmer ALT Espen har sagt (engangs, daglige og scene-triggere) + introen — kun lokalt. For å teste mentoropplevelsen som en fersk elev.</div>
           </Group>
         </div>
       )}

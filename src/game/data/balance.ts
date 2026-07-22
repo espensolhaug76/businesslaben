@@ -237,6 +237,20 @@ export const BALANCE = {
     },
   },
 
+  /** MENTOR — DAGLIG REFLEKSJON (docs/SPILLETS_MOTORER.md §8). Terskler for hvilket
+   *  signal Espen kommenterer når dagsoppgjøret lukkes. Prioritert rekkefølge (tar
+   *  første som treffer): kø-tap → svinn 2 dager på rad → priset over marked → gikk
+   *  tomt → ellers anerkjennelse ved plussdag. ALT tunbart her. */
+  mentorDaglig: {
+    /** Kø-tap (kunder som gikk) må være FLERE ENN dette for at Espen tar det opp.
+     *  Kommenteres bare når Personale-fanen er synlig (FD på) — jf. datavakten. */
+    koTapKunder: 5,
+    /** «Priset over marked»: minst så mange kunder må ha avstått fra én vare. */
+    overprisAvstatt: 3,
+    /** «Gikk tomt»: minst så mange ulike varer må ha gått tomt samme dag. */
+    tomtVarer: 2,
+  },
+
   /** KROK 7 — DEN LEVENDE INNBOKSEN (docs/ENGASJEMENT.md). Seedet e-post-motor:
    *  taket (VG1 skal ikke drukne), sannsynlighetsvekter for dagsantall, andeler
    *  villedende/overprisede tilbud, og mkf-boostens styrke. ALT tunbart her. */
