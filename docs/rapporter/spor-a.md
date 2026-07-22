@@ -3294,3 +3294,77 @@ sikrer nå en vareVekt-bærende trend). `SpillState` (harness) fikk `avisArkiv`/
 5. ⚙ → Avis → **«⏩ Utløs trend-effekt nå»**, åpne en dag: etterspørselen svinger
    (dagspulsens salg per vare). La en varslet trend gå UTEN å endre bestilling/pris →
    Espen påpeker det mildt på slutten av effektuka.
+
+## KROK 7c FIKSRUNDE — oppslagslayout, NYTT-merke, SWOT-frø — 2026-07-22
+
+Espens valideringsfunn på revisjonen, tre deler + tekstfiks.
+
+### Tekstfiks (DevPanel)
+«📰 Generer utgave nå»-hinten: «Utgaven havner i innboksen» → «Utgaven publiseres i
+avisen — 📰-ikonet i toppmenyen får ulest-merke (krever leid lokale). Effekten slår
+inn i neste åpne dag.»
+
+### DEL 1 — Oppslagslayout (`AvisOverlay.tsx` + retention)
+- **Gjeldende utgave vises KUN på forsiden** (side 1) — aldri i arkivet. Arkivet er
+  utgaver **ELDRE enn gjeldende** (`avisArkiv.slice(1)`).
+- **Retention endret** [BEKREFTET med Espen: 3 eldre / 4 totalt]: `arkivUtgaver = 3`
+  betyr nå **3 ELDRE utgaver**; totalt lagret = `arkivUtgaver + 1` (gjeldende). Slice
+  oppdatert i `START_NEW_DAY` + `DEV_GENERER_AVIS` (`.slice(0, arkivUtgaver + 1)`).
+  *Var før: 3 totalt (gjeldende + 2 eldre).*
+- **To arkivutgaver per oppslag** (dobbeltside): venstre + høyre spalte, hver med egen
+  ARKIV-merke + masthead + utgavelinje. `ceil(eldre/2)` oppslag; «Side N av M» følger.
+  Ulikt antall → siste høyrespalte «**— eldre utgaver er kastet —**».
+- **Vertikal fyll:** notisene stables og en **dekorativ annonse-plassholder** (ren
+  CSS-tekstur — ruteliner som antyder tekst, INGEN ekte merker/lesbar tekst) tar
+  plassen til overs, så det døde papirfeltet forsvinner. Overflyt → egen scroll.
+  Røyktestet visuelt (forside + fullt oppslag + tom-spalte).
+
+### DEL 2 — «NYTT»-merke (`RenderedNotis.ny`)
+- Notiser publisert etter forrige avis-åpning (fersk hovedutgave + løpende) får en
+  grønn tekstlabel **«NYTT»** ved kildemerket (samme stil som «» NESTE UKE», aldri kun
+  farge). Livssyklus = ulest-badgen: `ny: true` ved publisering (`genererAvisutgave` +
+  `løpendeNotiser`); `CLEAR_AVIS_ULEST` (overlay lukket) nullstiller badge **og**
+  fjerner `ny` på alle notiser. Persistert (avisArkiv lagres alt).
+
+### DEL 3 — Mentor «mulighet eller trussel» (SWOT-frø, → Tema 11)
+- Ny dynamisk, dag-scopet trigger **`avis_swot|<utgaveUke>`**. Fyrer første gang eleven
+  **LUKKER** avisen (`GamePage` → window `mentor:avisLukket`) etter en hovedutgave med
+  minst én **ekstern** notis (DATAVAKT via `erSwotNotis`: `kilde !== 'butikk'` — byens
+  trend/næringsliv = eksterne muligheter/trusler; butikk-notiser er interne styrker/
+  svakheter og teller ikke). Maks **én per utgave** (id på utgaveUke).
+- Meldingen navngir notisen og **spør** (aldri dømmer): «Sentrumsposten skriver om «[X]».
+  Er det en [[MKT_029|mulighet eller en trussel]] for akkurat DIN butikk? Hva ville du
+  gjort forskjellig i bestillingen neste uke?» — `MKT_029` = glossary-oppslaget
+  **«SWOT-analyse»** (verifisert at det finnes). Røyktestet: boblen viser teksten med
+  klikkbar SWOT-term.
+- **FØR vs. ETTER (dokumentert skille):** `avis_swot` er **FØR-refleksjonen** (rett
+  etter at eleven leser den ferske utgaven, før uka effekten treffer). `avis_trend`
+  (uendret) er **ETTER-refleksjonen** (på effektens siste dag — «gikk det som avisen
+  varslet?»). De komplementerer hverandre: den ene inviterer til å planlegge, den andre
+  til å evaluere.
+- **KRYSSPEKER → Tema 11 (SWOT-analyse):** dette er et frø. Når Tema 11 bygges bør
+  `avis_swot`-refleksjonen kobles til en faktisk SWOT-øvelse (fire kvadranter), og
+  glossary-token `MKT_029` gjenbrukes. `erSwotNotis` (ekstern = O/T) er allerede den
+  naturlige kilden til «muligheter/trusler».
+
+### DEL 4 — Spilltest (steg 43) + rapport
+Steg 43 utvidet (**43/43 grønt**, `SPILLTEST_PORT=5188`): (iv) **retention 4 lagret** —
+driver til 5 utgaver (uke 1–5), arkivet kappes til uker `[5,4,3,2]`, gjeldende `= arkiv[0]`
+(forside), arkiv-oppslag `= slice(1)` (3 eldre `[4,3,2]`); (v) **NYTT-merke** satt ved
+publisering, fjernet på alle notiser ved `CLEAR_AVIS_ULEST` (+ badge slukkes); (v2)
+**`avis_swot`** armes ved `mentor:avisLukket` (datavakt: gjeldende utgave har ekstern
+notis) og fyrer **maks én gang per utgave**. `SpillState` (harness) fikk `notiser.ny`.
+
+> **MERK (steg-nummerering):** B-grenen (`spor-b/*`) har også et «steg 43» — den grenen
+> som merges SIST til main renummererer sitt (→ 44). *(Uendret fra revisjonen.)*
+
+### Chrome-sjekkliste — fiksrunden
+1. Generer 4–5 utgaver (⏩ dagsrull el. dev): **📰** → forside = **gjeldende** utgave
+   (aldri i arkivet). Bla ‹/›: oppslagene viser **to eldre utgaver side om side**, hver
+   med ARKIV-merke + egen utgavelinje. Ved oddetall: siste høyrespalte «— eldre utgaver
+   er kastet —». Ingen dødt papirfelt under notisene (annonse-tekstur fyller).
+2. Fersk utgave: notisene bærer grønt **«NYTT»** ved kildemerket. Lukk avisen, åpne
+   igjen → **NYTT borte** (og badgen var nullstilt).
+3. Lukk avisen etter en utgave med en trend-/aktør-notis → **Espen** spør «… mulighet
+   eller en trussel …» (klikkbar SWOT-term). Åpne/lukk samme utgave igjen → spør IKKE på
+   nytt (maks én per utgave). Ny hovedutgave neste uke → nytt SWOT-spørsmål.

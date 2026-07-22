@@ -1817,7 +1817,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`figur-containeren låst til ${box0.cw}×${box0.ch} — pose-bytte (v5/v3/v2) endrer ikke bounding-box; poser preloades`)
   })
 
-  await steg(page, rapport, 43, 'KROK 7c Sentrumsposten (revidert): to publiseringstempo (hovedutgave dag 1/5/9 + løpende notis mellom) · ulest-badge tennes/slukkes · arkiv holder 3 utgaver · trend-effekt == fasit · datavakt · fag-gating · mentor', async ctx => {
+  await steg(page, rapport, 43, 'KROK 7c Sentrumsposten (revidert+fiks): to publiseringstempo · badge+NYTT-merke tennes/slukkes · gjeldende kun forside / 3 eldre i arkiv · avis_swot (mulighet/trussel) maks 1/utgave · trend-effekt == fasit · datavakt · fag-gating · mentor', async ctx => {
     await page.goto('/game?skip=1')
     await ventState(page, s => s.phase !== 'startup', 'boot 43')
     await page.waitForFunction(() => !!(window as unknown as { __AVIS_KVALIFISERT__?: unknown }).__AVIS_KVALIFISERT__, null, { timeout: 8000 })
@@ -1895,21 +1895,50 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(tilføyd.every(n => n.kilde !== 'trend'), 'løpende notiser er ALDRI trend (trender er utgave-bundet)').toBe(true)
     expect(s6.avisUlest, 'badge ticker opp ved løpende publisering').toBeGreaterThan(ulest5)
 
-    // (iv) ARKIV HOLDER 3 UTGAVER: dag 9 (uke 2), mnd 2 dag 1 (uke 3), mnd 2 dag 5 (uke 4).
+    // (iv) ARKIV: gjeldende (forside) + arkivUtgaver=3 ELDRE = 4 lagret. Eldste
+    // skjøves ut ved 5. utgave. dag 9 (uke 2), mnd2 dag1 (uke 3), dag5 (uke 4), dag9 (uke 5).
     await driveTil(1, 9)
-    expect((await lesFull()).avisArkiv.length, 'to utgaver i arkivet (uke 1+2)').toBe(2)
+    expect((await lesFull()).avisArkiv.length, 'to utgaver (uke 1+2)').toBe(2)
     await driveTil(2, 1)
-    expect((await lesFull()).avisArkiv.length, 'tre utgaver i arkivet (uke 1+2+3)').toBe(3)
+    expect((await lesFull()).avisArkiv.length, 'tre utgaver (uke 1+2+3)').toBe(3)
     await driveTil(2, 5)
+    const s4 = await lesFull()
+    expect(s4.avisArkiv.length, 'fire lagret (gjeldende + 3 eldre)').toBe(4)
+    expect(s4.avisArkiv.map(u => u.uke), 'nyeste først, ingen kapping ennå').toEqual([4, 3, 2, 1])
+    await driveTil(2, 9)   // 5. utgave (uke 5) → eldste (uke 1) skyves ut
     const sCap = await lesFull()
-    expect(sCap.avisArkiv.length, 'arkivet kappes til arkivUtgaver=3').toBe(3)
+    expect(sCap.avisArkiv.length, 'kappes til arkivUtgaver+1 = 4 lagret').toBe(4)
     const ukerNyesteForst = sCap.avisArkiv.map(u => u.uke)
-    expect(ukerNyesteForst, 'nyeste først; eldste utgave (uke 1) skjøvet ut').toEqual([4, 3, 2])
+    expect(ukerNyesteForst, 'nyeste først; eldste (uke 1) skjøvet ut').toEqual([5, 4, 3, 2])
+    // GJELDENDE = arkiv[0] (vises KUN på forsiden); ARKIV-oppslagene = slice(1) (3 eldre).
+    expect(sCap.avisArkiv[0].uke, 'gjeldende = nyeste utgave (forsiden)').toBe(5)
+    expect(sCap.avisArkiv.slice(1).map(u => u.uke), 'arkiv = 3 utgaver ELDRE enn gjeldende').toEqual([4, 3, 2])
 
-    // (v) ULEST-BADGE SLUKKES ved lukking av avisoverlayet (CLEAR_AVIS_ULEST).
-    expect((await lesFull()).avisUlest, 'badge har uleste før lukking').toBeGreaterThan(0)
+    // (v) NYTT-MERKE + ULEST-BADGE: publiserte notiser bærer «NYTT»; lukking
+    // (CLEAR_AVIS_ULEST) nullstiller badgen OG fjerner NYTT på ALLE notiser.
+    const førLukk = await lesFull()
+    expect(førLukk.avisArkiv[0].notiser.some(n => n.ny), 'publiserte notiser bærer NYTT-merke').toBe(true)
+    expect(førLukk.avisUlest, 'badge har uleste før lukking').toBeGreaterThan(0)
     await dispatch(page, { type: 'CLEAR_AVIS_ULEST' })
     await ventState(page, s => s.avisUlest === 0, 'badge nullstilt ved lukking')
+    const etterLukk = await lesFull()
+    expect(etterLukk.avisArkiv.every(u => u.notiser.every(n => !n.ny)), 'NYTT fjernet på alle notiser ved lukking').toBe(true)
+
+    // (v2) AVIS_SWOT (mulighet/trussel): mentoren fyrer FØR-refleksjonen når eleven
+    // LUKKER avisen etter en hovedutgave med ≥1 ekstern notis (datavakt via erSwotNotis),
+    // maks ÉN per utgave. Gjeldende utgave (uke 5) har garantert ≥1 fremover-notis (ekstern).
+    const gjUke = sCap.avisArkiv[0].uke
+    const harEkstern = sCap.avisArkiv[0].notiser.some(n => n.kilde !== 'butikk')
+    expect(harEkstern, 'gjeldende utgave har ekstern notis (SWOT-grunnlag)').toBe(true)
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:avisLukket')))
+    await expect.poll(async () => {
+      return page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] as string[] } })
+    }, { message: 'avis_swot armet ved avis-lukking' }).toContain(`avis_swot|${gjUke}`)
+    // Maks én per utgave: nok en lukking av SAMME utgave gir IKKE en ny forekomst.
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:avisLukket')))
+    await page.waitForTimeout(150)
+    const swotForekomster = (await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] as string[] } })).filter(x => x === `avis_swot|${gjUke}`)
+    expect(swotForekomster.length, 'avis_swot maks én gang per utgave').toBe(1)
 
     // (vi) DEV-GENERERING er deterministisk innen samme uke (samme notis-id-er).
     await dispatch(page, { type: 'DEV_GENERER_AVIS' })
@@ -1943,7 +1972,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // (viii) MENTOR: første utgave armet 'forste_avis' (nå: avisArkiv.length > 0, peker på 📰-ikonet).
     const fired = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] as string[] } })
     expect(fired, 'mentor «forste_avis» fyrte på første publiserte utgave').toContain('forste_avis')
-    ctx.ok(`to tempo OK: hovedutgave kun avisdag (dag 5/9/…), løpende notis (${tilføyd.length}, ikke-trend) mellom; badge tennes/slukkes; arkiv kappet til 3 (uker ${ukerNyesteForst.join(',')}); trend-effekt «${eff!.label}» == fasit; datavakt + fag-gating + mentor OK`)
+    ctx.ok(`to tempo OK: hovedutgave kun avisdag, løpende notis (${tilføyd.length}, ikke-trend) mellom; badge+NYTT tennes/slukkes; gjeldende=uke ${sCap.avisArkiv[0].uke} på forside, arkiv=3 eldre (uker ${ukerNyesteForst.slice(1).join(',')}); avis_swot|${gjUke} maks 1/utgave; trend-effekt «${eff!.label}» == fasit; datavakt + fag-gating + mentor OK`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
