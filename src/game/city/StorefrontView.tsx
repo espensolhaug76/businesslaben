@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGame } from '../GameContext'
 import { useDevPanel } from '../dev/devPanel'
@@ -46,6 +46,9 @@ export default function StorefrontView({
 }) {
   const navigate = useNavigate()
   const { state } = useGame()
+  // DEL 2 — meld rute-scenen (uten engangs-trigger) så et scenebytte hit forkaster
+  // en ulest scene-melding for forrige scene.
+  useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { scene: 'storefront' } })) }, [])
   // Kalibrering vises kun når dev-panelet slår den PÅ (⚙ → «Kalibrering»).
   // useDevPanel() kalles ubetinget (før IS_DEV_COORDS) — rules-of-hooks.
   const visKal = useDevPanel().kalibrering && IS_DEV_COORDS

@@ -52,6 +52,41 @@ const POSE_JUSTERING: Record<keyof typeof POSE, { chf: number; foot: number }> =
 }
 const KEY = 'mentor_fired_v1'
 
+// DEL 2 — SCENE-ORIENTERINGER er KONTEKSTBUNDNE. Kartlegger scene-trigger → scene-id.
+// Rute-scenene er gjensidig utelukkende (kun én vises av gangen), så én scene-mount
+// = ett scene-bytte. Når aktiv scene endres, forkastes en ulest scene-melding for en
+// ANNEN scene stille fra køen OG re-armes (engangs-forsøket brennes ikke). Dashbordet
+// er et OVERLAY (ikke rute) og håndteres separat via mentor:fane (se handleFane).
+const SCENE_AV_TRIGGER: Record<string, string> = {
+  forste_bykart: 'bykart',
+  forste_bydel: 'bydel',
+  forste_disk_stell: 'disk',
+  forste_vindu: 'vindu',
+}
+
+// DEL 3 — TEMA-GATING: en tema-trigger skal ARMES bare når temaets fag er aktivt OG
+// temaet er aktivert. `aktiveTemaer` (GameContext) er ALT fag-gated, så én sjekk mot
+// den dekker begge. Kartlegger tema-trigger → tema-id. (Uten dette lekket f.eks.
+// beredskap-triggerne — de leser bare state.beredskap.* — selv med FD/HMS av.)
+const TEMA_AV_TRIGGER: Record<string, string> = {
+  tema_beredskap_aktivert: 'beredskap',
+  beredskap_plan_bekreftet: 'beredskap',
+  beredskap_risiko_levert: 'beredskap',
+  beredskap_brannalarm_handtert: 'beredskap',
+  beredskap_ovelse_etter_feil: 'beredskap',
+  tema_budsjett_aktivert: 'budsjett',
+  budsjett_avvik_storst: 'budsjett',
+  tema_nokkeltall_aktivert: 'nokkeltall',
+  nokkeltall_dekningsgrad_avvik: 'nokkeltall',
+  tema_kampanje_aktivert: 'kampanje',
+  kampanje_effekt: 'kampanje',
+  kampanje_forpris_brudd: 'kampanje',
+  tema_reiseliv_aktivert: 'reiseliv',
+  turistsesong_slutt: 'reiseliv',
+  hotellavtale_svart: 'reiseliv',
+  pakke_bygget: 'reiseliv',
+}
+
 function loadFired(): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(KEY) || '[]')) } catch { return new Set() }
 }
@@ -278,6 +313,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   }, [])
   const [fired, setFired] = useState<Set<string>>(loadFired)
   const [queue, setQueue] = useState<string[]>([])          // HENDELSES-kø (peker/kø)
+  const queueRef = useRef(queue); queueRef.current = queue   // fersk kø for event-lyttere (DEL 2)
   // KROK 6 — «Espen spør»: er det aktive spørsmålet avslørt (eleven klikket)?
   // Hvert nytt spørsmål starter skjult bak peker-figuren (aldri avbrytende popup).
   const [quizRevealed, setQuizRevealed] = useState(false)
@@ -293,6 +329,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   function finishIntro() { saveIntroDone(); setIntroStep(null) }
   const firedRef = useRef(fired); firedRef.current = fired
   const stateRef = useRef(state); stateRef.current = state   // fersk state for event-lyttere
+  const activeSceneRef = useRef<string | null>(null)          // DEL 2 — gjeldende rute-scene
   // Refs så event-lyttere (mentor:fane) leser FERSKE verdier uten å re-bindes.
   const ordbokOpenRef = useRef(ordbokOpen); ordbokOpenRef.current = ordbokOpen
   const blockedRef = useRef(blocked); blockedRef.current = blocked
@@ -320,9 +357,37 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     setQueue(q => (q.includes(id) ? q : [...q, id]))
   }, [persistFired])
 
+  /** RE-ARM: fjern en trigger fra det persisterte fyrt-settet så den kan fyre igjen. */
+  const unpersistFired = useCallback((id: string) => {
+    if (!firedRef.current.has(id)) return
+    const n = new Set(firedRef.current); n.delete(id)
+    firedRef.current = n; setFired(n); saveFired(n)
+  }, [])
+
+  // DEL 2 — SCENE-BYTTE: forkast køede scene-meldinger for ANDRE scener enn den nye
+  // (stille) OG re-arm dem (engangs-forsøket brennes ikke). En åpen scene-boble for
+  // en annen scene lukkes automatisk fordi den fjernes fra køen (boblen leser queue[0]).
+  const byttScene = useCallback((nyScene: string) => {
+    if (nyScene === activeSceneRef.current) return
+    activeSceneRef.current = nyScene
+    // Ulest scene-melding for en ANNEN scene → forkast fra kø + re-arm.
+    const stale = queueRef.current.filter(id => { const sc = SCENE_AV_TRIGGER[id]; return !!sc && sc !== nyScene })
+    if (stale.length === 0) return
+    setForceShow(false); setPaused(false)
+    stale.forEach(unpersistFired)
+    setQueue(q => q.filter(id => !stale.includes(id)))
+  }, [unpersistFired])
+
   useEffect(() => {
-    for (const t of MENTOR_TRIGGERS) if (oppfylt(t.id, state)) fire(t.id)
-  }, [state, fire])
+    for (const t of MENTOR_TRIGGERS) {
+      // DEL 3 — TEMA-GATING: en tema-trigger armes bare når temaets fag er aktivt OG
+      // temaet er aktivert (aktiveTemaer er alt fag-gated i GameContext). Reprodusert
+      // HMS-buggen: beredskap aktiv + FD av ⇒ ingen beredskap-/HMS-meldinger.
+      const tema = TEMA_AV_TRIGGER[t.id]
+      if (tema && !aktiveTemaer[tema]?.aktiv) continue
+      if (oppfylt(t.id, state)) fire(t.id)
+    }
+  }, [state, fire, aktiveTemaer])
 
   // TEMA: fyr «tema_beredskap_aktivert» når temaet slås på for klassen.
   useEffect(() => {
@@ -347,12 +412,18 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     }
   }, [aktiveTemaer, dashApnet, fire])
 
-  // Scene-signaler (disk_stell/vindu/bykart/bydel/dashbord) → hendelses-kø.
+  // Scene-signaler (bykart/bydel/disk/vindu + rute-scener uten trigger) → scene-bytte
+  // (forkast/re-arm) + ev. fyr scenens engangs-trigger. `scene` = gjeldende rute-scene,
+  // `id` = ev. engangs-trigger for scenen.
   useEffect(() => {
-    const h = (e: Event) => fire((e as CustomEvent).detail?.id)
+    const h = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.scene) byttScene(detail.scene)
+      if (detail?.id) fire(detail.id)
+    }
     window.addEventListener('mentor:signal', h)
     return () => window.removeEventListener('mentor:signal', h)
-  }, [fire])
+  }, [fire, byttScene])
 
   // DEL 1a — DAGLIG REFLEKSJON: reduceren la dagens signal i state.mentorDagligHint
   // (ett per dag, valgt + datavaktet reducer-side). Fyr den dag-scopede triggeren
@@ -361,6 +432,12 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   useEffect(() => {
     if (state.mentorDagligHint) fire(`daglig|${state.mentorDagligHint.dag}`)
   }, [state.mentorDagligHint, fire])
+
+  // DEL 4 — PRELOAD alle mentor-poser ved mount, så et pose-bytte aldri venter på
+  // bildelast (ingen «tomt→lastet»-hopp i figuren).
+  useEffect(() => {
+    for (const src of Object.values(POSE)) { const im = new Image(); im.src = src }
+  }, [])
 
   // DEL 1e — et Fagord-kort er åpent (Fagord.tsx melder via 'mentor:fagord') → samme
   // lese-pose som når ordboka er åpen. Rent visuelt: «mentoren forklarer».
@@ -456,7 +533,16 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     if (fane) setDashApnet(true)                         // dashbordet er åpnet (TEMA 2/3-trigger)
     setActiveFane(fane)
     setFaneMsg(null)                                     // forlot forrige fane ⇒ dropp meldingen
-    if (!fane) return                                    // dashbordet lukket
+    if (!fane) {
+      // DEL 2 — forlot dashbord-scenen (overlay): en ULEST forste_dashbord-melding
+      // (fortsatt i køen) forkastes OG re-armes (kommer igjen neste dashbord-åpning
+      // med ro). Er den alt LEST (ikke i køen), forblir den fyrt.
+      if (queueRef.current.includes('forste_dashbord')) {
+        setQueue(q => q.filter(id => id !== 'forste_dashbord'))
+        unpersistFired('forste_dashbord')
+      }
+      return                                             // dashbordet lukket
+    }
     if (ordbokOpenRef.current || blockedRef.current || eventShowingRef.current) return  // kan ikke vises → re-arm
     const t = faneTriggere(fane).find(t => !firedRef.current.has(t.id))
     if (t && persistFired(t.id)) { setFaneMsg(t.id); return }
@@ -473,7 +559,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
         if (persistFired(gid)) setFaneMsg(gid)
       }
     }
-  }, [persistFired])
+  }, [persistFired, unpersistFired])
 
   useEffect(() => {
     const h = (e: Event) => handleFane((e as CustomEvent).detail?.fane ?? null)
@@ -711,20 +797,30 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
 
       {/* Figur + bok-knapp */}
       <div style={{ position: 'relative', pointerEvents: 'auto' }}>
+        {/* DEL 4 — FIGUR-CONTAINER MED FAST STØRRELSE: knappen har en låst bounding-
+            box (MENTOR_FIGUR_BREDDE × MENTOR_FIGUR_HOYDE) uansett pose. Posen ligger
+            ABSOLUTT inni og bunn-forankret (samme anker for alle poser), så pose-
+            bytte aldri endrer containerens dimensjoner. Alle poser preloades ved
+            mount (se effekt), så et bytte aldri venter på bildelast (ingen «hopp»). */}
         <button
+          data-testid="mentor-figur"
           onClick={figureClick}
           title={ordbokOpen ? 'Lukk ordboka' : melding ? 'Espen' : venter ? 'Espen har noe til deg — klikk' : 'Åpne ordboka'}
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
             padding: 0, width: MENTOR_FIGUR_BREDDE, height: MENTOR_FIGUR_HOYDE,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center', overflow: 'visible',
+            position: 'relative', overflow: 'visible', display: 'block',
           }}
         >
           {!failedImg ? (
             <img src={pose} alt="Mentor Espen" draggable={false} onError={() => setFailedImg(true)}
-              style={{ height: renderH, width: 'auto', marginBottom: -hang, display: 'block', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.5))', userSelect: 'none' }} />
+              style={{
+                position: 'absolute', left: '50%', bottom: -hang, transform: 'translateX(-50%)',
+                height: renderH, width: 'auto', display: 'block',
+                filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.5))', userSelect: 'none',
+              }} />
           ) : (
-            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#00d4aa22', border: '2px solid #00d4aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>🧑‍🏫</div>
+            <div style={{ position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)', width: 64, height: 64, borderRadius: '50%', background: '#00d4aa22', border: '2px solid #00d4aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>🧑‍🏫</div>
           )}
         </button>
 

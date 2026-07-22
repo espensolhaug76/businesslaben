@@ -126,6 +126,9 @@ export default function InteriorView({ districtId, lokaleId }: {
 }) {
   const navigate = useNavigate()
   const { state, dispatch } = useGame()
+  // DEL 2 — meld rute-scenen (uten engangs-trigger) så et scenebytte hit forkaster
+  // en ulest scene-melding for forrige scene (bydel/disk/vindu).
+  useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { scene: 'interior' } })) }, [])
   // Dev-panelets synlighetsflagg (⚙): «Kalibrering» viser tracer-/kalibrerings-
   // panelene, «Scenarier» viser scenariovelgeren. useDevPanel() kalles ubetinget
   // (før IS_DEV_COORDS) — rules-of-hooks.

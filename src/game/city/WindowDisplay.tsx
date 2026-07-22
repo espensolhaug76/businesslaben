@@ -470,7 +470,7 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
 
 export default function WindowDisplayEditor() {
   // LÆRINGSLAGET: kontekstuell mentor-trigger — vindusstyling åpnet (ytre salgsmiljø).
-  useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_vindu' } })) }, [])
+  useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_vindu', scene: 'vindu' } })) }, [])
   return (
     <div>
       <div style={{ marginBottom: '0.9rem' }}>

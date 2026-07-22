@@ -45,7 +45,7 @@ export default function DistrictView({
   const [, setRev] = useState(0)   // re-render når sone-traceren skriver (?dev=1)
   // Mentor: scene-orientering ved første besøk i en bydel (fyres én gang).
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_bydel' } }))
+    window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_bydel', scene: 'bydel' } }))
   }, [])
 
   if (!district) {
