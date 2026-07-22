@@ -180,7 +180,7 @@ export default function DevPanel({ onOpenSim, isInterior }: {
               color="#e7d5a8" bg="rgba(200,182,136,0.1)"
               onClick={() => dispatch({ type: 'DEV_UTLOS_AVIS_EFFEKT' })}
             />
-            <div style={hintStyle}>Utgaven havner i innboksen (📰 Les hele utgaven). Effekten slår inn i neste åpne dag — se «Kunder i dag» / varevekt.</div>
+            <div style={hintStyle}>Utgaven publiseres i avisen — 📰-ikonet i toppmenyen får ulest-merke (krever leid lokale). Effekten slår inn i neste åpne dag.</div>
           </Group>
 
           <Group title="Tema">
