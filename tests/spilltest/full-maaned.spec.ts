@@ -1817,6 +1817,62 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`figur-containeren låst til ${box0.cw}×${box0.ch} — pose-bytte (v5/v3/v2) endrer ikke bounding-box; poser preloades`)
   })
 
+  await steg(page, rapport, 43, 'KROK 7c Sentrumsposten: utgave (2-4 notiser, deterministisk) · trend-effekt == fasit · datavakt · fag-gating · mentor', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 43')
+    await page.waitForFunction(() => !!(window as unknown as { __AVIS_KVALIFISERT__?: unknown }).__AVIS_KVALIFISERT__, null, { timeout: 8000 })
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 200 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager 43')
+    // Prissett kaffe (aktor_leverandorpris-notisen krever ≥1 priset vare).
+    const prods43 = (await lesFull()).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: p.markedsPris } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods43 })
+    await ventState(page, s => (s.products.find(p => p.id === 'coffee')?.retailPrice ?? 0) > 0, 'kaffe priset')
+    const kval = (fag: { fd: boolean; m: boolean; ks: boolean }) => page.evaluate((f) => (window as unknown as { __AVIS_KVALIFISERT__: (f: unknown) => string[] }).__AVIS_KVALIFISERT__(f), fag)
+
+    // (a) Generer ukens utgave → 2-4 notiser, minst én fremover, DETERMINISTISK.
+    await dispatch(page, { type: 'DEV_GENERER_AVIS' })
+    await ventState(page, s => (s as unknown as { messages: { type: string }[] }).messages.some(m => m.type === 'avis'), 'avis generert')
+    let full = await lesFull()
+    const u = (full.messages.find(m => m.type === 'avis') as unknown as { avis: { notiser: { id: string; fremover: boolean }[] } }).avis
+    expect(u.notiser.length, 'utgaven har 2-4 notiser').toBeGreaterThanOrEqual(2)
+    expect(u.notiser.length).toBeLessThanOrEqual(4)
+    expect(u.notiser.some(n => n.fremover), 'minst én fremover-notis').toBe(true)
+    const ids0 = u.notiser.map(n => n.id)
+    await dispatch(page, { type: 'DEV_GENERER_AVIS' })
+    await page.waitForTimeout(150)
+    const ids1 = ((await lesFull()).messages.find(m => m.type === 'avis') as unknown as { avis: { notiser: { id: string }[] } }).avis.notiser.map(n => n.id)
+    expect(ids1, 'deterministisk: samme uke = samme notiser').toEqual(ids0)
+
+    // (c) DATAVAKT: salgsmilepæl-notisen genereres ALDRI uten grunnlag (fersk butikk,
+    // ingen forrige-uke-salg) → ikke kvalifisert, dermed ikke i utgaven.
+    const kvalAlle = await kval({ fd: true, m: true, ks: true })
+    expect(kvalAlle, 'salgsmilepæl krever reelt salg (datavakt)').not.toContain('butikk_salgsmilepael')
+    expect(kvalAlle.length, 'flere always-on notiser er kvalifisert').toBeGreaterThan(0)
+
+    // (d) FAG-GATING: aktør-leverandørpris (fag FD) er kvalifisert med FD på, borte med FD av.
+    expect(kvalAlle, 'FD på: leverandørpris-notis kvalifisert').toContain('aktor_leverandorpris')
+    const kvalUtenFd = await kval({ fd: false, m: true, ks: true })
+    expect(kvalUtenFd, 'FD av: fagets notis genereres ikke').not.toContain('aktor_leverandorpris')
+
+    // (b) TREND-EFFEKT i vindu → dagens vareVekt == effektens vareVekt (delt fasit).
+    await dispatch(page, { type: 'DEV_UTLOS_AVIS_EFFEKT' })
+    await ventState(page, s => (s as unknown as { avisEffekt: unknown }).avisEffekt != null, 'effekt aktivert')
+    const eff = (await lesFull()).avisEffekt!
+    await åpneDashbord()
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 43')
+    full = await lesFull()
+    const vekt = (full as unknown as { dayBackground: { vareVekt: Record<string, number> } }).dayBackground.vareVekt
+    for (const kat of Object.keys(eff.vareVekt)) {
+      expect(vekt[kat], `vareVekt[${kat}] == effektens fasit (${eff.label})`).toBeCloseTo(eff.vareVekt[kat], 5)
+    }
+
+    // MENTOR: første avis armet 'forste_avis' (via inbox 'avis'-melding).
+    const fired = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] as string[] } })
+    expect(fired, 'mentor «forste_avis» fyrte på første utgave').toContain('forste_avis')
+    ctx.ok(`utgave ${u.notiser.length} notiser (deterministisk); trend-effekt «${eff.label}» == fasit i vareVekt; datavakt + fag-gating OK; mentor forste_avis fyrte`)
+  })
+
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
   const { pass, fail, kjent } = skrivRapport(rapport, notater)
   expect(fail, `Reelle FAIL-steg (KJENT FEIL teller ikke): ${fail}. Se docs/rapporter/spilltest-siste.md`).toBe(0)

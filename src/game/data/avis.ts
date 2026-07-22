@@ -342,6 +342,12 @@ export function byggAvisMelding(utgave: AvisUtgave, dayNumber: number, month: nu
   }
 }
 
+/** Test-/introspeksjon: id-ene til notisene som er KVALIFISERT (datavakt + fag-
+ *  gating) for gjeldende state. (Selve utgaven velger 2–4 av disse seedet.) */
+export function kvalifiserteNotiser(s: GameState, fagAktiv: { fd: boolean; m: boolean; ks: boolean }): string[] {
+  return NOTISER.filter(n => (!n.fag || fagAktiv[n.fag]) && n.vilkaar(s)).map(n => n.id)
+}
+
 /** ⚙ DEV — aktiver en seedet trend-effekt STRAKS (fra `fraAbsDag`), så Espen kan
  *  se effekten i dagstallene uten å vente en uke. Velger en trend-notis med effekt
  *  (deterministisk variasjon per dag). */

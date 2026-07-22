@@ -3125,3 +3125,91 @@ venter på bildelast (var den viktigste kilden til «hoppet»). Verifisert:
   beredskap/HMS; slå FD på → meldingene er tilbake.
 - **Pose-bytte:** klikk et fagord (Espen tar lese-posen), lukk det, få en melding
   (nøytral pose) → figuren står bom stille, ingen størrelses-/posisjonshopp.
+
+---
+
+## KROK 7c — SENTRUMSPOSTEN (lokalavisen) — 2026-07-22
+
+Ukentlig avis i innboksen som gjør byen levende: nyheter om elevens butikk, byens
+trender med spillbare effekter, og byens aktører. Hver utgave peker FREMOVER
+(planleggingsverktøy). Bildene (forside + oppslag) er dewatermarket (✦ nederst h.)
+med `scripts/dewatermark-scene.py` (klon-assistert diffusjons-inpaint + korn;
+pikseldiff bekrefter kun hjørneboksen endret).
+
+### Ukedefinisjon (valgt + dokumentert)
+Én **uke = 4 spilldager** (`BALANCE.avis.dagerPerUke`). 12-dagersmåneden har da
+**3 uker**: dag 1–4, 5–8, 9–12. Avisen kommer «mandag» = **dag 1, 5, 9** (hver 4.
+dag, monotont over månedsskiftet: absolutt uke `floor((absDag−1)/4)`, utgivelse når
+`(absDag−1) % 4 === 0`). Maks én utgave per uke (`avisSisteUke`-vakt).
+
+### Notismotoren (`src/game/data/avis.ts`)
+- Seedet mot uke-nummer (deterministisk — samme uke = samme utgave).
+- Hver utgave: **2–4 notiser**, **maks én effekt-notis**, **garantert ≥1 fremover**.
+- **DATAVAKT** (`vilkaar`): en notis fyrer aldri uten grunnlag. **FAG-GATING**
+  (`fag`): notiser hvis innhold hører til et fag genereres kun når faget er aktivt
+  (samme port som innbokstypene).
+- Trend-effekten tidfestes til NESTE uke (eller uken etter neste) og leses av
+  OPEN_DAY (samme mekanikk som turistsesongens varevekt + mkfBoost-trafikk).
+
+### Notisliste (16)
+| id | kilde | fag | datavakt (vilkår) | effekt |
+|----|-------|-----|-------------------|--------|
+| butikk_apningsuke | butikk | — | ≤ én uke historikk | — |
+| butikk_salgsmilepael | butikk | — | ≥40 solgt forrige uke | — |
+| butikk_rykte | butikk | — | rykte ≥ 65 | — |
+| butikk_nyansettelse | butikk | — | ≥1 ansatt | — |
+| butikk_lonnsom_maaned | butikk | — | månedsoppgjør > 0 | — |
+| butikk_kampanje | butikk | m | ≥1 fullført kampanje | — |
+| trend_surdeig | trend | — | alltid | +brød/frokost, +trafikk |
+| trend_influensa | trend | — | alltid | −trafikk, +drikke |
+| trend_russetid | trend | — | alltid | ++trafikk, +drikke/kaker |
+| trend_regnvaer | trend | — | alltid | −trafikk, ++drikke |
+| trend_vaffeldilla | trend | — | alltid | ++kaker, +frokost |
+| trend_gagate | trend | — | alltid | ++trafikk UKEN ETTER neste (offset 2) |
+| aktor_leverandorpris | aktør | fd | ≥1 priset vare | (varsel, prishopp-mekanikk senere) |
+| aktor_byhotell | aktør | — | **false** (parkert bak turistsesong) | — |
+| aktor_ny_kafe | aktør | — | alltid | — (konkurrent-stemning) |
+| aktor_bondens_marked | aktør | — | alltid | +trafikk |
+
+### BALANCE.avis
+`dagerPerUke: 4` · `notiserMin: 2` · `notiserMaks: 4` · effekt (konservativ, ±10–25 %):
+`trafikkOpp 1.15` · `trafikkStorOpp 1.20` · `trafikkNed 0.85` · `vektOpp 1.25` ·
+`vektStorOpp 1.35` · `vektNed 0.80`. Effekten HINTER i teksten uten å oppgi tall
+(brannalarm-modellen — fasit i dagstallene).
+
+### Mentor (DEL 4)
+- Engangs `forste_avis`: «Sentrumsposten har begynt å skrive om byen …».
+- Dynamisk `avis_trend|<notisId>` (dag-scopet, datavakt): når en varslet trend-
+  effekt var aktiv OG eleven ikke endret bestilling/priser i forkant
+  (`avisSisteHandlingDag < annonseuka`), en kort refleksjon på effektens siste dag —
+  navngir trenden, peker på dagens tall, aldri fasit før.
+
+**Feilattribuering (daglig-refleksjon):** `mentorDaglig` er UENDRET. En trend-drevet
+topp kan gi «gikk tomt»/«svinn» i dagsoppgjøret, og daglig-refleksjonen rapporterer
+SYMPTOMET (tomt/svinn) uten å påstå årsak. Avis-trend-refleksjonen gir den KAUSALE
+koblingen (trenden eleven ikke forberedte seg på). De to KOMPLETTERER hverandre —
+daglig peker på utfallet, avisen på hvorfor — og feilattribuerer ikke. (En trend-
+drevet «tomt» ER et reelt tapt salg eleven bør lære å planlegge for, så signalet
+dempes bevisst ikke.)
+
+### Spilltest (steg 43)
+Utgave 2–4 notiser + ≥1 fremover, deterministisk (samme uke = samme notiser);
+DATAVAKT (salgsmilepæl ikke kvalifisert på fersk butikk); FAG-GATING (leverandørpris
+kvalifisert med FD på, borte med FD av); trend-effekt i vindu → dagens `vareVekt` ==
+effektens fasit (delt `avisEffektAktiv`); mentor `forste_avis` fyrer på første utgave.
+Spilltest-porten er nå env-drevet (`SPILLTEST_PORT`) for å unngå kollisjon når flere
+worktrees kjører samtidig.
+
+### Chrome-sjekkliste — Sentrumsposten (start i ⚙ → Avis)
+1. `?dev=1` → ⚙ → **Avis → «📰 Generer utgave nå»**. Åpne 💻 Dashbord → Innboks →
+   «Sentrumsposten» → **«📰 Les hele utgaven»**: avishodet «SENTRUMSPOSTEN» i serif,
+   utgavelinje, 2–4 notiser med kildemerke + «» NESTE UKE», papiret lesbart bak
+   teksten (show-through-demping), ✦-vannmerket borte.
+2. ⚙ → Avis → **«⏩ Utløs trend-effekt nå»**, åpne en dag: «Kunder i dag» /
+   etterspørselen svinger (se dagspulsens salg per vare).
+3. Rull en uke fram (dag 1/5/9): en ny utgave dukker opp i innboksen, ulest teller i
+   badgen. Trend-notiser varsler NESTE uke.
+4. Slå FD av (⚙): leverandørpris-notisen slutter å komme. Slå M av: kampanje-notisen
+   slutter å komme.
+5. La en varslet trend gå UTEN å endre bestilling/pris → Espen påpeker det mildt på
+   slutten av effektuka.

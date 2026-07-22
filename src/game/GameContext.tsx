@@ -27,7 +27,7 @@ import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, plan
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
 import { BALANCE } from './data/balance'
 import { dagligRefleksjon } from './data/mentorDaglig'
-import { genererAvisutgave, avisEffektAktiv, avisUke, erAvisdag, byggAvisMelding, devUtlosTrend } from './data/avis'
+import { genererAvisutgave, avisEffektAktiv, avisUke, erAvisdag, byggAvisMelding, devUtlosTrend, kvalifiserteNotiser } from './data/avis'
 import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from './data/featureFlags'
 import { scenariosForIndustry, scenariosForMix, TURIST_SCENARIO_IDS } from './sales/scenarios'
 import { beregnPakke, velgProfil, BESOKSPROFILER, velgPakkeForesporsler } from './data/reiseliv'
@@ -2579,9 +2579,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // alltid er ferskt.
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    const w = window as unknown as { __GAME_STATE__?: unknown; __GAME_DISPATCH__?: unknown }
+    const w = window as unknown as { __GAME_STATE__?: unknown; __GAME_DISPATCH__?: unknown; __AVIS_KVALIFISERT__?: unknown }
     w.__GAME_STATE__ = state
     w.__GAME_DISPATCH__ = dispatch
+    // KROK 7c spilltest: kvalifiserte avis-notiser for gjeldende state + fag (datavakt/fag-gating).
+    w.__AVIS_KVALIFISERT__ = (fag: { fd: boolean; m: boolean; ks: boolean }) => kvalifiserteNotiser(state, fag)
   })
 
   const [aktiveTemaerRaw, setAktiveTemaerRaw] = useState<Record<string, TemaAktivering>>(() => lesTemaFallback())
