@@ -15,11 +15,26 @@ export interface MentorTrigger {
    *  mens fanen er aktiv (egen kanal, ikke køen) og re-armes hvis de ikke rekker
    *  frem — se Mentor.tsx. Uten `fane` er triggeren en HENDELSE (kø + peker). */
   fane?: string
+  /** KONTEKSTBUNDET til en rute-scene (scene-id: 'bykart' | 'bydel' | 'disk' |
+   *  'vindu' | 'interior' | 'storefront' | …). En scene-trigger står i køen, men
+   *  forkastes STILLE og re-armes hvis eleven forlater scenen før den er lest
+   *  (engangs-forsøket brennes ikke) — se byttScene i Mentor.tsx. `fane` og `scene`
+   *  er de to kontekst-typene; uten begge er triggeren kontekst-FRI (dagsoppgjør,
+   *  Espen spør, avis, milepæler …) og oppfører seg som en vanlig hendelse. */
+  scene?: string
 }
 
 /** Fane-triggere for en gitt dashbord-fane, i definisjonsrekkefølge. */
 export function faneTriggere(fane: string): MentorTrigger[] {
   return MENTOR_TRIGGERS.filter(t => t.fane === fane)
+}
+
+/** Scene-id → trigger-id-er som er kontekstbundet til den scenen (avledet av data,
+ *  ikke en hardkodet parallell-tabell). Brukes til forkast+re-arm ved scenebytte. */
+export function sceneAvTrigger(): Record<string, string> {
+  const m: Record<string, string> = {}
+  for (const t of MENTOR_TRIGGERS) if (t.scene) m[t.id] = t.scene
+  return m
 }
 
 export const MENTOR_TRIGGERS: MentorTrigger[] = [
@@ -81,11 +96,13 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
   {
     id: 'forste_disk_stell',
     betingelse: 'Første gang disk-/monterflaten åpnes for styling',
+    scene: 'disk',
     melding: 'Tenk som kunden: legg like varer sammen — bakevarer for seg, søtt for seg. [[MKT_003|Bredde]] er hvor mange [[MKT_047|kategorier]] du fører, [[MKT_004|dybde]] er hvor mange varianter i hver. Hva ville du selv stoppet opp ved?',
   },
   {
     id: 'forste_vindu',
     betingelse: 'Første gang vindusstyling åpnes',
+    scene: 'vindu',
     melding: 'Vinduet er butikkens ansikt utad — det første forbipasserende ser. Hva vil du at de skal stoppe for og komme inn for?',
   },
   {
@@ -101,11 +118,13 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
   {
     id: 'forste_bykart',
     betingelse: 'Første gang bykartet åpnes',
+    scene: 'bykart',
     melding: 'Her er byen — og hvor du legger butikken betyr mye. Sentrale, folksomme steder koster mer i leie, men gir flere kunder forbi. Hvor tror du folk går mest?',
   },
   {
     id: 'forste_bydel',
     betingelse: 'Første gang en bydel åpnes (ledige lokaler)',
+    scene: 'bydel',
     melding: 'Dette er én bydel med de ledige lokalene her. Hvert lokale har sin egen leie og forventede kundestrøm — dyrere sentralt, roligere i utkanten. Klikk et lokale for å se detaljene før du bestemmer deg.',
   },
   {

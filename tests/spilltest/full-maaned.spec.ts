@@ -12,6 +12,7 @@ import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinn
 import { DAY_CONFIG } from '../../src/game/data/dayConfig'
 import { INDUSTRY_META } from '../../src/game/data/industries'
 import { provisjonKr, byTilbudById } from '../../src/game/data/bykatalog'
+import { MENTOR_TRIGGERS } from '../../src/game/data/mentorTriggers'
 import { BALANCE } from '../../src/game/data/balance'
 import { beregnPakke, velgProfil, EGEN_KAFE_ID, velgTuristkontorScenario, velgByhotellScenario } from '../../src/game/data/reiseliv'
 import { TURIST_SCENARIO_IDS, TURISTKONTOR_SCENARIO_IDS, BYHOTELL_SCENARIO_IDS, CAFE_SCENARIO_IDS } from '../../src/game/sales/scenarios'
@@ -2022,6 +2023,39 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     const solgtMer = etter2.products.some(p => p.stock < etter.products.find(q => q.id === p.id)!.stock)
     expect(solgtMer, 'salget fortsetter etter prislagring (lager faller videre)').toBe(true)
     ctx.ok(`prislagring merger KUN retailPrice: lager (${Object.entries(stockFør).map(([k, v]) => `${k}:${v}`).join(', ')}) + plasseringer + utstilte urørt av stale utkast; croissant → ${nyPris} kr; salget fortsetter`)
+  })
+
+  await steg(page, rapport, 45, 'Kontekstbundet mentor-tips: fane-tips ulest + fanebytte → forkastet + re-armet (tilbake ved retur)', async ctx => {
+    // Isoler fane-testen: preset ALLE ikke-fane-triggere som fyrt (tom kø), så bare
+    // fane-triggerne kan fyre — og kun via mentor:fane (som vi styrer). Sett i
+    // localStorage FØR goto, så Mentor leser det ferske fyrt-settet ved mount.
+    const ikkeFane = MENTOR_TRIGGERS.filter(t => !t.fane).map(t => t.id)
+    await page.evaluate(({ ids }) => {
+      localStorage.setItem('mentor_fired_v1', JSON.stringify(ids))
+      localStorage.setItem('mentor_intro_v1', '1')
+    }, { ids: ikkeFane })
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 45')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await page.waitForTimeout(200)
+    const fired = () => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] as string[] } })
+    const fane = (f: string | null) => page.evaluate((ff) => window.dispatchEvent(new CustomEvent('mentor:fane', { detail: { fane: ff } })), f)
+
+    // (a) Åpne Produkter-fanen → produkter_fane-tipset armes/fyrer.
+    await fane('produkter')
+    await expect.poll(fired, { message: 'produkter_fane fyrer ved fanebesøk' }).toContain('produkter_fane')
+
+    // (b) Bytt til Priser-fanen UTEN å lese tipset → produkter_fane forkastes + RE-ARMES.
+    await fane('priser')
+    await expect.poll(fired, { message: 'produkter_fane re-armet ved fanebytte (ulest)' }).not.toContain('produkter_fane')
+    // Priser-fanens eget tips (forste_prising, def-rekkefølge først) fyrte i stedet.
+    expect(await fired(), 'priser-fanens eget tips fyrer').toContain('forste_prising')
+
+    // (c) Tilbake til Produkter → tipset kommer igjen (engangsforsøket ble ikke brent).
+    await fane('produkter')
+    await expect.poll(fired, { message: 'produkter_fane tilbake ved retur til fanen' }).toContain('produkter_fane')
+
+    ctx.ok('fane-tips ulest + fanebytte → forkastet + re-armet; kommer tilbake ved retur (kontekst avledet av t.fane/t.scene i dataene)')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

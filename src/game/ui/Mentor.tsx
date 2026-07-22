@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, turistsesongInfo } from '../GameContext'
-import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, MENTOR_INTRO } from '../data/mentorTriggers'
+import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, sceneAvTrigger, MENTOR_INTRO } from '../data/mentorTriggers'
 import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from '../data/featureFlags'
 import { type FagKode } from '../data/fag'
 import Fagord from './Fagord'
@@ -59,12 +59,9 @@ const KEY = 'mentor_fired_v1'
 // = ett scene-bytte. Når aktiv scene endres, forkastes en ulest scene-melding for en
 // ANNEN scene stille fra køen OG re-armes (engangs-forsøket brennes ikke). Dashbordet
 // er et OVERLAY (ikke rute) og håndteres separat via mentor:fane (se handleFane).
-const SCENE_AV_TRIGGER: Record<string, string> = {
-  forste_bykart: 'bykart',
-  forste_bydel: 'bydel',
-  forste_disk_stell: 'disk',
-  forste_vindu: 'vindu',
-}
+// Avledet av trigger-dataene (t.scene) — ÉN kilde til kontekst-bindingen, ikke en
+// hardkodet parallell-tabell. Fyll `scene` på triggeren i mentorTriggers.ts.
+const SCENE_AV_TRIGGER: Record<string, string> = sceneAvTrigger()
 
 // DEL 3 — TEMA-GATING: en tema-trigger skal ARMES bare når temaets fag er aktivt OG
 // temaet er aktivert. `aktiveTemaer` (GameContext) er ALT fag-gated, så én sjekk mot
@@ -365,6 +362,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const ordbokOpenRef = useRef(ordbokOpen); ordbokOpenRef.current = ordbokOpen
   const blockedRef = useRef(blocked); blockedRef.current = blocked
   const activeFaneRef = useRef(activeFane)
+  const faneMsgRef = useRef(faneMsg); faneMsgRef.current = faneMsg   // fersk faneMsg for re-arm ved fanebytte
   // TEMA-aktivering (budsjett/nokkeltall): var temaet aktivt alt ved mount, og
   // har eleven åpnet dashbordet? Styrer om «læreren åpnet temaet» fyrer straks
   // (aktivert under spilling) eller ved første dashbord-åpning (aktivt fra start).
@@ -591,6 +589,13 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     activeFaneRef.current = fane
     if (fane) setDashApnet(true)                         // dashbordet er åpnet (TEMA 2/3-trigger)
     setActiveFane(fane)
+    // DEL 2 (fikserunde) — RE-ARM en ULEST fane-tips når fanen forlates: faneMsg
+    // fortsatt satt = eleven avviste den ikke ⇒ forkast STILLE og re-arm så den
+    // kommer igjen ved retur til fanen (engangs-forsøket brennes ikke). Lest/avvist
+    // (dismiss → faneMsg=null) forblir fyrt. Dag-scopede id-er (prisstrategi_gjentak)
+    // re-armes uansett per dag → hopp over.
+    const ulest = faneMsgRef.current
+    if (ulest && !ulest.startsWith('prisstrategi_gjentak|')) unpersistFired(ulest)
     setFaneMsg(null)                                     // forlot forrige fane ⇒ dropp meldingen
     if (!fane) {
       // DEL 2 — forlot dashbord-scenen (overlay): en ULEST forste_dashbord-melding
