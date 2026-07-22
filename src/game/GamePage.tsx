@@ -202,11 +202,13 @@ function GameContent() {
     setOverlay(dashboardOpen)
   }
 
-  // KROK 7c — lukk Sentrumsposten og nullstill ulest-badgen.
+  // KROK 7c — lukk Sentrumsposten og nullstill ulest-badgen. Signaliser lukkingen
+  // så mentoren kan fyre SWOT-før-refleksjonen (mulighet/trussel) én gang per utgave.
   function closeAvis() {
     setAvisOpen(false)
     setOverlay(dashboardOpen)
     dispatch({ type: 'CLEAR_AVIS_ULEST' })
+    window.dispatchEvent(new CustomEvent('mentor:avisLukket'))
   }
 
   function onVacantClick({ district, lokale, rent }: LokaleClick) {

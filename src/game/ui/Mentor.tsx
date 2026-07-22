@@ -10,7 +10,7 @@ import { kanalById, kanalTreffISegmenter } from '../data/kampanje'
 import { getScenario } from '../sales/scenarios'
 import { avisAbsDag } from '../data/avis'
 import { BALANCE } from '../data/balance'
-import type { GameState } from '../types'
+import type { GameState, RenderedNotis } from '../types'
 
 // ─── LÆRINGSLAGET — mentoren (Espen) ──────────────────────────────────────────
 // Hjørnefigur nede til høyre, ALLTID synlig (også over dashbord/oppgjør), med en
@@ -182,6 +182,15 @@ const RISIKO_RANG: Record<string, number> = { lav: 1, middels: 2, høy: 3 }
 
 /** Dynamiske mentor-meldinger som leser elevens egne verdier (beredskap).
  *  Faller tilbake på den statiske teksten for andre id-er. */
+/** KROK 7c-revisjon (DEL 3) — SWOT-frø: en EKSTERN notis — byens trend (spillbar
+ *  effekt) eller en aktør i næringslivet (ny konkurrent, leverandørprishopp,
+ *  bondens marked …). Eksterne forhold = SWOTs muligheter/trusler; butikk-notiser
+ *  er interne styrker/svakheter og teller ikke. Datavakt for avis_swot-refleksjonen
+ *  (fyrer aldri uten et slikt grunnlag). Frø til Tema 11 (SWOT-analyse). */
+function erSwotNotis(n: RenderedNotis): boolean {
+  return n.kilde !== 'butikk'
+}
+
 function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
   const kr = (n: number) => `${Math.round(n).toLocaleString('nb-NO')} kr`
   // MENTOR DAGLIG REFLEKSJON (dagsoppgjøret): teksten er bygget reducer-side
@@ -199,6 +208,17 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
     if (!e) return undefined
     const navn = e.label.split(' (')[0].toLowerCase()
     return `Husker du at Sentrumsposten varslet ${navn} denne uka? Etterspørselen svingte akkurat som meldt — se på dagens tall. Neste gang lønner det seg å bestille og prise DERETTER, i forkant.`
+  }
+  // KROK 7c-revisjon DEL 3 — SWOT-FØR-refleksjon (mulighet eller trussel): når
+  // eleven LUKKER avisen etter en hovedutgave med en effekt-/konkurranse-notis.
+  // Navngir notisen og SPØR (aldri dømmer). Frø til Tema 11 (SWOT-analyse).
+  if (id.startsWith('avis_swot|')) {
+    const uke = Number(id.slice('avis_swot|'.length))
+    const utg = s.avisArkiv.find(u => u.uke === uke)
+    const notis = utg?.notiser.find(erSwotNotis)
+    if (!notis) return undefined
+    const emne = notis.tittel.replace(/[.:]\s*$/, '')
+    return `Sentrumsposten skriver om «${emne}». Er det en [[MKT_029|mulighet eller en trussel]] for akkurat DIN butikk? Hva ville du gjort forskjellig i bestillingen neste uke?`
   }
   // KROK 2 — STAMKUNDER: navngi den første kunden som ble stamkunde.
   if (id === 'stamkunde_forste') {
@@ -457,6 +477,20 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     if (state.avisSisteHandlingDag >= annonseMandag) return  // eleven HANDLET i forkant → ingen påpekning
     fire(`avis_trend|${e.notisId}`)
   }, [state.avisEffekt, state.currentYear, state.currentMonth, state.dayNumber, state.avisSisteHandlingDag, fire])
+
+  // KROK 7c-revisjon DEL 3 — SWOT-FØR-REFLEKSJON: FØR-refleksjonen (dette er FØR
+  // uka effekten treffer), til forskjell fra avis_trend som er ETTER-refleksjonen
+  // (på effektens siste dag). Fyrer første gang eleven LUKKER avisen etter en
+  // hovedutgave med minst én effekt-/konkurranse-notis (DATAVAKT via erSwotNotis).
+  // Maks én per utgave (id på utgaveUke → fire() dedup).
+  useEffect(() => {
+    const h = () => {
+      const gj = stateRef.current.avisArkiv[0]
+      if (gj && gj.notiser.some(erSwotNotis)) fire(`avis_swot|${gj.uke}`)
+    }
+    window.addEventListener('mentor:avisLukket', h)
+    return () => window.removeEventListener('mentor:avisLukket', h)
+  }, [fire])
 
   // DEL 4 — PRELOAD alle mentor-poser ved mount, så et pose-bytte aldri venter på
   // bildelast (ingen «tomt→lastet»-hopp i figuren).
