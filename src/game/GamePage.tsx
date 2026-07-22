@@ -104,14 +104,23 @@ function GameContent() {
   useEffect(() => {
     if (!IS_DEV_SKIP && !devDeepLink) return
     if (state.phase !== 'startup') return
+    // FLAGG-PÅ-testoppsett: ?industry=fashion seeder en klesbutikk (krever at
+    // dev-serveren kjører med VITE_KLESBUTIKK_AKTIV=1, ellers faller 'fashion'
+    // trygt til CAFE). Default = kafé (uendret).
+    const seedIndustry = new URLSearchParams(window.location.search).get('industry') === 'fashion'
+      ? 'fashion' as const : 'cafe' as const
     dispatch({
       type: 'START_GAME',
       companyName: 'DevCo',
-      industry: 'cafe',
+      industry: seedIndustry,
       businessModel: 'detaljhandel',
       finansiering: 'bank',
       personlighet: 'analytisk',
     })
+    if (seedIndustry === 'fashion') {
+      console.log('[DEV] StartupScreen skipped, seeded KLESBUTIKK (fashion)')
+      return
+    }
     // INNKJØP/LEVERING (docs/INNKJOP_LEVERING.md): dev-seedet legger IKKE inn
     // noe demo-sortiment. Startlageret velger eleven selv i ÅPNINGSBESTILLINGEN
     // (OpeningOrderOverlay), som dukker opp straks etter manuell leie — samme

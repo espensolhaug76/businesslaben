@@ -1627,3 +1627,58 @@ har «Kommer».
 Produkter-fanen viser Innkjøpskatalogen; org-kartet viser klesbutikk-roller; før
 merker + velg segmenter → besøksvilje svarer (brandPull). (Kassevy/scenario-oppgjør
 ved kassen kommer med DEL 2.)
+
+---
+
+# SKALL-SYNK DEL 2 FULLFØRT + FLAGG-PÅ-TEST 2026-07-22 (CC B)
+
+Den utsatte DEL 2 er nå bygget og verifisert (flagg-på-test grønn). Alt fortsatt
+gated bak `KLESBUTIKK_AKTIV`; kafeen byte-identisk (43/43).
+
+## DEL 2 — Klesbutikk-kassevy i hovedflyten ✅
+- **`IndustryDefinition.kassevy?`** (`{ sceneImage, konstanter: KassevyKonstanter }`).
+  UTELATT for kafeen ⇒ `InteriorView` faller til sine DEFAULT-verdier + speil-bildet
+  (interior-kasse.png) = byte-identisk. `KLESBUTIKK.kassevy` = klesbutikk-kassevy.png
+  + Espen-låste `KLESBUTIKK_KASSE_*`.
+- **`InteriorView`** (/inne, «bak-disken»): init de fem slider-konstantene fra aktiv
+  kassevy; scenebilde (bakgrunn + forgrunns-disk-lag) = `kassevy.sceneImage ?? speil`.
+  Klesbutikk-kundens `spriteCal` (DELTA `{dx,dy,scale}` rundt basen) slås opp fra
+  `klesbutikkKunder.ts` via `KLESBUTIKK_SCENARIO_KUNDE`; kafeen bruker scenariets
+  absolutte spriteCal som før (`klesCal` undefined ⇒ eff uendret).
+- **`avsluttesVedKasse`** (`GamePage`): `SalesScenarioOverlay` fikk `onStep` — når et
+  `avsluttesVedKasse`-scenario (Angrekjøpet/Gaven) når 'kasse'-steget navigeres det
+  til kassevyen (/inne). Kafé-scenarier setter ikke `avsluttesVedKasse` ⇒ no-op.
+- **Verifisert (flagg-på-test):** /inne rendrer `klesbutikk-kassevy.png` (bakgrunn +
+  forgrunns-disk), IKKE kafeens interior-kasse.png; Angrekjøpet spilt → ruta flyttet
+  til /inne.
+
+## DEL 5 — Flagg-på-testoppsett ✅
+- **`KLESBUTIKK_AKTIV`** er nå env-overstyrbar: `import.meta.env.VITE_KLESBUTIKK_AKTIV
+  === '1'` (node-trygg optional chaining så kafé-spilltestens import ikke krasjer).
+  Uten env-en (produksjon + kafé-test) = false.
+- **Fashion dev-seed** (`GamePage`): `?skip=1&industry=fashion` (og dev-dyplenke
+  `?dev=1&industry=fashion`) seeder en klesbutikk. Default = kafé (uendret).
+- **`playwright.klesbutikk.config.ts`** (egen port 5177, `VITE_KLESBUTIKK_AKTIV=1`)
+  + **`tests/spilltest/klesbutikk-aktiv.spec.ts`** + npm-script
+  **`spilltest:klesbutikk`**. Spilltilstanden er in-memory ⇒ testen navigerer via
+  dev-dyplenker (re-seeder ved hver goto), og hopper over mentor-introen
+  (`mentor_intro_v1`) som kafé-harnessen.
+- **Flagg-på-test PASS (4 steg):** (1) bransjebytte → fashion registrert, (2) /inne
+  = klesbutikk-kassevy.png fra aktiv def, (3) Produkter-fanen = Innkjøpskatalogen
+  (leverandørmerker), (4) avsluttesVedKasse (Angrekjøpet) → /inne.
+- **Kafé-regresjon (flagg av):** 43/43 grønt uendret.
+
+> **Miljønotat:** denne worktreen mangler egen Playwright-installasjon. Jeg kjørte
+> testene via `/home/espen/adventure-web/node_modules/.bin/playwright` (+ en
+> `node_modules/.bin/playwright`-symlink for npm-scriptet). For CI/andre maskiner:
+> `npm install` i worktreen, ELLER kjør via en tree med Playwright installert.
+
+## Gjenstår før `KLESBUTIKK_AKTIV = true` (oppdatert)
+1. **`KLESBUTIKK_KUNDE_BASE`-lås** — Espen tracer i `?dev=1` → 💰 Kasse → 🧭 Soner
+   (kunde-spawn-sonen på gulvet bak disken; kassevy-KONSTANTENE er allerede låst).
+2. **Espens Chrome-validering:** kafé-regresjon FØRST (flagg av), deretter
+   klesbutikken (sett `KLESBUTIKK_AKTIV`-env / flagg og hard-reload) — kassevyen,
+   Innkjøpskatalogen i Produkter, org-rollene, brandPull, og Angrekjøpet/Gaven
+   som flytter oppgjøret til kassen.
+3. **Glossary-commit** når ordlyden er godkjent.
+4. Rydd: slett main sitt `FASHION_SCENARIOS` etter Chrome-dommen.

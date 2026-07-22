@@ -41,4 +41,10 @@ export const TURISTSESONG_AKTIV = false
  *  MERK: motorene leser nå ALLTID geometri fra aktiv IndustryDefinition (ikke
  *  fra kafé-konstanter direkte), så selve omleggingen er byte-identisk for
  *  kaféen uavhengig av dette flagget — flagget styrer kun OM 'fashion' finnes. */
-export const KLESBUTIKK_AKTIV = false
+// Overstyrbar for FLAGG-PÅ-TESTOPPSETTET: dev-serveren startet med
+// `VITE_KLESBUTIKK_AKTIV=1` (playwright.klesbutikk.config.ts) registrerer
+// klesbutikken. Uten env-en (produksjon + kafé-spilltesten) = false. Optional
+// chaining + cast så en ren Node-import (playwright uten Vite) ikke krasjer på
+// udefinert `import.meta.env`.
+const klesbutikkFlaggEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_KLESBUTIKK_AKTIV
+export const KLESBUTIKK_AKTIV = klesbutikkFlaggEnv === '1'

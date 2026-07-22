@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "spilltest": "playwright test --config=playwright.config.ts full-maaned"
+    "spilltest": "playwright test --config=playwright.config.ts full-maaned",
+    "spilltest:klesbutikk": "playwright test --config=playwright.klesbutikk.config.ts"
   },
   "dependencies": {
     "firebase": "^12.11.0",
