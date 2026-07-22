@@ -3213,3 +3213,84 @@ worktrees kjører samtidig.
    slutter å komme.
 5. La en varslet trend gå UTEN å endre bestilling/pris → Espen påpeker det mildt på
    slutten av effektuka.
+
+## KROK 7c REVISJON — Avisen ut av innboksen, inn i eget 📰-ikon — 2026-07-22
+
+Espens designendring: Sentrumsposten flyttes fra innboksen til et eget **📰-ikon**
+i HUD-toppmenyen med **bla-bar popup** (forside + arkiv-oppslag). Innboksen er igjen
+kun for post som krever svar/lesing. To publiseringstempo skiller nå trend-varsler
+(utgave-bundet, ukesrytmen) fra løpende småstoff (mellom utgavene).
+
+### DEL 1 — 📰 i toppmenyen (`HUD.tsx`, `GamePage.tsx`)
+- Nytt **📰-ikon** ved 🔔/💻, alltid synlig når `rentedLocationId` (spillet i gang).
+  Klikk åpner avisoverlayet. `aria-label` + `title` med tekst (ulest-antall inkludert).
+- **Ulest-badge** (rødt tall) = `state.avisUlest`; teller upubliserte/uleste notiser.
+  **Nullstilles ved lukking** av overlayet (`CLEAR_AVIS_ULEST` fra `GamePage.closeAvis`).
+- **InboxMessage-typen `'avis'` fjernet fra genereringen** (`START_NEW_DAY` bygger ikke
+  lenger avis-eposter; `byggAvisMelding` slettet i `avis.ts`). Innboks-knappen «Les hele
+  utgaven» + `visAvis`/`AvisOverlay` fjernet fra `DashboardOverlay.tsx`. Typefeltet
+  `'avis'`/`InboxMessage.avis` beholdes (bakoverkompat — ignoreres; ufarlig).
+- Mentor `forste_avis`: oppfylt-vilkåret er nå **`s.avisArkiv.length > 0`** (ikke
+  inbox-melding), og meldingen peker på **📰-ikonet** («Klikk 📰-ikonet oppe til høyre …»).
+
+### DEL 2 — To publiseringstempo (`GameContext.START_NEW_DAY`, `avis.ts`)
+Ved dagsrull, når `rentedLocationId`:
+- **HOVEDUTGAVE** på avisdag (`erAvisdag(newAbsDag) && avisUke !== avisSisteUke`, dag
+  1/5/9) — `genererAvisutgave` som før. Unshiftes inn i `avisArkiv` (nyeste først),
+  kappes til `arkivUtgaver`. **Trend-varsler bor KUN her** (utgave-bundet — ukesrytmen
+  er planleggingsmekanikken, urørt). Trend-effekt tidfestes uendret.
+- **LØPENDE NOTISER** mellom utgaver (`løpendeNotiser`): butikk-/aktør-notiser hvis
+  vilkår er sanne og ikke alt ligger i gjeldende utgave, appendes til gjeldende utgave
+  (seedet rekkefølge, **maks `lopendePerDag = 1`/dag**). **Trend-notiser ekskluderes**
+  (`n.kilde !== 'trend'`). Hver publisering (hovedutgave el. løpende) tenner badgen.
+
+**Utgave-bundet vs. løpende (dokumentert):**
+| Kilde | I hovedutgaven (dag 1/5/9) | Løpende (mellom utgaver) |
+|-------|:--:|:--:|
+| `trend_*` (surdeig/influensa/russetid/regnvær/vaffeldilla/gågate) | ✅ (eneste sted) | ❌ aldri |
+| `butikk_*` (åpningsuke/salgsmilepæl/rykte/nyansettelse/lønnsom_måned/kampanje) | ✅ | ✅ når vilkår slår til |
+| `aktor_*` (leverandørpris/ny_kafe/bondens_marked; byhotell parkert) | ✅ | ✅ når vilkår slår til |
+
+### DEL 3 — Bla-bart avisoverlay (`AvisOverlay.tsx`)
+- Leser **`state.avisArkiv`** (ikke lenger en prop-utgave), signatur `{ open, onClose }`.
+- **Side 1 = FORSIDE** (portrett, `sentrumsposten-forside.png`) — gjeldende utgave, HTML-
+  notiser over papiret som før. **Side 2+ = OPPSLAG** (landskap, `sentrumsposten-oppslag.png`)
+  — ett arkiv-oppslag per **eldre** utgave bakover (to kolonner, ARKIV-merke + utgavelinje).
+  Arkivet gir de siste `arkivUtgaver = 3` utgavene lesbare bakover («hva varslet avisen
+  forrige uke?»).
+- **‹/›-knapper + piltaster** (ArrowLeft/Right, Escape lukker); **sideindikator som tekst**
+  («Side N av M», aldri kun ikon). Show-through-dempingen (`SHOW_THROUGH_DEMPING = 0.42`)
+  gjenbrukt på både forside og oppslag. Tom-tilstand før første utgave.
+- **Persistert** (`BUDSJETT_KEY` save/load): `avisArkiv` + `avisUlest` (samme mønster som
+  kampanjehistorikk/avisEffekt).
+
+### DEL 4 — Spilltest + rapport
+**Steg 43 omskrevet** (43/43 grønt, `SPILLTEST_PORT=5188`): (i) datavakt + fag-gating;
+(ii) hovedutgave KUN på avisdag (dag 2–4 gir 0 utgaver, dag 5 gir 1 + badge tennes);
+(iii) løpende notis mellom utgaver — konstruert milepæl (ansettelse) midt i uka → dag 6
+føyer **≤1 ikke-trend-notis** til gjeldende utgave + badge ticker; (iv) **arkiv holder 3**
+(dag 5/9 + mnd 2 dag 1/5 = uker 1–4 → arkivet kappes til uker `[4,3,2]`, eldste skjøvet
+ut); (v) **badge slukkes** ved `CLEAR_AVIS_ULEST`; (vi) dev-generering deterministisk
+innen uka; (vii) trend-effekt-fasit uendret (`vareVekt` == `avisEffektAktiv`, testen
+sikrer nå en vareVekt-bærende trend). `SpillState` (harness) fikk `avisArkiv`/`avisUlest`/
+`avisEffekt`/`employees`.
+
+> **MERK (steg-nummerering):** B-grenen (`spor-b/*`) har også et «steg 43». Den grenen
+> som merges SIST til main må renummerere sitt steg 43 (→ 44) så full-maaned-sekvensen
+> forblir unik og sammenhengende.
+
+### Chrome-sjekkliste — Sentrumsposten revidert (start i 📰-ikonet)
+1. Spill i gang (leid lokale): **📰-ikonet** synlig oppe til høyre ved 🔔/💻.
+2. `?dev=1` → ⚙ → Avis → **«📰 Generer utgave nå»**: badgen på 📰 får et **rødt tall**
+   (uleste). Klikk **📰** → overlayet åpner på **forsiden**: avishodet «SENTRUMSPOSTEN»,
+   utgavelinje, 2–4 notiser med kildemerke + «» NESTE UKE», papiret lesbart (show-through),
+   ✦ borte. Lukk → **badgen nullstilles**.
+3. Generer flere utgaver over uker (⏩ dagsrull el. dev-generering) → bla med **‹/›** eller
+   **piltaster**: side 1 forside (gjeldende), side 2+ **arkiv-oppslag** (eldre utgaver,
+   landskapsbildet). «Side N av M» stemmer. Maks 3 utgaver i arkivet.
+4. Rull en dag MELLOM to utgaver etter en milepæl (f.eks. ansett noen) → en **løpende
+   notis** dukker opp i gjeldende utgave, badgen ticker. **Ingen trend** kommer løpende —
+   trend-varsler kun i hovedutgaven (dag 1/5/9).
+5. ⚙ → Avis → **«⏩ Utløs trend-effekt nå»**, åpne en dag: etterspørselen svinger
+   (dagspulsens salg per vare). La en varslet trend gå UTEN å endre bestilling/pris →
+   Espen påpeker det mildt på slutten av effektuka.

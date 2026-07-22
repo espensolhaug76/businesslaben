@@ -1817,7 +1817,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`figur-containeren låst til ${box0.cw}×${box0.ch} — pose-bytte (v5/v3/v2) endrer ikke bounding-box; poser preloades`)
   })
 
-  await steg(page, rapport, 43, 'KROK 7c Sentrumsposten: utgave (2-4 notiser, deterministisk) · trend-effekt == fasit · datavakt · fag-gating · mentor', async ctx => {
+  await steg(page, rapport, 43, 'KROK 7c Sentrumsposten (revidert): to publiseringstempo (hovedutgave dag 1/5/9 + løpende notis mellom) · ulest-badge tennes/slukkes · arkiv holder 3 utgaver · trend-effekt == fasit · datavakt · fag-gating · mentor', async ctx => {
     await page.goto('/game?skip=1')
     await ventState(page, s => s.phase !== 'startup', 'boot 43')
     await page.waitForFunction(() => !!(window as unknown as { __AVIS_KVALIFISERT__?: unknown }).__AVIS_KVALIFISERT__, null, { timeout: 8000 })
@@ -1830,47 +1830,120 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await ventState(page, s => (s.products.find(p => p.id === 'coffee')?.retailPrice ?? 0) > 0, 'kaffe priset')
     const kval = (fag: { fd: boolean; m: boolean; ks: boolean }) => page.evaluate((f) => (window as unknown as { __AVIS_KVALIFISERT__: (f: unknown) => string[] }).__AVIS_KVALIFISERT__(f), fag)
 
-    // (a) Generer ukens utgave → 2-4 notiser, minst én fremover, DETERMINISTISK.
-    await dispatch(page, { type: 'DEV_GENERER_AVIS' })
-    await ventState(page, s => (s as unknown as { messages: { type: string }[] }).messages.some(m => m.type === 'avis'), 'avis generert')
-    let full = await lesFull()
-    const u = (full.messages.find(m => m.type === 'avis') as unknown as { avis: { notiser: { id: string; fremover: boolean }[] } }).avis
-    expect(u.notiser.length, 'utgaven har 2-4 notiser').toBeGreaterThanOrEqual(2)
-    expect(u.notiser.length).toBeLessThanOrEqual(4)
-    expect(u.notiser.some(n => n.fremover), 'minst én fremover-notis').toBe(true)
-    const ids0 = u.notiser.map(n => n.id)
-    await dispatch(page, { type: 'DEV_GENERER_AVIS' })
-    await page.waitForTimeout(150)
-    const ids1 = ((await lesFull()).messages.find(m => m.type === 'avis') as unknown as { avis: { notiser: { id: string }[] } }).avis.notiser.map(n => n.id)
-    expect(ids1, 'deterministisk: samme uke = samme notiser').toEqual(ids0)
+    // Skru fram ÉN spilldag via test-broen (stengt → åpen → oppgjør → ny dag).
+    // Ingen ticks ⇒ ingen salg (rask, ren rull). Robust mot månedsrull (dag 12 → mnd+1 dag 1).
+    async function nyDag() {
+      const b = await lesFull(); const m0 = b.currentMonth, d0 = b.dayNumber
+      await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen (nyDag)')
+      await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør (nyDag)')
+      await dispatch(page, { type: 'START_NEW_DAY' })
+      await ventState(page, s => s.currentMonth !== m0 || s.dayNumber !== d0, 'ny dag (nyDag)')
+    }
+    async function driveTil(mnd: number, dag: number) {
+      for (let i = 0; i < 30; i++) {
+        const s = await lesFull()
+        if (s.currentMonth === mnd && s.dayNumber === dag) return s
+        await nyDag()
+      }
+      throw new Error(`nådde ikke måned ${mnd} dag ${dag}`)
+    }
 
-    // (c) DATAVAKT: salgsmilepæl-notisen genereres ALDRI uten grunnlag (fersk butikk,
-    // ingen forrige-uke-salg) → ikke kvalifisert, dermed ikke i utgaven.
+    // Startdagen er dag 1 (mnd 1). Avisdager (= «mandag», dag 1/5/9) er der
+    // hovedutgaven publiseres. Ved boot (ikke via START_NEW_DAY) finnes ingen utgave.
+    expect((await lesFull()).dayNumber, 'starter på dag 1').toBe(1)
+    expect((await lesFull()).avisArkiv.length, 'ingen utgave før første avisdag nås').toBe(0)
+
+    // (i) DATAVAKT + FAG-GATING (før noen utgave er publisert; leser gjeldende state).
     const kvalAlle = await kval({ fd: true, m: true, ks: true })
     expect(kvalAlle, 'salgsmilepæl krever reelt salg (datavakt)').not.toContain('butikk_salgsmilepael')
     expect(kvalAlle.length, 'flere always-on notiser er kvalifisert').toBeGreaterThan(0)
-
-    // (d) FAG-GATING: aktør-leverandørpris (fag FD) er kvalifisert med FD på, borte med FD av.
     expect(kvalAlle, 'FD på: leverandørpris-notis kvalifisert').toContain('aktor_leverandorpris')
     const kvalUtenFd = await kval({ fd: false, m: true, ks: true })
     expect(kvalUtenFd, 'FD av: fagets notis genereres ikke').not.toContain('aktor_leverandorpris')
 
-    // (b) TREND-EFFEKT i vindu → dagens vareVekt == effektens vareVekt (delt fasit).
-    await dispatch(page, { type: 'DEV_UTLOS_AVIS_EFFEKT' })
-    await ventState(page, s => (s as unknown as { avisEffekt: unknown }).avisEffekt != null, 'effekt aktivert')
-    const eff = (await lesFull()).avisEffekt!
-    await åpneDashbord()
+    // (ii) HOVEDUTGAVE KUN PÅ AVISDAG: dag 2-4 gir INGEN ny utgave (ikke «mandag»).
+    await driveTil(1, 2)
+    expect((await lesFull()).avisArkiv.length, 'ingen hovedutgave på dag 2 (ikke avisdag)').toBe(0)
+    await driveTil(1, 4)
+    expect((await lesFull()).avisArkiv.length, 'fortsatt ingen hovedutgave dag 4').toBe(0)
+
+    // Dag 5 = avisdag → HOVEDUTGAVE publiseres, ULEST-BADGE tennes.
+    await driveTil(1, 5)
+    const s5 = await lesFull()
+    expect(s5.avisArkiv.length, 'hovedutgave publisert på avisdag (dag 5)').toBe(1)
+    expect(s5.avisUlest, 'ulest-badge tennes ved publisering').toBeGreaterThan(0)
+    const utg1 = s5.avisArkiv[0]
+    expect(utg1.notiser.length, 'utgaven har 2-4 notiser').toBeGreaterThanOrEqual(2)
+    expect(utg1.notiser.length).toBeLessThanOrEqual(4)
+    expect(utg1.notiser.some(n => n.fremover), 'minst én fremover-notis').toBe(true)
+    const n5 = utg1.notiser.length
+    const ulest5 = s5.avisUlest
+
+    // (iii) LØPENDE NOTIS MELLOM UTGAVER: konstruer en milepæl midt i uka
+    // (ansettelse ⇒ butikk_nyansettelse blir sann, var ikke med i dag 5-utgaven
+    // siden staben var tom). Dag 6 er IKKE avisdag → ingen ny utgave, men den
+    // løpende notisen føyes til GJELDENDE utgave (maks 1/dag) og tenner badgen.
+    await dispatch(page, { type: 'HIRE_EMPLOYEE', employee: { id: 'test-emp-1', navn: 'Testansatt', role: 'salg', level: 'junior', monthlySalary: 30_000 } })
+    await ventState(page, s => s.employees.length >= 1, 'ansatt lagt til (milepæl)')
+    await driveTil(1, 6)
+    const s6 = await lesFull()
+    expect(s6.avisArkiv.length, 'dag 6 er ikke avisdag → ingen NY utgave').toBe(1)
+    const utg1b = s6.avisArkiv[0]
+    expect(utg1b.notiser.length, 'løpende notis føyd til gjeldende utgave').toBeGreaterThan(n5)
+    const tilføyd = utg1b.notiser.slice(n5)
+    expect(tilføyd.length, 'maks lopendePerDag (1) ny notis per dag').toBe(1)
+    expect(tilføyd.every(n => n.kilde !== 'trend'), 'løpende notiser er ALDRI trend (trender er utgave-bundet)').toBe(true)
+    expect(s6.avisUlest, 'badge ticker opp ved løpende publisering').toBeGreaterThan(ulest5)
+
+    // (iv) ARKIV HOLDER 3 UTGAVER: dag 9 (uke 2), mnd 2 dag 1 (uke 3), mnd 2 dag 5 (uke 4).
+    await driveTil(1, 9)
+    expect((await lesFull()).avisArkiv.length, 'to utgaver i arkivet (uke 1+2)').toBe(2)
+    await driveTil(2, 1)
+    expect((await lesFull()).avisArkiv.length, 'tre utgaver i arkivet (uke 1+2+3)').toBe(3)
+    await driveTil(2, 5)
+    const sCap = await lesFull()
+    expect(sCap.avisArkiv.length, 'arkivet kappes til arkivUtgaver=3').toBe(3)
+    const ukerNyesteForst = sCap.avisArkiv.map(u => u.uke)
+    expect(ukerNyesteForst, 'nyeste først; eldste utgave (uke 1) skjøvet ut').toEqual([4, 3, 2])
+
+    // (v) ULEST-BADGE SLUKKES ved lukking av avisoverlayet (CLEAR_AVIS_ULEST).
+    expect((await lesFull()).avisUlest, 'badge har uleste før lukking').toBeGreaterThan(0)
+    await dispatch(page, { type: 'CLEAR_AVIS_ULEST' })
+    await ventState(page, s => s.avisUlest === 0, 'badge nullstilt ved lukking')
+
+    // (vi) DEV-GENERERING er deterministisk innen samme uke (samme notis-id-er).
+    await dispatch(page, { type: 'DEV_GENERER_AVIS' })
+    await ventState(page, s => s.avisArkiv.length >= 1, 'dev-utgave generert')
+    const ids0 = (await lesFull()).avisArkiv[0].notiser.map(n => n.id)
+    await dispatch(page, { type: 'DEV_GENERER_AVIS' })
+    await page.waitForTimeout(150)
+    const ids1 = (await lesFull()).avisArkiv[0].notiser.map(n => n.id)
+    expect(ids1, 'deterministisk: samme uke = samme notiser').toEqual(ids0)
+
+    // (vii) TREND-EFFEKT i vindu → dagens vareVekt == effektens vareVekt (delt fasit).
+    // DEV-trenden velges deterministisk på absDag % antall trender; gågata (kun
+    // trafikk, ingen vareVekt) gir en vakuum-sjekk → skru fram til en dag som gir
+    // en vareVekt-bærende trend, så assertionen faktisk tester noe.
+    let eff = null as null | NonNullable<Awaited<ReturnType<typeof lesFull>>['avisEffekt']>
+    for (let i = 0; i < 6; i++) {
+      await dispatch(page, { type: 'DEV_UTLOS_AVIS_EFFEKT' })
+      await ventState(page, s => s.avisEffekt != null, 'effekt aktivert')
+      const e = (await lesFull()).avisEffekt!
+      if (Object.keys(e.vareVekt).length > 0) { eff = e; break }
+      await nyDag()   // trafikk-only trend (gågata) — prøv neste dag
+    }
+    expect(eff, 'fant en vareVekt-bærende trend-effekt').not.toBeNull()
+    expect(Object.keys(eff!.vareVekt).length, 'trend-effekten har vareVekt å teste').toBeGreaterThan(0)
     await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 43')
-    full = await lesFull()
-    const vekt = (full as unknown as { dayBackground: { vareVekt: Record<string, number> } }).dayBackground.vareVekt
-    for (const kat of Object.keys(eff.vareVekt)) {
-      expect(vekt[kat], `vareVekt[${kat}] == effektens fasit (${eff.label})`).toBeCloseTo(eff.vareVekt[kat], 5)
+    const vekt = (await lesFull()).dayBackground!.vareVekt
+    for (const kat of Object.keys(eff!.vareVekt)) {
+      expect(vekt[kat], `vareVekt[${kat}] == effektens fasit (${eff!.label})`).toBeCloseTo(eff!.vareVekt[kat], 5)
     }
 
-    // MENTOR: første avis armet 'forste_avis' (via inbox 'avis'-melding).
+    // (viii) MENTOR: første utgave armet 'forste_avis' (nå: avisArkiv.length > 0, peker på 📰-ikonet).
     const fired = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] as string[] } })
-    expect(fired, 'mentor «forste_avis» fyrte på første utgave').toContain('forste_avis')
-    ctx.ok(`utgave ${u.notiser.length} notiser (deterministisk); trend-effekt «${eff.label}» == fasit i vareVekt; datavakt + fag-gating OK; mentor forste_avis fyrte`)
+    expect(fired, 'mentor «forste_avis» fyrte på første publiserte utgave').toContain('forste_avis')
+    ctx.ok(`to tempo OK: hovedutgave kun avisdag (dag 5/9/…), løpende notis (${tilføyd.length}, ikke-trend) mellom; badge tennes/slukkes; arkiv kappet til 3 (uker ${ukerNyesteForst.join(',')}); trend-effekt «${eff!.label}» == fasit; datavakt + fag-gating + mentor OK`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

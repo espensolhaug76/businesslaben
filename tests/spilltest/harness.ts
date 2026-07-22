@@ -76,6 +76,11 @@ export interface SpillState {
   dayBackground: { total: number; prosessert: number; kapasitetRest: number; kø: { ankomstMinutt: number; antall: number }[]; turistandel: number; vareVekt: Record<string, number> } | null
   mentorDagligHint: { dag: string; signal: string; melding: string } | null
   reiselivPakke: { profilId: string; kortIds: string[]; pris: number; treff: number; turister: number; egenKafe: boolean } | null
+  // KROK 7c — Sentrumsposten (avis-arkiv + ulest-badge + aktiv trend-effekt)
+  avisArkiv: { uke: number; ukeIMaaned: number; maaned: number; aar: number; notiser: { id: string; kilde: string; tittel: string; tekst: string; fremover: boolean }[] }[]
+  avisUlest: number
+  avisEffekt: { notisId: string; label: string; fraAbsDag: number; tilAbsDag: number; trafikkFaktor: number; vareVekt: Record<string, number> } | null
+  employees: { id: string }[]
   phase: string
 }
 
