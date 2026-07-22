@@ -41,10 +41,9 @@ export const TURISTSESONG_AKTIV = false
  *  MERK: motorene leser nå ALLTID geometri fra aktiv IndustryDefinition (ikke
  *  fra kafé-konstanter direkte), så selve omleggingen er byte-identisk for
  *  kaféen uavhengig av dette flagget — flagget styrer kun OM 'fashion' finnes. */
-// Overstyrbar for FLAGG-PÅ-TESTOPPSETTET: dev-serveren startet med
-// `VITE_KLESBUTIKK_AKTIV=1` (playwright.klesbutikk.config.ts) registrerer
-// klesbutikken. Uten env-en (produksjon + kafé-spilltesten) = false. Optional
-// chaining + cast så en ren Node-import (playwright uten Vite) ikke krasjer på
-// udefinert `import.meta.env`.
-const klesbutikkFlaggEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_KLESBUTIKK_AKTIV
-export const KLESBUTIKK_AKTIV = klesbutikkFlaggEnv === '1'
+// PRODUKTPORTEN — forblir false til Espen har validert i Chrome og slår den på.
+// For VALIDERING i ?dev=1 finnes en lokal DEV-overstyring (⚙ DEV-panel → Bransje
+// → «Klesbutikk aktiv (DEV)», persistert i localStorage, aldri delt/RTDB). ALLE
+// lesere skal bruke den EFFEKTIVE verdien `klesbutikkAktiv()` (dev/devPanel.ts),
+// som gir presedens DEV > dette flagget > default — ikke lese flagget direkte.
+export const KLESBUTIKK_AKTIV = false

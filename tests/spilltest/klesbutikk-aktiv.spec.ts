@@ -19,9 +19,17 @@ const BUTIKK = `/game/d/sentrum/l/sentrum-l2?${DL}`
 
 test.describe.configure({ mode: 'serial' })
 
-// Hopp over mentor-intro-overlayet (fanger ellers klikk), som kafé-harnessen.
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('mentor_intro_v1', '1') } catch { /* */ } })
+  await page.addInitScript(() => {
+    try {
+      // Hopp over mentor-intro-overlayet (fanger ellers klikk), som kafé-harnessen.
+      localStorage.setItem('mentor_intro_v1', '1')
+      // Slå PÅ klesbutikken via DEV-overstyringen (⚙ Bransje → «Klesbutikk aktiv
+      // (DEV)») — forenkler testoppsettet: ingen egen VITE-env/build nødvendig,
+      // og bekrefter samtidig at den effektive verdien (klesbutikkAktiv) leses.
+      localStorage.setItem('dev_panel_v1', JSON.stringify({ klesbutikkAktivDev: true }))
+    } catch { /* */ }
+  })
 })
 
 test('Klesbutikk aktiv — geometri/kassevy/katalog + avsluttesVedKasse', async ({ page }) => {

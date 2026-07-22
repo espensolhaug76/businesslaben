@@ -12,7 +12,7 @@
 import { useState } from 'react'
 import { useGame, useErTemaAktivt, turistsesongInfo } from '../GameContext'
 import { useDevPanel, setDevPanel, toggleDevPanel } from './devPanel'
-import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from '../data/featureFlags'
+import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV, KLESBUTIKK_AKTIV } from '../data/featureFlags'
 import { FAG_KODER, FAG_META } from '../data/fag'
 import { SCENARIOS } from '../sales/scenarios'
 
@@ -26,7 +26,7 @@ export default function DevPanel({ onOpenSim, isInterior }: {
     fagAktiv, fagDev, setFagDev,
     espenSporStyring, espenSporDev, setEspenSporDevAktiv, setEspenSporDevFag,
     nullstillDevOverstyringer } = useGame()
-  const { open, kalibrering, scenariovelger } = useDevPanel()
+  const { open, kalibrering, scenariovelger, klesbutikkAktivDev } = useDevPanel()
   const beredskapAktiv = useErTemaAktivt('beredskap')
   const reiselivAktiv = useErTemaAktivt('reiseliv')
 
@@ -234,6 +234,18 @@ export default function DevPanel({ onOpenSim, isInterior }: {
             <div style={hintStyle}>Sonetracere + kalibreringspaneler i den aktive scenen.</div>
           </Group>
 
+          <Group title="Bransje">
+            <ToggleBtn
+              label="🛍 Klesbutikk aktiv (DEV)" on={klesbutikkAktivDev}
+              onClick={() => toggleDevPanel('klesbutikkAktivDev')}
+            />
+            <div style={hintStyle}>
+              Overstyrer produktflagget KLESBUTIKK_AKTIV lokalt (kun ?dev=1, aldri delt/RTDB).
+              {' '}Nå: {klesbutikkAktivDev ? 'DEV' : `produktflagg (${KLESBUTIKK_AKTIV ? 'på' : 'av'})`}.
+              {' '}Registrerer klesbutikken (bransjevelger, kassevy, katalog, scenarier) i denne nettleseren.
+            </div>
+          </Group>
+
           <Group title="Annet">
             <DevBtn
               label="▶ Simuler måneden (gammel PEST)"
@@ -245,9 +257,9 @@ export default function DevPanel({ onOpenSim, isInterior }: {
             <DevBtn
               label="↺ Nullstill DEV-overstyringer"
               color="#fca5a5" bg="rgba(148,163,184,0.14)"
-              onClick={nullstillDevOverstyringer}
+              onClick={() => { nullstillDevOverstyringer(); setDevPanel({ klesbutikkAktivDev: false }) }}
             />
-            <div style={hintStyle}>Fjerner lokale overstyringer (fag, nivå, «Espen spør») → tilbake til lærer/standard.</div>
+            <div style={hintStyle}>Fjerner lokale overstyringer (fag, nivå, «Espen spør», klesbutikk-DEV) → tilbake til lærer/standard.</div>
             <DevBtn
               label="↺ Nullstill mentor-triggere"
               color="#93c5fd" bg="rgba(59,130,246,0.14)"

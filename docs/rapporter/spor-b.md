@@ -1682,3 +1682,58 @@ gated bak `KLESBUTIKK_AKTIV`; kafeen byte-identisk (43/43).
    som flytter oppgjøret til kassen.
 3. **Glossary-commit** når ordlyden er godkjent.
 4. Rydd: slett main sitt `FASHION_SCENARIOS` etter Chrome-dommen.
+
+---
+
+# DEV-OVERSTYRING AV BRANSJEFLAGGET 2026-07-22 (CC B)
+
+For å la Espen validere klesbutikken i `?dev=1` UTEN å endre produktflagget, er det
+lagt til en lokal DEV-overstyring av `KLESBUTIKK_AKTIV` — samme mønster som fag-/
+nivå-overstyringene. Alt gated; kafeen byte-identisk (43/43).
+
+## Effektiv verdi via ÉN delt funksjon
+- **`klesbutikkAktiv()`** (`src/game/dev/devPanel.ts`) er den ene kilden:
+  presedens **DEV-overstyring > produktflagget `KLESBUTIKK_AKTIV` > default (false)**.
+  Leses ved **kjøretid** (ikke modul-init) så ⚙-togglen slår gjennom uten reload.
+  `klesbutikkAktivKilde()` gir `'dev' | 'flagg'` til tekstlabelen.
+- **`KLESBUTIKK_AKTIV` (featureFlags.ts) forblir `false`** — produktporten. (Den
+  midlertidige `VITE_KLESBUTIKK_AKTIV`-env-overstyringen fra forrige økt er FJERNET;
+  DEV-togglen erstatter den.)
+
+## ⚙ DEV-panel → ny gruppe «Bransje»
+- Toggle **«🛍 Klesbutikk aktiv (DEV)»** (`dev_panel_v1.klesbutikkAktivDev` i
+  localStorage — ALDRI delt/RTDB). Tekstlabel viser effektiv kilde: **«Nå: DEV»**
+  når på, **«Nå: produktflagg (av)»** når av.
+- **«↺ Nullstill DEV-overstyringer»** nullstiller nå OGSÅ denne
+  (`klesbutikkAktivDev = false`), i tillegg til fag/nivå/«Espen spør».
+
+## Audit — alle lesere leser den EFFEKTIVE verdien
+Tidligere leste **to** modul-nivå-konstanter `KLESBUTIKK_AKTIV` DIREKTE (evaluert
+ÉN gang ved import, kunne ikke overstyres i runtime). Begge er nå kjøretids-
+funksjoner som leser `klesbutikkAktiv()`:
+
+| Leser | Før | Nå |
+|---|---|---|
+| **Bransjevelger** (`industries.ts` `isIndustryActive`) | `ACTIVE_INDUSTRIES` (modul-const) | `id === 'cafe' \|\| (id === 'fashion' && klesbutikkAktiv())` |
+| **Registeret** (`industryDefinition.ts` `getActiveIndustryDefinition`/`getIndustryDefinitionFor`) | `INDUSTRY_DEFINITIONS` (modul-const m/spread) | `registrertDefinisjon()` → `klesbutikkAktiv()` ved kjøretid |
+
+De ØVRIGE «leserne» leser IKKE flagget direkte, men følger via de to over:
+- **scenariePool / kassevy**: `getActiveIndustryDefinition('fashion')` → KLESBUTIKK
+  (som bærer `scenariePool` + `kassevy`) kun når `klesbutikkAktiv()`.
+- **katalog i Produkter-fanen**: `state.industry === 'fashion'` (spillerens valgte
+  bransje) — og fashion kan bare VELGES når `isIndustryActive('fashion')`.
+- `ACTIVE_INDUSTRIES` (modul-const) er FJERNET (var kun brukt av `isIndustryActive`).
+
+## Spilltest
+- **Flagg-på-testen bruker nå DEV-overstyringen** (`addInitScript` setter
+  `dev_panel_v1.klesbutikkAktivDev = true`) i stedet for en egen VITE-env/build —
+  forenkler oppsettet OG bekrefter at den effektive verdien faktisk leses.
+  `playwright.klesbutikk.config.ts` starter dermed en HELT vanlig dev-server (5177).
+  **Flagg-på-test PASS** (fashion registrert · /inne = klesbutikk-kassevy.png ·
+  Produkter = Innkjøpskatalog · avsluttesVedKasse → /inne).
+- **Kafé-regresjon (ingen overstyring): 43/43 grønt** — omleggingen fra modul-
+  konstant til kjøretidsfunksjon er byte-identisk for kafeen. `tsc -b` grønt.
+
+**Til Espen:** åpne `?dev=1` → ⚙ → **Bransje** → slå på «Klesbutikk aktiv (DEV)»
+(hard-reload for bransjevelgeren) → valider klesbutikken. Produktflagget forblir
+av til du eksplisitt slår det på i `featureFlags.ts`.

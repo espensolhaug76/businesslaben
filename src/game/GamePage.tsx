@@ -104,9 +104,9 @@ function GameContent() {
   useEffect(() => {
     if (!IS_DEV_SKIP && !devDeepLink) return
     if (state.phase !== 'startup') return
-    // FLAGG-PÅ-testoppsett: ?industry=fashion seeder en klesbutikk (krever at
-    // dev-serveren kjører med VITE_KLESBUTIKK_AKTIV=1, ellers faller 'fashion'
-    // trygt til CAFE). Default = kafé (uendret).
+    // VALIDERING: ?industry=fashion seeder en klesbutikk (krever at klesbutikken
+    // er EFFEKTIVT aktiv — ⚙ Bransje → «Klesbutikk aktiv (DEV)», ellers faller
+    // 'fashion' trygt til CAFE). Default = kafé (uendret).
     const seedIndustry = new URLSearchParams(window.location.search).get('industry') === 'fashion'
       ? 'fashion' as const : 'cafe' as const
     dispatch({

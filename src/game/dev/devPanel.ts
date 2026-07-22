@@ -9,6 +9,7 @@
 // eller verktøyene i det hele tatt.
 
 import { useSyncExternalStore } from 'react'
+import { KLESBUTIKK_AKTIV } from '../data/featureFlags'
 
 const LS_KEY = 'dev_panel_v1'
 
@@ -20,9 +21,13 @@ export interface DevPanelState {
   kalibrering: boolean
   /** Vis scenariovelgeren (interiørscenen)? Default PÅ. */
   scenariovelger: boolean
+  /** LOKAL DEV-overstyring av bransjeflagget KLESBUTIKK_AKTIV (kun for validering
+   *  i ?dev=1). true ⇒ klesbutikken er aktiv i DENNE nettleseren, uavhengig av
+   *  produktflagget. Presedens: DEV > featureFlags > default. ALDRI delt/RTDB. */
+  klesbutikkAktivDev: boolean
 }
 
-const DEFAULT: DevPanelState = { open: false, kalibrering: true, scenariovelger: true }
+const DEFAULT: DevPanelState = { open: false, kalibrering: true, scenariovelger: true, klesbutikkAktivDev: false }
 
 function load(): DevPanelState {
   if (typeof window === 'undefined') return DEFAULT
@@ -61,4 +66,22 @@ const snapshot = () => current
 /** React-hook: les det delte dev-panel-lageret (reaktivt). */
 export function useDevPanel(): DevPanelState {
   return useSyncExternalStore(subscribe, snapshot, snapshot)
+}
+
+// ─── EFFEKTIV bransjeflagg — ÉN delt kilde ───────────────────────────────────
+// ALLE lesere av «er klesbutikken aktiv?» (bransjevelger, getActiveIndustry-
+// Definition, scenariePool, kassevy, katalog i Produkter-fanen) skal lese HERFRA,
+// aldri featureFlags.KLESBUTIKK_AKTIV direkte. Presedens: DEV-overstyring (denne
+// nettleseren, ?dev=1) > produktflagget KLESBUTIKK_AKTIV (featureFlags.ts) >
+// default (false). Leses ved kjøretid (ikke modul-init) så DEV-togglen slår
+// gjennom på neste render uten reload.
+
+/** Er klesbutikken EFFEKTIVT aktiv? DEV-overstyring vinner over produktflagget. */
+export function klesbutikkAktiv(): boolean {
+  return current.klesbutikkAktivDev || KLESBUTIKK_AKTIV
+}
+
+/** Hvilken kilde bestemmer den effektive verdien nå — for tekstlabel i panelet. */
+export function klesbutikkAktivKilde(): 'dev' | 'flagg' {
+  return current.klesbutikkAktivDev ? 'dev' : 'flagg'
 }

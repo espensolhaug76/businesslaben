@@ -34,7 +34,7 @@ import { CAFE_SPEND, FASHION_BUDGETS, type PersonaBudsjett } from './personas'
 // docs/AUTONOM_PIPELINE.md §7). Re-eksporteres så bransje-kode kan importere
 // `Hyllelinje` herfra på lik linje med de øvrige geometri-typene.
 import type { Hyllelinje } from '../geometry/hyllelinje'
-import { KLESBUTIKK_AKTIV } from './featureFlags'
+import { klesbutikkAktiv } from '../dev/devPanel'
 export type { Hyllelinje }
 
 /** Lager-flaten (disk-monter): trau-geometri + hvilket bilde de er kalibrert
@@ -417,22 +417,25 @@ export const KLESBUTIKK: IndustryDefinition = {
   },
 }
 
-/** Registeret over bransjer som FAKTISK har en definisjon. `cafe` er alltid med;
- *  `fashion` (KLESBUTIKK) registreres KUN bak `KLESBUTIKK_AKTIV` (skall-synk
- *  2026-07-22). Med flagget av faller getActiveIndustryDefinition('fashion')
+/** Registeret over bransjer som FAKTISK har en definisjon, beregnet ved KJØRETID.
+ *  `cafe` er alltid med; `fashion` (KLESBUTIKK) registreres KUN når klesbutikken
+ *  er EFFEKTIVT aktiv (`klesbutikkAktiv()`: DEV-overstyring > produktflagget
+ *  KLESBUTIKK_AKTIV). Kjøretid (ikke modul-init) så ?dev=1-togglen slår gjennom
+ *  uten reload. Med klesbutikken av faller getActiveIndustryDefinition('fashion')
  *  trygt til CAFE (motorene rendrer kafé-geometri), akkurat som før. */
-const INDUSTRY_DEFINITIONS: Partial<Record<Industry, IndustryDefinition>> = {
-  cafe: CAFE,
-  ...(KLESBUTIKK_AKTIV ? { fashion: KLESBUTIKK } : {}),
+function registrertDefinisjon(industry: Industry): IndustryDefinition | undefined {
+  if (industry === 'cafe') return CAFE
+  if (industry === 'fashion' && klesbutikkAktiv()) return KLESBUTIKK
+  return undefined
 }
 
 /** Slår opp definisjonen for EN GITT bransje — undefined hvis bransjen ikke
- *  har en (fashion/tech/sports i dag). Brukes der oppførselen FAKTISK varierer
- *  med hvilken bransje spilleren valgte (personas.ts sin budsjettmodell via
- *  DashboardOverlay) — kalleren faller tilbake til den opprinnelige,
- *  bransje-uavhengige logikken når resultatet er undefined. */
+ *  har en (fashion uten aktiv klesbutikk, tech/sports). Brukes der oppførselen
+ *  FAKTISK varierer med hvilken bransje spilleren valgte (personas.ts sin
+ *  budsjettmodell via DashboardOverlay) — kalleren faller tilbake til den
+ *  opprinnelige, bransje-uavhengige logikken når resultatet er undefined. */
 export function getIndustryDefinitionFor(industry: Industry): IndustryDefinition | undefined {
-  return INDUSTRY_DEFINITIONS[industry]
+  return registrertDefinisjon(industry)
 }
 
 /** Definisjonen city-/interiør-/monter-/kassevy-motorene rendrer mot for den
@@ -446,5 +449,5 @@ export function getIndustryDefinitionFor(industry: Industry): IndustryDefinition
  *  WindowDisplay, kassevyen og GameContext sin CLOSE_DAY — IKKE av personas.ts
  *  (som bruker getIndustryDefinitionFor for den bransje-SPESIFIKKE budsjettmodellen). */
 export function getActiveIndustryDefinition(industry: Industry = 'cafe'): IndustryDefinition {
-  return INDUSTRY_DEFINITIONS[industry] ?? CAFE
+  return registrertDefinisjon(industry) ?? CAFE
 }
