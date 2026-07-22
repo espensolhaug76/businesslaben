@@ -8,6 +8,8 @@ import Fagord from './Fagord'
 import OrdbokPanel from './OrdbokPanel'
 import { kanalById, kanalTreffISegmenter } from '../data/kampanje'
 import { getScenario } from '../sales/scenarios'
+import { avisAbsDag } from '../data/avis'
+import { BALANCE } from '../data/balance'
 import type { GameState } from '../types'
 
 // ─── LÆRINGSLAGET — mentoren (Espen) ──────────────────────────────────────────
@@ -129,6 +131,8 @@ function oppfylt(id: string, s: GameState): boolean {
     case 'forste_svinn': return (s.lastDayResult?.svinnStk ?? 0) > 0
     case 'forste_tomt_trau': return (s.lastDayResult?.tomtProdukter.length ?? 0) > 0
     case 'forste_ko': return (s.lastDayResult?.koKunder ?? 0) > 0
+    // KROK 7c — første Sentrumsposten-utgave i innboksen.
+    case 'forste_avis': return s.messages.some(m => m.type === 'avis')
     case 'forste_p_fullfort': return s.p1_complete || s.p2_complete || s.p3_complete || s.p4_complete
     case 'alle_p_fullfort': return s.p1_complete && s.p2_complete && s.p3_complete && s.p4_complete
     // TEMA 1: Beredskap (tema_beredskap_aktivert fyres via aktiveTemaer-effekten).
@@ -189,6 +193,13 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
   }
   // DEL 1d — prisstrategi-gjentak: dag-scopet id → statisk kortversjon.
   if (id.startsWith('prisstrategi_gjentak|')) return mentorMelding('prisstrategi_gjentak')
+  // KROK 7c DEL 4 — avis-trend-refleksjon: navngi trenden avisen varslet (label).
+  if (id.startsWith('avis_trend|')) {
+    const e = s.avisEffekt
+    if (!e) return undefined
+    const navn = e.label.split(' (')[0].toLowerCase()
+    return `Husker du at Sentrumsposten varslet ${navn} denne uka? Etterspørselen svingte akkurat som meldt — se på dagens tall. Neste gang lønner det seg å bestille og prise DERETTER, i forkant.`
+  }
   // KROK 2 — STAMKUNDER: navngi den første kunden som ble stamkunde.
   if (id === 'stamkunde_forste') {
     const entry = Object.entries(s.stamkunder).find(([, k]) => k.erStamkunde)
@@ -432,6 +443,20 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   useEffect(() => {
     if (state.mentorDagligHint) fire(`daglig|${state.mentorDagligHint.dag}`)
   }, [state.mentorDagligHint, fire])
+
+  // DEL 4 — AVIS-TREND-REFLEKSJON (dag-scopet, DATAVAKT): en trend-effekt Sentrums-
+  // posten VARSLET var aktiv, og eleven endret IKKE bestilling/priser i forkant
+  // (avisSisteHandlingDag < annonseuka) → kort refleksjon ETTERPÅ, på effektens
+  // siste dag (før en ev. ny utgave overskriver avisEffekt). Aldri fasit før.
+  useEffect(() => {
+    const e = state.avisEffekt
+    if (!e) return
+    const idag = avisAbsDag(state.currentYear, state.currentMonth, state.dayNumber)
+    if (idag !== e.tilAbsDag) return                    // fyr kun på effektens SISTE dag
+    const annonseMandag = e.fraAbsDag - BALANCE.avis.dagerPerUke
+    if (state.avisSisteHandlingDag >= annonseMandag) return  // eleven HANDLET i forkant → ingen påpekning
+    fire(`avis_trend|${e.notisId}`)
+  }, [state.avisEffekt, state.currentYear, state.currentMonth, state.dayNumber, state.avisSisteHandlingDag, fire])
 
   // DEL 4 — PRELOAD alle mentor-poser ved mount, så et pose-bytte aldri venter på
   // bildelast (ingen «tomt→lastet»-hopp i figuren).

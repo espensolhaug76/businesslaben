@@ -65,6 +65,11 @@ export const MENTOR_TRIGGERS: MentorTrigger[] = [
     melding: 'I dag sto det kunder i kø som ga opp og gikk. Kø er tapt salg. Én person på gulvet rekker bare så mange — vurder å sette flere på vakt i de travle timene.',
   },
   {
+    id: 'forste_avis',
+    betingelse: 'Første Sentrumsposten-utgave i innboksen (KROK 7c)',
+    melding: 'Sentrumsposten har begynt å skrive om byen — og om deg. Det lønner seg å lese den: nyheter, byens trender som påvirker etterspørselen, og varsler om hva som kommer. En god driver planlegger etter avisen.',
+  },
+  {
     id: 'forste_svinn',
     betingelse: 'Første dagsoppgjør med svinn (usolgt ferskvare kastet)',
     melding: 'Du måtte kaste usolgt vare i dag — det er svinn, og det spiser rett av overskuddet. Litt er normalt for ferskvare, men bestill litt mindre av det som blir stående.',
