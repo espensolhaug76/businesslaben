@@ -1744,8 +1744,16 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, avisArkiv, avisUlest: state.avisUlest + gen.utgave.notiser.length,
         avisEffekt: gen.effekt ?? state.avisEffekt, avisSisteUke: avisUke(naa) }
     }
-    case 'CLEAR_AVIS_ULEST':
-      return state.avisUlest === 0 ? state : { ...state, avisUlest: 0 }
+    case 'CLEAR_AVIS_ULEST': {
+      // Overlay lukket → nullstill badge OG fjern «NYTT»-merket på alle notiser
+      // (livssyklus = badgen: settes ved publisering, ryddes ved lukking).
+      const harNy = state.avisArkiv.some(u => u.notiser.some(n => n.ny))
+      if (state.avisUlest === 0 && !harNy) return state
+      const avisArkiv = harNy
+        ? state.avisArkiv.map(u => ({ ...u, notiser: u.notiser.map(n => (n.ny ? { ...n, ny: false } : n)) }))
+        : state.avisArkiv
+      return { ...state, avisUlest: 0, avisArkiv }
+    }
     case 'DEV_UTLOS_AVIS_EFFEKT': {
       // Aktiver en seedet trend-effekt fra I DAG (så effekten synes i dagstallene nå).
       const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)

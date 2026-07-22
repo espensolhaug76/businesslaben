@@ -286,6 +286,12 @@ function Notis({ n, forst }: { n: RenderedNotis; forst: boolean }) {
         <span style={{ fontFamily: 'Georgia, serif', fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', color: '#8a6d3b', border: '1px solid rgba(138,109,59,0.5)', borderRadius: 3, padding: '1px 5px' }}>
           {KILDE_ETIKETT[n.kilde]}
         </span>
+        {/* NYTT-merke: publisert etter forrige avis-åpning. Alltid TEKST. */}
+        {n.ny && (
+          <span style={{ fontFamily: 'Georgia, serif', fontSize: 9, fontWeight: 900, letterSpacing: '0.06em', color: '#1e6b3a', border: '1px solid rgba(30,107,58,0.55)', borderRadius: 3, padding: '1px 5px' }}>
+            NYTT
+          </span>
+        )}
         {/* Fremover-merke: alltid TEKST, aldri kun farge/ikon. */}
         {n.fremover && (
           <span style={{ fontFamily: 'Georgia, serif', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: '#7a1f1f' }}>

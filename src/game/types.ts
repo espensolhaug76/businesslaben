@@ -321,6 +321,10 @@ export interface RenderedNotis {
   tekst: string
   /** true = notisen omtaler NESTE uke (hver utgave peker fremover). */
   fremover: boolean
+  /** KROK 7c-revisjon — «NYTT»-merke: notisen ble publisert etter forrige avis-
+   *  åpning. Livssyklus = ulest-badgen: settes ved publisering, fjernes når
+   *  overlayet lukkes (CLEAR_AVIS_ULEST markerer alle som lest). Persistert. */
+  ny?: boolean
 }
 
 /** KROK 7c — én utgave av Sentrumsposten (lagret på InboxMessage.avis). */

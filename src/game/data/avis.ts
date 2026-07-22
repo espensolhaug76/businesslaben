@@ -291,7 +291,7 @@ export function genererAvisutgave(
 
   const notiser: RenderedNotis[] = valgt.map(n => {
     const { tittel, tekst } = n.bygg(s, r)
-    return { id: n.id, kilde: n.kilde, tittel, tekst, fremover: n.fremover }
+    return { id: n.id, kilde: n.kilde, tittel, tekst, fremover: n.fremover, ny: true }
   })
 
   const utgave: AvisUtgave = {
@@ -340,7 +340,7 @@ export function løpendeNotiser(
     n.kilde !== 'trend' && (!n.fag || fagAktiv[n.fag]) && n.vilkaar(s) && !iUtgaven.has(n.id))
   return shuffle(kand, r).slice(0, maks).map(n => {
     const { tittel, tekst } = n.bygg(s, r)
-    return { id: n.id, kilde: n.kilde, tittel, tekst, fremover: n.fremover }
+    return { id: n.id, kilde: n.kilde, tittel, tekst, fremover: n.fremover, ny: true }
   })
 }
 
