@@ -1975,6 +1975,55 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`to tempo OK: hovedutgave kun avisdag, løpende notis (${tilføyd.length}, ikke-trend) mellom; badge+NYTT tennes/slukkes; gjeldende=uke ${sCap.avisArkiv[0].uke} på forside, arkiv=3 eldre (uker ${ukerNyesteForst.slice(1).join(',')}); avis_swot|${gjUke} maks 1/utgave; trend-effekt «${eff!.label}» == fasit; datavakt + fag-gating + mentor OK`)
   })
 
+  await steg(page, rapport, 44, 'Prislagring rører KUN retailPrice (disk/vindu/lager urørt midt på dagen) — TILLITSKRITISK', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 44')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 200 }, { productId: 'croissant', qty: 150 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'croissant') && s.products.some(p => p.id === 'coffee'), 'lager 44')
+    // Prissett begge (utstilling + salg krever pris).
+    const prods = (await lesFull()).products.map(p => (p.id === 'coffee' || p.id === 'croissant') ? { ...p, retailPrice: p.markedsPris } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+    await ventState(page, s => (s.products.find(p => p.id === 'croissant')?.retailPrice ?? 0) > 0, 'priset 44')
+    // Still ut: croissant i trau, coffee i vinduet (samme actions som UI-en).
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 't1', productId: 'croissant' }] })
+    await dispatch(page, { type: 'SET_WINDOW_DISPLAY', fixtureId: 'vindu', items: [{ fixtureId: 'vindu', productId: 'coffee', x: 0.5, y: 0.4, z: 0 }] })
+    // Åpen dag + selg litt (lager faller).
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 44')
+    await dispatchN(page, { type: 'TICK' }, 40); await page.waitForTimeout(150)
+    // STALE utkast: snapshot NÅ (som Priser-fanens utkast fanget da eleven redigerte).
+    const stale = (await lesFull()).products.map(p => ({ ...p }))
+    // …deretter selges det MER, så gjeldende lager < snapshotets lager.
+    await dispatchN(page, { type: 'TICK' }, 40); await page.waitForTimeout(150)
+    const før = await lesFull()
+    const stockFør = Object.fromEntries(før.products.map(p => [p.id, p.stock]))
+    const clFør = JSON.stringify(før.counterLayout)
+    const wlFør = JSON.stringify(før.windowDisplayLayout)
+    const coffeePrisFør = før.products.find(p => p.id === 'coffee')!.retailPrice
+    // LAGRE prisendring via det STALE snapshotet (reproduserer den buggy utkast-lagringen):
+    // endre croissant-pris, men snapshotet bærer gammelt (høyere) lager.
+    const nyPris = 99
+    await dispatch(page, { type: 'SAVE_RETAIL_PRICES', products: stale.map(p => p.id === 'croissant' ? { ...p, retailPrice: nyPris } : p) })
+    await page.waitForTimeout(150)
+    const etter = await lesFull()
+    // (a) LAGER for ALLE varer urørt — IKKE spolt tilbake til snapshotet.
+    for (const p of etter.products) {
+      expect(p.stock, `lager for ${p.id} urørt av prislagring (var ${stockFør[p.id]})`).toBe(stockFør[p.id])
+    }
+    // (b) Plasseringer + utstilte-settet urørt (disken tømmes ikke).
+    expect(JSON.stringify(etter.counterLayout), 'counterLayout urørt').toBe(clFør)
+    expect(JSON.stringify(etter.windowDisplayLayout), 'windowDisplayLayout urørt').toBe(wlFør)
+    // (c) NØYAKTIG retailPrice endret på croissant; andre priser urørt.
+    expect(etter.products.find(p => p.id === 'croissant')?.retailPrice, 'ny croissant-pris lagret').toBe(nyPris)
+    expect(etter.products.find(p => p.id === 'coffee')?.retailPrice, 'coffee-pris urørt').toBe(coffeePrisFør)
+    // (d) Salget fortsetter med ny pris i neste bolk (lager faller videre, ingen reset).
+    await dispatchN(page, { type: 'TICK' }, 40); await page.waitForTimeout(150)
+    const etter2 = await lesFull()
+    const solgtMer = etter2.products.some(p => p.stock < etter.products.find(q => q.id === p.id)!.stock)
+    expect(solgtMer, 'salget fortsetter etter prislagring (lager faller videre)').toBe(true)
+    ctx.ok(`prislagring merger KUN retailPrice: lager (${Object.entries(stockFør).map(([k, v]) => `${k}:${v}`).join(', ')}) + plasseringer + utstilte urørt av stale utkast; croissant → ${nyPris} kr; salget fortsetter`)
+  })
+
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
   const { pass, fail, kjent } = skrivRapport(rapport, notater)
   expect(fail, `Reelle FAIL-steg (KJENT FEIL teller ikke): ${fail}. Se docs/rapporter/spilltest-siste.md`).toBe(0)

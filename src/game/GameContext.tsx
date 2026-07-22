@@ -302,7 +302,8 @@ type Action =
   | { type: 'BUY_MARKET_RESEARCH' }
   | { type: 'BUY_PRICE_RESEARCH' }
   | { type: 'TAKE_LOAN'; loan: Loan }
-  | { type: 'SET_PRODUCTS'; products: Product[] }
+  | { type: 'SET_PRODUCTS'; products: Product[] }              // wholesale replace (seed/dev/test)
+  | { type: 'SAVE_RETAIL_PRICES'; products: Product[] }        // prislagring: merge KUN retailPrice
   | { type: 'SET_MAIN_PRODUCT'; id: string }
   /** Speil lærerens fagaktivering inn i state (fra context) — reduceren fag-gater
    *  innhold som genereres reducer-side (innboks-tilbud). */
@@ -616,8 +617,10 @@ function reducer(state: GameState, action: Action): GameState {
     }
 
     case 'SET_PRODUCTS': {
-      // TEMA 8 (førpris): logg absolutt spilldag når eleven AKTIVT endrer en
-      // retailPrice — brukes til førpris-sjekken ved salgskampanje.
+      // NB: WHOLESALE REPLACE av produktlista. Brukes nå KUN som seeding-/dev-
+      // og testverktøy (produktkatalog inn). Elevens PRISLAGRING går IKKE her
+      // lenger — den bruker SAVE_RETAIL_PRICES (merge kun retailPrice), se under.
+      // TEMA 8 (førpris): logg absolutt spilldag når en retailPrice endres.
       const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
       const prisendretDag = { ...state.prisendretDag }
       let prisEndret = false
@@ -627,10 +630,44 @@ function reducer(state: GameState, action: Action): GameState {
       }
       return {
         ...state,
-        // KROK 7c: registrer AKTIV prisstyring (mentorens «så du trenden?»-refleksjon).
         avisSisteHandlingDag: prisEndret ? naa : state.avisSisteHandlingDag,
         products: action.products,
         p1_complete: action.products.length > 0,
+        prisendretDag,
+      }
+    }
+
+    case 'SAVE_RETAIL_PRICES': {
+      // PRISLAGRING (Priser-fanen) — den ENESTE produksjonsveien for å sette pris.
+      // action.products er KUN en pris-KILDE, ikke en ny produktliste: vi merger
+      // NØYAKTIG retailPrice per id inn i GJELDENDE state.products og lar alt annet
+      // stå (lager, kategori, sprite, trau-egnethet …). Plasseringer
+      // (counterLayout/windowDisplayLayout) og bestillinger (incomingOrders) er
+      // egne state-felt og røres uansett ikke.
+      //
+      // TILLITSKRITISK FIKS (2026-07-22): før gikk lagring via SET_PRODUCTS, som
+      // ERSTATTET hele lista med Priser-fanens `utkast`-snapshot. Siden
+      // DashboardOverlay alltid er montert, overlever utkastet dashbord-lukking OG
+      // dagsskifter — et gammelt snapshot bar STALE lager, og en midt-på-dagen-
+      // lagring spolte lageret tilbake for ALLE varer. Varer som havnet på lager
+      // ≤ 0 forsvant fra disken (InteriorView-speilene gater på stock > 0).
+      // Merge kun retailPrice ⇒ lageret er urørt, lagring midt på dagen er trygt.
+      const naa = absDag(state.currentYear, state.currentMonth, state.dayNumber)
+      const prisendretDag = { ...state.prisendretDag }
+      let prisEndret = false
+      const nyPrisPerId = new Map(action.products.map(np => [np.id, np.retailPrice]))
+      const products = state.products.map(p => {
+        const nyPris = nyPrisPerId.get(p.id)
+        if (nyPris === undefined || nyPris === p.retailPrice) return p   // uendret vare
+        if (nyPris > 0) { prisendretDag[p.id] = naa; prisEndret = true } // TEMA 8 (førpris)
+        return { ...p, retailPrice: nyPris }
+      })
+      return {
+        ...state,
+        // KROK 7c: registrer AKTIV prisstyring (mentorens «så du trenden?»-refleksjon).
+        avisSisteHandlingDag: prisEndret ? naa : state.avisSisteHandlingDag,
+        products,
+        p1_complete: products.length > 0,
         prisendretDag,
       }
     }

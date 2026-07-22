@@ -2188,7 +2188,11 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
   }
 
   function save() {
-    dispatch({ type: 'SET_PRODUCTS', products })
+    // PRISLAGRING: merge KUN retailPrice inn i gjeldende state (SAVE_RETAIL_PRICES),
+    // ALDRI wholesale replace — utkastet kan bære stale lager (DashboardOverlay er
+    // alltid montert, så utkastet overlever dashbord-lukking/dagsskifter). Replace
+    // ville spolt lageret tilbake og tømt disken. Se reduceren for detaljer.
+    dispatch({ type: 'SAVE_RETAIL_PRICES', products })
     setUtkast(null)                 // synk tilbake til (nå lagret) state
     setLagretMin(state.dayMinute)
     setNyligLagret(true)
