@@ -3368,3 +3368,109 @@ notis) og fyrer **maks én gang per utgave**. `SpillState` (harness) fikk `notis
 3. Lukk avisen etter en utgave med en trend-/aktør-notis → **Espen** spør «… mulighet
    eller en trussel …» (klikkbar SWOT-term). Åpne/lukk samme utgave igjen → spør IKKE på
    nytt (maks én per utgave). Ny hovedutgave neste uke → nytt SWOT-spørsmål.
+
+## FIKSJOBB — disk-bug, mentor-kontekst, hyllelinjer, endre bestilling — 2026-07-23
+
+Gren `spor-a/fiks-disk-og-mentor` (fra main 950fac2). Fire deler + tekstfiks, hver
+commit for seg, spilltest 46/46 grønt. IKKE merget.
+
+### DEL 1 (TILLITSKRITISK) — «Prislagring tømte disken»: ROTÅRSAKSANALYSE
+
+**Symptom (Espen):** åpen dag, varer utstilt i trau med lager > 0 → endre pris på ÉN
+vare i Priser-fanen → «Lagre priser» → disken tømmes og lageret endres for varer.
+
+**Etterforskning (bevisført, ikke gjettet):**
+1. `SET_PRODUCTS`-reduceren rørte KUN `products`/`prisendretDag` — ikke
+   `counterLayout`/`windowDisplayLayout`. Et fullstendig søk bekreftet at de ENESTE
+   skriverne til de to plasserings-feltene er bruker-drag (SET_COUNTER_LAYOUT/
+   SET_WINDOW_DISPLAY) + initialState. **Ingen produkt-reaktiv effekt** tømmer dem.
+   ⇒ disken ble aldri faktisk tømt i state.
+2. Headless repro isolerte reduceren: `SET_PRODUCTS` med et FRESH produkt-snapshot →
+   lager uendret; med et STALE snapshot → **lageret spolte tilbake** til snapshotets
+   verdier (coffee 195 → 200). Plasseringene uendret i begge.
+3. Koblingen til «tom disk»: InteriorView-speilene (`InteriorView.tsx:522`) gater på
+   `product.stock > 0` — en vare som spoles til lager ≤ 0 forsvinner fra disken.
+
+**Rotårsak:** Priser-fanens `save()` dispatchet `SET_PRODUCTS` med `utkast` — et FULLT
+snapshot av `state.products` (ALLE felt, inkl. `stock`) tatt da eleven begynte å
+redigere. `DashboardOverlay` er **alltid montert** (open-prop styrer synlighet,
+`pointerEvents`-toggle — komponenten unmountes aldri), så `priserUtkast` overlever
+dashbord-lukking OG dagsskifter. Et gammelt snapshot bar dermed STALE lager, og
+`SET_PRODUCTS` gjorde `products: action.products` — **wholesale replace** → lageret
+ble spolt tilbake for ALLE varer. Varer som havnet på ≤ 0 forsvant fra disken. En
+tillitskritisk stille data-tilbakerulling: å lagre priser midt på dagen kunne
+usynlig reversere lageret.
+
+**Fiks:** Ny reducer-action `SAVE_RETAIL_PRICES` — merger NØYAKTIG `retailPrice` per
+id inn i GJELDENDE `state.products`, alt annet urørt (lager, kategori, plasseringer,
+bestillinger). Priser-fanen bruker den nå. `SET_PRODUCTS` beholdt som wholesale-
+replace, men KUN som seeding/dev/test-verktøy (null produksjonskaller). Midt-på-
+dagen-lagring er nå trygt. Steg 44 (TILLITSKRITISK) vokter regresjonen: stale utkast
+med prisendring → lager + counterLayout + windowDisplayLayout urørt, kun retailPrice
+endret, salget fortsetter.
+
+### DEL 2 — Trigger-kontekst (forkast + re-arm generalisert)
+
+Scene-regelen (forkast + re-arm ved kontekstbytte) gjaldt før kun fire scene-
+orienteringer (hardkodet tabell), og fane-tips hadde et hull: de ble markert FYRT
+idet fanen ble åpnet, så å forlate fanen ulest BRENTE engangsforsøket. Nå: `scene`-
+felt på triggeren (parallelt med `fane`), `SCENE_AV_TRIGGER` avledet av dataene, og
+fane-tips re-armes ved fanebytte hvis ulest.
+
+**Trigger-kontekst-tabell (audit):**
+
+| Kontekst-type | Felt | Triggere |
+|---|---|---|
+| Rute-scene | `scene` | forste_bykart (bykart), forste_bydel (bydel), forste_disk_stell (disk), forste_vindu (vindu) |
+| Dashbord-fane | `fane` | forste_prising, priser_fane (priser); produkter_fane; malgruppe_fane; marked_fane; personale_fane; okonomi_fane; forretningsplan_fane; lokasjon_fane |
+| Kontekst-FRI (uendret) | — | forste_apning, forste_bestilling_levert, forste_tomt_trau, forste_manedsoppgjor, forste_eierlonn, forste_laan, forste_ko, forste_avis, forste_svinn, forste_p_fullfort, alle_p_fullfort, forste_dashbord, alle tema_*/beredskap_*/budsjett_*/nokkeltall_*/kampanje_*, turistsesong_slutt, hotellavtale_svart, pakke_bygget, forste_epost_frist, stamkunde_forste, prisstrategi_gjentak |
+
+Kontekstbundet + ulest når konteksten forlates ⇒ forkastes stille fra kø/boble +
+re-armes. Kontekst-frie (dagsoppgjør, Espen spør, avis) uendret. Steg 45 vokter det.
+
+### DEL 3 — Vinduet fikk hyllelinjer (perspektiv) — ⚠️ ESPEN-LÅSING GJENSTÅR
+
+Portet `src/game/geometry/hyllelinje.ts` rått fra B-treet (klesbutikk; ingen git-
+kobling). Vinduet har nå 3 dybdelinjer (bak/midt/front): en vare snapper til nærmeste
+linje og skaleres etter linjens interpolerte varebredde (bak = mindre) — fikser
+«ute av proporsjoner». Tom linjeliste ⇒ gammel fri plassering (ingen regresjon).
+
+**Migrering (best effort, dokumentert):** gamle `windowDisplayLayout`-varer uten
+`scale` får perspektiv-skala fra nærmeste linje ved RENDRING (retter proporsjonene
+straks); POSISJONEN snapper fullt neste gang varen dras. Ingen state-migrasjon —
+render-tid + drag dekker det trygt.
+
+> **⚠️ FLAGG — LÅSING GJENSTÅR:** `VINDU_HYLLELINJER` (WindowDisplay.tsx) er en
+> **skjermbilde-basert FØRSTEPASS**, ikke kalibrert/låst. De tre linjene ligger på
+> gulvet i det perspektiviske rominteriøret. **Espen finpusser + låser** dem via
+> `?dev=1` → Dashbord → Utstilling: dra de rosa endepunktene, juster skala pr. linje
+> (±), og **📋 Kopier hyllelinjer** → lim inn i `VINDU_HYLLELINJER` og commit. (Fulgt
+> `?dev=1`-trace-og-lås-mønsteret; jeg gjettet ingen låste tall — førstepassen er
+> tydelig merket UNCALIBRATED i koden.)
+
+### DEL 4 — Endre/angre bestilling før levering
+
+«I bestilling: N stk — levering i morgen»-linja fikk **[✏️ Endre]**. Ny action
+`EDIT_ORDER`: erstatter varens uleverte, i-dag-lagte ordre med ny mengde; differansen
+justerer kassa eksakt; 0 = kansellert (linja forsvinner, «✓ Bestilling kansellert»).
+Kun FØR dagstart-levering. Steg 46 vokter: bestill 130 → 30 (leveres 30, refundert);
+bestill 50 → 0 (kansellert, ingen levering).
+
+### Tekstfiks
+DevPanel «📰 Generer utgave nå»-hint: «havner i innboksen» → «publiseres i avisen —
+📰-ikonet får ulest-merke». (Commit `c466c5c`, allerede på main via forrige runde.)
+
+### Chrome-sjekkliste — fiksjobben
+1. **Prislagring (DEL 1):** åpne dag, still ut varer med lager, la det selge litt.
+   Åpne Priser midt på dagen, endre ÉN pris, «Lagre priser». Disken står, lageret
+   står, kun prisen endret. Lukk/gjenåpne dashbord over et dagsskifte og lagre igjen
+   → fortsatt trygt (ingen lager-tilbakerulling).
+2. **Mentor-kontekst (DEL 2):** åpne Produkter-fanen (tips dukker opp), bytt fane FØR
+   du leser det → tipset forsvinner; gå tilbake til Produkter → tipset kommer igjen.
+   Dagsoppgjør-/avis-/Espen spør-meldinger oppfører seg som før.
+3. **Hyllelinjer (DEL 3):** Utstilling-fanen, dra varer inn i vinduet → de legger seg
+   på nærmeste hylle og skaleres etter dybden (bak mindre, front større). `?dev=1`:
+   rosa tracer med draghåndtak + 📋 Kopier — **kalibrer og lås linjene**.
+4. **Endre bestilling (DEL 4):** Produkter, bestill 130 → «I bestilling: 130» → [Endre]
+   → 30 → Lagre → «I bestilling: 30», differansen tilbake i kassa. Bestill → [Endre]
+   → 0 → «Bestilling kansellert». Neste dag: leveres den endrede/ingen mengde.
