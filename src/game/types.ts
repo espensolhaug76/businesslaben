@@ -163,6 +163,11 @@ export interface WindowDisplayItem {
   y: number
   /** Lagrekkefølge (avledet av y, persistert). Lavere = bakerst. */
   z: number
+  /** KROK-fiks (hyllelinjer): varebredde-brøk (0–1) interpolert fra hyllelinjen
+   *  varen snappet til — gir perspektiv-forminskning (varer bak = mindre). Utelatt
+   *  = gammel fri plassering (fast cardWFrac). Best-effort migreres gamle items til
+   *  nærmeste linje ved rendring når fixturen har hyllelinjer. */
+  scale?: number
 }
 
 /** Presentasjonstetthet — spillerens valg av hvor mange fliser som vises for

@@ -4,6 +4,9 @@ import { useGame } from '../GameContext'
 import { STOREFRONT_HOTSPOTS, INTERIOR_DISK_DISPLAY } from '../../data/districts'
 import type { Product, WindowDisplayItem, FixtureId } from '../types'
 import { FACADE_IMG } from './StorefrontView'
+import type { Hyllelinje } from '../geometry/hyllelinje'
+import { snapToLine, pointAlong } from '../geometry/hyllelinje'
+import { IS_DEV_COORDS } from './DevCoordHelper'
 
 // ── VAREEKSPONERING — fri drag-and-drop (ren React/DOM) ──────────────────────
 //
@@ -25,6 +28,23 @@ const INTERIOR_IMG = '/assets/raw/interior-cafe.png'
 const VINDU_CARD_W_FRAC = 0.24
 export const MONTER_CARD_W_FRAC = 0.14
 
+// ── HYLLELINJER (vindu) — perspektiv-dybdelinjer på rominterngulvet ───────────
+// Espens dom: fri plassering ga varer «ute av proporsjoner» (alle samme størrelse
+// uansett dybde i det perspektiviske rommet). En vare snapper nå til nærmeste
+// dybdelinje og skaleres etter linjens interpolerte varebredde (bak = mindre).
+//
+// ⚠️ FØRSTEPASS — IKKE LÅST. Verdiene under er en skjermbilde-basert førstepasning
+// (tre dybdelinjer på gulvet: bak/midt/front). Espen finpusser + LÅSER dem via
+// ?dev=1-traceren (📋 Kopier hyllelinjer) — se docs/rapporter/spor-a.md. Endres
+// disse til [] faller vinduet tilbake til gammel fri plassering (ingen regresjon).
+// Koordinater i PROSENT (0–100) av flatens sone — som hyllelinje-modulen krever.
+// varebredde-skalaen (scale1/scale2) er en BRØK (0–1) av flatebredden.
+const VINDU_HYLLELINJER: Hyllelinje[] = [
+  { id: 'bak',   x1: 31, y1: 60, x2: 69, y2: 60, scale1: 0.12, scale2: 0.12 },
+  { id: 'midt',  x1: 22, y1: 72, x2: 78, y2: 72, scale1: 0.17, scale2: 0.17 },
+  { id: 'front', x1: 14, y1: 84, x2: 86, y2: 84, scale1: 0.23, scale2: 0.23 },
+]
+
 interface FixtureConfig {
   id: FixtureId
   icon: string
@@ -38,14 +58,48 @@ interface FixtureConfig {
   /** Kildebildets native bredde/høyde — for korrekt utsnitt-proporsjon. */
   imageAspect: number
   cardWFrac: number
+  /** Dybdelinjer varer snapper til (perspektiv-skala). Tom/utelatt = fri plassering. */
+  hyllelinjer?: Hyllelinje[]
 }
 
 const VINDU_FIXTURE: FixtureConfig = {
   id: 'vindu', icon: '🪟', title: 'Vindusutstilling',
-  blurb: 'Dra produkter inn i vinduet og plasser dem fritt — slik kundene ser det fra fortauet. Lavere = nærmere glasset (foran).',
+  blurb: 'Dra produkter inn i vinduet — de legger seg på nærmeste hylle og skaleres etter dybden (bak = mindre), slik kundene ser det fra fortauet.',
   emptyText: 'Tomt vindu — dra produkter hit fra paletten under',
   zone: STOREFRONT_HOTSPOTS.vindu, image: FACADE_IMG, imageAspect: 1024 / 1280,
   cardWFrac: VINDU_CARD_W_FRAC,
+  hyllelinjer: VINDU_HYLLELINJER,
+}
+
+/** Surface-aspect (høyde/bredde) for isotrop avstandsmåling i hyllelinje-projeksjonen. */
+function surfaceAspectHB(fixture: FixtureConfig): number {
+  const [, , zw, zh] = fixture.zone
+  const wOverH = (zw / zh) * fixture.imageAspect   // bredde/høyde
+  return 1 / wOverH
+}
+
+/** Effektiv varebredde-brøk for et plassert element: lagret linjeskala, ellers
+ *  (best-effort migrering) skalaen fra nærmeste hyllelinje ved elementets punkt,
+ *  ellers den gamle faste cardWFrac (fixtur uten linjer / fri plassering). */
+function effektivBredde(it: WindowDisplayItem, fixture: FixtureConfig, cardWFrac: number): number {
+  if (typeof it.scale === 'number') return it.scale
+  const linjer = fixture.hyllelinjer
+  if (linjer && linjer.length > 0) {
+    // Item x/y er BRØK (0–1); modulen jobber i PROSENT (0–100).
+    const snap = snapToLine(it.x * 100, it.y * 100, linjer, 999, surfaceAspectHB(fixture))
+    if (snap) return snap.scale
+  }
+  return cardWFrac
+}
+
+/** Snapp en slippposisjon (brøk 0–1) til nærmeste hyllelinje. Returnerer nytt
+ *  senterpunkt (brøk) + linjens interpolerte varebredde-skala, eller null om
+ *  fixturen ikke har linjer (⇒ behold fri plassering). */
+function snappTilLinje(fx: number, fy: number, fixture: FixtureConfig): { x: number; y: number; scale: number } | null {
+  const linjer = fixture.hyllelinjer
+  if (!linjer || linjer.length === 0) return null
+  const snap = snapToLine(fx * 100, fy * 100, linjer, 999, surfaceAspectHB(fixture))
+  return snap ? { x: snap.x / 100, y: snap.y / 100, scale: snap.scale } : null
 }
 
 // PARKERT: den frie disk-monteren. Disk-vareeksponering er flyttet til den
@@ -60,6 +114,8 @@ export const MONTER_FIXTURE: FixtureConfig = {
   zone: INTERIOR_DISK_DISPLAY, image: INTERIOR_IMG, imageAspect: 16 / 9,
   cardWFrac: MONTER_CARD_W_FRAC,
 }
+
+const FIXTURE_BY_ID: Record<FixtureId, FixtureConfig> = { vindu: VINDU_FIXTURE, monter: MONTER_FIXTURE }
 
 /** Lagrekkefølge avledet av y: lavere på flaten (høyere y) = nærmere
  *  betrakteren = foran = høyere z. Persisteres for stabil opptegning. */
@@ -129,6 +185,7 @@ export function WindowDisplayLayer({ items, products, fixtureId = 'vindu', cardW
   fixtureId?: FixtureId
   cardWFrac?: number
 }) {
+  const fixture = FIXTURE_BY_ID[fixtureId]
   const sorted = items.filter(i => i.fixtureId === fixtureId).sort((a, b) => a.z - b.z)
   return (
     <>
@@ -141,7 +198,7 @@ export function WindowDisplayLayer({ items, products, fixtureId = 'vindu', cardW
             style={{
               position: 'absolute',
               left: `${it.x * 100}%`, top: `${it.y * 100}%`,
-              width: `${cardWFrac * 100}%`,
+              width: `${effektivBredde(it, fixture, cardWFrac) * 100}%`,
               transform: 'translate(-50%, -50%)',
               zIndex: it.z, containerType: 'inline-size',
               pointerEvents: 'none',
@@ -153,6 +210,98 @@ export function WindowDisplayLayer({ items, products, fixtureId = 'vindu', cardW
       })}
     </>
   )
+}
+
+// ── HYLLELINJE-TRACER (?dev=1) — Espen kalibrerer + LÅSER dybdelinjene ────────
+// Rendres over editorflaten når IS_DEV_COORDS. Dra endepunktene, juster skala pr.
+// linje med ±, og 📋 Kopier hyllelinjer → limes inn i VINDU_HYLLELINJER over (og
+// låses). Preview-bokser langs hver linje viser den interpolerte varebredden.
+const clampScale = (n: number) => Math.max(0.02, Math.min(0.6, Math.round(n * 1000) / 1000))
+const r1p = (n: number) => Math.round(n * 10) / 10
+
+function HyllelinjeTracer({ fixture, surfaceRef }: { fixture: FixtureConfig; surfaceRef: React.RefObject<HTMLDivElement | null> }) {
+  const [linjer, setLinjer] = useState<Hyllelinje[]>(() => (fixture.hyllelinjer ?? []).map(l => ({ ...l })))
+  const [kopiert, setKopiert] = useState(false)
+
+  function dragEnd(idx: number, which: 1 | 2, e: React.PointerEvent) {
+    e.preventDefault(); e.stopPropagation()
+    const move = (ev: PointerEvent) => {
+      const rect = surfaceRef.current?.getBoundingClientRect(); if (!rect) return
+      const px = r1p(Math.max(0, Math.min(100, ((ev.clientX - rect.left) / rect.width) * 100)))
+      const py = r1p(Math.max(0, Math.min(100, ((ev.clientY - rect.top) / rect.height) * 100)))
+      setLinjer(ls => ls.map((l, i) => i !== idx ? l : which === 1 ? { ...l, x1: px, y1: py } : { ...l, x2: px, y2: py }))
+    }
+    const up = () => { window.removeEventListener('pointermove', move, true); window.removeEventListener('pointerup', up, true) }
+    window.addEventListener('pointermove', move, true); window.addEventListener('pointerup', up, true)
+  }
+  function skaler(idx: number, d: number) {
+    setLinjer(ls => ls.map((l, i) => i !== idx ? l : { ...l, scale1: clampScale(l.scale1 + d), scale2: clampScale(l.scale2 + d) }))
+  }
+  function kopier() {
+    const txt = linjer.map(l => `  { id: '${l.id}', x1: ${l.x1}, y1: ${l.y1}, x2: ${l.x2}, y2: ${l.y2}, scale1: ${l.scale1}, scale2: ${l.scale2} },`).join('\n')
+    const full = `const VINDU_HYLLELINJER: Hyllelinje[] = [\n${txt}\n]`
+    navigator.clipboard?.writeText(full).catch(() => { /* ignore */ })
+    // eslint-disable-next-line no-console
+    console.log('[HYLLELINJER]\n' + full)
+    setKopiert(true); window.setTimeout(() => setKopiert(false), 1600)
+  }
+  const handle = (idx: number, which: 1 | 2, x: number, y: number) => (
+    <div
+      key={`${idx}-${which}`}
+      onPointerDown={e => dragEnd(idx, which, e)}
+      title={`Linje «${linjer[idx]!.id}» — endepunkt ${which}`}
+      style={{
+        position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%,-50%)',
+        width: 16, height: 16, borderRadius: 99, background: '#f472b6', border: '2px solid #fff',
+        cursor: 'grab', zIndex: 60, touchAction: 'none', boxShadow: '0 0 0 1px rgba(0,0,0,0.5)',
+      }}
+    />
+  )
+  return (
+    <>
+      {/* Linjer + preview-bokser (perspektiv-skala) */}
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 55 }}>
+        {linjer.map(l => (
+          <line key={l.id} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="#f472b6" strokeWidth={0.5} strokeDasharray="1.5 1" />
+        ))}
+      </svg>
+      {linjer.flatMap((l) => [0, 0.5, 1].map(t => {
+        const pt = pointAlong(l, t)
+        return (
+          <div key={`${l.id}-prev-${t}`} style={{
+            position: 'absolute', left: `${pt.x}%`, top: `${pt.y}%`, width: `${pt.scale * 100}%`,
+            aspectRatio: '3 / 4', transform: 'translate(-50%,-50%)', zIndex: 54, pointerEvents: 'none',
+            background: 'rgba(244,114,182,0.18)', border: '1px solid rgba(244,114,182,0.6)', borderRadius: 3,
+          }} />
+        )
+      }))}
+      {linjer.flatMap((l, i) => [handle(i, 1, l.x1, l.y1), handle(i, 2, l.x2, l.y2)])}
+
+      {/* Kontrollpanel (skala pr. linje + Kopier) */}
+      <div style={{
+        position: 'absolute', top: 6, left: 6, zIndex: 61, display: 'flex', flexDirection: 'column', gap: 4,
+        background: 'rgba(10,14,26,0.9)', border: '1px solid rgba(244,114,182,0.5)', borderRadius: 8, padding: '6px 8px',
+        fontFamily: 'monospace', fontSize: 11, color: '#f1f5f9',
+      }}>
+        <div style={{ fontWeight: 800, color: '#f9a8d4', fontSize: 10 }}>HYLLELINJER (dev)</div>
+        {linjer.map((l, i) => (
+          <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ minWidth: 34 }}>{l.id}</span>
+            <button onClick={() => skaler(i, -0.005)} style={devBtn}>−</button>
+            <span style={{ minWidth: 40, textAlign: 'center' }}>{l.scale1.toFixed(3)}</span>
+            <button onClick={() => skaler(i, +0.005)} style={devBtn}>+</button>
+          </div>
+        ))}
+        <button onClick={kopier} style={{ ...devBtn, background: kopiert ? '#16a34a' : 'rgba(244,114,182,0.25)', padding: '3px 8px' }}>
+          {kopiert ? '✓ Kopiert (+ console)' : '📋 Kopier hyllelinjer'}
+        </button>
+      </div>
+    </>
+  )
+}
+const devBtn: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4,
+  color: '#f1f5f9', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', padding: '1px 6px',
 }
 
 // ── Editor for ÉN flate — fri plassering, fra dashbordet ──────────────────────
@@ -270,9 +419,12 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
       const product = state.products.find(p => p.id === productId)
       if (!product) return
       const [cx, cy] = clampFrac(fx, fy, rect)
+      // Snapp til nærmeste hyllelinje (perspektiv-skala); ingen linjer ⇒ fri plassering.
+      const snap = snappTilLinje(cx, cy, fixture)
+      const px = snap?.x ?? cx, py = snap?.y ?? cy
       const next = [
         ...itemsRef.current.filter(i => i.productId !== product.id),
-        { fixtureId: fixture.id, productId: product.id, x: cx, y: cy, z: computeZ(cy) },
+        { fixtureId: fixture.id, productId: product.id, x: px, y: py, z: computeZ(py), scale: snap?.scale },
       ]
       commit(next)
     }
@@ -307,8 +459,15 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
       const rect = surfaceRef.current?.getBoundingClientRect()
       let out = false
       if (rect) { const { fx, fy } = fracFromEvent(ev.clientX, ev.clientY, rect); out = isOutside(fx, fy) }
-      if (out) commit(itemsRef.current.filter(i => i.productId !== productId))  // dra ut ⇒ fjern
-      else persist()                                                            // lagre ny posisjon
+      if (out) { commit(itemsRef.current.filter(i => i.productId !== productId)); return }  // dra ut ⇒ fjern
+      // Snapp sluttposisjonen til nærmeste hyllelinje (perspektiv-skala).
+      const snapped = itemsRef.current.map(i => {
+        if (i.productId !== productId) return i
+        const snap = snappTilLinje(i.x, i.y, fixture)
+        return snap ? { ...i, x: snap.x, y: snap.y, z: computeZ(snap.y), scale: snap.scale } : i
+      })
+      itemsRef.current = snapped; setItems(snapped)
+      persist()                                                                 // lagre ny posisjon
     }
     window.addEventListener('pointermove', onMove, true)
     window.addEventListener('pointerup', onUp, true)
@@ -373,7 +532,7 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
                   style={{
                     position: 'absolute',
                     left: `${it.x * 100}%`, top: `${it.y * 100}%`,
-                    width: `${cardWFrac * 100}%`,
+                    width: `${effektivBredde(it, fixture, cardWFrac) * 100}%`,
                     transform: 'translate(-50%, -50%)',
                     zIndex: it.z, containerType: 'inline-size',
                     cursor: isDragging ? 'grabbing' : 'grab',
@@ -411,6 +570,11 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
               }}>
                 Slipp for å fjerne
               </div>
+            )}
+
+            {/* ?dev=1 — hyllelinje-tracer (Espen kalibrerer + låser). */}
+            {IS_DEV_COORDS && fixture.hyllelinjer && fixture.hyllelinjer.length > 0 && (
+              <HyllelinjeTracer fixture={fixture} surfaceRef={surfaceRef} />
             )}
           </div>
         </div>
