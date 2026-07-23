@@ -315,6 +315,7 @@ type Action =
    *  kjøpsbonus, hev utviklingstrinnet, service recovery. */
   | { type: 'RESOLVE_STAMKUNDEMOTE'; scenarioId: string; sales: SaleLine[]; reputationDelta: number; xpEarned: number }
   | { type: 'ORDER_PRODUCT'; product: Product; quantity: number }
+  | { type: 'EDIT_ORDER'; productId: string; quantity: number }   // endre/angre bestilling før levering
   // Åpningsbestilling (docs/INNKJOP_LEVERING.md): elevens ene selvvalgte
   // startlager, ferdig på lager dag 1 (ingen ventetid). Tom liste tillates.
   | { type: 'PLACE_OPENING_ORDER'; items: { productId: string; qty: number }[] }
@@ -954,6 +955,36 @@ function reducer(state: GameState, action: Action): GameState {
         products,
         incomingOrders,
         p1_complete: true,
+      }
+    }
+
+    case 'EDIT_ORDER': {
+      // DEL 4 — ENDRE/ANGRE en bestilling FØR levering (mens den fortsatt ligger i
+      // incomingOrders og ble lagt SAMME dag). Erstatter varens uleverte, i-dag-lagte
+      // ordre(r) med ny mengde; differansen justerer kassa (refusjon el. ekstra trekk).
+      // quantity 0 = kansellert (linja forsvinner, full refusjon). Etter dagstart-
+      // levering (START_NEW_DAY) er ordren historie — ikke lenger her — og uendrelig.
+      const redigerbare = state.incomingOrders.filter(o => o.productId === action.productId && o.bestiltDag === state.dayNumber)
+      if (redigerbare.length === 0) return state
+      const gammelCost = redigerbare.reduce((a, o) => a + o.costKr, 0)
+      const gammelQty = redigerbare.reduce((a, o) => a + o.qty, 0)
+      const prod = state.products.find(p => p.id === action.productId)
+      const costPrice = prod?.costPrice ?? (gammelQty > 0 ? gammelCost / gammelQty : 0)
+      const nyQty = Math.max(0, Math.floor(action.quantity))
+      const nyCost = Math.round(costPrice * nyQty)
+      const diff = gammelCost - nyCost                  // > 0 = refusjon, < 0 = ekstra trekk
+      if (diff < 0 && state.money < -diff) return state // ikke råd til økningen → no-op
+      const ankomstDag = redigerbare[0].ankomstDag
+      const andre = state.incomingOrders.filter(o => !(o.productId === action.productId && o.bestiltDag === state.dayNumber))
+      const incomingOrders = nyQty > 0
+        ? [...andre, { productId: action.productId, qty: nyQty, bestiltDag: state.dayNumber, ankomstDag, costKr: nyCost }]
+        : andre
+      return {
+        ...state,
+        money: state.money + diff,
+        incomingOrders,
+        // Aktiv bestillingsstyring (samme som ORDER_PRODUCT) — teller for avis-refleksjonen.
+        avisSisteHandlingDag: absDag(state.currentYear, state.currentMonth, state.dayNumber),
       }
     }
 

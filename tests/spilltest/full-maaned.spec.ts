@@ -2005,7 +2005,8 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // endre croissant-pris, men snapshotet bærer gammelt (høyere) lager.
     const nyPris = 99
     await dispatch(page, { type: 'SAVE_RETAIL_PRICES', products: stale.map(p => p.id === 'croissant' ? { ...p, retailPrice: nyPris } : p) })
-    await page.waitForTimeout(150)
+    // Poll til lagringen har forplantet seg til speilet (unngår én-render-lag-flake).
+    await ventState(page, s => (s.products.find(p => p.id === 'croissant')?.retailPrice ?? 0) === nyPris, 'croissant-pris lagret')
     const etter = await lesFull()
     // (a) LAGER for ALLE varer urørt — IKKE spolt tilbake til snapshotet.
     for (const p of etter.products) {
@@ -2056,6 +2057,58 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await expect.poll(fired, { message: 'produkter_fane tilbake ved retur til fanen' }).toContain('produkter_fane')
 
     ctx.ok('fane-tips ulest + fanebytte → forkastet + re-armet; kommer tilbake ved retur (kontekst avledet av t.fane/t.scene i dataene)')
+  })
+
+  await steg(page, rapport, 46, 'Endre/angre bestilling før levering: bestill 130 → endre 30 (leveres 30, differanse refundert); bestill → 0 → ingen levering', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 46')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [] })
+    await ventState(page, s => s.rentedLocationId === 'sentrum-l2' && s.openingOrderPlaced, 'leid 46')
+    const cofQty = () => lesFull().then(s => s.incomingOrders.filter(o => o.productId === 'coffee').reduce((a, o) => a + o.qty, 0))
+    const cofCostKr = () => lesFull().then(s => s.incomingOrders.filter(o => o.productId === 'coffee').reduce((a, o) => a + o.costKr, 0))
+
+    // Bestill 130 coffee via UI (dagen er stengt → dashbordet åpner fritt).
+    await gåTilFane('produkter')
+    await page.getByTestId('qty-coffee').fill('130')
+    await page.getByTestId('bestill-coffee').click()
+    await ventState(page, s => s.incomingOrders.filter(o => o.productId === 'coffee').reduce((a, o) => a + o.qty, 0) === 130, 'bestilt 130')
+    const moneyFør = (await lesFull()).money
+    const costKrFør = await cofCostKr()
+
+    // ENDRE 130 → 30 via [Endre]-knappen.
+    await page.getByTestId('endre-bestilling-coffee').click()
+    await page.getByTestId('endre-qty-coffee').fill('30')
+    await page.getByTestId('lagre-endring-coffee').click()
+    await ventState(page, s => s.incomingOrders.filter(o => o.productId === 'coffee').reduce((a, o) => a + o.qty, 0) === 30, 'endret til 30')
+    // Differansen justerer kassa EKSAKT (refusjon = gammel − ny costKr).
+    const costKrEtter = await cofCostKr()
+    expect((await lesFull()).money, 'differanse refundert til kassa').toBe(moneyFør + (costKrFør - costKrEtter))
+
+    // Lever (dagstart neste dag) → stock = 30 (den ENDREDE mengden, ikke 130).
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 46')
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør 46')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag 46')
+    expect((await lesFull()).products.find(p => p.id === 'coffee')?.stock, 'levering i morgen = 30 (endret mengde)').toBe(30)
+
+    // KANSELLER: bestill 50 → endre til 0 → linja forsvinner + «Bestilling kansellert».
+    await gåTilFane('produkter')
+    await page.getByTestId('qty-coffee').fill('50')
+    await page.getByTestId('bestill-coffee').click()
+    await ventState(page, s => s.incomingOrders.filter(o => o.productId === 'coffee').reduce((a, o) => a + o.qty, 0) === 50, 'bestilt 50')
+    await page.getByTestId('endre-bestilling-coffee').click()
+    await page.getByTestId('endre-qty-coffee').fill('0')
+    await page.getByTestId('lagre-endring-coffee').click()
+    await ventState(page, s => s.incomingOrders.filter(o => o.productId === 'coffee').length === 0, 'ordre kansellert (borte fra incomingOrders)')
+    await expect(page.getByTestId('kansellert-coffee')).toBeVisible()
+    const stockFørRull = (await lesFull()).products.find(p => p.id === 'coffee')!.stock
+    // Ny dagstart → INGEN levering (ordren finnes ikke; stock øker ikke med 50).
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 46b')
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør 46b')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'ny dag 46b')
+    const stockEtterRull = (await lesFull()).products.find(p => p.id === 'coffee')!.stock
+    expect(stockEtterRull, 'kansellert ordre → ingen levering (ingen +50)').toBeLessThanOrEqual(stockFørRull)
+    ctx.ok(`bestill 130 → endre 30 → leveres 30 (differanse ${costKrFør - costKrEtter} kr refundert); bestill 50 → endre 0 → kansellert, ingen levering (stock ${stockFørRull}→${stockEtterRull})`)
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

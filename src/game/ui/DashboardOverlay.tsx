@@ -1895,6 +1895,23 @@ function ProdukterTab() {
   // KROK 4 (UX): transient «✓ Bestilt»-kvittering per vare.
   const [sistBestilt, setSistBestilt] = useState<{ id: string; qty: number } | null>(null)
   const bestiltTimer = useRef<number>(0)
+  // DEL 4 — ENDRE/ANGRE bestilling: hvilken vare redigeres, forhåndsutfylt antall,
+  // og en transient «Bestilling kansellert»-kvittering.
+  const [redigerer, setRedigerer] = useState<string | null>(null)
+  const [redigerQty, setRedigerQty] = useState<number>(0)
+  const [kansellertId, setKansellertId] = useState<string | null>(null)
+  const kansellertTimer = useRef<number>(0)
+
+  function startEndre(id: string, n: number) { setRedigerer(id); setRedigerQty(n) }
+  function lagreEndring(id: string) {
+    dispatch({ type: 'EDIT_ORDER', productId: id, quantity: redigerQty })
+    if (redigerQty <= 0) {
+      setKansellertId(id)
+      window.clearTimeout(kansellertTimer.current)
+      kansellertTimer.current = window.setTimeout(() => setKansellertId(k => k === id ? null : k), 2600)
+    }
+    setRedigerer(null)
+  }
 
   function setQty(id: string, qty: number) {
     setQtyById(prev => ({ ...prev, [id]: qty }))
@@ -2017,6 +2034,9 @@ function ProdukterTab() {
           // (levering neste morgen, leveringstid 1 dag). Oppdateres umiddelbart ved
           // nytt «Bestill»-klikk (merges reducer-side per vare+ankomstdag).
           const iBestilling = state.incomingOrders.filter(o => o.productId === item.id).reduce((a, o) => a + o.qty, 0)
+          // DEL 4 — REDIGERBART antall = uleverte ordre lagt SAMME dag (endres/angres
+          // før dagstart-levering). Med leadTime 1 er dette hele iBestilling.
+          const redigerbarQty = state.incomingOrders.filter(o => o.productId === item.id && o.bestiltDag === state.dayNumber).reduce((a, o) => a + o.qty, 0)
 
           return (
             <div key={item.id} style={{
@@ -2103,11 +2123,59 @@ function ProdukterTab() {
                   {sistBestilt?.id === item.id ? `+${sistBestilt.qty} lagt til` : canAfford ? '📦 Bestill' : '💸 Ikke råd'}
                 </button>
               </div>
-              {/* DEL 3 — LØPENDE BESTILLINGSSTATUS (varig linje mens N > 0). */}
-              {iBestilling > 0 && (
-                <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 6 }} data-testid={`ibestilling-${item.id}`}>
+              {/* DEL 3 — LØPENDE BESTILLINGSSTATUS (varig linje mens N > 0).
+                  DEL 4 — [Endre] åpner en inline-redigering (kun FØR levering: ordre
+                  lagt i dag, redigerbarQty > 0). Lagre erstatter ordren; 0 = kanseller. */}
+              {iBestilling > 0 && redigerer !== item.id && (
+                <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }} data-testid={`ibestilling-${item.id}`}>
                   <span>📦</span>
                   <span>I bestilling: {iBestilling} stk — levering i morgen</span>
+                  {redigerbarQty > 0 && (
+                    <button
+                      data-testid={`endre-bestilling-${item.id}`}
+                      onClick={() => startEndre(item.id, redigerbarQty)}
+                      style={{
+                        background: 'rgba(59,130,246,0.16)', border: '1px solid rgba(59,130,246,0.5)',
+                        borderRadius: 6, padding: '2px 10px', color: '#bfdbfe', fontSize: 12, fontWeight: 700,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >✏️ Endre</button>
+                  )}
+                </div>
+              )}
+              {redigerer === item.id && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#93c5fd' }}>📦 Nytt antall:</span>
+                  <input
+                    data-testid={`endre-qty-${item.id}`}
+                    type="number" min={0} max={500} value={redigerQty}
+                    onChange={e => setRedigerQty(Math.max(0, parseInt(e.target.value) || 0))}
+                    style={{
+                      width: 84, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 6, padding: '5px 9px', color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit',
+                    }}
+                  />
+                  <button
+                    data-testid={`lagre-endring-${item.id}`}
+                    onClick={() => lagreEndring(item.id)}
+                    style={{
+                      background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 6,
+                      padding: '5px 14px', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >Lagre</button>
+                  <button
+                    onClick={() => setRedigerer(null)}
+                    style={{
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
+                      padding: '5px 12px', color: '#94a3b8', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >Avbryt</button>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>0 = kanseller bestillingen</span>
+                </div>
+              )}
+              {kansellertId === item.id && (
+                <div data-testid={`kansellert-${item.id}`} style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>✓</span><span>Bestilling kansellert</span>
                 </div>
               )}
             </div>
