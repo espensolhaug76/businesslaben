@@ -2127,19 +2127,24 @@ function ProdukterTab() {
                   DEL 4 — [Endre] åpner en inline-redigering (kun FØR levering: ordre
                   lagt i dag, redigerbarQty > 0). Lagre erstatter ordren; 0 = kanseller. */}
               {iBestilling > 0 && redigerer !== item.id && (
-                <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }} data-testid={`ibestilling-${item.id}`}>
-                  <span>📦</span>
-                  <span>I bestilling: {iBestilling} stk — levering i morgen</span>
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }} data-testid={`ibestilling-${item.id}`}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>📦</span><span>I bestilling: {iBestilling} stk — levering i morgen</span>
+                  </span>
+                  {/* DEL 5 (fiksjobb 28.07): tydelig, solid knapp ved linja — Espen fant
+                      den ikke da den var en diskret pille inne i tekstlinja. */}
                   {redigerbarQty > 0 && (
                     <button
                       data-testid={`endre-bestilling-${item.id}`}
                       onClick={() => startEndre(item.id, redigerbarQty)}
+                      title="Endre eller angre bestillingen (før levering i morgen)"
                       style={{
-                        background: 'rgba(59,130,246,0.16)', border: '1px solid rgba(59,130,246,0.5)',
-                        borderRadius: 6, padding: '2px 10px', color: '#bfdbfe', fontSize: 12, fontWeight: 700,
-                        cursor: 'pointer', fontFamily: 'inherit',
+                        background: 'linear-gradient(135deg,#3b82f6,#2563eb)', border: 'none',
+                        borderRadius: 8, padding: '6px 14px', color: '#fff', fontSize: 13, fontWeight: 800,
+                        cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                        display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(37,99,235,0.35)',
                       }}
-                    >✏️ Endre</button>
+                    >✏️ Endre bestilling</button>
                   )}
                 </div>
               )}
