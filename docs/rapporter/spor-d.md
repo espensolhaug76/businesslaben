@@ -602,3 +602,137 @@ i klasselinja, alle faner som før. Ingen konsollfeil.
   egen — aldri på tvers av porter.
 - Testet kun mot klasse **ZJ58D8**.
 - Auth-vakta midlertidig omgått for testøkta og gjenopprettet etterpå.
+
+---
+
+## Runde 4 — standardprøver
+
+### Jobb 4 — tallkontroll (avviket, avklart før generering)
+
+Kontrollen slo ut, men **ikke** av grunnen oppdraget forutså. Grupperingen er
+nøyaktig som antatt: hvert fag har 2 varianter à 15 spørsmål, uten unntak.
+Avviket er at konkurransene har **12 fag-grupper, ikke 10**. De to ekstra er
+`tverrfaglig_vg1` og `tverrfaglig_vg2`, som i `src/lib/teacherSubjects.ts` er
+merket «ikke et reelt fag — brukes for grupperinger på tvers av SSR-fagene».
+12 × 30 = 360, som stemmer med totalen i konkurransefila.
+
+Espen valgte **10 prøver** — tverrfaglig VG1/VG2 droppes. De 60 tverrfaglige
+spørsmålene ligger fortsatt i Konkurranser-fanen.
+
+**Resultat etter generering:**
+
+| Prøve | ID | Spørsmål | Fordeling |
+| --- | --- | --- | --- |
+| Forretningsdrift VG1 | `std-exam-ssr-fd` | 30 | 10 lett / 10 middels / 10 vanskelig |
+| Markedsføring og innovasjon VG1 | `std-exam-ssr-mi` | 30 | 10 / 10 / 10 |
+| Kultur og samhandling VG1 | `std-exam-ssr-ks` | 30 | 10 / 10 / 10 |
+| Økonomi og administrasjon VG2 | `std-exam-ok-vg2` | 30 | 10 / 10 / 10 |
+| Kommunikasjon og markedsføring VG2 | `std-exam-kom-vg2` | 30 | 10 / 10 / 10 |
+| HMS VG2 | `std-exam-hms-vg2` | 30 | 10 / 10 / 10 |
+| Markedsføring og ledelse 1 | `std-exam-ml1` | 30 | 10 / 10 / 10 |
+| Markedsføring og ledelse 2 | `std-exam-ml2` | 30 | 10 / 10 / 10 |
+| Entreprenørskap 1 | `std-exam-ent1` | 30 | 10 / 10 / 10 |
+| Entreprenørskap 2 | `std-exam-ent2` | 30 | 10 / 10 / 10 |
+| **Sum** | **10 prøver** | **300** | |
+
+Kontrollert mot kilden: samme 300 spørsmål-IDer inn som ut, ingen duplikater,
+og alle 78 forklaringene for disse ti fagene er med. (Kilden har 93 forklaringer
+totalt; de resterende 15 hører til de tverrfaglige.)
+
+### Jobb 1 — generatoren
+
+`scripts/build-standard-exams.mjs`, samme mønster som
+`scripts/parse-standard-competitions.mjs`: build-time-skript, «IKKE ENDRE
+MANUELT»-header i utdata, verifisering til slutt med `process.exit(1)` hvis en
+prøve ikke har 30 spørsmål eller antallet prøver avviker.
+
+Skriptet leser `src/data/standardCompetitions.ts` som tekst i stedet for å dra
+inn en TS-loader i byggsteget — fila er autogenerert med fast formatering, så
+det er trygt, og parseren feiler høylytt hvis `NOW` mangler.
+
+Detaljer som forespurt: én prøve per fag av de to variantene, sortert
+lett → middels → vanskelig med intern rekkefølge bevart (`Array.sort` er stabil
+i Node), `std-exam-`-prefiks på både `id` og `code`, tittel uten «Variant A/B»,
+45 minutter, +1 for riktig, −0,5 for galt, `timeSeconds` droppet,
+`explanation` beholdt.
+
+### Felt lagt til i `src/types/Exam.ts`
+
+Ingen parallell type — `Exam` og `ExamQuestion` er utvidet:
+
+| Hva | Hvor | Hvorfor |
+| --- | --- | --- |
+| `explanation?: string` | `ExamQuestion` | fasitforklaringen fra konkurransene |
+| `difficulty?: 'lett' \| 'middels' \| 'vanskelig'` | `ExamQuestion` | styrer rekkefølgen, og gjør den synlig for senere sortering |
+| `StandardExam` | ny type | en MAL: har `code` og `subject`, men verken `classCode`, `status` eller `examCode` — de hører til lærerens kopi |
+| `DEFAULT_GRADE_THRESHOLDS` | ny konstant | samme verdier som ExamBuilder bruker (90/75/60/45/30) |
+| `examFromStandard()` | ny hjelpefunksjon | lager kopien, med ny ID og fersk `createdAt` |
+
+`StandardExam` er bevisst ikke en `Exam`. En mal uten klasse ville måttet ha
+`classCode: ''`, og da kunne den ved et uhell blitt lagret som en ekte prøve.
+
+**Merk:** `explanation` brukes **ikke** i ExamResults i dag — `grep -rn
+"explanation" src/screens/exam/` gir null treff. Feltet følger med i dataene og
+er klart til bruk, men noen må rendre det. Jeg la det ikke inn, siden det ikke
+var en del av oppdraget.
+
+### Jobb 2 — standardprøvene i Prøver-fanen
+
+Ny seksjon «Standardprøver» øverst, over «Mine prøver» (som har fått egen
+overskrift). Ti rader med tittel, fag-badge, antall spørsmål og varighet.
+«Mine fag» filtrerer via `subjectToSectionKey()` — samme logikk som
+minileksjoner og presentasjoner. Verifisert: med «Alle fag» vises 10; med
+`SSR-FD + ML1` vises 2, og det er de riktige to.
+
+«Bruk denne» lager en kopi med `examFromStandard()`, lagrer den i
+`adventure-exams`, og hopper til den i «Mine prøver» — raden får grønn ramme,
+merket «Kopiert fra standardprøve» og `scrollIntoView`. Verifisert på en kopi
+av Forretningsdrift VG1:
+
+| Felt | Verdi |
+| --- | --- |
+| ID | `y1qt6xq4` — ny, ikke `std-exam-*` |
+| Spørsmål | 30, med forklaringene i behold |
+| Klassekode | `ZJ58D8` (aktiv klasse) |
+| Status | `draft` — læreren kan redigere før tildeling |
+| Tid / poeng | 45 min, +1 / −0,5 |
+| Standardprøvelista etterpå | fortsatt 10 rader, uendret |
+
+### Jobb 3 — Builder trekker fra fag-tagget bank
+
+`CompetitionBuilder.tsx` bruker nå `bankForFag(subject)`, som henter spørsmål
+fra `STANDARD_COMPETITIONS` filtrert på faget læreren har valgt. Advarselen
+«Spørsmålsbanken er ikke fag-tagget ennå» er slettet og erstattet av en nøytral
+hjelpetekst som bare vises før et fag er valgt. Hele banken byttet — ikke bare
+tilfeldig-trekket — fordi avkrysningslista, «Velg 15 tilfeldige» og lagringen
+må se samme spørsmål for å henge sammen. Skifter læreren fag, nullstilles
+utvalget, siden de valgte spørsmålene ikke lenger finnes i banken.
+
+Verifisert: 360 spørsmål uten fag valgt, 30 med SSR-FD valgt, «Velg 15
+tilfeldige» gir 15/15 avkrysset, og fagbytte til ML1 gir 30 spørsmål og 0 valgt.
+Ingen konsollfeil.
+
+`ExamBuilder.tsx` har **ingen** tilsvarende tilfeldig-trekking — den bygger
+spørsmål manuelt og importerer ingen spørsmålsbank. Ingenting å endre der.
+
+### Er `questions.json` ubrukt?
+
+**Ja — og den var det allerede før denne jobben.** `grep -rn "questions.json"`
+over `src/`, `scripts/` og `tests/` gir null treff. Fila (57 spørsmål) er ikke
+importert noe sted.
+
+Banken Builder faktisk brukte, var `QUESTION_BANK` i `src/types/Competition.ts`
+— 30 hardkodede spørsmål uten fag-felt. Den er nå ubrukt i UI-et; kun typen
+`CompetitionQuestion` importeres derfra. Begge kan slettes, men jeg lot dem stå
+som instruert. Merk at `QUESTION_BANK` er eksportert fra en delt typefil, så en
+sletting bør sjekkes mot Firebase-lagrede konkurranser som kan referere
+`q1`–`q30`-IDene.
+
+### Verifisering runde 4
+
+- `tsc -b` grønn før commit. Generatoren kjører grønn: `10 standardprøver,
+  300 spørsmål totalt`.
+- Skjermbilder i `docs/rapporter/bilder/spor-d/`: `prover-standard.png`,
+  `prover-kopiert.png`, `builder-fagbank.png`.
+- Testet mot klasse **ZJ58D8**.
+- `standardCompetitions.ts` og `.manus/quiz-konkurranser.md` er ikke rørt.

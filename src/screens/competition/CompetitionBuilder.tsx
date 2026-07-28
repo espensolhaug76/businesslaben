@@ -1,11 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ThemeToggle, { useThemeEffect } from '../../components/ui/ThemeToggle'
-import {
-  QUESTION_BANK,
-  competitionsKey,
-} from '../../types/Competition'
+import { competitionsKey } from '../../types/Competition'
+import { STANDARD_COMPETITIONS } from '../../data/standardCompetitions'
 import type { Competition, CompetitionQuestion } from '../../types/Competition'
 import { saveCompetition as saveCompetitionToFirebase } from '../../lib/firebaseCompetitions'
 import { MINE_FAG_OPTIONS } from '../../lib/teacherSubjects'
@@ -40,6 +38,17 @@ async function saveCompetition(c: Competition): Promise<void> {
 
 const TIME_OPTIONS = [10, 20, 30]
 
+/**
+ * Spørsmålsbanken er standardkonkurransenes fag-taggede spørsmål. Den gamle
+ * QUESTION_BANK i types/Competition.ts manglet fag, så «Velg 15 tilfeldige»
+ * kunne dra inn spørsmål fra helt andre fag (spor D, jobb 3).
+ */
+function bankForFag(fagId: string) {
+  return STANDARD_COMPETITIONS
+    .filter(c => !fagId || c.subject === fagId)
+    .flatMap(c => c.questions)
+}
+
 export default function CompetitionBuilder() {
   useThemeEffect()
   const navigate = useNavigate()
@@ -50,6 +59,12 @@ export default function CompetitionBuilder() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [timeSeconds, setTimeSeconds] = useState(20)
   const [createdCode, setCreatedCode] = useState<string | null>(null)
+
+  // Spørsmålene læreren kan velge blant — begrenset til valgt fag.
+  const bank = useMemo(() => bankForFag(subject), [subject])
+
+  // Bytter læreren fag, gjelder ikke lenger de valgte spørsmålene.
+  useEffect(() => { setSelectedIds(new Set()) }, [subject])
 
   function toggleQuestion(id: string) {
     setSelectedIds(prev => {
@@ -64,13 +79,13 @@ export default function CompetitionBuilder() {
   }
 
   function selectRandom() {
-    const shuffled = [...QUESTION_BANK].sort(() => Math.random() - 0.5).slice(0, 15)
+    const shuffled = [...bank].sort(() => Math.random() - 0.5).slice(0, 15)
     setSelectedIds(new Set(shuffled.map(q => q.id)))
   }
 
   async function handleCreate() {
     if (!title.trim() || selectedIds.size !== 15) return
-    const questions: CompetitionQuestion[] = QUESTION_BANK
+    const questions: CompetitionQuestion[] = bank
       .filter(q => selectedIds.has(q.id))
       .map(q => ({ ...q, timeSeconds }))
     const code = genCode()
@@ -214,14 +229,14 @@ export default function CompetitionBuilder() {
               Velg 15 tilfeldige
             </button>
           </div>
-          {subject && (
-            <div className="px-5 py-2 text-xs" style={{ background: 'rgba(245,158,11,0.08)', color: '#b45309', borderBottom: '1px solid var(--border)' }}>
-              ⚠️ Spørsmålsbanken er ikke fag-tagget ennå — kan inneholde spørsmål utenfor faget ditt.
+          {!subject && (
+            <div className="px-5 py-2 text-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
+              Velg et fag over for å begrense banken til det faget.
             </div>
           )}
 
           <div className="divide-y divide-[var(--border)]">
-            {QUESTION_BANK.map((q, i) => {
+            {bank.map((q, i) => {
               const selected = selectedIds.has(q.id)
               const disabled = !selected && selectedIds.size >= 15
               return (
