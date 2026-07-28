@@ -412,3 +412,193 @@ sidelasting i begge retninger. Ingen fiks var nødvendig.
 - Testet kun mot klasse **ZJ58D8**.
 - Auth-vakta ble igjen midlertidig omgått for skjermbildeøkta og gjenopprettet
   etterpå — ikke i noen commit.
+
+---
+
+## Runde 3 — live-navigasjon, diagnose, bredder, Espen spør, ingen auto-klasse
+
+### Jobb 1 — elevens navigasjon låst i live-modus
+
+**Flagget som ble gjenbrukt:** `isStudentLive` fra `useLiveSync()` — nøyaktig
+samme flagg som allerede skjuler navigasjonsknappene. Det settes inn i
+modulvariabelen `_isLive` (`PresentationShell.tsx:214`, tilsvarende i hver
+frittstående presentasjon), som `NavBtn` sjekker på linje 156 for å returnere
+`null`. Jeg opprettet ikke noe nytt flagg.
+
+**Håndtereren som ble koblet fra:** `window.addEventListener('keydown', onKey)`
+inne i presentasjonene. Den fantes i **57 filer** — 56 frittstående
+presentasjoner pluss `_lib/PresentationShell.tsx` — i to nesten like varianter,
+alle med `ArrowRight → next()` og `ArrowLeft → prev()`. Alle 57 har fått samme
+vakt rett etter modal-sjekkene:
+
+```
+if (isStudentLive) {
+  if (erNavigasjonstast(e.key)) e.preventDefault()
+  else if (e.key === 'Escape') navigate(-1)
+  return
+}
+```
+
+`erNavigasjonstast` kommer fra den nye
+`src/screens/learninghub/presentations/_lib/navLock.ts` og dekker
+`ArrowRight`, `ArrowLeft`, `ArrowUp`, `ArrowDown`, `PageDown`, `PageUp`,
+`Home`, `End`, `' '`/`Spacebar`. `isStudentLive` er lagt til i effektens
+dependency-array i alle 57 filene.
+
+**Escape er bevisst ikke blokkert.** Den er ikke bla-navigasjon: den lukker
+term- og PIN-modalen og lar eleven forlate presentasjonen. Å sperre den ville
+låst eleven inne i presentasjonen.
+
+**Swipe:** ingen. `grep` på `touchstart`, `touchend`, `onTouchStart`, `swipe` og
+`wheel` i hele presentasjonsmappa og `LiveSession.tsx` gir null treff.
+
+**Verifisert** med lærer og elev i samme nettleser på samme port (5176), elev i
+egen kontekst (inkognito-ekvivalent):
+
+| | |
+| --- | --- |
+| Elev, slide ved start | 1 / 12 |
+| Elev, etter ArrowRight ×2, PageDown, mellomrom, End, ArrowLeft | **1 / 12 — låst** |
+| Elev, navigasjonsknapper i DOM | 0 |
+| Lærer på storskjerm (`?live-code=`), etter ArrowRight ×2 | 1 / 12 → **3 / 12** |
+
+### Jobb 2 — diagnose: hengende slides (ingen kode endret)
+
+Samme testkjøring reproduserte feilen: **læreren sto på 3 / 12 mens eleven
+stoppet på 2 / 12.** Én av to overganger ble aldri skrevet.
+
+Filnavn og linjenummer under gjelder `_lib/PresentationShell.tsx`; de 56
+frittstående presentasjonene har identisk kode (i `ReglerLovverkPresentation.tsx`
+ligger den på linje 110–111 og 376–388).
+
+**Hvor læreren skriver** — `PresentationShell.tsx:216–222`, en `useEffect` med
+`[current, teacherLiveCode]`. Den skriver `currentSlide: current + 1` med
+`fbUpdate` til `sessions/{kode}`. Altså på hver endring av `current`, ikke på
+en eksplisitt «neste»-hendelse.
+
+**Hvor eleven abonnerer** — `useLiveSync.ts:32–69`, en løpende `onValue`-lytter
+(ikke engangslesing) på `sessions/{classCode}`. Verdien mates inn i
+`PresentationShell.tsx:213`, som speiler den inn i lokal `current`.
+
+**Fire mekanismer som gjør at overganger forsvinner:**
+
+1. **`_lastWritten` er en modulvariabel** (`PresentationShell.tsx:153`), ikke
+   per komponent eller per økt. Vakten `if (current + 1 === _lastWritten) return`
+   (`:219`) hopper derfor over skrivingen hvis verdien tilfeldigvis er lik noe
+   som ble skrevet av en *tidligere* presentasjon eller en tidligere montering i
+   samme fane. Åpner læreren en presentasjon på nytt, står `current` på 0 og
+   første skriving (`1`) blir stille droppet hvis `_lastWritten` allerede er 1.
+   `_isLive` (`:152`) har samme modul-problem, men rammer bare knappesynlighet.
+
+2. **`fromFirebaseRef`-vakten er ikke knyttet til en verdi** —
+   `PresentationShell.tsx:212–218`. *Hver* innkommende `liveSlide` setter flagget
+   til `true`, og skrive-effekten nullstiller det ved neste kjøring uansett hvilken
+   slide den gjelder. Kommer ekkoet av lærerens egen skriving inn etter at
+   `current` allerede har flyttet seg videre, spiser ekkoet flagget, og skrivingen
+   for den *nye* sliden droppes. Dette er en ren kappløpssituasjon: utfallet
+   avhenger av om ekkoet rekker fram før neste tastetrykk. Nøyaktig hvilken
+   overgang som forsvinner varierer derfor fra gang til gang — det er dette som
+   gir «noen slides henger, andre kommer opp».
+
+3. **Elevens første snapshot undertrykkes** — `useLiveSync.ts:47–53`. En elev som
+   kobler seg på midt i en presentasjon får `liveSlide: null` og blir stående på
+   slide 0 til læreren blar neste gang. For eleven ser det ut som at presentasjonen
+   henger.
+
+4. **Lokal state konkurrerer med Firebase** — `PresentationShell.tsx:203–205`.
+   `current` er egen `useState(0)` med en mount-reset (`useEffect(() => setCurrent(0), [])`)
+   som kan kjøre etter at en `liveSlide` alt er mottatt. Sammen med feil A (eleven
+   kunne bla selv) kunne eleven i tillegg havne på en helt annen slide enn læreren,
+   uten å bli hentet inn igjen før neste lærerskriving.
+
+**Anbefalt fiks** (ikke utført):
+- Fjern begge modulvariablene. `_lastWritten` bør være en `useRef` i komponenten,
+  og `_isLive` bør sendes som prop til `NavBtn`.
+- Bytt ut ekko-undertrykkingen med en verdisammenligning: ta vare på sist
+  *mottatte* slide i en ref og hopp bare over skrivingen når `current + 1` er lik
+  den. Da spiller rekkefølgen ingen rolle.
+- La eleven adoptere gjeldende slide ved påkobling i stedet for å undertrykke
+  første snapshot. Skal en fersk økt starte på 0, bør det avgjøres av et
+  `startetAt`-felt i økta, ikke av «første snapshot».
+- For eleven: utled `current` direkte fra `liveSlide` (`current = liveSlide ?? 0`)
+  i stedet for å speile den inn i lokal state. Da finnes det ingen konkurrerende
+  kilde.
+
+Rekkefølge: punkt 2 er den som faktisk gir ujevnheten og bør tas først.
+
+### Jobb 3 — slide-antall 15 mot 14
+
+**Det har ikke gått tapt innhold på grunn av slettingen, og forskjellen ligger
+ikke i koden.**
+
+`ReglerLovverkPresentation.tsx` er byte-identisk med `origin/main`
+(`git diff origin/main...HEAD` viser kun sletting av `presentationsData.ts`).
+Slideantallet i UI-et er `TOTAL_SLIDES_WITH_TEACHER = ORIGINAL_SLIDES (9) +
+QUIZ_SLIDES (5) + teacherSlides.length`. **14 er kodens grunntall.** Det femtende
+lysbildet er et lærer-lagt lysbilde som ligger i `localStorage` under
+`teacherSlides:<rute>` (`src/types/TeacherSlide.ts:24`) — altså per nettleserprofil.
+Main-vinduet ditt har ett slikt lysbilde lagret; testprofilen har ingen.
+Live-modus legger ikke til noen venteslide.
+
+`presentationsData.ts` kan ikke ha påvirket noe: ingen fil importerte den, og den
+inneholdt et parallelt, forenklet tekstdatasett (24 IDer × 6 slides) som aldri ble
+rendret. 23 av de 24 IDene finnes i `presentationRegistry.ts`.
+
+**Men jeg fant en ekte mangel, som jeg ikke har fikset:**
+`presentasjonen «klaghandtering»` (Klagehåndtering og konfliktforebygging)
+mangler i `presentationRegistry.ts`. Den har både rute
+(`App.tsx:518`) og komponent (`KlagehåndteringPresentation.tsx`), og ligger i
+elevenes LearningHub — men ikke i registeret. Kryss-sjekk: **109 ruter under
+`/learning/presentations/` i `App.tsx`, 108 oppføringer i registeret, nøyaktig
+ett avvik.** Konsekvensen er at presentasjonen ikke lar seg velge i Live økt
+(har alltid lest registeret) og ikke vises i Læringsinnhold etter runde 2.
+Registeret er autogenerert, så hullet bør tettes i generatoren — ikke for hånd.
+Dette er også forklaringen på «109 presentasjoner» i oppdraget mot 108 i registeret.
+
+### Jobb 4 — bredder
+
+Live økt 720 → 1000, Klasser 800 → 1000, Nasjonalt leaderboard 760 → 1000.
+Horisontal overflow målt til **0 px på alle åtte underfaner ved 1280 px**
+vindusbredde.
+
+### Jobb 5 — «Espen spør» ut av fag-lista
+
+Flyttet ut av seksjonen «Fag elevene ser» og fått egen seksjon med skillelinje
+over, mellom fag-bryterne og «Temaer». Hjelpeteksten er beholdt ordrett, og
+funksjonen — `espenSpor/aktiv` og `espenSpor/fag/{fag}` i RTDB, med fag-chips som
+bare dukker opp når den er på — er uendret.
+
+### Jobb 6 — ingen automatisk klasse
+
+`loadClasses()` opprettet før en «Klasse 1» med generert kode når lista var tom.
+Nå returnerer den tom liste. Legacy-migreringen er beholdt: har læreren den gamle
+enkeltnøkkelen `teacher-classroom-code` uten klasseliste, er det en reell klasse.
+
+**Test A — fersk lærer, tom lagring:**
+
+| Sjekk | Resultat |
+| --- | --- |
+| `teacher-classes` etter lasting | `null` — ingen klasse opprettet |
+| `teacher-classroom-code` etter lasting | `null` |
+| Klasselinja | «Ingen klasse valgt» + «Opprett klasse»; kode- og nivåfelt skjult |
+| Velkomst-tomtilstand | vises |
+| Live økt / Spørsmål / Spillstyring / Nasjonalt leaderboard | «Opprett en klasse for å bruke denne fanen.» med knapp — ingen krasj, ingen konsollfeil |
+
+**Test A, fortsettelse — opprett klasse manuelt:** knappen i klasselinja går til
+Klassen → Klasser, som åpner «Ny klasse»-skjemaet direkte (ingen «Avbryt» når det
+ikke finnes klasser fra før). Etter lagring står klassen i `teacher-classes` med
+egen kode, `teacher-classroom-code` peker på den, og Live økt viser normalt
+innhold igjen.
+
+**Test B — lærer som allerede har klasser:** ingen velkomstboks, klassekoden vises
+i klasselinja, alle faner som før. Ingen konsollfeil.
+
+### Verifisering runde 3
+
+- `tsc -b` grønn før hver commit.
+- Nye skjermbilder i `docs/rapporter/bilder/spor-d/`:
+  `klasselinje-uten-klasse.png`, `uten-klasse-live.png`, `spillstyring-espen.png`.
+- Live-økt testet i én nettleser på port 5176, lærer i én kontekst og elev i en
+  egen — aldri på tvers av porter.
+- Testet kun mot klasse **ZJ58D8**.
+- Auth-vakta midlertidig omgått for testøkta og gjenopprettet etterpå.
