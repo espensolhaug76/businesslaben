@@ -706,8 +706,12 @@ export const HASTVERKSKUNDEN: SalesScenario = {
     },
     {
       id: 'anbefal',
+      // FIKSJOBB 28.07 (Espen): Camillas behov er «mettende, ferdig, ta med» — da er
+      // kyllingwrap/baguette/salat/focaccia objektivt LIKEVERDIGE. BAKEVARE_TAGS
+      // pekte feilaktig på søtt bakverk (og manglet baguette/wrap/salat). LUNSJ_TAGS
+      // (de mettende ferdigvarene) gir alle disse full behovstreff-uttelling.
       kind: 'recommend',
-      recommendNeed: BAKEVARE_TAGS,
+      recommendNeed: LUNSJ_TAGS,
       customerLine: 'Noe mettende jeg kan spise på toget. Hva går raskest?',
       note: 'Anbefal en ferdig vare hun kan ta med seg med en gang.',
     },
