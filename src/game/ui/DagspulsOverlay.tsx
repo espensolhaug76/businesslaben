@@ -55,6 +55,8 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
   const utstilt = [...utstiltIds]
     .map(id => state.products.find(p => p.id === id))
     .filter((p): p is NonNullable<typeof p> => !!p)
+    // DEL 1: tomme varer nederst (de er alt røde/«Tom»); stabil ellers.
+    .sort((a, b) => (a.stock <= 0 ? 1 : 0) - (b.stock <= 0 ? 1 : 0))
   const maxStock = Math.max(1, ...utstilt.map(p => p.stock))
   // Rullerende «siste salg»-logg (reducer-eid) — nyeste øverst, maks 10.
   const sisteSalg = state.dayStats.sisteSalgLogg
@@ -202,11 +204,13 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
             {utstilt.length === 0 ? (
               <div style={{ fontSize: 13, color: '#475569' }}>Ingen varer utstilt — still ut i disken for mer trafikk.</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                {utstilt.slice(0, 8).map(p => {
+              // DEL 1: vis ALLE utstilte varer; ved flere enn ~8 scroller lista
+              // internt innenfor den faste min-høyden (layoutro-regelen består).
+              <div data-testid="lager-disken-liste" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: 176, overflowY: 'auto', paddingRight: 4 }}>
+                {utstilt.map(p => {
                   const tom = p.stock <= 0
                   return (
-                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div key={p.id} data-testid={`lager-rad-${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                       <span style={{ fontSize: 12, color: tom ? '#f87171' : '#cbd5e1', width: 120, flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
                       <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 99, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${(p.stock / maxStock) * 100}%`, background: tom ? '#ef4444' : '#00d4aa', borderRadius: 99, transition: 'width 0.5s' }} />
