@@ -1,6 +1,10 @@
 /**
- * Auto-generated from src/App.tsx routes + presentation files.
- * Do not hand-edit — regenerate with /tmp/gen_pres_registry.py if routes change.
+ * Auto-generert fra rutene i src/App.tsx og presentasjonsfilene de peker på, av
+ * scripts/build-presentation-registry.mjs.
+ *
+ * IKKE ENDRE MANUELT — kjør byggeskriptet på nytt hvis rutene endres.
+ *
+ * 109 presentasjoner.
  */
 
 export type PresentationLevel = 'vg1' | 'vg2' | 'vg3'
@@ -29,6 +33,7 @@ export const ALL_PRESENTATIONS: PresentationEntry[] = [
   { id: 'verdikjeden', title: 'Verdikjeden og bærekraft', route: '/learning/presentations/verdikjeden', level: 'vg1', subject: 'ssr', ssrSubject: 'forretningsdrift' },
   { id: 'administrative-funksjoner', title: 'Administrative funksjoner', route: '/learning/presentations/administrative-funksjoner', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
   { id: 'distribusjon', title: 'Distribusjon — Plass', route: '/learning/presentations/distribusjon', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
+  { id: 'forbrukeratferd', title: 'Forbrukeratferd', route: '/learning/presentations/forbrukeratferd', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
   { id: 'forretningsidee', title: 'Forretningsidéen', route: '/learning/presentations/forretningsidee', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
   { id: 'konkurransemidlene', title: 'Konkurransemidlene', route: '/learning/presentations/konkurransemidlene', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
   { id: 'kampanje', title: 'Markedskampanje', route: '/learning/presentations/kampanje', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
@@ -38,12 +43,12 @@ export const ALL_PRESENTATIONS: PresentationEntry[] = [
   { id: 'salg', title: 'Salg er problemløsning', route: '/learning/presentations/salg', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
   { id: 'teknologi-ki', title: 'Teknologi og KI', route: '/learning/presentations/teknologi-ki', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
   { id: 'etikk-baerekraft', title: 'Etikk og bærekraft', route: '/learning/presentations/etikk-baerekraft', level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
+  { id: 'klaghandtering', title: 'Klagehåndtering', route: '/learning/presentations/klaghandtering', level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
   { id: 'kommunikasjon', title: 'Kommunikasjon', route: '/learning/presentations/kommunikasjon', level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
   { id: 'konflikt-nod', title: 'Konflikt og nødssituasjoner', route: '/learning/presentations/konflikt-nod', level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
   { id: 'partene-arbeidslivet', title: 'Partene i arbeidslivet', route: '/learning/presentations/partene-arbeidslivet', level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
   { id: 'relasjonsbygging', title: 'Relasjonsbygging', route: '/learning/presentations/relasjonsbygging', level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
   { id: 'vertskapsrollen', title: 'Vertskapsrollen', route: '/learning/presentations/vertskapsrollen', level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
-  { id: 'forbrukeratferd', title: 'Forbrukeratferd', route: '/learning/presentations/forbrukeratferd', level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
   { id: 'baerekraft-verdikjede', title: 'Bærekraft og verdikjede', route: '/learning/presentations/baerekraft-verdikjede', level: 'vg2', subject: 'ssr', ssrSubject: 'okonomi' },
   { id: 'digitale-system-kundeoppfolging', title: 'Digitale system og kundeoppfølging', route: '/learning/presentations/digitale-system-kundeoppfolging', level: 'vg2', subject: 'ssr', ssrSubject: 'okonomi' },
   { id: 'forretningsplan-vg2', title: 'Forretningsplanen', route: '/learning/presentations/forretningsplan-vg2', level: 'vg2', subject: 'ssr', ssrSubject: 'okonomi' },
@@ -137,16 +142,16 @@ export interface PresentationSection {
 }
 
 export const PRESENTATION_SECTIONS: PresentationSection[] = [
-  { title: 'Forretningsdrift — VG1',                 level: 'vg1', subject: 'ssr', ssrSubject: 'forretningsdrift' },
-  { title: 'Markedsføring og innovasjon — VG1',      level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
-  { title: 'Kultur og samhandling — VG1',            level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
-  { title: 'Økonomi og administrasjon — VG2',        level: 'vg2', subject: 'ssr', ssrSubject: 'okonomi' },
-  { title: 'Kommunikasjon og markedsføring — VG2',   level: 'vg2', subject: 'ssr', ssrSubject: 'kommunikasjon' },
-  { title: 'Helse, miljø og sikkerhet — VG2',        level: 'vg2', subject: 'ssr', ssrSubject: 'hms' },
-  { title: 'Markedsføring og ledelse 1 — VG2',       level: 'vg2', subject: 'ml' },
-  { title: 'Entreprenørskap 1 — VG2',                level: 'vg2', subject: 'ent' },
-  { title: 'Markedsføring og ledelse 2 — VG3',       level: 'vg3', subject: 'ml' },
-  { title: 'Entreprenørskap 2 — VG3',                level: 'vg3', subject: 'ent' },
+  { title: 'Forretningsdrift — VG1',                    level: 'vg1', subject: 'ssr', ssrSubject: 'forretningsdrift' },
+  { title: 'Markedsføring og innovasjon — VG1',         level: 'vg1', subject: 'ssr', ssrSubject: 'mfi' },
+  { title: 'Kultur og samhandling — VG1',               level: 'vg1', subject: 'ssr', ssrSubject: 'kultur' },
+  { title: 'Økonomi og administrasjon — VG2',           level: 'vg2', subject: 'ssr', ssrSubject: 'okonomi' },
+  { title: 'Kommunikasjon og markedsføring — VG2',      level: 'vg2', subject: 'ssr', ssrSubject: 'kommunikasjon' },
+  { title: 'Helse, miljø og sikkerhet — VG2',           level: 'vg2', subject: 'ssr', ssrSubject: 'hms' },
+  { title: 'Markedsføring og ledelse 1 — VG2',          level: 'vg2', subject: 'ml' },
+  { title: 'Entreprenørskap 1 — VG2',                   level: 'vg2', subject: 'ent' },
+  { title: 'Markedsføring og ledelse 2 — VG3',          level: 'vg3', subject: 'ml' },
+  { title: 'Entreprenørskap 2 — VG3',                   level: 'vg3', subject: 'ent' },
 ]
 
 /** Look up a presentation by id (slug). Returns null if unknown. */

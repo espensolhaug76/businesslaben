@@ -898,3 +898,104 @@ lokale raden og hele `/exams/{kode}` i RTDB.
   `bygger-kortsvar.png`, `pagar-na.png`, `resultater-etter.png`,
   `manuell-retting.png`.
 - Auth-vakta midlertidig omgått for testøkta og gjenopprettet etterpå.
+
+---
+
+## Runde 6 — klaghandtering-hullet, fikset i generatoren
+
+### Årsaken
+
+Generatoren som header-kommentaren pekte på, `/tmp/gen_pres_registry.py`, fantes
+ikke lenger — verken på disk eller i git-historikken. Den ble skrevet til `/tmp`
+og aldri sjekket inn, så den var borte i det øyeblikket maskinen ryddet `/tmp`.
+
+Selve årsaken lot seg likevel fastslå. Av de 109 presentasjonsrutene er
+`klaghandtering` den **eneste** med et ikke-ASCII tegn i komponent- og filnavnet:
+
+```
+import KlagehåndteringPresentation from './screens/learninghub/presentations/KlagehåndteringPresentation'
+<Route path="/learning/presentations/klaghandtering" element={<KlagehåndteringPresentation />} />
+```
+
+Alle de andre 108 er ren ASCII. Generatoren koblet rute til presentasjonsfil via
+komponentnavnet — det er slik `title` ble hentet fra `presentationName` i fila —
+og det er nøyaktig den koblingen som brøt på `å`-en. Om det var et
+`[A-Za-z]`-basert regex eller en filnavn-utledning som feilet, kan jeg ikke slå
+fast uten skriptet, men feilklassen er entydig: **ruter med ikke-ASCII i
+komponent- eller filnavnet ble ikke koblet til fila si, og ble stille hoppet
+over.** 109 ruter inn, 108 oppføringer ut, uten et eneste varsel.
+
+### Fiksen
+
+Ny generator: `scripts/build-presentation-registry.mjs` — sjekket inn denne
+gangen, ikke i `/tmp`. To ting er endret bevisst:
+
+1. **Rute → fil slås opp via import-setningen i App.tsx**, ikke ved å utlede
+   filnavnet fra komponentnavnet. Da spiller det ingen rolle hvilke tegn navnet
+   inneholder. Regexen som fanger komponentnavnet er `[^\s/>]+` — den stopper på
+   mellomrom, `/` og `>`, ikke på bokstaver.
+2. **Skriptet feiler høylytt.** Mangler en rute import, fil, `presentationName`
+   eller klassifisering, skrives registeret ikke i det hele tatt, og skriptet
+   avslutter med kode 1 og lister hva som mangler. Det var den stille
+   overhoppingen som gjorde at hullet fikk ligge.
+
+Verifisert med en påtatt rute `tullerute-æøå`:
+
+```
+❌ 2 rute(r) kunne ikke behandles:
+  - tullerute-æøå: fant ingen import for komponenten <TulleÆøåPresentation>
+  - tullerute-æøå: mangler klassifisering — legg den inn i SSR_KLASSIFISERING
+Registeret er IKKE skrevet. Ingen ruter droppes stille.
+```
+
+Klassifiseringen (nivå/fag/ssr-fag) kan ikke utledes av rutestien — VG1-blokka
+og VG2-blokka i App.tsx blander fag om hverandre — så SSR-rutene ligger i en
+eksplisitt tabell i skriptet. ML- og ENT-rutene klassifiseres av en regel på
+første ledd i stien (`ml1/` → vg2|ml, `ml2/` → vg3|ml, osv.). Titlene hentes
+fortsatt fra `presentationName` i presentasjonsfila; det er kontrollert at
+regelen reproduserer **alle 108 eksisterende titler eksakt**, uten et eneste
+avvik.
+
+### Resultat
+
+`node scripts/build-presentation-registry.mjs` → **109 ruter inn, 109
+oppføringer ut.** Diffen mot det gamle registeret inneholder nøyaktig to
+endringer i `ALL_PRESENTATIONS`:
+
+- `klaghandtering` lagt til: «Klagehåndtering», vg1 | ssr | kultur.
+- `forbrukeratferd` flyttet — linja er identisk, men lå utenfor sin egen
+  faggruppe i det gamle registeret. Ingen konsument bryr seg om rekkefølgen i
+  arrayet (både Læringsinnhold og Live økt grupperer selv på seksjon), så
+  flyttingen er ufarlig.
+
+Nivået `vg1 | ssr | kultur` er ikke gjettet: det er det samme som `ModuleCard`-en
+for ruta har i `LearningHub.tsx`, og det samme som den gamle hardkodede
+lærerlista grupperte den under.
+
+Kontrollert i appen: Læringsinnhold → Presentasjoner viser nå **109/109
+synlige**, og med «Mine fag = SSR-KS» står Klagehåndtering på rett alfabetisk
+plass i Kultur og samhandling-gruppa (7 av 109). Live økt finner den også ved
+søk. Skjermbilde: `klaghandtering.png`.
+
+### Står andre ruter i fare for samme feil?
+
+**Ingen i dag**, og feilen kan ikke gjenta seg stille.
+
+- Ikke-ASCII i komponent- eller filnavn: `KlagehåndteringPresentation` er
+  fortsatt den eneste. Alle 108 andre er ren ASCII.
+- Alle 109 ruter har `path` og `element` på samme linje, ingen bruker et
+  wrapper-element (f.eks. `<ErrorBoundary>`), og alle komponentene importeres
+  fra `./screens/learninghub/presentations/`. Regexene i den nye generatoren
+  dekker altså hele bestanden.
+
+Restrisikoen ligger i mønstre generatoren ennå ikke kjenner: en rute som deles
+over flere linjer, et element pakket i en wrapper, eller en presentasjon som
+importeres fra en annen mappe. Alle tre gir nå **exit 1** i stedet for en stille
+mangel, så de blir oppdaget ved første kjøring i stedet for måneder senere. En
+ny presentasjon med æ/ø/å i navnet går derimot rett gjennom — det er nettopp det
+som er fikset.
+
+Én ting til er verdt å merke seg: generatoren kjøres manuelt og er ikke koblet
+til noe byggesteg. Blir en rute lagt til uten at noen kjører skriptet, henger
+registeret etter igjen — bare uten å miste noe stille. En sjekk i CI som kjører
+generatoren og feiler hvis `git diff` ikke er tom, ville lukket det hullet helt.
