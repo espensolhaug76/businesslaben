@@ -10,6 +10,7 @@ import TeacherPresentationEditor, { type SlideInfo } from '../../../components/u
 import TeacherSlideRenderer from './TeacherSlideRenderer'
 import { loadTeacherSlides, loadHiddenSlides, saveHiddenSlides } from '../../../types/TeacherSlide'
 import type { TeacherSlide } from '../../../types/TeacherSlide'
+import { erNavigasjonstast } from './_lib/navLock'
 
 const TERMS: Record<string, string> = {
   'Distribusjonskanal': 'Hele kjeden av aktører og aktiviteter som fører produktet fra produsenten til den endelige forbrukeren — inkludert grossister, detaljister og logistikk.',
@@ -367,7 +368,15 @@ export default function DistribusjonPresentation() {
     function onKey(e: KeyboardEvent) {
       if (modal) { if (e.key === 'Escape') closeModal(); return }
       if (showPinModal) { if (e.key === 'Escape') setShowPinModal(false); return }
-      if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') prev(); if (e.key === 'Escape') navigate(-1)
+      // Live-modus: læreren styrer blaingen. Eleven skal ikke kunne bla selv.
+      if (isStudentLive) {
+        if (erNavigasjonstast(e.key)) e.preventDefault()
+        else if (e.key === 'Escape') navigate(-1)
+        return
+      }
+      if (e.key === 'ArrowRight') next()
+      if (e.key === 'ArrowLeft') prev()
+      if (e.key === 'Escape') navigate(-1)
     }
     window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
   }, [modal, showPinModal, next, prev, closeModal, navigate])

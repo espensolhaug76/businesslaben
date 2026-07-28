@@ -30,6 +30,7 @@ import TeacherPresentationEditor, { type SlideInfo } from '../../../../component
 import TeacherSlideRenderer from '../TeacherSlideRenderer'
 import { loadTeacherSlides, loadHiddenSlides, saveHiddenSlides } from '../../../../types/TeacherSlide'
 import type { TeacherSlide } from '../../../../types/TeacherSlide'
+import { erNavigasjonstast } from './navLock'
 
 // ── shared style helpers (also re-exported for slide-builders) ─────────────
 export const twoCol: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'center' }
@@ -317,13 +318,19 @@ export default function PresentationShell({
     function onKey(e: KeyboardEvent) {
       if (modal) { if (e.key === 'Escape') closeModal(); return }
       if (showPinModal) { if (e.key === 'Escape') setShowPinModal(false); return }
+      // Live-modus: læreren styrer blaingen. Eleven skal ikke kunne bla selv.
+      if (isStudentLive) {
+        if (erNavigasjonstast(e.key)) e.preventDefault()
+        else if (e.key === 'Escape') goBack()
+        return
+      }
       if (e.key === 'ArrowRight') next()
       if (e.key === 'ArrowLeft') prev()
       if (e.key === 'Escape') goBack()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [modal, showPinModal, next, prev, closeModal, goBack])
+  }, [modal, showPinModal, next, prev, closeModal, goBack, isStudentLive])
 
   const progressPct = ((current + 1) / TOTAL_SLIDES_WITH_TEACHER) * 100
 
