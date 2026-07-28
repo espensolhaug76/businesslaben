@@ -127,6 +127,13 @@ export interface IndustryDefinition {
   scenariePool: string[]
   personaBudsjett: PersonaBudsjett
   svinnRegel: SvinnRegel
+  /** DESIGNENDRING (28.07, Espens bransjedom): eksponerer bransjen varer i et
+   *  VINDU (visuell merchandising)? Ekte kaféer eksponerer i DISKEN, ikke vinduet,
+   *  så CAFE = false → Utstilling-fanens vindus-/hyllelinjeseksjon + traceren
+   *  skjules, vindusrelaterte mentor-triggere armes ikke, og windowDisplay-state
+   *  ignoreres. Hyllelinje-koden/-dataene BEHOLDES (parkert via feltet) — de hører
+   *  hjemme i klesbutikkens vindu (KLESBUTIKK = true; mekanikken bygges i B-treet). */
+  vindusUtstilling: boolean
   /** ORGANISASJONSDESIGN (docs/BEMANNING.md): bransjens ROLLEPALETT. Eleven
    *  drar rollekort inn i org-kartet for å opprette funksjonene selv.
    *  Kjerneroller (Salg/Markedsføring/Økonomi) + bransjeroller (kafé:
@@ -188,6 +195,7 @@ export const CAFE: IndustryDefinition = {
   scenariePool: CAFE_SCENARIO_IDS,
   personaBudsjett: { kind: 'besok', table: CAFE_SPEND },
   svinnRegel: 'ferskvare-daglig',
+  vindusUtstilling: false,   // kafé eksponerer i DISKEN, ikke i vinduet (Espens bransjedom)
   roller: [
     { id: 'selger',       funksjon: 'Salg',          tittel: 'Barista/butikkmedarbeider', emoji: '🛍️', farge: '#00d4aa', vaktrolle: true,  maanedseffekt: null,            kjerne: true },
     { id: 'markedsforer', funksjon: 'Markedsføring', tittel: 'Markedsfører',              emoji: '📢', farge: '#38bdf8', vaktrolle: false, maanedseffekt: 'markedsforing', kjerne: true },
@@ -243,6 +251,7 @@ export const KLESBUTIKK: IndustryDefinition = {
   scenariePool: [],
   personaBudsjett: { kind: 'kategori', table: FASHION_BUDGETS, step: 100 },
   svinnRegel: 'sesong/kolleksjon',
+  vindusUtstilling: true,    // klesbutikk: vindusutstilling ER visuell merchandising-fag (B-treet eier mekanikken)
   roller: [
     { id: 'selger',       funksjon: 'Salg',          tittel: 'Butikkmedarbeider',   emoji: '🛍️', farge: '#00d4aa', vaktrolle: true,  maanedseffekt: null,            kjerne: true },
     { id: 'markedsforer', funksjon: 'Markedsføring', tittel: 'Markedsfører',        emoji: '📢', farge: '#38bdf8', vaktrolle: false, maanedseffekt: 'markedsforing', kjerne: true },

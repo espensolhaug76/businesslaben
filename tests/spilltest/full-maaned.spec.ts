@@ -2118,8 +2118,8 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     const ids = ['croissant', 'muffin-blabaer', 'kanelbolle', 'skolebrod', 'rundstykke-grovt', 'gulrotkake', 'baguette', 'focaccia', 'wrap-kylling', 'salat', 'grovbrod', 'surdeigsbrod']
     await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: ids.map(id => ({ productId: id, qty: 20 })) })
     await ventState(page, s => ids.every(id => s.products.some(p => p.id === id)), 'alle 12 varer ført')
-    // Still ut alle 12 i vinduet (utstilt-settet = counterLayout ∪ vindu).
-    await dispatch(page, { type: 'SET_WINDOW_DISPLAY', fixtureId: 'vindu', items: ids.map((id, i) => ({ fixtureId: 'vindu', productId: id, x: 0.1 + (i % 4) * 0.25, y: 0.2 + Math.floor(i / 4) * 0.25, z: i })) })
+    // Still ut alle 12 i DISKEN (kafé eksponerer i disken, ikke vinduet — vindu ignoreres).
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: ids.map((id, i) => ({ trauId: `t${i + 1}`, productId: id })) })
     await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 47')
     // Dagspulsen (fullskjerm) rendrer «Lager på disken» — ALLE 12 radene i DOM.
     await expect(page.getByTestId('lager-disken-liste')).toBeVisible()
@@ -2138,8 +2138,8 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await ventState(page, s => s.products.some(p => p.id === 'croissant'), 'lager 48')
     const prods = (await lesFull()).products.map(p => (p.id === 'coffee' || p.id === 'croissant') ? { ...p, retailPrice: p.markedsPris } : p)
     await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
-    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 't1', productId: 'croissant' }] })
-    await dispatch(page, { type: 'SET_WINDOW_DISPLAY', fixtureId: 'vindu', items: [{ fixtureId: 'vindu', productId: 'coffee', x: 0.5, y: 0.4, z: 0 }] })
+    // Kafé eksponerer i DISKEN (begge varer i trau) — vindu ignoreres for kafé.
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 't1', productId: 'croissant' }, { trauId: 't2', productId: 'coffee' }] })
     // Åpen dag + selg litt (så det blir både salg OG restlager til svinn), så steng.
     await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 48')
     await dispatchN(page, { type: 'TICK' }, 60); await page.waitForTimeout(150)
@@ -2160,6 +2160,30 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await page.getByTestId('produktregnskap-toggle').click()
     await expect(page.getByTestId('produktregnskap-tabell')).toBeVisible()
     ctx.ok(`produktregnskap avstemmes: Σsvinn ${sumSvinnStk} stk/${sumSvinnKr} kr == totalkort; Σsolgt ${sumSolgtStk} stk == møter+bakgrunn; kollapset default, åpnes på klikk`)
+  })
+
+  await steg(page, rapport, 49, 'Bransje-gated vindusutstilling: CAFE (vindusUtstilling=false) → ingen vindusseksjon/tracer, disk-eksponering i stedet', async ctx => {
+    // Isoler fra steg 45s fyrt-preset (som inkluderer scene-triggeren forste_vindu) —
+    // vi tester at MIN kode ikke armer den for kafé, ikke at preset-et er borte.
+    await page.evaluate(() => { try { localStorage.removeItem('mentor_fired_v1') } catch { /* */ } })
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 49')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [] })   // lukk åpningsbestilling-overlayet
+    await ventState(page, s => s.openingOrderPlaced, 'åpningsordre 49')
+    // Utstilling-fanen er M-gated → slå på markedsføring så fanen er synlig.
+    await dispatch(page, { type: 'SET_FAG_AKTIV', fag: { fd: true, m: true, ks: true } })
+    await ventState(page, s => s.fagAktiv?.m === true, 'M på 49')
+    await gåTilFane('utstilling')
+    // CAFE: vindus-/hyllelinjeseksjonen rendres IKKE; disk-eksponering vises i stedet.
+    await expect(page.getByTestId('disk-eksponering')).toBeVisible()
+    expect(await page.getByTestId('vindu-flate').count(), 'ingen vindusflate (editor) i DOM for kafé').toBe(0)
+    // Traceren (HYLLELINJER-panelet) rendres ikke.
+    await expect(page.locator('body')).not.toContainText('HYLLELINJER')
+    // Vindusrelatert mentor-trigger armes ikke for bransjen.
+    const fired = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] as string[] } })
+    expect(fired, 'forste_vindu armes ikke for kafé').not.toContain('forste_vindu')
+    ctx.ok('CAFE vindusUtstilling=false: ingen vindusflate/tracer i DOM, disk-eksponering vist, forste_vindu ikke armet')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────

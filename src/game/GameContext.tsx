@@ -2065,9 +2065,12 @@ function reducer(state: GameState, action: Action): GameState {
         if (betjent > 0) {
           // VAREEKSPONERING: bakgrunnssalget trekker KUN fra utstilte varer (disk
           // + vindu). Ikke-utstilte varer selges/tapes aldri.
+          // DESIGNENDRING (28.07): vindu-eksponering teller KUN for bransjer med
+          // vindusutstilling (klesbutikk). CAFE ignorerer windowDisplay-state.
           const utstilteIds = new Set<string>([
             ...state.counterLayout.map(t => t.productId),
-            ...state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId),
+            ...(getActiveIndustryDefinition().vindusUtstilling
+              ? state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId) : []),
           ])
           // Kun de BETJENTE kundene når disken (kan så tape til tomt lager).
           const r = simulerBakgrunnsbolk(state.products, betjent, state.dayBackground.seed, utstilteIds, state.dayBackground.vareVekt)
@@ -2191,7 +2194,8 @@ function reducer(state: GameState, action: Action): GameState {
       // så utstilt-ved-stenging er det som faktisk sto igjen på flaten. Kun aktivitet.
       const utstilteIdsClose = new Set<string>([
         ...state.counterLayout.map(t => t.productId),
-        ...state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId),
+        ...(getActiveIndustryDefinition().vindusUtstilling
+          ? state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId) : []),
       ])
       const produktRegnskap = Object.entries(dps).map(([id, p]) => {
         const vare = state.products.find(v => v.id === id)

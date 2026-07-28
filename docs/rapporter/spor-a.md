@@ -3556,3 +3556,40 @@ tydelig. (Espen spilte trolig B-treet/klesbutikk, som mangler funksjonen helt.)
    alle gir behovstreff/full uttelling.
 5. **Endre bestilling (DEL 5):** Produkter → bestill noe → tydelig blå «✏️ Endre
    bestilling»-knapp ved «I bestilling»-linja.
+
+## DESIGNENDRING — vindusutstilling bransje-gated (kafé eksponerer i disken) — 2026-07-28
+
+Espens bransjedom: vindusutstilling er IKKE riktig for kafé — ekte kaféer eksponerer
+i DISKEN, ikke i vinduet. (Gren `spor-a/fiks-oppgjor-og-innhold`, samme runde.)
+
+- **Nytt felt** `IndustryDefinition.vindusUtstilling: boolean`. **CAFE: false**,
+  KLESBUTIKK: true (klesbutikkens vindu ER visuell merchandising-fag — mekanikken
+  bygges/eies i B-treet).
+- **Når false (kafé):**
+  - Utstilling-fanen viser IKKE vindus-/hyllelinjeseksjonen. I stedet en kort tekst:
+    «Kaféen eksponerer varene sine i disken — ikke i vinduet». Disk-eksponeringen
+    (MonterScene/trau i butikken) består som kaféens vareeksponering.
+  - Hyllelinje-**traceren** rendres ikke (den bor inne i vindus-editoren).
+  - Vindusrelatert **mentor-trigger** `forste_vindu` («Vinduet er butikkens ansikt…»)
+    armes ikke — signalet sendes kun når `vindusUtstilling`.
+  - **windowDisplay-state ignoreres** overalt varen regnes som «utstilt»: fasade-
+    vinduet (StorefrontView), bakgrunnssalget (TICK), produktregnskapet (CLOSE_DAY),
+    dagspulsens «Lager på disken», og mangler-pris-triggeren — alle teller kun DISK
+    (counterLayout) for kafé.
+- **Hyllelinje-koden og -dataene BEHOLDES** (parkert via feltet, ikke slettet):
+  `geometry/hyllelinje.ts`, `VINDU_HYLLELINJER`, snap/scale-motoren og traceren står
+  urørt og gjenbrukes i klesbutikkens vindu.
+- **Migrering:** eksisterende `windowDisplayLayout`-state for kafé trenger INGEN
+  migrering — den ignoreres av alle lesere når `vindusUtstilling=false` (ligger igjen
+  i state, men er død for kafé). Dokumentert her.
+
+Spilltest steg 49: CAFE → Utstilling-fanen viser disk-eksponering, ingen vindusflate/
+tracer i DOM, `forste_vindu` ikke armet. Steg 47/48 flyttet fra vindu til disk-
+eksponering (counterLayout), i tråd med den nye bransjeregelen.
+
+### Chrome-sjekkliste — bransje-gated vindu
+1. Kafé, dashbord → **Utstilling**: viser «Kaféen eksponerer i disken», INGEN
+   vindusflate eller hyllelinje-tracer (heller ikke med `?dev=1`).
+2. Ingen «Vinduet er butikkens ansikt…»-mentormelding dukker opp for kaféen.
+3. Fasadevinduet i butikken viser ingen eksponerte varer; disken (trau) er
+   eksponeringsflaten. «Lager på disken» + produktregnskap teller kun disk-varer.

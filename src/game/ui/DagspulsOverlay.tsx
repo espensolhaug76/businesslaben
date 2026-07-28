@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, turistsesongInfo } from '../GameContext'
+import { getIndustryDefinitionFor } from '../data/industryDefinition'
 import { BALANCE } from '../data/balance'
 
 // ─── DAGSPULS (SPILLKLOKKE DEL 3) ─────────────────────────────────────────────
@@ -48,9 +49,12 @@ export default function DagspulsOverlay({ dashboardOpen, onSteng }: { dashboardO
     : 'ingen'
 
   // Utstilte varer (trau + vindu) med lager — synker utover dagen.
+  // DESIGNENDRING (28.07): CAFE eksponerer kun i disken (ingen vindu) → ignorer
+  // windowDisplay-state i «Lager på disken».
   const utstiltIds = new Set<string>([
     ...state.counterLayout.map(t => t.productId),
-    ...state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId),
+    ...(getIndustryDefinitionFor(state.industry)?.vindusUtstilling
+      ? state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId) : []),
   ])
   const utstilt = [...utstiltIds]
     .map(id => state.products.find(p => p.id === id))

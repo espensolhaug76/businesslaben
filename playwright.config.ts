@@ -22,9 +22,10 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   forbidOnly: false,
-  // Rikelig timeout: ett monolittisk løp spiller en hel måned (12 dager) + 15
-  // steg med reloads via tidsbroen. Hele løpet må få plass innenfor denne.
-  timeout: 600_000,
+  // Rikelig timeout: ett monolittisk løp spiller en hel måned (12 dager) + 49
+  // steg med reloads via tidsbroen. Hele løpet må få plass innenfor denne. Hevet
+  // 600k→900k etter at fiksrundene vokste sekvensen (43→49 steg, tyngre oppsett).
+  timeout: 900_000,
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${SPILLTEST_PORT}`,

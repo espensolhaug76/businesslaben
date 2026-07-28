@@ -10,6 +10,7 @@ import { kanalById, kanalTreffISegmenter } from '../data/kampanje'
 import { getScenario } from '../sales/scenarios'
 import { avisAbsDag } from '../data/avis'
 import { BALANCE } from '../data/balance'
+import { getIndustryDefinitionFor } from '../data/industryDefinition'
 import type { GameState, RenderedNotis } from '../types'
 
 // ─── LÆRINGSLAGET — mentoren (Espen) ──────────────────────────────────────────
@@ -527,7 +528,9 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     if (state.dayPhase === 'åpen') {
       const iExpo = new Set<string>([
         ...state.counterLayout.map(t => t.productId),
-        ...state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId),
+        // DESIGNENDRING (28.07): vindu-eksponering kun for bransjer med vindusutstilling.
+        ...(getIndustryDefinitionFor(state.industry)?.vindusUtstilling
+          ? state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId) : []),
       ])
       if (state.products.some(p => iExpo.has(p.id) && p.retailPrice <= 0)) fire(`mangler_pris_apning|${dag}`)
     }

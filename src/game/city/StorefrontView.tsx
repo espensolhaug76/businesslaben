@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGame } from '../GameContext'
+import { getIndustryDefinitionFor } from '../data/industryDefinition'
 import { useDevPanel } from '../dev/devPanel'
 import { getDistrict, getLokale, STOREFRONT_HOTSPOTS, STOREFRONT_DISPLAY_ZONES, spriteForProduct } from '../../data/districts'
 import type { Product } from '../types'
@@ -213,7 +214,9 @@ export default function StorefrontView({
             dashbordets Utstilling-fane, lest tilbake og rendret mot den ekte
             vindussonen. Tom liste = ingenting (nøytralt). Kun eget lokale.
             pointerEvents none så vindu-hotspoten under fortsatt er klikkbar. */}
-        {mine && state.windowDisplayLayout.length > 0 && (
+        {/* DESIGNENDRING (28.07): kun bransjer med vindusutstilling (klesbutikk)
+            viser eksponerte varer i fasadevinduet. CAFE ignorerer windowDisplay-state. */}
+        {mine && getIndustryDefinitionFor(state.industry)?.vindusUtstilling && state.windowDisplayLayout.length > 0 && (
           <div style={{
             position: 'absolute',
             left: `${STOREFRONT_HOTSPOTS.vindu[0]}%`, top: `${STOREFRONT_HOTSPOTS.vindu[1]}%`,

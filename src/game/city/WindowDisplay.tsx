@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useGame } from '../GameContext'
+import { getIndustryDefinitionFor } from '../data/industryDefinition'
 import { STOREFRONT_HOTSPOTS, INTERIOR_DISK_DISPLAY } from '../../data/districts'
 import type { Product, WindowDisplayItem, FixtureId } from '../types'
 import { FACADE_IMG } from './StorefrontView'
@@ -502,6 +503,7 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
         <div style={{ width: '100%', maxWidth: 460 }}>
           <div
             ref={surfaceRef}
+            data-testid="vindu-flate"
             style={{
               position: 'relative', width: '100%', aspectRatio: `${surfaceAspect}`,
               borderRadius: 12, overflow: 'hidden',
@@ -633,8 +635,35 @@ function FixtureEditor({ fixture }: { fixture: FixtureConfig }) {
 // viser kun vinduet — som før.
 
 export default function WindowDisplayEditor() {
-  // LÆRINGSLAGET: kontekstuell mentor-trigger — vindusstyling åpnet (ytre salgsmiljø).
-  useEffect(() => { window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_vindu', scene: 'vindu' } })) }, [])
+  const { state } = useGame()
+  // DESIGNENDRING (28.07): vindusutstilling er bransje-gated. CAFE = false → ekte
+  // kaféer eksponerer i DISKEN, ikke i vinduet: ingen vindus-/hyllelinjeseksjon,
+  // ingen tracer, og INGEN vindusrelatert mentor-trigger armes (signalet under
+  // sendes ikke). Hyllelinje-koden/-dataene beholdes parkert (klesbutikken bruker dem).
+  const vindusUtstilling = getIndustryDefinitionFor(state.industry)?.vindusUtstilling ?? false
+  // LÆRINGSLAGET: kontekstuell mentor-trigger — KUN når bransjen faktisk har vindu.
+  useEffect(() => {
+    if (!vindusUtstilling) return
+    window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_vindu', scene: 'vindu' } }))
+  }, [vindusUtstilling])
+
+  if (!vindusUtstilling) {
+    return (
+      <div>
+        <div style={{ marginBottom: '0.9rem' }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>🧁 Vareeksponering</h3>
+        </div>
+        <div data-testid="disk-eksponering" style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 12, padding: '1.25rem', fontSize: 13.5, color: '#94a3b8', lineHeight: 1.6,
+        }}>
+          Kaféen eksponerer varene sine i <strong style={{ color: '#cbd5e1' }}>disken</strong> — ikke i vinduet.
+          Gå til <strong style={{ color: '#cbd5e1' }}>disken i butikken</strong> og still ut varer i trauene der
+          kundene ser dem. Hvordan du bygger opp disken avgjør hva bakgrunnskundene får øye på.
+        </div>
+      </div>
+    )
+  }
   return (
     <div>
       <div style={{ marginBottom: '0.9rem' }}>
