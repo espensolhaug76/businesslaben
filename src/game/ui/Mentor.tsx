@@ -862,27 +862,27 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
         )}
       </AnimatePresence>
 
-      {/* Figur + bok-knapp */}
-      <div style={{ position: 'relative', pointerEvents: 'auto' }}>
-        {/* DEL 4 — FIGUR-CONTAINER MED FAST STØRRELSE: knappen har en låst bounding-
-            box (MENTOR_FIGUR_BREDDE × MENTOR_FIGUR_HOYDE) uansett pose. Posen ligger
-            ABSOLUTT inni og bunn-forankret (samme anker for alle poser), så pose-
-            bytte aldri endrer containerens dimensjoner. Alle poser preloades ved
-            mount (se effekt), så et bytte aldri venter på bildelast (ingen «hopp»). */}
+      {/* Figur + bok-knapp. LAYOUTBOKS fast 150×170 (DEL 4 — pose-bytte flytter aldri
+          layouten). DEL B (28.07): KLIKKFLATEN dekker nå HELE den synlige figuren
+          (renderH høy, bunn-forankret bottom:-hang) — ikke bare layoutboksen — så
+          hode/føtter (som stikker utenfor boksen, verst i 'vanlig'-posen: 249px mot
+          170px) også er klikkbare. Badge ligger oppå (pointerEvents:none ⇒ klikk
+          faller gjennom til figuren). 📖-boka er en EGEN knapp (stopPropagation). */}
+      <div data-testid="mentor-figur-boks" style={{ position: 'relative', width: MENTOR_FIGUR_BREDDE, height: MENTOR_FIGUR_HOYDE, pointerEvents: 'auto' }}>
         <button
           data-testid="mentor-figur"
           onClick={figureClick}
           title={ordbokOpen ? 'Lukk ordboka' : melding ? 'Espen' : venter ? 'Espen har noe til deg — klikk' : 'Åpne ordboka'}
           style={{
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            padding: 0, width: MENTOR_FIGUR_BREDDE, height: MENTOR_FIGUR_HOYDE,
-            position: 'relative', overflow: 'visible', display: 'block',
+            background: 'transparent', border: 'none', cursor: 'pointer', padding: 0,
+            position: 'absolute', left: '50%', bottom: -hang, transform: 'translateX(-50%)',
+            width: MENTOR_FIGUR_BREDDE, height: renderH, overflow: 'visible', display: 'block',
           }}
         >
           {!failedImg ? (
             <img src={pose} alt="Mentor Espen" draggable={false} onError={() => setFailedImg(true)}
               style={{
-                position: 'absolute', left: '50%', bottom: -hang, transform: 'translateX(-50%)',
+                position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)',
                 height: renderH, width: 'auto', display: 'block',
                 filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.5))', userSelect: 'none',
               }} />
