@@ -3593,3 +3593,56 @@ eksponering (counterLayout), i tråd med den nye bransjeregelen.
 2. Ingen «Vinduet er butikkens ansikt…»-mentormelding dukker opp for kaféen.
 3. Fasadevinduet i butikken viser ingen eksponerte varer; disken (trau) er
    eksponeringsflaten. «Lager på disken» + produktregnskap teller kun disk-varer.
+
+## TILLEGG — planleggingspause + klikkbar mentor-figur — 2026-07-28
+
+To Espen-valideringsfunn (gren `spor-a/fiks-oppgjor-og-innhold`).
+
+### DEL A — Planlegging koster aldri spilltid
+Espen mistet åpningsdagen fordi han planla i dashbordet mens klokka gikk. TICK
+(spillklokka) driver ALT — dayMinute, bakgrunnssalg-bolker, kø-ticks og møte-spawn —
+så én pause av intervallet dekker hele driften.
+
+- **Pausen dekker nå alle tenke-flater.** Intervallet i GamePage pauser når
+  `dayPhase !== 'åpen'` ELLER en modal/tenke-flate er oppe. Audit av flatene i en
+  åpen dag:
+
+  | Flate | Pauser? | Merknad |
+  |---|---|---|
+  | Dashbord (`dashboardOpen`) | ✅ (var alt der) | planlegging |
+  | Avis 📰 (`avisOpen`) | ✅ **NY** — manglet før (klokka gikk mens man leste) | lesing |
+  | Salgssamtale (`salesOpen`) | ✅ | drift, men modal → pauser |
+  | Stamkundemøte / aktivt møte (`activeMeetingScenarioId`) | ✅ | drift, modal |
+  | Innboks | ✅ (fane i dashbordet ⇒ `dashboardOpen`) | lesing |
+  | Dagspuls minimert («se butikken») | ❌ (med hensikt) | drift — tiden SKAL gå |
+
+  Regel: **tid presser i DRIFT, aldri i menyene.**
+- **Indikator:** diskret «⏸ Planlegging — tiden står» ved klokka i HUD, på egen høy
+  z-flate (z-500, over dashbord z-180 / avis z-400) så den er synlig MENS man planlegger
+  (ellers lå den bak overlayet). Vises kun for planleggingsflatene (dashbord/avis) i en
+  åpen dag; ikke under salgssamtaler (de har egen kontekst).
+- Spilltest steg 50: åpen dag → tiden tikker; åpne dashbord → `dayMinute` fryser +
+  indikator; bakgrunnskunder urørt; lukk → tiden går igjen.
+
+### DEL B — Mentor-figuren klikkbar (rotårsak)
+**Rotårsak (bevisført via `elementFromPoint`):** figurens KLIKKFLATE var låst til
+layoutboksen (150×170), men den SYNLIGE figuren er større og bunn-forankret — i
+'vanlig'-posen 249px høy (`renderH`), så hodet stakk ~31px over og føttene ~48px under
+boksen. Klikk på hodet/ansiktet (det naturlige målet) traff derfor UTENFOR knappen.
+Ingen z-overlapp: mentoren (z-500) ligger over alle blokkerende overlays (dagsoppgjør
+z≤300, dagspuls z-150) — «livescore»/dagspuls dekker altså ikke figuren; problemet var
+hitboksen. (Intro-overlayet z-600 dekker figuren, men kun under selve introen.)
+
+- **Fiks:** klikkflaten dekker nå HELE den synlige figuren (`height: renderH`, forankret
+  `bottom:-hang`) i ALLE poser, inne i en fast 150×170-layoutboks (så pose-bytte fortsatt
+  ikke flytter layouten). Badge ligger oppå med `pointerEvents:none` ⇒ klikk på badgen
+  faller gjennom til figuren. 📖-boka er en EGEN knapp (`stopPropagation`) — ingen overlapp.
+- Spilltest steg 51: hode/senter/føtter treffer figur-knappen (også med dagspuls oppe);
+  klikk på figuren avslører neste kø-melding; 📖-klikk åpner ordboka (ikke meldingen).
+
+### Chrome-sjekkliste — tillegget
+1. **Planleggingspause (DEL A):** åpen dag → åpne dashbordet (minimer dagspulsen først):
+   klokka står, «⏸ Planlegging — tiden står» vises øverst. Lukk → klokka går. Samme med
+   📰-avisen. Under en salgssamtale går tiden fortsatt ikke (modal), men uten pause-teksten.
+2. **Mentor-figur (DEL B):** med kø-badge på figuren → klikk hvor som helst på figuren
+   (hode, kropp, føtter) → neste melding vises. Klikk 📖 → ordboka åpnes (ikke en melding).

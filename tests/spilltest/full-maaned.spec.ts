@@ -1799,12 +1799,15 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok('tema-trigger fag-gated: beredskap aktiv + FD av → ingen HMS-melding; FD på → melding tilbake (Espen spør + innboks var alt fag-gated)')
   })
 
-  await steg(page, rapport, 42, 'Mentor-pose: pose-bytte endrer ikke figurens bounding-box (computed style + rect)', async ctx => {
+  await steg(page, rapport, 42, 'Mentor-pose: pose-bytte endrer ikke figurens LAYOUTBOKS (computed style + rect)', async ctx => {
     await page.goto('/game?skip=1')
     await ventState(page, s => s.phase !== 'startup', 'boot 42')
     await expect(page.getByTestId('mentor-figur')).toBeVisible()
-    const boks = () => page.evaluate(() => { const el = document.querySelector('[data-testid="mentor-figur"]')!; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return { w: Math.round(r.width), h: Math.round(r.height), cw: cs.width, ch: cs.height } })
-    const posefil = () => page.evaluate(() => (document.querySelector('[data-testid="mentor-figur"] img') as HTMLImageElement)?.src.split('/').pop() ?? '')
+    // Layoutstabiliteten ligger på den FASTE 150×170-boksen (mentor-figur-boks).
+    // Selve klikkflaten (mentor-figur) er bevisst pose-stor (dekker hele figuren, DEL B),
+    // men ligger ABSOLUTT inni boksen og flytter derfor ikke layouten.
+    const boks = () => page.evaluate(() => { const el = document.querySelector('[data-testid="mentor-figur-boks"]')!; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return { w: Math.round(r.width), h: Math.round(r.height), cw: cs.width, ch: cs.height } })
+    const posefil = () => page.evaluate(() => (document.querySelector('[data-testid="mentor-figur-boks"] img') as HTMLImageElement)?.src.split('/').pop() ?? '')
     const box0 = await boks()
     // v3 (leser): åpne et Fagord-kort.
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:fagord', { detail: { open: true } })))
@@ -2184,6 +2187,92 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     const fired = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] as string[] } })
     expect(fired, 'forste_vindu armes ikke for kafé').not.toContain('forste_vindu')
     ctx.ok('CAFE vindusUtstilling=false: ingen vindusflate/tracer i DOM, disk-eksponering vist, forste_vindu ikke armet')
+  })
+
+  await steg(page, rapport, 50, 'Planlegging koster ikke spilltid: dashbord åpent i åpen dag → dayMinute fryser + «tiden står»-indikator; lukk → tiden går', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 50')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [] })
+    await ventState(page, s => s.openingOrderPlaced, 'åpningsordre 50')
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 50')
+    // Den EKTE spillklokka (interval, tickMs) driver tiden nå — vent litt sanntid.
+    await page.waitForTimeout(2200)
+    const dm0 = (await lesFull()).dayMinute
+    expect(dm0, 'tiden går i drift (klokka tikker)').toBeGreaterThan(0)
+    // Minimer dagspulsen (drift-visning) for å nå HUD-en, åpne så dashbordet.
+    await page.getByRole('button', { name: /Minimer/ }).click()
+    await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+    await expect(page.getByTestId('dashbord')).toBeVisible()
+    // Indikator + FROSSEN tid mens dashbordet er åpent.
+    await expect(page.getByTestId('planlegging-pause')).toBeVisible()
+    const dm1 = (await lesFull()).dayMinute
+    await page.waitForTimeout(2600)
+    const dm2 = (await lesFull()).dayMinute
+    expect(dm2, 'dayMinute UENDRET mens dashbordet er åpent (bolker/kø/klokke pauset)').toBe(dm1)
+    const kunder1 = (await lesFull()).dayStats.bakgrunnKunder
+    // Lukk → tiden går igjen.
+    await page.getByTestId('dashbord-lukk').click()
+    await expect(page.getByTestId('dashbord')).toBeHidden()
+    await expect(page.getByTestId('planlegging-pause')).toBeHidden()
+    await page.waitForTimeout(2200)
+    const dm3 = (await lesFull()).dayMinute
+    expect(dm3, 'tiden går igjen etter lukking').toBeGreaterThan(dm2)
+    ctx.ok(`planlegging pauser klokka: tid ${dm0}→ frøs på ${dm1} mens dashbord åpent (${dm1}=${dm2}, bakgrunnskunder ${kunder1} urørt) → går igjen (${dm3}). Indikator vist/skjult.`)
+  })
+
+  await steg(page, rapport, 51, 'Mentor-figuren har stor klikkflate: hode/senter/føtter klikkbare (også med dagspuls); klikk åpner neste kø-melding; 📖 åpner ordboka (ikke meldingen)', async ctx => {
+    // Isoler kø: preset ALLE triggere som fyrt UNNTATT to vi vil fyre selv.
+    const preset = MENTOR_TRIGGERS.map(t => t.id).filter(id => id !== 'forste_laan' && id !== 'forste_ko')
+    await page.evaluate(({ ids }) => { localStorage.setItem('mentor_fired_v1', JSON.stringify(ids)); localStorage.setItem('mentor_intro_v1', '1') }, { ids: preset })
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 51')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [] })
+    await ventState(page, s => s.openingOrderPlaced, 'åpningsordre 51')
+    await expect(page.getByTestId('mentor-figur')).toBeVisible()
+
+    // (a) STOR KLIKKFLATE: hode, senter og føtter treffer figur-knappen (ikke bare
+    //     den faste 150×170-boksen). Sjekkes via elementFromPoint på figurens flate.
+    // Klemmer prøvepunktet innenfor viewporten: figurens føtter kan ligge et par px
+    // under skjermkanten (figuren er forankret i bunnen) — vi tester den SYNLIGE flaten.
+    const treffer = async (fy: number) => {
+      const box = await page.getByTestId('mentor-figur').boundingBox()
+      if (!box) return false
+      return page.evaluate(([bx, by, bw, bh, f]) => {
+        const btn = document.querySelector('[data-testid="mentor-figur"]')
+        const x = bx + bw / 2
+        const y = Math.min(by + bh * f, window.innerHeight - 8)
+        const top = document.elementFromPoint(x, y)
+        return !!btn && (btn.contains(top) || top === btn)
+      }, [box.x, box.y, box.width, box.height, fy] as [number, number, number, number, number])
+    }
+    expect(await treffer(0.08), 'hode klikkbart').toBe(true)
+    expect(await treffer(0.5), 'senter klikkbart').toBe(true)
+    expect(await treffer(0.92), 'føtter klikkbart').toBe(true)
+
+    // (a2) Også MED dagspuls («livescore») oppe: figuren (z-500) ligger over dagspulsen.
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 51')
+    await page.waitForTimeout(150)
+    expect(await treffer(0.5), 'figur-senter klikkbart også med dagspuls oppe').toBe(true)
+    // tilbake til stengt for resten (unngå at klokka tikker under interaksjonen)
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør 51')
+    await dispatch(page, { type: 'START_NEW_DAY' }); await ventState(page, s => s.dayPhase === 'stengt', 'stengt 51')
+
+    // (b) KØ TO MELDINGER, avvis den første → badge; klikk FIGUR → nr. 2 vises.
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_laan' } })))
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: 'forste_ko' } })))
+    await expect(page.locator('body')).toContainText('Du tok opp et lån')          // forste_laan vises først
+    await page.locator('button[title="Lukk"]').first().click()                     // avvis → pause + badge
+    await page.waitForTimeout(200)
+    await expect(page.locator('body')).not.toContainText('Du tok opp et lån')      // ingen boble mens den venter
+    await page.getByTestId('mentor-figur').click()                                 // klikk figuren → neste kø-melding
+    await expect(page.locator('body')).toContainText('sto det kunder i kø')        // forste_ko vises nå
+
+    // (c) 📖-BOKA er en EGEN flate: klikk åpner ordboka, ikke en melding.
+    await page.locator('button[title="Espens ordbok"]').click()
+    await expect(page.getByText('📖 Espens ordbok')).toBeVisible()
+    ctx.ok('figur-klikkflaten dekker hele figuren (hode/senter/føtter, også med dagspuls); klikk avslører neste kø-melding; 📖 åpner ordboka separat')
   })
 
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
