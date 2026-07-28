@@ -16,6 +16,10 @@ export interface ExamQuestion {
   correct?: number
   points?: number
   penaltyPoints?: number  // default -0.5
+  /** Fasitforklaring. Følger med fra standardprøvene (spor D). */
+  explanation?: string
+  /** Vanskegrad fra standardkonkurransene: styrer rekkefølgen i prøva. */
+  difficulty?: 'lett' | 'middels' | 'vanskelig'
   // open/case only:
   suggestedAnswer?: string  // only visible to teacher
   maxPoints?: number
@@ -47,6 +51,50 @@ export interface Exam {
   status: 'draft' | 'active' | 'closed'
   examCode?: string
   createdAt: string
+}
+
+/**
+ * Ferdiglaget standardprøve (spor D). Ikke en `Exam`: den har verken klasse,
+ * status eller prøvekode, fordi den er en MAL. Læreren tar en kopi via
+ * `examFromStandard()`, og malen selv endres aldri.
+ */
+export interface StandardExam {
+  id: string
+  code: string
+  title: string
+  /** Fag-ID fra MINE_FAG_OPTIONS. */
+  subject: string
+  timeMinutes: number
+  scoringRules: Exam['scoringRules']
+  questions: ExamQuestion[]
+  createdAt: string
+}
+
+/** Standard karaktergrenser — samme verdier som ExamBuilder bruker. */
+export const DEFAULT_GRADE_THRESHOLDS: Exam['gradeThresholds'] = {
+  grade6: 90, grade5: 75, grade4: 60, grade3: 45, grade2: 30,
+}
+
+/**
+ * Lager lærerens egen, redigerbare kopi av en standardprøve. Kopien får ny
+ * ID og opprettelsestid; malen røres ikke.
+ */
+export function examFromStandard(
+  mal: StandardExam,
+  opts: { id: string; classCode: string; createdAt: string },
+): Exam {
+  return {
+    id: opts.id,
+    title: mal.title,
+    classCode: opts.classCode,
+    subjects: [mal.subject],
+    timeMinutes: mal.timeMinutes,
+    questions: mal.questions.map(q => ({ ...q })),
+    scoringRules: { ...mal.scoringRules },
+    gradeThresholds: { ...DEFAULT_GRADE_THRESHOLDS },
+    status: 'draft',
+    createdAt: opts.createdAt,
+  }
 }
 
 export interface SuspiciousEvent {
