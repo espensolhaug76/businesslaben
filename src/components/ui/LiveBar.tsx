@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useLiveSync } from '../../lib/useLiveSync'
 
 /**
@@ -9,6 +9,7 @@ import { useLiveSync } from '../../lib/useLiveSync'
  */
 export default function LiveBar() {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { isLive, isStudentLive, quizActive } = useLiveSync()
 
   // Auto-send student to /live-session when teacher starts a quiz
@@ -18,6 +19,10 @@ export default function LiveBar() {
       navigate('/live-session')
     }
   }, [isStudentLive, quizActive, navigate])
+
+  // Lærerdashboardet har sin egen live-pille i tittelraden (spor D, steg 6) —
+  // den flytende baren ble klippet av i høyre viewport-kant der.
+  if (pathname === '/teacher') return null
 
   // Only show the bar for students (not teacher big-screen)
   if (!isStudentLive) return null
