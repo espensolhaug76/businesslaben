@@ -124,3 +124,189 @@ sammen med av/på-bryteren (linje 240–248) uansett om temaet er av. Nivåene p
 tema kommer fra `tema.nivaaer` i `src/game/data/temaer.ts`; lagret verdi er
 `{aktiv, nivaa}` i RTDB `klasser/{kode}/temaAktivering/{temaId}` — det finnes
 ingen «følger klassen»-tilstand ennå.
+
+---
+
+## Hva som ble endret, per steg
+
+Alle åtte innholdskomponenter er beholdt og montert som før. Endringene under
+er i skallet, pluss de fire avgrensede inngrepene i steg 4–7.
+
+### Steg 1 — fire hovedområder med underfaner
+
+`TeacherDashboard.tsx`: den flate 8-fanelista er erstattet av `OMRADER`
+(nivå 1, understrek på aktivt område) + `aktivtOmrade.subs` (nivå 2, piller).
+Fane-IDene er beholdt, så alle interne `setActiveTab`-kall virker uendret.
+
+| Hovedområde | Underfaner |
+| --- | --- |
+| I timen | Live økt · Konkurranser |
+| Innhold | Læringsinnhold · Spillstyring |
+| Vurdering | Prøver · Spørsmål |
+| Klassen | Klasser · Nasjonalt leaderboard |
+
+Klikk på et hovedområde åpner `subs[0]`. Standard ved innlasting er
+`I timen / Live økt` (var `Læringsinnhold`).
+
+**Dyplenker:** ingen fantes (se kartlegging). `LEGACY_FANE_MAP` er likevel lagt
+inn og leses fra `?fane=<id>` ved mount, slik at gamle fanenavn — inkludert
+`spillet`, som nå heter Spillstyring — lander på riktig underfane. Parameteren
+skrives ikke tilbake til URL-en.
+
+### Steg 2 — global klasselinje
+
+Ny `TeacherClassProvider` (`src/screens/teacher/TeacherClassContext.tsx`) eier
+klasselista, aktiv klassekode, elevenes nivå, «Mine fag» og live-status.
+Ny `KlasseLinje` (`src/screens/teacher/KlasseLinje.tsx`) rendres rett under H1,
+over nivå 1: **Klasse** (nedtrekk) · **Kode** (monospace + kopier-ikon) ·
+**Elevenes nivå** (VG1/VG2) · **Mine fag (bare mitt utvalg)** (nedtrekk).
+
+Gjennomført:
+- Klassekode-linja «Klasse: 1SSR (kode: JXXUEY)» fjernet i Live økt — begge
+  stedene (før økt og under aktiv økt).
+- Det store klassekode-kortet i Spørsmål fjernet. «Oppdater»-knappen som lå
+  inni kortet er reddet ut og står nå alene som «Oppdater svar».
+- Mikroteksten «klasse JXXUEY» fjernet fra Spillstyring.
+- «Mine fag»-chippen fjernet fra tittelraden.
+- «Klassens nivå» flyttet ut av Spillstyring og inn i klasselinja som
+  «Elevenes nivå». Samme RTDB-node (`klasser/{kode}/klasseNivaa`); temapanelet
+  leser verdien derfra via konteksten.
+- Klasser-fanens store klassekode-kort er **beholdt**.
+- `KlasserTab` bruker nå samme tilstand som klasselinja. Verifisert begge veier:
+  klikk på klassechip → nedtrekket bytter; bytte i nedtrekket → chipen får
+  aktiv ramme (`rgb(13, 148, 136)`).
+
+`LiveOktTab` og `KonkurranserTab` leser aktiv klasse fra konteksten i stedet for
+å lese localStorage i en mount-initializer. Det var den gamle mekanismen som
+gjorde at et klassebytte ikke nådde fram uten remount.
+
+### Steg 3 — navnegrep og beskrivelseslinjer
+
+- «Spillet» → «Spillstyring» i lærerdashboardet. Toppmenyens «Spillet»
+  (elevlenken til `/desktop`) er urørt.
+- FD/M/KS-bryterne har fått overskriften «Fag elevene ser».
+- De svarte hover-tooltipene (`hoveredTab`-state + tooltip-boks) er slettet.
+  Erstattet av én grå setning under nivå 2-pillene, én per underfane, med
+  ordlyden fra oppdraget.
+
+### Steg 4 — tom tilstand i Læringsinnhold
+
+**Funn: det var fag-filteret, ikke en lastefeil.** Modullista er en statisk
+import (`ALL_MODULES` fra `LearningHub.tsx`) — det finnes ingen asynkron
+lasting som kan feile, og ingen konsollfeil ble observert.
+
+Rotårsaken er et nøkkelformat-avvik. `MinileksjonsTab` filtrerte seksjoner slik:
+
+```
+MODULE_SECTIONS.filter(s => mineFagModuleKeys.has(`${s.subject}-${s.level}`))
+```
+
+som gir nøkler av typen `ssr-vg1`, `ssr-vg2`, `ml-vg2`. Men verdiene i settet
+kom fra `MINE_FAG_OPTIONS[].moduleKey`, som er `forretningsdrift-vg1`,
+`mfi-vg1`, `kultur-vg1`, `okonomi`, `kommunikasjon`, `hms`, `ml1-vg2`, …
+Kun `ent-vg2` og `ml-vg3` matchet ved et sammentreff. For alle andre fagvalg —
+altså for de aller fleste lærere — ble settet tomt, lista tom og telleren
+«0/108 synlige».
+
+Fikset ved å bruke seksjonsnøkler (`${level}|${subject}|${ssrSubject}`) via den
+eksisterende `subjectToSectionKey()`, som allerede returnerer nøyaktig dette
+formatet. To følgefeil ble ryddet i samme slengen:
+- nevneren i telleren var `ALL_MODULES.length` (108) mens telleren var filtrert;
+  nå teller begge det samme utvalget.
+- seksjonslista filtrerte modulene på `level + subject` uten `ssrSubject`, så
+  de tre VG1 SSR-seksjonene viste alle VG1 SSR-modulene hver. Nå matches
+  `ssrSubject` også.
+
+Tom tilstand (filtrert til null): listekolonnen viser «Ingen minileksjoner i
+\<fagkode\>.» med knappen «Vis alle fag» som nullstiller «Mine fag», og
+detaljfeltet viser samme melding i stedet for «← Velg en minileksjon fra listen».
+Verifisert med `Mine fag = TVERR-VG1`: «Ingen minileksjoner i TVERR-VG1.», og
+«Vis alle fag» tømmer `adventure-teacher-subjects`.
+
+Ingen «Fikk ikke lastet innholdet.»-tilstand er lagt inn, siden det ikke finnes
+en lastevei som kan feile — en slik gren ville vært død kode. Se tvilspunkt 1.
+
+Presentasjoner: samme håndtering. Den femdobbelt duplikerte JSX-en er samlet i
+`PRESENTASJON_GRUPPER` (samme innhold, samme ruter, samme rekkefølge), hvert
+element merket med seksjonsnøkkel, og visningen respekterer nå «Mine fag» med
+tilsvarende tom tilstand.
+
+### Steg 5 — temaradene i Spillstyring
+
+- «På»/«Av» i tekst ved siden av hver bryter (både fag-, Espen spør- og
+  temabryterne). Farge alene er ikke lenger eneste signal.
+- VG1/VG2-chipsene skjules når temaet er AV.
+- Nivåvelgeren har tre tilstander når temaet er PÅ: **«Følger klassen»**
+  (standard for temaer uten lagret verdi), VG1, VG2. Temaer som allerede har et
+  lagret nivå beholder det (`folgerKlassen` mangler → fast nivå).
+  Nytt valgfritt felt `folgerKlassen?: boolean` på `TemaAktivering`. Når det er
+  satt, holdes `nivaa` automatisk i takt med klasselinja, slik at spillklienten
+  kan lese `nivaa` uendret — den trenger ikke kjenne flagget. Verifisert: med
+  «Følger klassen» valgt og klasselinja satt til VG2 ble temaets nivå VG2.
+  Hvis temaet ikke finnes for klassens nivå, brukes temaets første nivå.
+- Panelet er delt i tre seksjoner med overskrift: **«Fag elevene ser»** —
+  **«Temaer»** — **«Innholdspakke»**. «Velg fag / bok» (med statuslinje og
+  leksjonsliste) ligger under Innholdspakke.
+
+### Steg 6 — live-økt-status
+
+Den grønne pillen kom fra `LiveBar` (`position: fixed; top: 70; right: 20`),
+montert globalt i `App.tsx` og derfor også over `/teacher`. `LiveBar` returnerer
+nå `null` på `/teacher`; i stedet ligger pillen i tittelraden, på linje med H1 og
+høyrejustert. Klikk går til I timen / Live økt. Statusen leses fra RTDB
+`sessions/{klassekode}/active` — den gamle `liveSessionActive`-pollingen mot
+`localStorage['live-session-active']` er fjernet fordi ingen skrev den nøkkelen;
+grønnprikken på Live-fanen var derfor alltid av. Nå virker den.
+
+### Steg 7 — bredde
+
+Maksbredde 1000px på både toppmenyen og innholdskolonnen (var `max-w-4xl`, 896px).
+Konkurranser og Spillstyring har ingen egen breddebegrensning og bruker plassen.
+Verifisert horisontal overflow = 0px på alle åtte underfaner ved 1440px, og på
+Spillstyring / Konkurranser / Læringsinnhold / Live økt ved 1280px.
+
+## Verifisering
+
+- `tsc -b` grønn før hver commit. (`npx tsc --noEmit` ikke brukt.)
+- Skjermbilder av alle åtte underfanene i `docs/rapporter/bilder/spor-d/`,
+  tatt med headless Chromium mot dev-serveren på `--port 5176 --strictPort`,
+  klasse **DTEST** (aldri JXXUEY). Kontrollert mot dem selv.
+- Ekstra: `x1-tom-minileksjoner.png` (tom tilstand), `x9-temaer-detalj.png`
+  (tre-tilstands nivåvelger + På/Av), `x6-live-pille.png` (pillen i tittelraden).
+- Auth-vakta i `/teacher` redirigerer til `/` når `auth.currentUser` er null,
+  så den ble midlertidig omgått for skjermbildeøkta og **gjenopprettet etterpå**
+  — ingen spor i commit-ene. Omgåelsen påvirket kun redirect, ikke utseendet.
+- Playwright er kun diagnostikk; visuell godkjenning er fortsatt din.
+
+## Ting jeg var i tvil om
+
+1. **«Fikk ikke lastet innholdet.»-grenen i steg 4.** Modul- og
+   presentasjonslistene er statiske importer, så jeg fant ingen lastevei som kan
+   feile. Jeg valgte å ikke legge inn en feiltilstand som aldri kan trigges. Sier
+   du fra, legger jeg den inn (f.eks. hvis lista skal hentes fra Firebase senere).
+2. **Fag-filter på Presentasjoner.** Oppdraget sier «samme håndtering for
+   Presentasjoner-visningen», men fanen hadde ikke noe fag-filter i det hele
+   tatt — uten filter kunne tomtilstanden aldri oppstå. Jeg la derfor «Mine
+   fag»-filteret på presentasjonene også. Konsekvens: en lærer som bare har valgt
+   VG2-fagene (ØK/KOM/HMS) ser ingen presentasjoner, fordi det ikke finnes
+   presentasjonsgrupper for dem — men får «Vis alle fag» som utvei. Si fra hvis
+   presentasjonene heller skal vise alt uansett.
+3. **Hvor «Espen spør» hører hjemme.** Steg 5 nevner tre seksjoner og sier ikke
+   hvor Espen spør skal stå. Jeg lot den bli i «Fag elevene ser», siden den
+   styres per fag. Den kan flyttes til en egen seksjon hvis du vil.
+4. **«Spillet» som live-økt-modus.** `LiveOktTab` har tre moduser:
+   Presentasjon / Minileksjon / **Spillet** («Elevene spiller bedriftssimulatoren»).
+   Det er en modus, ikke fanen, så jeg lot navnet stå. Endres gjerne hvis det
+   forvirrer sammen med «Spillstyring».
+5. **`folgerKlassen`-flagget.** Alternativet var å la «Følger klassen» bety
+   «ingen lagret rad», men det ville gjort det umulig å ha et aktivt tema som
+   følger klassen. Jeg valgte et valgfritt felt og holder `nivaa` synkronisert,
+   så spillklienten er uberørt. Ingen Firebase-migrasjon kreves.
+6. **Velkomst-tomtilstanden** («Opprett din første klasse») viste seg å avhenge
+   av at `teacher-classes` ikke er skrevet ennå. Konteksten oppretter en klasse
+   ved mount, så jeg fanger tilstanden *før* det og eksponerer den som
+   `ingenKlasserVedStart`. Uten dette ville velkomstboksen aldri vist seg igjen.
+7. **Underfanenes egne breddegrenser.** Live økt (720px), Klasser (800px) og
+   Nasjonalt leaderboard (760px) har egne `maxWidth` i sine komponenter. Oppdraget
+   nevnte bare Konkurranser og Spillstyring, så jeg lot dem stå — de ser nå litt
+   smalere ut enn resten. Si fra hvis de også skal fylle 1000px.

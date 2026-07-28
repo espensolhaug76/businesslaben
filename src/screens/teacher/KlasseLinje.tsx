@@ -108,7 +108,13 @@ export default function KlasseLinje() {
               fontSize: 12, lineHeight: 1, padding: '4px 6px', fontFamily: 'inherit',
             }}
           >
-            {kopiert ? '✓' : '⧉'}
+            {kopiert ? '✓' : (
+              // Kopier-ikon som SVG — unngår manglende glyf for ⧉ i enkelte fonter.
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+                <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+                <path d="M10.5 3.5v-1a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h1" />
+              </svg>
+            )}
           </button>
         )}
       </Felt>
