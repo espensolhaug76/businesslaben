@@ -19,6 +19,8 @@ import TemaAktiveringPanel from './teacher/TemaAktiveringPanel'
 import KonkurranserTab from './teacher/KonkurranserTab'
 import { MINE_FAG_OPTIONS, subjectToSectionKey } from '../lib/teacherSubjects'
 import { ALL_PRESENTATIONS, PRESENTATION_SECTIONS } from '../lib/presentationRegistry'
+import { STANDARD_EXAMS } from '../data/standardExams'
+import { examFromStandard, type Exam, type StandardExam } from '../types/Exam'
 import {
   TeacherClassProvider, useTeacherClass, generateClassroomCode,
   type TeacherClass,
@@ -1617,7 +1619,7 @@ function TeacherDashboardInner() {
         {activeTab === 'elever' && <KlasserTab onStartLiveOkt={() => setActiveTab('live')} />}
 
         {activeTab === 'prover' && (
-          <ProverTab navigate={navigate} />
+          <ProverTab navigate={navigate} mineFagSectionKeys={activeSectionKeys} classCode={classroomCode} />
         )}
 
         {activeTab === 'konkurranser' && (
@@ -1648,13 +1650,55 @@ interface ExamSummary {
   createdAt: string
 }
 
-function ProverTab({ navigate }: { navigate: (path: string) => void }) {
-  const exams: ExamSummary[] = (() => {
+function genExamId(): string {
+  return Math.random().toString(36).slice(2, 10)
+}
+
+function ProverTab({
+  navigate,
+  mineFagSectionKeys,
+  classCode,
+}: {
+  navigate: (path: string) => void
+  mineFagSectionKeys: Set<string> | null
+  classCode: string
+}) {
+  const [exams, setExams] = useState<ExamSummary[]>(() => {
     try { return JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { return [] }
-  })()
+  })
+  const [nyProveId, setNyProveId] = useState<string | null>(null)
+  const nyProveRef = useRef<HTMLDivElement | null>(null)
+
+  // Hopp til den nye prøva i «Mine prøver» etter kopiering.
+  useEffect(() => {
+    if (!nyProveId || !nyProveRef.current) return
+    nyProveRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [nyProveId])
 
   const statusLabel = (s: string) => s === 'active' ? 'Aktiv' : s === 'closed' ? 'Avsluttet' : 'Utkast'
   const statusColor = (s: string) => s === 'active' ? '#10b981' : s === 'closed' ? '#6b7280' : '#f59e0b'
+
+  // «Mine fag» filtrerer standardprøvene, samme seksjonsnøkler som ellers.
+  const standarder = STANDARD_EXAMS.filter(e => {
+    if (!mineFagSectionKeys) return true
+    const n = subjectToSectionKey(e.subject)
+    return n !== null && mineFagSectionKeys.has(n)
+  })
+
+  /** Lager lærerens egen kopi. Standardprøva selv endres aldri. */
+  function brukStandard(mal: StandardExam) {
+    const kopi = examFromStandard(mal, {
+      id: genExamId(),
+      classCode,
+      createdAt: new Date().toISOString(),
+    })
+    let eksisterende: Exam[] = []
+    try { eksisterende = JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { /* tom liste */ }
+    const oppdatert = [...eksisterende, kopi]
+    localStorage.setItem('adventure-exams', JSON.stringify(oppdatert))
+    setExams(oppdatert as unknown as ExamSummary[])
+    setNyProveId(kopi.id)
+  }
 
   return (
     <div>
@@ -1674,6 +1718,49 @@ function ProverTab({ navigate }: { navigate: (path: string) => void }) {
         </button>
       </div>
 
+      {/* ── Standardprøver ─────────────────────────────────────────────── */}
+      <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Standardprøver</h3>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+        Ferdiglagde prøver med 30 spørsmål hver, bygget av de samme spørsmålene som
+        standardkonkurransene. «Bruk denne» lager din egen kopi som du kan redigere.
+      </p>
+
+      {standarder.length === 0 ? (
+        <div style={{ padding: '20px', textAlign: 'center', background: 'var(--card-bg)', borderRadius: 12, border: '1px dashed var(--border)', marginBottom: 28 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Ingen standardprøver i fagene du har valgt.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
+          {standarder.map(mal => {
+            const fag = MINE_FAG_OPTIONS.find(o => o.id === mal.subject)
+            return (
+              <div
+                key={mal.id}
+                style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+              >
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{mal.title}</span>
+                {fag && (
+                  <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(13,148,136,0.1)', color: '#0d9488', border: '1px solid rgba(13,148,136,0.2)', borderRadius: 6, padding: '2px 8px' }}>
+                    {fag.short}
+                  </span>
+                )}
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>📋 {mal.questions.length} spørsmål</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>⏱ {mal.timeMinutes} min</span>
+                <button
+                  onClick={() => brukStandard(mal)}
+                  style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: 8, border: '1px solid #0d9488', background: 'transparent', color: '#0d9488', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Bruk denne
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Mine prøver ────────────────────────────────────────────────── */}
+      <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Mine prøver</h3>
+
       {exams.length === 0 ? (
         <div style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--card-bg)', borderRadius: 16, border: '1px dashed var(--border)' }}>
           <p style={{ fontSize: 32, marginBottom: 12 }}>📝</p>
@@ -1687,30 +1774,46 @@ function ProverTab({ navigate }: { navigate: (path: string) => void }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {exams.map(exam => (
-            <div key={exam.id} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{exam.title}</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: `${statusColor(exam.status)}20`, color: statusColor(exam.status) }}>
-                    {statusLabel(exam.status)}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-                  {exam.examCode && <span>Kode: <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{exam.examCode}</span></span>}
-                  <span>⏱ {exam.timeMinutes} min</span>
-                  <span>📋 {exam.questions.length} spørsmål</span>
-                  <span>{new Date(exam.createdAt).toLocaleDateString('no-NO')}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => navigate(`/exam/results/${exam.id}`)}
-                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+          {exams.map(exam => {
+            const erNy = exam.id === nyProveId
+            return (
+              <div
+                key={exam.id}
+                ref={erNy ? nyProveRef : undefined}
+                style={{
+                  background: 'var(--card-bg)', borderRadius: 16, padding: '16px 20px',
+                  display: 'flex', alignItems: 'center', gap: 16,
+                  border: erNy ? '2px solid #0d9488' : '1px solid var(--border)',
+                }}
               >
-                Se resultater →
-              </button>
-            </div>
-          ))}
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{exam.title}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: `${statusColor(exam.status)}20`, color: statusColor(exam.status) }}>
+                      {statusLabel(exam.status)}
+                    </span>
+                    {erNy && (
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: 'rgba(13,148,136,0.12)', color: '#0d9488' }}>
+                        Kopiert fra standardprøve
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                    {exam.examCode && <span>Kode: <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{exam.examCode}</span></span>}
+                    <span>⏱ {exam.timeMinutes} min</span>
+                    <span>📋 {exam.questions.length} spørsmål</span>
+                    <span>{new Date(exam.createdAt).toLocaleDateString('no-NO')}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate(`/exam/results/${exam.id}`)}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                >
+                  Se resultater →
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
