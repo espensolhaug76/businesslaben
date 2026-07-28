@@ -51,6 +51,8 @@ export interface Exam {
   status: 'draft' | 'active' | 'closed'
   examCode?: string
   createdAt: string
+  /** Telles opp ved hver publisering. Eleven låser versjonen ved oppstart. */
+  version?: number
 }
 
 /**

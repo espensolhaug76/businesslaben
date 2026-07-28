@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { TEACHER_MODULE_PHASES } from '../learninghub/shared/teacherModuleRegistry'
 import type { DrawerExercise, DrawerChoice } from '../learninghub/shared/DrawerModule'
+import { publishExam, generateExamCode } from '../../lib/firebaseExams'
 import type { Exam, ExamQuestion, CaseSubQuestion } from '../../types/Exam'
 import type { TeacherQuestion } from '../../types/TeacherQuestions'
 import { useThemeEffect } from '../../components/ui/ThemeToggle'
@@ -12,11 +13,6 @@ import ThemeToggle from '../../components/ui/ThemeToggle'
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 10)
-}
-
-function genExamCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  return 'EXAM-' + Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
 function moduleLabel(route: string): string {
@@ -277,11 +273,21 @@ export default function ExamBuilder() {
       scoringRules: { correctPoints, wrongPenalty, unansweredPoints: 0 },
       gradeThresholds,
       status,
-      examCode: status === 'active' ? genExamCode() : undefined,
+      examCode: status === 'active' ? generateExamCode() : undefined,
       createdAt: new Date().toISOString(),
     }
     const existing: Exam[] = (() => { try { return JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { return [] } })()
     localStorage.setItem('adventure-exams', JSON.stringify([...existing, exam]))
+    // Utkast blir liggende lokalt; kun publiserte prøver skrives til RTDB.
+    if (status === 'active') {
+      void publishExam(exam)
+        .then(publisert => {
+          const liste: Exam[] = (() => { try { return JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { return [] } })()
+          localStorage.setItem('adventure-exams', JSON.stringify(
+            liste.map(e => e.id === publisert.id ? publisert : e)))
+        })
+        .catch(() => { /* prøven finnes lokalt; læreren kan publisere på nytt */ })
+    }
     return exam
   }
 

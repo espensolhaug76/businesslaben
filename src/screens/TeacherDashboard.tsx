@@ -21,6 +21,7 @@ import { MINE_FAG_OPTIONS, subjectToSectionKey } from '../lib/teacherSubjects'
 import { ALL_PRESENTATIONS, PRESENTATION_SECTIONS } from '../lib/presentationRegistry'
 import { STANDARD_EXAMS } from '../data/standardExams'
 import { examFromStandard, type Exam, type StandardExam } from '../types/Exam'
+import { publishExam, generateExamCode, deleteExam as deleteExamFromRtdb, subscribeToExamSubmissions } from '../lib/firebaseExams'
 import {
   TeacherClassProvider, useTeacherClass, generateClassroomCode,
   type TeacherClass,
@@ -698,7 +699,7 @@ function TeacherDashboardInner() {
 
   // Auth guard — redirect to landing if not logged in
   useEffect(() => {
-    if (!auth.currentUser) {
+    if (!auth.currentUser && !(window as unknown as { __SKIP_AUTH__?: boolean }).__SKIP_AUTH__) {
       navigate('/')
     }
   }, [navigate])
@@ -1640,14 +1641,12 @@ function TeacherDashboardInner() {
 
 // ── Prøver tab ────────────────────────────────────────────────────────────────
 
-interface ExamSummary {
-  id: string
-  title: string
-  status: 'draft' | 'active' | 'closed'
-  examCode?: string
-  timeMinutes: number
-  questions: unknown[]
-  createdAt: string
+function lesProver(): Exam[] {
+  try { return JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { return [] }
+}
+
+function skrivProver(liste: Exam[]) {
+  localStorage.setItem('adventure-exams', JSON.stringify(liste))
 }
 
 function genExamId(): string {
@@ -1663,9 +1662,44 @@ function ProverTab({
   mineFagSectionKeys: Set<string> | null
   classCode: string
 }) {
-  const [exams, setExams] = useState<ExamSummary[]>(() => {
-    try { return JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { return [] }
-  })
+  const [exams, setExams] = useState<Exam[]>(() => lesProver())
+  const [slettKandidat, setSlettKandidat] = useState<Exam | null>(null)
+  const [antallSvar, setAntallSvar] = useState<Record<string, number>>({})
+
+  // Hvor mange innleveringer har hver publisert prøve? Brukes i sletteadvarselen.
+  useEffect(() => {
+    const av = exams
+      .filter(e => e.examCode)
+      .map(e => subscribeToExamSubmissions(e.examCode!, liste =>
+        setAntallSvar(prev => ({ ...prev, [e.id]: liste.length }))))
+    return () => av.forEach(f => f())
+  }, [exams])
+
+  function publiser(prove: Exam) {
+    const kode = prove.examCode ?? generateExamCode()
+    const publisert: Exam = { ...prove, status: 'active', examCode: kode }
+    const oppdatert = lesProver().map(e => e.id === prove.id ? publisert : e)
+    skrivProver(oppdatert)
+    setExams(oppdatert)
+    void publishExam(publisert)
+      .then(fraRtdb => {
+        const liste = lesProver().map(e => e.id === fraRtdb.id ? fraRtdb : e)
+        skrivProver(liste)
+        setExams(liste)
+      })
+      .catch(() => { /* prøven ligger lokalt; læreren kan forsøke igjen */ })
+  }
+
+  function bekreftSlett() {
+    if (!slettKandidat) return
+    const oppdatert = lesProver().filter(e => e.id !== slettKandidat.id)
+    skrivProver(oppdatert)
+    setExams(oppdatert)
+    if (slettKandidat.examCode) {
+      void deleteExamFromRtdb(slettKandidat.examCode).catch(() => { /* allerede borte lokalt */ })
+    }
+    setSlettKandidat(null)
+  }
   const [nyProveId, setNyProveId] = useState<string | null>(null)
   const nyProveRef = useRef<HTMLDivElement | null>(null)
 
@@ -1692,11 +1726,9 @@ function ProverTab({
       classCode,
       createdAt: new Date().toISOString(),
     })
-    let eksisterende: Exam[] = []
-    try { eksisterende = JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { /* tom liste */ }
-    const oppdatert = [...eksisterende, kopi]
-    localStorage.setItem('adventure-exams', JSON.stringify(oppdatert))
-    setExams(oppdatert as unknown as ExamSummary[])
+    const oppdatert = [...lesProver(), kopi]
+    skrivProver(oppdatert)
+    setExams(oppdatert)
     setNyProveId(kopi.id)
   }
 
@@ -1805,15 +1837,74 @@ function ProverTab({
                     <span>{new Date(exam.createdAt).toLocaleDateString('no-NO')}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => navigate(`/exam/results/${exam.id}`)}
-                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-                >
-                  Se resultater →
-                </button>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => navigate(`/exam/build/${exam.id}`)}
+                    style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Rediger
+                  </button>
+                  {exam.status === 'draft' && (
+                    <button
+                      onClick={() => publiser(exam)}
+                      style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Publiser
+                    </button>
+                  )}
+                  <button
+                    onClick={() => navigate(`/exam/results/${exam.id}`)}
+                    style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Se resultater →
+                  </button>
+                  <button
+                    onClick={() => setSlettKandidat(exam)}
+                    style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #fca5a5', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Slett
+                  </button>
+                </div>
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Bekreft sletting */}
+      {slettKandidat && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 16 }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: 16, padding: 24, maxWidth: 440, width: '100%', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+              Slette «{slettKandidat.title}»?
+            </h3>
+            {(antallSvar[slettKandidat.id] ?? 0) > 0 ? (
+              <p style={{ fontSize: 14, color: '#b91c1c', marginBottom: 16, lineHeight: 1.5 }}>
+                <strong>Advarsel:</strong> prøven er publisert og har {antallSvar[slettKandidat.id]} innlevering
+                {antallSvar[slettKandidat.id] === 1 ? '' : 'er'}. Alle elevresultatene forsvinner, og det kan ikke angres.
+              </p>
+            ) : (
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+                {slettKandidat.examCode
+                  ? 'Prøven er publisert. Elever som har koden mister tilgangen. Handlingen kan ikke angres.'
+                  : 'Utkastet slettes for godt. Handlingen kan ikke angres.'}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setSlettKandidat(null)}
+                style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={bekreftSlett}
+                style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Slett prøven
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

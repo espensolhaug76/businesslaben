@@ -1,9 +1,16 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useThemeEffect } from '../../components/ui/ThemeToggle'
 import ThemeToggle from '../../components/ui/ThemeToggle'
 import type { Exam, ExamSubmission } from '../../types/Exam'
-import { getMaxPoints, calculateGrade, submissionsKey, startTrackingKey } from '../../types/Exam'
+import { getMaxPoints, calculateGrade } from '../../types/Exam'
+import {
+  subscribeToExamSubmissions,
+  subscribeToExamProgress,
+  saveManualScores,
+  setExamStatus,
+  type ExamProgress,
+} from '../../lib/firebaseExams'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -12,18 +19,6 @@ function loadExam(examId: string): Exam | null {
     const exams: Exam[] = JSON.parse(localStorage.getItem('adventure-exams') ?? '[]')
     return exams.find(e => e.id === examId) ?? null
   } catch { return null }
-}
-
-function loadSubmissions(exam: Exam): ExamSubmission[] {
-  try {
-    const key = submissionsKey(exam.examCode ?? exam.id)
-    return JSON.parse(localStorage.getItem(key) ?? '[]')
-  } catch { return [] }
-}
-
-function saveSubmissions(exam: Exam, subs: ExamSubmission[]) {
-  const key = submissionsKey(exam.examCode ?? exam.id)
-  localStorage.setItem(key, JSON.stringify(subs))
 }
 
 function formatDuration(startedAt: string, submittedAt: string): string {
@@ -313,12 +308,22 @@ export default function ExamResults() {
   const { examId } = useParams<{ examId: string }>()
 
   const exam = useMemo(() => examId ? loadExam(examId) : null, [examId])
-  const [submissions, setSubmissions] = useState<ExamSubmission[]>(() =>
-    exam ? loadSubmissions(exam) : []
-  )
-  const [startedStudents, setStartedStudents] = useState<Array<{ studentName: string; startedAt: string }>>(() => {
-    try { return JSON.parse(localStorage.getItem(startTrackingKey(exam?.examCode ?? exam?.id ?? '')) ?? '[]') } catch { return [] }
-  })
+  const examCode = exam?.examCode ?? exam?.id ?? ''
+  const erPublisert = Boolean(exam?.examCode)
+
+  // Live fra Firebase — læreren trenger ikke laste siden på nytt.
+  const [submissions, setSubmissions] = useState<ExamSubmission[]>([])
+  const [progress, setProgress] = useState<ExamProgress[]>([])
+
+  useEffect(() => {
+    if (!erPublisert || !examCode) return
+    return subscribeToExamSubmissions(examCode, setSubmissions)
+  }, [erPublisert, examCode])
+
+  useEffect(() => {
+    if (!erPublisert || !examCode) return
+    return subscribeToExamProgress(examCode, setProgress)
+  }, [erPublisert, examCode])
 
   function updateManualScore(studentName: string, questionId: string, points: number) {
     setSubmissions(prev => {
@@ -329,21 +334,11 @@ export default function ExamResults() {
         const newScores = idx >= 0
           ? existing.map((m, i) => i === idx ? { ...m, points } : m)
           : [...existing, { questionId, points }]
+        void saveManualScores(examCode, studentName, newScores).catch(() => { /* onValue retter opp */ })
         return { ...sub, manualScores: newScores }
       })
-      if (exam) saveSubmissions(exam, updated)
       return updated
     })
-  }
-
-  function refreshLists() {
-    if (!exam) return
-    setSubmissions(loadSubmissions(exam))
-    try {
-      setStartedStudents(JSON.parse(localStorage.getItem(startTrackingKey(exam.examCode ?? exam.id)) ?? '[]'))
-    } catch {
-      setStartedStudents([])
-    }
   }
 
   function closeExam() {
@@ -351,6 +346,7 @@ export default function ExamResults() {
     const exams: Exam[] = (() => { try { return JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { return [] } })()
     const updated = exams.map(e => e.id === exam.id ? { ...e, status: 'closed' as const } : e)
     localStorage.setItem('adventure-exams', JSON.stringify(updated))
+    if (erPublisert) void setExamStatus(examCode, 'closed').catch(() => { /* lokal status er allerede satt */ })
     navigate('/teacher')
   }
 
@@ -452,36 +448,50 @@ export default function ExamResults() {
           ))}
         </div>
 
-        {/* Started but not submitted */}
+        {/* ── Pågår nå (jobb 5) ─────────────────────────────────────── */}
         {(() => {
-          const notSubmitted = startedStudents.filter(
-            s => !submissions.some(sub => sub.studentName === s.studentName)
-          )
-          if (notSubmitted.length === 0) return null
-          return (
-            <div className="mb-6 p-4 rounded-2xl border border-amber-300 dark:border-amber-500/40"
-              style={{ background: 'rgba(251,191,36,0.08)' }}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                  ⚠️ Påbegynt, ikke levert ({notSubmitted.length} elev{notSubmitted.length !== 1 ? 'er' : ''})
-                </h3>
-                <button
-                  onClick={refreshLists}
-                  className="text-xs px-3 py-1 rounded-lg border font-medium"
-                  style={{ borderColor: '#d97706', color: '#d97706' }}
-                >
-                  ↻ Oppdater
-                </button>
+          const igang = progress.filter(p => p.status === 'pagar')
+          if (igang.length === 0) {
+            // Seksjonen skjules helt når alle har levert.
+            if (progress.length > 0) return null
+            return (
+              <div className="mb-6 p-4 rounded-2xl border" style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+                <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Pågår nå</h3>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Ingen elever har startet ennå.</p>
               </div>
-              <div className="space-y-1.5">
-                {notSubmitted.map(s => (
-                  <div key={s.studentName} className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
-                    <span className="font-medium">{s.studentName}</span>
-                    <span className="text-amber-600 dark:text-amber-400 text-xs">
-                      — startet {new Date(s.startedAt).toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                ))}
+            )
+          }
+          return (
+            <div className="mb-6 p-4 rounded-2xl border" style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                Pågår nå ({igang.length} elev{igang.length !== 1 ? 'er' : ''})
+              </h3>
+              <div className="space-y-2">
+                {progress.map(p => {
+                  const statusTekst = p.status === 'levert' ? 'Levert'
+                    : p.status === 'tid-ute' ? 'Tiden ute' : 'Pågår'
+                  const statusFarge = p.status === 'levert' ? '#10b981'
+                    : p.status === 'tid-ute' ? '#f97316' : '#0d9488'
+                  return (
+                    <div key={p.studentId} className="flex items-center gap-3 text-sm flex-wrap">
+                      <span className="font-medium" style={{ color: 'var(--text-primary)', minWidth: 160 }}>
+                        {p.studentName}
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        startet {new Date(p.startedAt).toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {p.answeredCount} av {p.totalQuestions} besvart
+                      </span>
+                      <span
+                        className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                        style={{ color: statusFarge, background: `${statusFarge}1a` }}
+                      >
+                        {statusTekst}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )

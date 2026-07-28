@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import type { Exam, ExamSubmission, SuspiciousEvent } from '../../types/Exam'
-import { submissionsKey, startTrackingKey } from '../../types/Exam'
+import {
+  fetchExamByCode,
+  registerExamStart,
+  submitExamAnswers,
+  updateExamProgress,
+  markExamProgressDone,
+} from '../../lib/firebaseExams'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -9,15 +15,6 @@ function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-function loadExamByCode(examCode: string): Exam | null {
-  try {
-    const exams: Exam[] = JSON.parse(localStorage.getItem('adventure-exams') ?? '[]')
-    return exams.find(e => e.examCode === examCode) ?? null
-  } catch {
-    return null
-  }
 }
 
 // ── Name entry screen ─────────────────────────────────────────────────────────
@@ -72,6 +69,23 @@ function NameEntry({ exam, onStart }: { exam: Exam; onStart: (name: string) => v
   )
 }
 
+/**
+ * Antall spørsmål eleven har besvart. Case-oppgaver teller som besvart så snart
+ * ett delspørsmål har tekst.
+ */
+function tellBesvarte(exam: Exam, answers: Record<string, string | number>): number {
+  return exam.questions.filter(q => {
+    if (q.type === 'case') {
+      return (q.subQuestions ?? []).some(sq => {
+        const ans = answers[`${q.id}__${sq.id}`]
+        return typeof ans === 'string' && ans.trim().length > 0
+      })
+    }
+    const ans = answers[q.id]
+    return ans !== undefined && ans !== ''
+  }).length
+}
+
 // ── Main exam session ─────────────────────────────────────────────────────────
 
 function ExamSessionActive({
@@ -88,7 +102,11 @@ function ExamSessionActive({
   const [suspiciousLog, setSuspiciousLog] = useState<SuspiciousEvent[]>([])
   const [showConfirm, setShowConfirm] = useState(false)
   const submittedRef = useRef(false)
+  const tidUteRef = useRef(false)
   const startedAt = useRef(new Date().toISOString())
+  // Sist rapporterte antall besvarte — brukes for å skrive KUN når tallet endrer
+  // seg, altså én skriving per spørsmål som blir besvart.
+  const sistRapportert = useRef(0)
 
   const logSuspicious = useCallback((type: string) => {
     setSuspiciousLog(prev => [...prev, { type, timestamp: new Date().toISOString() }])
@@ -156,11 +174,11 @@ function ExamSessionActive({
       suspiciousActivity: finalLog,
     }
 
-    const key = submissionsKey(exam.examCode ?? exam.id)
-    const existing: ExamSubmission[] = (() => {
-      try { return JSON.parse(localStorage.getItem(key) ?? '[]') } catch { return [] }
-    })()
-    localStorage.setItem(key, JSON.stringify([...existing, submission]))
+    const code = exam.examCode ?? exam.id
+    const besvart = tellBesvarte(exam, finalAnswers)
+    void submitExamAnswers(code, submission).catch(() => { /* eleven ser kvitteringen uansett */ })
+    void markExamProgressDone(code, studentName, tidUteRef.current ? 'tid-ute' : 'levert', besvart)
+      .catch(() => { /* fremdriften er kun til lærerens oversikt */ })
     setSubmitted(true)
     window.onbeforeunload = null
   }, [exam, studentName])
@@ -170,6 +188,7 @@ function ExamSessionActive({
       setTimeLeft(t => {
         if (t <= 1) {
           clearInterval(interval)
+          tidUteRef.current = true
           setAnswers(currentAnswers => {
             setSuspiciousLog(currentLog => {
               doSubmit(currentAnswers, currentLog)
@@ -189,16 +208,17 @@ function ExamSessionActive({
     setAnswers(prev => ({ ...prev, [questionId]: value }))
   }
 
-  const answeredCount = exam.questions.filter(q => {
-    if (q.type === 'case') {
-      return (q.subQuestions ?? []).some(sq => {
-        const ans = answers[`${q.id}__${sq.id}`]
-        return typeof ans === 'string' && ans.trim().length > 0
-      })
-    }
-    const ans = answers[q.id]
-    return ans !== undefined && ans !== ''
-  }).length
+  const answeredCount = tellBesvarte(exam, answers)
+
+  // Én RTDB-skriving per spørsmål som går fra ubesvart til besvart. Ingen timer,
+  // ingen intervall — og aldri selve svaret.
+  useEffect(() => {
+    if (submittedRef.current) return
+    if (answeredCount === sistRapportert.current) return
+    sistRapportert.current = answeredCount
+    void updateExamProgress(exam.examCode ?? exam.id, studentName, answeredCount)
+      .catch(() => { /* fremdrift er ikke kritisk for eleven */ })
+  }, [answeredCount, exam, studentName])
 
   const currentQuestion = exam.questions[currentIdx]
   const isWarning = timeLeft < 300
@@ -482,8 +502,27 @@ function ExamSessionActive({
 export default function ExamSession() {
   const { examCode } = useParams<{ examCode: string }>()
   const [studentName, setStudentName] = useState<string | null>(null)
+  const [exam, setExam] = useState<Exam | null>(null)
+  const [laster, setLaster] = useState(true)
 
-  const exam = examCode ? loadExamByCode(examCode) : null
+  // Prøven hentes ÉN gang. Redigerer læreren prøven mens eleven er i gang,
+  // beholder eleven versjonen hen startet på — vi abonnerer bevisst ikke.
+  useEffect(() => {
+    if (!examCode) { setLaster(false); return }
+    let avbrutt = false
+    fetchExamByCode(examCode)
+      .then(funnet => { if (!avbrutt) { setExam(funnet); setLaster(false) } })
+      .catch(() => { if (!avbrutt) { setExam(null); setLaster(false) } })
+    return () => { avbrutt = true }
+  }, [examCode])
+
+  if (laster) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-sm text-gray-500">Henter prøven …</p>
+      </div>
+    )
+  }
 
   if (!exam) {
     return (
@@ -516,13 +555,10 @@ export default function ExamSession() {
       <NameEntry
         exam={exam}
         onStart={name => {
-          const trackKey = startTrackingKey(exam.examCode ?? exam.id)
-          const existing: Array<{ studentName: string; startedAt: string }> = (() => {
-            try { return JSON.parse(localStorage.getItem(trackKey) ?? '[]') } catch { return [] }
-          })()
-          if (!existing.some(e => e.studentName === name)) {
-            localStorage.setItem(trackKey, JSON.stringify([...existing, { studentName: name, startedAt: new Date().toISOString() }]))
-          }
+          void registerExamStart(exam.examCode ?? exam.id, name, {
+            totalQuestions: exam.questions.length,
+            examVersion: exam.version,
+          }).catch(() => { /* eleven skal få starte selv om påmeldingen feiler */ })
           setStudentName(name)
         }}
       />
