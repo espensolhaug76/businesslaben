@@ -2186,6 +2186,28 @@ function reducer(state: GameState, action: Action): GameState {
         .filter(p => p.svinnStk > 0).sort((a, b) => b.svinnStk - a.svinnStk)
         .slice(0, 3).map(p => ({ navn: p.navn, stk: p.svinnStk }))
 
+      // PRODUKTREGNSKAP (fiksjobb 28.07) — full per-vare-oppstilling, montert av dps
+      // (allerede talt) + varens pris/lager. `state.products` = FØR svinn-fjerning,
+      // så utstilt-ved-stenging er det som faktisk sto igjen på flaten. Kun aktivitet.
+      const utstilteIdsClose = new Set<string>([
+        ...state.counterLayout.map(t => t.productId),
+        ...state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId),
+      ])
+      const produktRegnskap = Object.entries(dps).map(([id, p]) => {
+        const vare = state.products.find(v => v.id === id)
+        return {
+          navn: p.navn,
+          solgtStk: p.soldStk,
+          solgtKr: Math.round(p.soldStk * (vare?.retailPrice ?? 0)),   // indikativ (stk × utsalgspris)
+          svinnStk: p.svinnStk,
+          svinnKr: Math.round(p.svinnStk * (vare?.costPrice ?? 0)),    // eksakt (stk × innkjøpspris)
+          tapteStk: p.tapteSalgStk,
+          utstiltVedStenging: utstilteIdsClose.has(id) ? (vare?.stock ?? 0) : 0,
+        }
+      })
+        .filter(r => r.solgtStk > 0 || r.svinnStk > 0 || r.tapteStk > 0 || r.utstiltVedStenging > 0)
+        .sort((a, b) => b.solgtStk - a.solgtStk || b.svinnStk - a.svinnStk)
+
       // DEL 7b/7f — uprisede varer (mangler pris) + varer som tapte salg på for høy
       // pris (per vare, med elevens pris vs. markedspris for mentor/oppgjør).
       const uprisedeVarer = state.products.filter(p => p.retailPrice <= 0).map(p => p.name)
@@ -2241,6 +2263,7 @@ function reducer(state: GameState, action: Action): GameState {
         bortfallStk,
         tomtProdukter,
         svinnProdukter,
+        produktRegnskap,
         refleksjon,
       }
 

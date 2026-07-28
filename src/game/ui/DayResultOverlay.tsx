@@ -36,15 +36,28 @@ const MONTH_NAMES = ['Januar', 'Februar', 'Mars', 'April', 'Mai', 'Juni', 'Juli'
 
 function formatKr(n: number) { return `${Math.round(n).toLocaleString('nb-NO')} kr` }
 
-/** Topp N produkter på én linje, resten oppsummert som «+N til». */
-function sammendrag(items: string[], maks = 3): string {
-  if (items.length <= maks) return items.join(', ')
-  return `${items.slice(0, maks).join(', ')} +${items.length - maks} til`
+/** DEL 2 — detalj-oppsummering som ALLTID lar totalen avstemmes mot detaljene:
+ *  viser ALLE varene når lista er kort (≤ `alleMaks`, sprenger ikke layout),
+ *  ellers topp `toppN` + «… og K varer til (M <enhet>)» der M er summen av de
+ *  utelatte varenes mengde — så «mer svinn enn det som står» ikke kan skje.
+ *  Uten `enhet` (navnliste uten per-vare-mengde, f.eks. mangler-pris) droppes
+ *  mengde-suffikset. */
+function sammendrag(items: { tekst: string; mengde?: number }[], enhet?: string, toppN = 3, alleMaks = 6): string {
+  if (items.length <= alleMaks) return items.map(i => i.tekst).join(', ')
+  const vist = items.slice(0, toppN), rest = items.slice(toppN)
+  const varer = rest.length === 1 ? 'vare' : 'varer'
+  const suff = enhet ? ` (${rest.reduce((a, i) => a + (i.mengde ?? 0), 0)} ${enhet})` : ''
+  return `${vist.map(i => i.tekst).join(', ')} … og ${rest.length} ${varer} til${suff}`
 }
 
 /** Terskel for «mye svinn»-hintet — svinn-verdien har spist minst denne
  *  andelen av dagens salgsinntekt. Rent pedagogisk merke, ingen konsekvens. */
 const HIGH_SVINN_SHARE = 0.3
+
+// DEL 3 — produktregnskap-tabellens celle-stiler.
+const prTh: React.CSSProperties = { padding: '4px 8px', fontWeight: 700, fontSize: 10.5, letterSpacing: '0.02em', whiteSpace: 'nowrap' }
+const prTd: React.CSSProperties = { padding: '5px 8px', textAlign: 'right', whiteSpace: 'nowrap' }
+const prSub: React.CSSProperties = { display: 'block', fontSize: 10, color: '#64748b' }
 
 export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
   /** Åpne dashbordet på Produkter-fanen uten å avansere dagen. */
@@ -63,6 +76,10 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
   const dayKey = r ? `${r.year}-${r.month}-${r.dayNumber}` : null
   const [seenDay, setSeenDay] = useState<string | null>(null)
   const seremoniFerdig = instant || (!!dayKey && seenDay === dayKey)
+  // DEL 3 — produktregnskap: kollapset som standard, tilstand HUSKES IKKE (nullstilles
+  // ved hvert nytt oppgjør, VG1-enkelhet bevares).
+  const [regnskapAapen, setRegnskapAapen] = useState(false)
+  useEffect(() => { setRegnskapAapen(false) }, [dayKey])
   useEffect(() => {
     if (!vis || instant || !dayKey || seenDay === dayKey) return
     const id = window.setTimeout(() => setSeenDay(dayKey), BALANCE.gamefeel.seremoniMs)
@@ -163,15 +180,15 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
         </div>
 
         {/* DEL 4 — per-produkt-oppsummering: hvilke varer gikk tomt (og hvor
-            mange salg det kostet) og hvor mye ferskvare som ble kastet. Topp 3
-            per linje, resten som «+N til». */}
+            mange salg det kostet) og hvor mye ferskvare som ble kastet. DEL 2:
+            viser ALLE (≤6 varer) el. topp 3 + utelatt mengde, så totalene avstemmes. */}
         {(r.tomtProdukter.length > 0 || r.svinnProdukter.length > 0) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1rem' }}>
             {r.tomtProdukter.length > 0 && (
-              <DetaljLinje ikon="📦" etikett="Gikk tomt" tekst={sammendrag(r.tomtProdukter.map(t => `${t.navn} (${t.tapte} tapte)`))} color="#f87171" />
+              <DetaljLinje ikon="📦" etikett="Gikk tomt" tekst={sammendrag(r.tomtProdukter.map(t => ({ tekst: `${t.navn} (${t.tapte} tapte)`, mengde: t.tapte })), 'tapte')} color="#f87171" />
             )}
             {r.svinnProdukter.length > 0 && (
-              <DetaljLinje ikon="🗑️" etikett="Svinn" tekst={sammendrag(r.svinnProdukter.map(s => `${s.navn} ${s.stk} stk`))} color="#fca5a5" />
+              <DetaljLinje ikon="🗑️" etikett="Svinn" tekst={sammendrag(r.svinnProdukter.map(s => ({ tekst: `${s.navn} ${s.stk} stk`, mengde: s.stk })), 'stk')} color="#fca5a5" />
             )}
           </div>
         )}
@@ -180,10 +197,10 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
         {(r.uprisedeVarer.length > 0 || r.overprisProdukter.length > 0) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1rem' }}>
             {r.uprisedeVarer.length > 0 && (
-              <DetaljLinje ikon="🏷️" etikett="Mangler pris" tekst={sammendrag(r.uprisedeVarer)} color="#fbbf24" />
+              <DetaljLinje ikon="🏷️" etikett="Mangler pris" tekst={sammendrag(r.uprisedeVarer.map(n => ({ tekst: n })))} color="#fbbf24" />
             )}
             {r.overprisProdukter.length > 0 && (
-              <DetaljLinje ikon="💸" etikett="Priset over marked" tekst={sammendrag(r.overprisProdukter.map(o => `${o.navn} (${formatKr(o.pris)} · marked ~${formatKr(o.marked)}) — ${o.tapte} ${o.tapte === 1 ? 'kunde' : 'kunder'} avsto`))} color="#fbbf24" />
+              <DetaljLinje ikon="💸" etikett="Priset over marked" tekst={sammendrag(r.overprisProdukter.map(o => ({ tekst: `${o.navn} (${formatKr(o.pris)} · marked ~${formatKr(o.marked)}) — ${o.tapte} ${o.tapte === 1 ? 'kunde' : 'kunder'} avsto`, mengde: o.tapte })), 'kunder')} color="#fbbf24" />
             )}
           </div>
         )}
@@ -210,6 +227,57 @@ export default function DayResultOverlay({ onOpenProducts, dashboardOpen }: {
             {r.resultat >= 0 ? '+' : ''}{formatKr(visResultat)}
           </div>
         </div>
+
+        {/* DEL 3 — PRODUKTREGNSKAP: ekspanderbar per-vare-tabell (kollapset som
+            standard; ren visning av dayProductStats + pris/lager ved stenging). */}
+        {r.produktRegnskap.length > 0 && (
+          <div style={{ marginBottom: '1.1rem' }}>
+            <button
+              data-testid="produktregnskap-toggle"
+              onClick={() => setRegnskapAapen(o => !o)}
+              aria-expanded={regnskapAapen}
+              style={{
+                width: '100%', textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer',
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '0.75rem', padding: '0.7rem 0.9rem', fontSize: 13, fontWeight: 700,
+                color: '#cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}
+            >
+              <span>📊 {regnskapAapen ? 'Skjul' : 'Vis'} produktregnskap</span>
+              <span style={{ color: '#64748b', fontSize: 15 }}>{regnskapAapen ? '▾' : '▸'}</span>
+            </button>
+            {regnskapAapen && (
+              <div data-testid="produktregnskap-tabell" style={{ marginTop: 8, overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ color: '#64748b', textAlign: 'right' }}>
+                      <th style={{ ...prTh, textAlign: 'left' }}>Vare</th>
+                      <th style={prTh}>Solgt</th>
+                      <th style={prTh}>Svinn</th>
+                      <th style={prTh}>Gikk tomt</th>
+                      <th style={prTh}>Utstilt v/ stenging</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {r.produktRegnskap.map(p => (
+                      <tr key={p.navn} style={{ borderTop: '1px solid rgba(255,255,255,0.06)', color: '#e2e8f0' }}>
+                        <td style={{ ...prTd, textAlign: 'left', fontWeight: 600 }}>{p.navn}</td>
+                        <td style={prTd}>{p.solgtStk} stk<span style={prSub}>{formatKr(p.solgtKr)}</span></td>
+                        <td style={{ ...prTd, color: p.svinnStk > 0 ? '#fca5a5' : '#64748b' }}>{p.svinnStk} stk<span style={prSub}>{formatKr(p.svinnKr)}</span></td>
+                        <td style={{ ...prTd, color: p.tapteStk > 0 ? '#f87171' : '#64748b' }}>{p.tapteStk > 0 ? `${p.tapteStk} tapte` : '—'}</td>
+                        <td style={prTd}>{p.utstiltVedStenging} stk</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div style={{ fontSize: 10.5, color: '#475569', marginTop: 6, lineHeight: 1.4 }}>
+                  «Solgt kr» er indikativ (antall × utsalgspris); realisert omsetning kan avvike
+                  marginalt. «Svinn kr» = antall × innkjøpspris.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ORGANISASJONSDESIGN — ÉN diskret refleksjonslinje (spørsmål, aldri
             fasit) når en org-regel slo ut. Ikke mas: maks én, dempet tone. */}

@@ -466,6 +466,18 @@ export interface DayResult {
   tomtProdukter: { navn: string; tapte: number }[]
   /** DEL 4 — produkter med mest svinn (flest stk først). */
   svinnProdukter: { navn: string; stk: number }[]
+  /** PRODUKTREGNSKAP (fiksjobb 28.07): full per-vare-oppstilling for dagsoppgjørets
+   *  ekspanderbare tabell — KUN visning, montert av dayProductStats (allerede talt)
+   *  + varens pris/lager ved stenging. `solgtKr` er INDIKATIV (solgtStk × utsalgspris);
+   *  realisert omsetning kan avvike marginalt (priselastisitet/hotellmargin). `svinnKr`
+   *  er eksakt (svinnStk × innkjøpspris). Kun varer med aktivitet. */
+  produktRegnskap: {
+    navn: string
+    solgtStk: number; solgtKr: number
+    svinnStk: number; svinnKr: number
+    tapteStk: number
+    utstiltVedStenging: number
+  }[]
   /** ORGANISASJONSDESIGN: ÉN diskret refleksjonslinje (spørsmål, aldri fasit)
    *  når en org-regel slår ut ved stenging. Null = ingen regel slo ut. */
   refleksjon: string | null
