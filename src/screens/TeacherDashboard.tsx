@@ -699,7 +699,7 @@ function TeacherDashboardInner() {
 
   // Auth guard — redirect to landing if not logged in
   useEffect(() => {
-    if (!auth.currentUser && !(window as unknown as { __SKIP_AUTH__?: boolean }).__SKIP_AUTH__) {
+    if (!auth.currentUser) {
       navigate('/')
     }
   }, [navigate])

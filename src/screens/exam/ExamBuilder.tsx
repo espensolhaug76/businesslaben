@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useMemo, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { TEACHER_MODULE_PHASES } from '../learninghub/shared/teacherModuleRegistry'
 import type { DrawerExercise, DrawerChoice } from '../learninghub/shared/DrawerModule'
@@ -122,8 +122,15 @@ const SUBJECT_OPTIONS = [
 export default function ExamBuilder() {
   useThemeEffect()
   const navigate = useNavigate()
+  const { examId } = useParams<{ examId: string }>()
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [activatedExam, setActivatedExam] = useState<Exam | null>(null)
+  /** Prøven vi redigerer. Null = ny prøve, som før. */
+  const [redigerer, setRedigerer] = useState<Exam | null>(null)
+  // Jobb 3 — hvilke spørsmål som er med, og filtrene i velgeren.
+  const [medIProve, setMedIProve] = useState<Record<string, boolean>>({})
+  const [filterNivaa, setFilterNivaa] = useState<'alle' | 'lett' | 'middels' | 'vanskelig'>('alle')
+  const [sok, setSok] = useState('')
 
   // ── Step 1: Setup ──────────────────────────────────────────────────────────
 
@@ -140,6 +147,26 @@ export default function ExamBuilder() {
   // ── Step 2: Questions ──────────────────────────────────────────────────────
 
   const [questions, setQuestions] = useState<ExamQuestion[]>([])
+
+  // Åpne en eksisterende prøve for redigering (/exam/build/:examId).
+  useEffect(() => {
+    if (!examId) return
+    const liste: Exam[] = (() => {
+      try { return JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { return [] }
+    })()
+    const funnet = liste.find(e => e.id === examId)
+    if (!funnet) return
+    setRedigerer(funnet)
+    setTitle(funnet.title)
+    setTimeMinutes(funnet.timeMinutes)
+    setSelectedSubjects(funnet.subjects ?? [])
+    setCorrectPoints(funnet.scoringRules.correctPoints)
+    setWrongPenalty(funnet.scoringRules.wrongPenalty)
+    setGradeThresholds(funnet.gradeThresholds)
+    setQuestions(funnet.questions)
+    setMedIProve(Object.fromEntries(funnet.questions.map(q => [q.id, true])))
+    setStep(2)
+  }, [examId])
   const [questionTab, setQuestionTab] = useState<'flervalg' | 'aapent' | 'case'>('flervalg')
   const [bankSearch, setBankSearch] = useState('')
   const [bankModule, setBankModule] = useState<string>('all')
@@ -248,6 +275,18 @@ export default function ExamBuilder() {
     setCCText(''); setCCSubs([{ id: genId(), question: '', answer: '', maxPoints: 5 }])
   }
 
+  // Nye spørsmål er med i prøven som standard.
+  useEffect(() => {
+    setMedIProve(prev => {
+      let endret = false
+      const neste = { ...prev }
+      for (const q of questions) {
+        if (neste[q.id] === undefined) { neste[q.id] = true; endret = true }
+      }
+      return endret ? neste : prev
+    })
+  }, [questions])
+
   function removeQuestion(id: string) {
     setQuestions(prev => prev.filter(q => q.id !== id))
   }
@@ -262,24 +301,49 @@ export default function ExamBuilder() {
     })
   }
 
+  /** Spørsmålene som faktisk er med i prøven (jobb 3 — avkrysning). */
+  const valgteSporsmal = questions.filter(q => medIProve[q.id] !== false)
+
+  /** Maks poeng, oppdatert mens læreren endrer vekting. */
+  const maksPoeng = valgteSporsmal.reduce((sum, q) => {
+    if (q.type === 'multiple_choice') return sum + (q.points ?? correctPoints)
+    if (q.type === 'open') return sum + (q.maxPoints ?? 5)
+    return sum + (q.subQuestions ?? []).reduce((s2, sq) => s2 + (sq.maxPoints ?? 5), 0)
+  }, 0)
+
+  function settPoeng(id: string, poeng: number) {
+    setQuestions(prev => prev.map(q => {
+      if (q.id !== id) return q
+      if (q.type === 'multiple_choice') return { ...q, points: poeng }
+      return { ...q, maxPoints: poeng }
+    }))
+  }
+
   function saveExam(status: 'draft' | 'active'): Exam {
+    const erNy = !redigerer
     const exam: Exam = {
-      id: genId(),
+      id: redigerer?.id ?? genId(),
       title,
-      classCode,
+      classCode: redigerer?.classCode ?? classCode,
       subjects: selectedSubjects,
       timeMinutes,
-      questions,
+      questions: valgteSporsmal,
       scoringRules: { correctPoints, wrongPenalty, unansweredPoints: 0 },
       gradeThresholds,
       status,
-      examCode: status === 'active' ? generateExamCode() : undefined,
-      createdAt: new Date().toISOString(),
+      // En publisert prøve beholder koden sin ved redigering.
+      examCode: redigerer?.examCode ?? (status === 'active' ? generateExamCode() : undefined),
+      createdAt: redigerer?.createdAt ?? new Date().toISOString(),
+      version: redigerer?.version,
     }
     const existing: Exam[] = (() => { try { return JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { return [] } })()
-    localStorage.setItem('adventure-exams', JSON.stringify([...existing, exam]))
+    localStorage.setItem('adventure-exams', JSON.stringify(
+      erNy ? [...existing, exam] : existing.map(e => e.id === exam.id ? exam : e)))
+
     // Utkast blir liggende lokalt; kun publiserte prøver skrives til RTDB.
-    if (status === 'active') {
+    // Elever som er i gang beholder versjonen de startet på — de abonnerer ikke
+    // på definisjonen, de hentet den én gang ved oppstart.
+    if (status === 'active' && exam.examCode) {
       void publishExam(exam)
         .then(publisert => {
           const liste: Exam[] = (() => { try { return JSON.parse(localStorage.getItem('adventure-exams') ?? '[]') } catch { return [] } })()
@@ -418,10 +482,13 @@ export default function ExamBuilder() {
       <div className="grid grid-cols-[1fr_340px] gap-6">
         {/* Left: add questions */}
         <div>
-          {/* Tab selector */}
+          {/* + Legg til oppgave — tre typer (jobb 4) */}
+          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>
+            + Legg til oppgave
+          </p>
           <div className="flex gap-2 mb-4">
             {(['flervalg', 'aapent', 'case'] as const).map(tab => {
-              const labels = { flervalg: 'Flervalg', aapent: 'Åpent spørsmål', case: 'Case' }
+              const labels = { flervalg: 'Flervalg', aapent: 'Kortsvar', case: 'Langsvar/case' }
               const isActive = questionTab === tab
               return (
                 <button key={tab} onClick={() => setQuestionTab(tab)}
@@ -673,22 +740,118 @@ export default function ExamBuilder() {
         <div>
           <div className="sticky top-4">
             <div className="p-4 rounded-2xl border" style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}>
-              <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
-                Prøven ({questions.length} spørsmål)
-              </h3>
+              <div className="flex items-baseline justify-between gap-3 mb-1">
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Prøven ({valgteSporsmal.length} av {questions.length} med)
+                </h3>
+                <span className="text-sm font-bold" style={{ color: '#0d9488' }}>
+                  Maks poeng: {maksPoeng}
+                </span>
+              </div>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                Fjern haken for å ta et spørsmål ut. Det blir liggende, så du kan angre.
+              </p>
+
+              {/* Filtre (jobb 3) */}
+              {questions.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={sok}
+                    onChange={e => setSok(e.target.value)}
+                    placeholder="Søk i spørsmålsteksten …"
+                    className="flex-1 min-w-[140px] px-2 py-1 rounded-lg border text-xs"
+                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  />
+                  <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+                    {(['alle', 'lett', 'middels', 'vanskelig'] as const).map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setFilterNivaa(n)}
+                        className="px-2 py-1 text-xs font-semibold"
+                        style={{
+                          background: filterNivaa === n ? '#0d9488' : 'transparent',
+                          color: filterNivaa === n ? '#fff' : 'var(--text-muted)',
+                        }}
+                      >
+                        {n === 'alle' ? 'Alle' : n[0].toUpperCase() + n.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {questions.length === 0 ? (
                 <p className="text-xs text-center py-8" style={{ color: 'var(--text-muted)' }}>
                   Ingen spørsmål lagt til ennå.<br />Bruk fanene til venstre.
                 </p>
-              ) : (
-                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                  {questions.map((q, i) => (
-                    <QuestionRow key={q.id} q={q} index={i} total={questions.length}
-                      onRemove={() => removeQuestion(q.id)}
-                      onMove={dir => moveQuestion(i, dir)} />
-                  ))}
-                </div>
-              )}
+              ) : (() => {
+                const synlige = questions
+                  .map((q, i) => ({ q, i }))
+                  .filter(({ q }) => filterNivaa === 'alle' || q.difficulty === filterNivaa)
+                  .filter(({ q }) => !sok.trim() || q.question.toLowerCase().includes(sok.trim().toLowerCase()))
+                if (synlige.length === 0) {
+                  return (
+                    <p className="text-xs text-center py-8" style={{ color: 'var(--text-muted)' }}>
+                      Ingen spørsmål passer filteret.
+                    </p>
+                  )
+                }
+                return (
+                  <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                    {synlige.map(({ q, i }) => {
+                      const med = medIProve[q.id] !== false
+                      const poeng = q.type === 'multiple_choice'
+                        ? (q.points ?? correctPoints)
+                        : (q.maxPoints ?? 5)
+                      return (
+                        <div key={q.id} style={{ opacity: med ? 1 : 0.45 }}>
+                          <div className="flex items-start gap-2">
+                            <input
+                              type="checkbox"
+                              checked={med}
+                              onChange={() => setMedIProve(prev => ({ ...prev, [q.id]: !med }))}
+                              aria-label={med ? 'Ta ut av prøven' : 'Ta med i prøven'}
+                              className="mt-3 shrink-0"
+                              style={{ accentColor: '#0d9488' }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <QuestionRow q={q} index={i} total={questions.length}
+                                onRemove={() => removeQuestion(q.id)}
+                                onMove={dir => moveQuestion(i, dir)} />
+                            </div>
+                          </div>
+                          {/* Vekting + fasit */}
+                          <div className="flex items-center gap-2 flex-wrap pl-6 pt-1 pb-1">
+                            <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Poeng</label>
+                            <input
+                              type="number"
+                              step={0.5}
+                              value={poeng}
+                              onChange={e => settPoeng(q.id, Number(e.target.value))}
+                              disabled={q.type === 'case'}
+                              title={q.type === 'case' ? 'Case vektes per delspørsmål' : undefined}
+                              className="w-16 px-2 py-0.5 rounded border text-xs text-center"
+                              style={{ background: 'var(--input-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                            />
+                            {q.difficulty && (
+                              <span className="text-xs px-2 py-0.5 rounded-full"
+                                style={{ background: 'rgba(100,116,139,0.15)', color: 'var(--text-muted)' }}>
+                                {q.difficulty}
+                              </span>
+                            )}
+                            {q.type === 'multiple_choice' && q.options && (
+                              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                Riktig: {String.fromCharCode(65 + (q.correct ?? 0))} — {q.options[q.correct ?? 0]}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={() => setStep(1)}
@@ -696,7 +859,7 @@ export default function ExamBuilder() {
                 style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
                 ← Tilbake
               </button>
-              <button onClick={() => setStep(3)} disabled={questions.length === 0}
+              <button onClick={() => setStep(3)} disabled={valgteSporsmal.length === 0}
                 className="flex-1 px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-40"
                 style={{ background: '#0d9488' }}>
                 Forhåndsvis →
@@ -762,7 +925,7 @@ export default function ExamBuilder() {
           <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{title}</h2>
           <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-muted)' }}>
             <span>⏱ {timeMinutes} minutter</span>
-            <span>📝 {questions.length} spørsmål</span>
+            <span>📝 {valgteSporsmal.length} spørsmål</span>
             <span>🎯 {maxPts} poeng totalt</span>
           </div>
         </div>
@@ -821,11 +984,15 @@ export default function ExamBuilder() {
             style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
             ← Rediger spørsmål
           </button>
-          <button onClick={() => { const exam = saveExam('draft'); navigate(`/exam/results/${exam.id}`) }}
-            className="px-6 py-3 rounded-xl font-bold border"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
-            Lagre som utkast
-          </button>
+          {/* En publisert prøve skal ikke kunne falle tilbake til utkast ved
+              redigering — elevene har allerede koden. */}
+          {redigerer?.status !== 'active' && (
+            <button onClick={() => { const exam = saveExam('draft'); navigate(`/exam/results/${exam.id}`) }}
+              className="px-6 py-3 rounded-xl font-bold border"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
+              Lagre som utkast
+            </button>
+          )}
           <button
             onClick={() => {
               const exam = saveExam('active')
@@ -833,7 +1000,7 @@ export default function ExamBuilder() {
             }}
             className="px-6 py-3 rounded-xl font-bold text-white"
             style={{ background: '#0d9488' }}>
-            ✅ Aktiver prøve
+            {redigerer?.status === 'active' ? '✅ Lagre og publiser endringene' : '✅ Aktiver prøve'}
           </button>
         </div>
       </div>

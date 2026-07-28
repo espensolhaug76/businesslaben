@@ -488,6 +488,7 @@ function App() {
 
           {/* ── Exam module ───────────────────────────────────────────────── */}
           <Route path="/exam/build" element={<ExamBuilder />} />
+          <Route path="/exam/build/:examId" element={<ExamBuilder />} />
           <Route path="/exam/results/:examId" element={<ExamResults />} />
           <Route path="/exam/:examCode" element={<ExamSession />} />
 

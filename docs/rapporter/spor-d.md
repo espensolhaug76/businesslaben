@@ -736,3 +736,165 @@ sletting bør sjekkes mot Firebase-lagrede konkurranser som kan referere
   `prover-kopiert.png`, `builder-fagbank.png`.
 - Testet mot klasse **ZJ58D8**.
 - `standardCompetitions.ts` og `.manus/quiz-konkurranser.md` er ikke rørt.
+
+---
+
+## Runde 5 — synkronisering av prøver
+
+### RTDB-nøkkelstruktur
+
+Samme navnekonvensjon som `/competitions/{code}/…` i `firebaseCompetitions.ts`:
+
+```
+/exams/{examCode}/
+  definition               — Exam (kun publiserte prøver; utkast blir liggende lokalt)
+  progress/{elevId}        — { studentName, startedAt, answeredCount,
+                               totalQuestions, status, examVersion }
+  submissions/{elevId}     — ExamSubmission (+ manualScores fra læreren)
+```
+
+`elevId` er `sanitizeKey(navn)` — samme deterministiske nøkkel som `playerId()`
+bruker i konkurransene, så én elev får én entry og en ny innlevering overskriver
+den forrige i stedet for å hope seg opp.
+
+**Personvern:** `progress` inneholder bare *antall* besvarte spørsmål. Svarene
+skrives ikke før eleven leverer, og da til `submissions`. Læreren ser altså
+fremdrift uten å kunne lese svar underveis.
+
+**Migrering:** utkast (`status: 'draft'`) skrives aldri til RTDB, så gamle prøver
+i `adventure-exams` blir liggende som før. Publiserer læreren en av dem, skrives
+den til RTDB da — `publishExam()` er idempotent.
+
+### Jobb 1 — stopp-punktet
+
+**Bestått.** Lærer og elev i samme nettleser på port 5176, elev i egen kontekst
+(inkognito-ekvivalent):
+
+| Steg | Resultat |
+| --- | --- |
+| Lærer publiserer kopi av standardprøve | kode `EXAM-CECW`, status `active`, versjon 1 |
+| Elev åpner `/exam/EXAM-CECW` | finner «Forretningsdrift VG1» |
+| Elev svarer på 3 spørsmål | «3 av 30 besvart» |
+| **Lærer, uten å laste siden på nytt** | «Pågår nå (1 elev) — Kari Testelev, startet 19:15, 3 av 30 besvart, Pågår» |
+| Elev leverer | kvittering «Prøven er levert!» |
+| **Lærer, uten å laste siden på nytt** | «1 innlevering», 1 rad i resultattabellen |
+
+Ingen konsollfeil i noen av vinduene.
+
+En feil jeg gjorde først, verdt å nevne: testskriptet mitt nullstilte
+`adventure-exams` ved *hver* navigasjon, så lærerens resultatside fant ingen
+prøve. Det var testen, ikke koden.
+
+### Jobb 2 — versjonering av en publisert prøve som redigeres
+
+Løsningen bygger på at **eleven henter definisjonen én gang** med
+`fetchExamByCode()` når økta åpnes, og holder den i komponent-state resten av
+prøven. Det finnes bevisst *ingen* `subscribeToExamDefinition` på elevsiden.
+Dermed kan ikke en lærerendring bytte prøven under føttene på noen som er i gang
+— de har allerede sin kopi i minnet.
+
+`publishExam()` teller opp `version` ved hver skriving, og `registerExamStart()`
+lagrer `examVersion` på elevens progress-node, slik at læreren kan se hvilken
+versjon hver elev svarte på.
+
+Verifisert:
+
+| Steg | Resultat |
+| --- | --- |
+| Publisert prøve | versjon 1, 30 spørsmål, kode `EXAM-PNHS` |
+| Elev A starter | «0 av 30 besvart» |
+| Lærer tar ut 5 spørsmål og lagrer | versjon 2, 25 spørsmål, **samme kode**, status fortsatt `active` |
+| Elev A etter endringen | fortsatt 30 spørsmål — **uendret** |
+| Elev B starter etterpå | ser 25 spørsmål — **den nye versjonen** |
+
+En publisert prøve kan ikke falle tilbake til utkast ved redigering:
+«Lagre som utkast» skjules, og knappen heter «Lagre og publiser endringene».
+
+Ruten `/exam/build/:examId` er lagt til ved siden av `/exam/build`. Uten
+`examId` oppfører byggeren seg nøyaktig som før. Hver rad i «Mine prøver» har
+fått «Rediger».
+
+### Jobb 3 — spørsmålsvelger med vekting
+
+Høyre kolonne i byggeren viser nå alle spørsmålene med avkrysning, poengfelt,
+vanskegrad og fasit. Ikke-avkryssede gråes ut (`opacity: 0.45`) men blir
+liggende, så læreren kan angre. Filter på vanskegrad og søk på spørsmålstekst.
+
+Verifisert på en 30-spørsmåls standardprøve: «Prøven (30 av 30 med), Maks poeng:
+30» → ta ut ett → «29 av 30, Maks poeng: 29» → hake på igjen → «30 av 30,
+Maks poeng: 30». Poeng 1 → 4 på ett spørsmål ga «Maks poeng: 33». Filter
+«Vanskelig» ga 10 rader, søk «mva» ga 4.
+
+Poengreglene for prøven som helhet (+1 / −0,5) ligger fortsatt øverst i steg 1.
+Per-spørsmål-poeng overstyrer, slik `getMaxPoints()` allerede regnet det.
+
+### Jobb 4 — kortsvar og langsvar
+
+**Byggeren hadde allerede veien til begge.** Oppdraget sier at «byggeren har
+ingen vei til dem», men `questionTab` med `'flervalg' | 'aapent' | 'case'` og
+komplette skjemaer for begge har ligget der hele tiden. Jeg bygde dem derfor
+ikke på nytt. Det jeg gjorde:
+
+- fanene fikk overskriften «+ Legg til oppgave» og ordlyden fra oppdraget:
+  Flervalg · Kortsvar · Langsvar/case (het «Åpent spørsmål» og «Case»).
+- verifiserte hele veien fra bygger til manuell retting.
+
+Verifisert med en prøve som har alle tre typene (`multiple_choice, open, case`),
+maks 11 poeng: eleven besvarte 3 av 3, og rettevisningen viste **2 manuelle
+poengfelt** — ett for kortsvaret og ett for case-delspørsmålet. Poengsummen gikk
+fra `-0.5 / 11` til `3.5 / 11` da læreren ga 4 poeng, og verdien var der
+fortsatt etter full sidelasting (lest tilbake fra RTDB, ikke lokal state).
+
+Ingen forslagsbank med ferdige oppgaver er laget, og ingen oppgavetekster er
+skrevet.
+
+### Jobb 5 — «Pågår nå»
+
+Seksjonen over resultatlista abonnerer på `subscribeToExamProgress`. Én rad per
+elev som har startet, med navn, starttidspunkt, «7 av 30 besvart» og status i
+TEKST: «Pågår», «Levert», «Tiden ute». Uten publisering eller uten elever:
+«Ingen elever har startet ennå.» Har alle levert, forsvinner seksjonen helt.
+
+Verifisert med to elever samtidig: «Pågår nå (2 elever) — Kari Nordmann, startet
+19:29, 7 av 30 besvart, Pågår / Ola Hansen, startet 19:29, 3 av 30 besvart,
+Pågår».
+
+### Antall RTDB-skrivinger per elev på en 30-spørsmåls prøve
+
+| Hendelse | Skrivinger |
+| --- | --- |
+| `registerExamStart` ved oppstart | 1 |
+| `updateExamProgress` — én per spørsmål som går fra ubesvart til besvart | 30 |
+| `submitExamAnswers` ved innlevering | 1 |
+| `markExamProgressDone` ved innlevering | 1 |
+| **Sum** | **33** |
+
+Ingen timer, ingen intervall. Fremdriften skrives i en `useEffect` som
+sammenligner mot forrige rapporterte tall og hopper over når det er uendret —
+å skrive mer i et tekstsvar gir altså ingen ny skriving. Eneste vei til flere
+enn 33 er om en elev tømmer et svar og fyller det inn igjen; da går tellingen
+ned og opp, med én skriving hver vei.
+
+### Jobb 6 — publiser og slett
+
+Hver utkast-rad har «Publiser», som gjenbruker samme vei som byggeren: genererer
+kode med `generateExamCode()`, setter status `active`, skriver til localStorage
+og til RTDB. Koden vises i rada etterpå.
+
+Hver rad har «Slett» med bekreftelsesdialog. Dialogen abonnerer på
+innleveringene, så teksten er riktig i hvert tilfelle: utkast får «Utkastet
+slettes for godt», en publisert prøve uten innleveringer får «Elever som har
+koden mister tilgangen», og en publisert prøve med innleveringer får en tydelig
+advarsel om at *alle elevresultatene forsvinner*. Sletting fjerner både den
+lokale raden og hele `/exams/{kode}` i RTDB.
+
+### Verifisering runde 5
+
+- `tsc -b` grønn før hver commit.
+- All testing i én nettleser på port 5176, lærer i én kontekst og elev i en egen.
+  Aldri på tvers av porter.
+- Testet mot klasse **ZJ58D8**.
+- Skjermbilder i `docs/rapporter/bilder/spor-d/`: `bygger-vekting.png`,
+  `bygger-kortsvar.png`, `pagar-na.png`, `resultater-etter.png`,
+  `manuell-retting.png`.
+- Auth-vakta midlertidig omgått for testøkta og gjenopprettet etterpå.
