@@ -277,7 +277,9 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
   const [editSubject, setEditSubject] = useState('')
   const [editSchool, setEditSchool] = useState('')
   const [editTeacher, setEditTeacher] = useState('')
-  const [addingClass, setAddingClass] = useState(false)
+  // Uten klasser går fanen rett i «ny klasse»-skjemaet — det er hele poenget
+  // med å komme hit fra velkomst-tomtilstanden.
+  const [addingClass, setAddingClass] = useState(() => classes.length === 0)
   const [newName, setNewName] = useState('')
   const [newSubject, setNewSubject] = useState('')
   const [newSchool, setNewSchool] = useState('')
@@ -369,7 +371,7 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
   }
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div style={{ maxWidth: 1000 }}>
       {/* Class tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         {classes.map(cls => {
@@ -392,7 +394,7 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
             </button>
           )
         })}
-        {classes.length < 4 && !addingClass && (
+        {classes.length > 0 && classes.length < 4 && !addingClass && (
           <button
             onClick={() => setAddingClass(true)}
             style={{ padding: '8px 14px', borderRadius: 10, fontSize: 14, cursor: 'pointer', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-muted)' }}
@@ -438,9 +440,11 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
               >
                 Opprett klasse
               </button>
-              <button onClick={() => setAddingClass(false)} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 16px', fontSize: 14, color: 'var(--text-muted)', cursor: 'pointer' }}>
-                Avbryt
-              </button>
+              {classes.length > 0 && (
+                <button onClick={() => setAddingClass(false)} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 16px', fontSize: 14, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  Avbryt
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -525,7 +529,9 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
         </div>
       )}
 
-      {/* Student list */}
+      {/* Elevliste — først når det finnes en klasse å vise elever for */}
+      {activeClass && (
+      <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
           Elever ({students.length})
@@ -584,6 +590,8 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
             )
           })}
         </div>
+      )}
+      </>
       )}
     </div>
   )
@@ -709,10 +717,14 @@ function TeacherDashboardInner() {
   const aktivtOmrade = omradeForSub(activeTab)
 
   // Global klassetilstand (klasselinja) — deles av alle faner.
-  const { activeCode: classroomCode, mySubjects, resetMySubjects, liveActive, ingenKlasserVedStart } = useTeacherClass()
+  const { activeCode: classroomCode, mySubjects, resetMySubjects, liveActive, ingenKlasser } = useTeacherClass()
 
-  // Welcome empty-state: vis hvis ingen klasser var opprettet ved innlasting
-  const noClassesExist = ingenKlasserVedStart
+  // Velkomst-tomtilstand: vises til læreren har opprettet sin første klasse.
+  const noClassesExist = ingenKlasser
+  // Fanene under trenger en klassekode for å ha noe å vise eller skrive til.
+  const KREVER_KLASSE: SubTabId[] = ['live', 'sporsmal', 'spillet', 'leaderboard']
+  const manglerKlasse = ingenKlasser && KREVER_KLASSE.includes(activeTab)
+  const gaaTilOpprettKlasse = () => setActiveTab('elever')
   const [learningSubTab, setLearningSubTab] = useState<'minileksjoner' | 'presentasjoner'>('minileksjoner')
   const [nivaaFilter, setNivaaFilter] = useState<NivaaFilter>('alle')
   const [showAddQuestion, setShowAddQuestion] = useState(false)
@@ -952,7 +964,7 @@ function TeacherDashboardInner() {
         </div>
 
         {/* Global klasselinje (steg 2) */}
-        <KlasseLinje />
+        <KlasseLinje onOpprettKlasse={gaaTilOpprettKlasse} />
 
         {/* Velkommen-state for nye lærere uten klasser */}
         {noClassesExist && (
@@ -972,7 +984,7 @@ function TeacherDashboardInner() {
               La oss komme i gang. Opprett din første klasse for å koble den til et fag.
             </p>
             <button
-              onClick={() => setActiveTab('elever')}
+              onClick={gaaTilOpprettKlasse}
               style={{
                 background: '#0d9488', color: '#fff', border: 'none',
                 borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 600,
@@ -1051,7 +1063,9 @@ function TeacherDashboardInner() {
           {SUB_BESKRIVELSER[activeTab]}
         </p>
 
-        {activeTab === 'spillet' && (
+        {manglerKlasse && <KreverKlasse onOpprett={gaaTilOpprettKlasse} />}
+
+        {!manglerKlasse && activeTab === 'spillet' && (
           <>
             {/* Tema-aktivering per klasse (KODEKART steg 1) */}
             <motion.div
@@ -1240,7 +1254,7 @@ function TeacherDashboardInner() {
           </>
         )}
 
-        {activeTab === 'sporsmal' && (
+        {!manglerKlasse && activeTab === 'sporsmal' && (
           <div className="space-y-6">
             {/* Klassekoden står i klasselinja øverst — her trengs bare oppdatering */}
             <div className="flex justify-end">
@@ -1610,11 +1624,11 @@ function TeacherDashboardInner() {
           <KonkurranserTab navigate={navigate} />
         )}
 
-        {activeTab === 'live' && (
+        {!manglerKlasse && activeTab === 'live' && (
           <LiveOktTab />
         )}
 
-        {activeTab === 'leaderboard' && (
+        {!manglerKlasse && activeTab === 'leaderboard' && (
           <LeaderboardTab />
         )}
       </div>
@@ -2344,6 +2358,21 @@ function ModuleSummaryPanel({
   )
 }
 
+
+/** Vises i faner som trenger en klassekode, når læreren ikke har noen klasse. */
+function KreverKlasse({ onOpprett }: { onOpprett: () => void }) {
+  return (
+    <div className="rounded-xl border border-dashed border-gray-300 p-5">
+      <p className="text-sm text-gray-500">Opprett en klasse for å bruke denne fanen.</p>
+      <button
+        onClick={onOpprett}
+        className="mt-3 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
+      >
+        Opprett klasse
+      </button>
+    </div>
+  )
+}
 
 // ── Presentasjoner ────────────────────────────────────────────────────────────
 
