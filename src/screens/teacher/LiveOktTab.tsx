@@ -8,7 +8,8 @@ import {
   type PresentationEntry,
   type PresentationSection,
 } from '../../lib/presentationRegistry'
-import { normalizeSubjectId, subjectToSectionKey } from '../../lib/teacherSubjects'
+import { subjectToSectionKey } from '../../lib/teacherSubjects'
+import { useTeacherClass } from './TeacherClassContext'
 
 type SessionMode = 'presentation' | 'minileksjon' | 'spill'
 
@@ -28,18 +29,6 @@ interface QuizAnswer { answer: number; timestamp: number }
 interface QuizAnswersMap { [studentName: string]: QuizAnswer }
 interface StudentQuestion { id: string; name: string; question: string; timestamp: number; read: boolean }
 
-interface TeacherClass { code: string; name: string; subject: string; schoolName?: string; teacherName?: string }
-
-function getActiveClass(): TeacherClass | null {
-  try {
-    const classes: TeacherClass[] = JSON.parse(localStorage.getItem('teacher-classes') ?? '[]')
-    const activeCode = localStorage.getItem('teacher-classroom-code') ?? ''
-    const found = classes.find(c => c.code === activeCode)
-    if (!found) return null
-    return { ...found, subject: normalizeSubjectId(found.subject) }
-  } catch { return null }
-}
-
 function sectionKey(s: PresentationSection): string {
   return `${s.level}|${s.subject}|${s.ssrSubject ?? ''}`
 }
@@ -54,9 +43,8 @@ const MODE_OPTIONS: { id: SessionMode; icon: string; title: string; desc: string
 ]
 
 export default function LiveOktTab() {
-  const classroomCode = localStorage.getItem('teacher-classroom-code') ?? ''
-  const activeClass = useMemo(() => getActiveClass(), [classroomCode])
-  const className = activeClass?.name?.trim() || ''
+  // Aktiv klasse kommer fra den globale klasselinja (TeacherClassContext).
+  const { activeCode: classroomCode, activeClass } = useTeacherClass()
 
   const [session, setSession] = useState<LiveSessionState | null>(null)
   const [selectedMode, setSelectedMode] = useState<SessionMode>('presentation')
@@ -181,10 +169,6 @@ export default function LiveOktTab() {
 
   const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }
 
-  const classLabel = className
-    ? <>{className} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(kode: <strong style={{ fontFamily: 'monospace', letterSpacing: '0.1em', color: 'var(--text-primary)' }}>{classroomCode}</strong>)</span></>
-    : <strong style={{ fontFamily: 'monospace', letterSpacing: '0.1em', color: 'var(--text-primary)' }}>{classroomCode}</strong>
-
   // ── Before session ──────────────────────────────────────────────────────────
   if (!session?.active) {
     return (
@@ -195,12 +179,8 @@ export default function LiveOktTab() {
           </div>
         )}
 
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Start live økt</h2>
-        {classroomCode && (
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
-            Klasse: {classLabel}
-          </p>
-        )}
+        {/* Klasse og klassekode står i den globale klasselinja øverst. */}
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20 }}>Start live økt</h2>
 
         {/* Mode selector */}
         <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 10 }}>Hva skal elevene gjøre?</p>
@@ -337,13 +317,6 @@ export default function LiveOktTab() {
 
   return (
     <div style={{ maxWidth: 720 }}>
-
-      {/* Header: class + mode */}
-      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-          Klasse: {classLabel}
-        </p>
-      </div>
 
       {/* Mode indicator */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: `${modeInfo.color}14`, border: `1px solid ${modeInfo.color}40` }}>

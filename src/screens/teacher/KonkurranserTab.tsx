@@ -14,6 +14,7 @@ import {
 } from '../../lib/firebaseCompetitions'
 import { MINE_FAG_OPTIONS, normalizeSubjectId } from '../../lib/teacherSubjects'
 import type { Competition } from '../../types/Competition'
+import { useTeacherClass } from './TeacherClassContext'
 
 interface CompetitionSummary {
   id: string
@@ -47,15 +48,6 @@ function matchesFilter(subject: string | undefined, filter: FilterId, ownSubject
   return true
 }
 
-function readActiveClass(): { name: string; subject: string } | null {
-  try {
-    const code = localStorage.getItem('teacher-classroom-code') ?? ''
-    const classes: { code: string; name: string; subject: string }[] = JSON.parse(localStorage.getItem('teacher-classes') ?? '[]')
-    const found = classes.find(c => c.code === code)
-    return found ? { name: found.name, subject: normalizeSubjectId(found.subject) } : null
-  } catch { return null }
-}
-
 function readOwnSubjects(): Set<string> {
   try {
     const classes: { subject: string }[] = JSON.parse(localStorage.getItem('teacher-classes') ?? '[]')
@@ -70,7 +62,8 @@ interface KonkurranserTabProps {
 export default function KonkurranserTab({ navigate }: KonkurranserTabProps) {
   // Lærerens egne klasser/fag
   const ownSubjects = useMemo(() => readOwnSubjects(), [])
-  const activeClass = useMemo(() => readActiveClass(), [])
+  // Aktiv klasse kommer fra den globale klasselinja (TeacherClassContext).
+  const { activeClass } = useTeacherClass()
 
   // ── Mine konkurranser (Firebase + localStorage backup-cache)
   const [competitions, setCompetitions] = useState<CompetitionSummary[]>(() => {

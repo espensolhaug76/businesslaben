@@ -17,7 +17,12 @@ import LiveOktTab from './teacher/LiveOktTab'
 import LeaderboardTab from './teacher/LeaderboardTab'
 import TemaAktiveringPanel from './teacher/TemaAktiveringPanel'
 import KonkurranserTab from './teacher/KonkurranserTab'
-import { MINE_FAG_OPTIONS, normalizeSubjectId } from '../lib/teacherSubjects'
+import { MINE_FAG_OPTIONS, subjectToSectionKey } from '../lib/teacherSubjects'
+import {
+  TeacherClassProvider, useTeacherClass, generateClassroomCode,
+  type TeacherClass,
+} from './teacher/TeacherClassContext'
+import KlasseLinje from './teacher/KlasseLinje'
 
 // ── Teacher custom exercise type ──────────────────────────────────────────────
 interface TeacherCustomExercise {
@@ -42,6 +47,67 @@ const subjects = [
 ] as const
 
 
+// Presentasjonskatalogen i Læringsinnhold-fanen. `seksjon` er samme nøkkelformat
+// som MODULE_SECTIONS/subjectToSectionKey (`${level}|${subject}|${ssrSubject}`),
+// slik at Mine fag-filteret virker likt for minileksjoner og presentasjoner.
+interface PresentasjonLenke { title: string; desc: string; route: string; seksjon: string }
+
+const PRESENTASJON_GRUPPER: { tittel: string; items: PresentasjonLenke[] }[] = [
+  {
+    tittel: 'Forretningsdrift',
+    items: ([
+      { title: 'Regler og lovverk for servicenæringen', desc: 'Arbeidsmiljøloven, Forbrukerkjøp, Markedsføringsloven', route: '/learning/presentations/regler-lovverk' },
+      { title: 'Ansvarsfordeling, roller og organisasjonskart', desc: 'Hierarki, flat struktur, linje og stab', route: '/learning/presentations/organisasjon' },
+      { title: 'Verdikjeden og bærekraftig utvikling', desc: 'Primær- og støtteaktiviteter, sirkulær økonomi', route: '/learning/presentations/verdikjeden' },
+      { title: 'Prissetting', desc: 'Kostnad, marked og konkurransebasert, Yield management', route: '/learning/presentations/prissetting' },
+      { title: 'Regnskap, budsjett og lønnsomhet', desc: 'DB, DG, likviditet, faste og variable kostnader', route: '/learning/presentations/regnskap' },
+      { title: 'Risikovurdering og forebyggende tiltak', desc: 'ROS-analyse, forebyggende og organisatoriske tiltak', route: '/learning/presentations/risikovurdering' },
+      { title: 'Beredskapsplaner', desc: 'Varsling, handling og ansvar i kriser', route: '/learning/presentations/beredskapsplaner' },
+      { title: 'Helse, miljø og sikkerhet (HMS)', desc: 'Internkontroll, verneombud, trivsel', route: '/learning/presentations/hms' },
+    ]).map(p => ({ ...p, seksjon: 'vg1|ssr|forretningsdrift' })),
+  },
+  {
+    tittel: 'Markedsføring og innovasjon',
+    items: ([
+      { title: 'Regelverk for markedsføring og salg', desc: 'Forbrukertilsynet, etisk reklame, skjult reklame', route: '/learning/presentations/regelverk-markedsforing' },
+      { title: 'Forretningsidé', desc: 'Visjon, behovsanalyse, USP og innovasjon', route: '/learning/presentations/forretningsidee' },
+      { title: 'Forbrukeratferd og målgrupper', desc: 'Kjøpsprosess, Maslow, STP-modellen', route: '/learning/presentations/forbrukeratferd' },
+      { title: 'Konkurransemidler', desc: 'De 5 P-ene: Produkt, Pris, Plass, Påvirkning, Personale', route: '/learning/presentations/konkurransemidlene' },
+      { title: 'Markedsplan', desc: 'Situasjonsanalyse, SWOT, SMART-mål', route: '/learning/presentations/markedsplan' },
+      { title: 'Markedsføringskampanje', desc: 'AIDA-modellen, budskapsutforming', route: '/learning/presentations/kampanje' },
+      { title: 'Salg', desc: 'Salgssamtalens faser: Kontakt, behov, løsning, avslutning', route: '/learning/presentations/salg' },
+      { title: 'Teknologi og KI i salg', desc: 'Chatbots, CRM, personalisering og algoritmer', route: '/learning/presentations/teknologi-ki' },
+      { title: 'Administrative funksjoner', desc: 'Ordre, lagerstyring og rutiner bak kulissene', route: '/learning/presentations/administrative-funksjoner' },
+    ]).map(p => ({ ...p, seksjon: 'vg1|ssr|mfi' })),
+  },
+  {
+    tittel: 'Kultur og samhandling',
+    items: ([
+      { title: 'Partene i arbeidslivet', desc: 'Trepartssamarbeidet, LO/NHO, tariffavtaler', route: '/learning/presentations/partene-arbeidslivet' },
+      { title: 'Relasjonsbygging og nettverk', desc: 'Lojalitetstigen, interne relasjoner', route: '/learning/presentations/relasjonsbygging' },
+      { title: 'Etikk og bærekraft', desc: 'Forretningsetikk, CSR, personlig ansvar', route: '/learning/presentations/etikk-baerekraft' },
+      { title: 'Kommunikasjon og kundebehandling', desc: 'Kommunikasjonsprosessen, aktiv lytting, kroppsspråk', route: '/learning/presentations/kommunikasjon' },
+      { title: 'Vertskapsrollen', desc: 'Fra kunde til gjest, "det lille ekstra"', route: '/learning/presentations/vertskapsrollen' },
+      { title: 'Konflikt- og nødssituasjonshåndtering', desc: 'De-eskalering, førstehjelp, varsling', route: '/learning/presentations/konflikt-nod' },
+      { title: 'Klagehåndtering og konfliktforebygging', desc: 'Service recovery, LEST-modellen', route: '/learning/presentations/klaghandtering' },
+    ]).map(p => ({ ...p, seksjon: 'vg1|ssr|kultur' })),
+  },
+  {
+    tittel: 'Markedsføring og Ledelse (ML)',
+    items: [
+      { title: 'ML1 – Markedsføring og markeder', desc: 'Verdiskaping, behov vs. ønsker, B2C, B2B og globale markeder', route: '/learning/presentations/ml1', seksjon: 'vg2|ml|' },
+      { title: 'ML2 – Strategi og merkevare', desc: 'Strategisk planlegging, Porters fem krefter, Brand Equity, IMC', route: '/learning/presentations/ml2', seksjon: 'vg3|ml|' },
+    ],
+  },
+  {
+    tittel: 'Entreprenørskap og Bedriftsutvikling (ENT)',
+    items: [
+      { title: 'ENT1 – Innovatøren og kreativitet', desc: 'Entreprenørskap, innovasjonstyper, SCAMPER og Design Thinking', route: '/learning/presentations/ent1', seksjon: 'vg2|ent|' },
+      { title: 'ENT2 – Strategi og skalering', desc: 'Ansoff-matrise, VRIO, Blue Ocean Strategy og forretningsmodellinnovasjon', route: '/learning/presentations/ent2', seksjon: 'vg3|ent|' },
+    ],
+  },
+]
+
 const OPTION_COLORS = ['bg-red-500', 'bg-blue-500', 'bg-amber-500', 'bg-purple-500']
 // const OPTION_COLORS_DIM = ['bg-red-500/20', 'bg-blue-500/20', 'bg-amber-500/20', 'bg-purple-500/20']
 const OPTION_TEXT = ['text-red-600', 'text-blue-600', 'text-amber-600', 'text-purple-600']
@@ -53,11 +119,6 @@ const SUBJECT_HEX_COLORS: Record<string, string> = {
   mfi: '#d97706',
   kultur: '#7c3aed',
   ml1: '#2563eb',
-}
-
-function generateClassroomCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
 function answersKey(code: string) {
@@ -259,56 +320,16 @@ function OpenAnswerList({ qAnswers }: { qAnswers: StudentAnswer[] }) {
 
 // ── KlasserTab ────────────────────────────────────────────────────────────────
 
-interface TeacherClass {
-  code: string
-  name: string
-  subject: string
-  schoolName?: string
-  teacherName?: string
-}
-
 interface StudentProgress {
   studentName: string
   lastActive: string
   modules: Record<string, { title: string; score: number; total: number; date: string }>
 }
 
-function loadClasses(): TeacherClass[] {
-  try {
-    const saved = JSON.parse(localStorage.getItem('teacher-classes') ?? 'null')
-    if (Array.isArray(saved) && saved.length > 0) {
-      // Normaliser legacy fag-IDer (fd_vg2 → ok_vg2 osv.)
-      return saved.map((c: TeacherClass) => ({ ...c, subject: normalizeSubjectId(c.subject) }))
-    }
-  } catch { /* */ }
-  // Migrate legacy single code
-  const legacy = localStorage.getItem('teacher-classroom-code')
-  const code = legacy ?? generateClassroomCode()
-  if (!legacy) localStorage.setItem('teacher-classroom-code', code)
-  const classes: TeacherClass[] = [{ code, name: 'Klasse 1', subject: '' }]
-  localStorage.setItem('teacher-classes', JSON.stringify(classes))
-  return classes
-}
-
-function saveClasses(classes: TeacherClass[]) {
-  localStorage.setItem('teacher-classes', JSON.stringify(classes))
-  // Keep legacy key in sync with first class as default — caller bør i tillegg
-  // kalle setActiveClassroomCode() når en spesifikk klasse skal være aktiv.
-  if (classes[0]) localStorage.setItem('teacher-classroom-code', classes[0].code)
-}
-
-function setActiveClassroomCode(code: string) {
-  localStorage.setItem('teacher-classroom-code', code)
-}
-
 function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
-  const [classes, setClasses] = useState<TeacherClass[]>(() => loadClasses())
-  const [activeIdx, setActiveIdx] = useState(() => {
-    const code = localStorage.getItem('teacher-classroom-code') ?? ''
-    const cls = loadClasses()
-    const idx = cls.findIndex(c => c.code === code)
-    return idx >= 0 ? idx : 0
-  })
+  // Klasselista og aktiv klasse eies av TeacherClassContext, slik at
+  // klassechipsene her og nedtrekket i klasselinja er samme tilstand.
+  const { classes, replaceClasses, activeCode, activeClass, setActiveCode } = useTeacherClass()
   const [students, setStudents] = useState<StudentProgress[]>([])
   const [copiedCode, setCopiedCode] = useState('')
   const [editing, setEditing] = useState(false)
@@ -322,8 +343,6 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
   const [newSchool, setNewSchool] = useState('')
   const [newTeacher, setNewTeacher] = useState('')
   const unsubRef = useRef<(() => void) | null>(null)
-
-  const activeClass = classes[activeIdx] ?? classes[0]
 
   useEffect(() => {
     if (unsubRef.current) { unsubRef.current(); unsubRef.current = null }
@@ -347,6 +366,7 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
   }
 
   function startEdit() {
+    if (!activeClass) return
     setEditName(activeClass.name)
     setEditSubject(activeClass.subject ?? '')
     setEditSchool(activeClass.schoolName ?? '')
@@ -355,7 +375,8 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
   }
 
   function saveEdit() {
-    const updated = classes.map((c, i) => i === activeIdx
+    if (!activeClass) return
+    replaceClasses(classes.map(c => c.code === activeClass.code
       ? {
           ...c,
           name: editName.trim() || c.name,
@@ -363,9 +384,7 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
           schoolName: editSchool.trim(),
           teacherName: editTeacher.trim(),
         }
-      : c)
-    setClasses(updated)
-    saveClasses(updated)
+      : c))
     setEditing(false)
   }
 
@@ -378,11 +397,8 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
       schoolName: newSchool.trim(),
       teacherName: newTeacher.trim(),
     }
-    const updated = [...classes, newClass]
-    setClasses(updated)
-    saveClasses(updated)
-    setActiveIdx(updated.length - 1)
-    setActiveClassroomCode(newClass.code)
+    replaceClasses([...classes, newClass])
+    setActiveCode(newClass.code)
     setAddingClass(false)
     setNewName('')
     setNewSubject('')
@@ -390,20 +406,19 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
     setNewTeacher('')
   }
 
-  function deleteClass(idx: number) {
+  function deleteClass(code: string) {
     if (classes.length <= 1) return
-    if (!window.confirm(`Slett ${classes[idx].name}? Kan ikke angres.`)) return
-    const updated = classes.filter((_, i) => i !== idx)
-    setClasses(updated)
-    saveClasses(updated)
-    const newIdx = Math.min(activeIdx, updated.length - 1)
-    setActiveIdx(newIdx)
-    if (updated[newIdx]) setActiveClassroomCode(updated[newIdx].code)
+    const cls = classes.find(c => c.code === code)
+    if (!cls) return
+    if (!window.confirm(`Slett ${cls.name}? Kan ikke angres.`)) return
+    const updated = classes.filter(c => c.code !== code)
+    replaceClasses(updated)
+    if (activeCode === code && updated[0]) setActiveCode(updated[0].code)
   }
 
   function startLiveOkt() {
     if (!activeClass) return
-    setActiveClassroomCode(activeClass.code)
+    setActiveCode(activeClass.code)
     onStartLiveOkt?.()
   }
 
@@ -417,17 +432,18 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
     <div style={{ maxWidth: 800 }}>
       {/* Class tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        {classes.map((cls, i) => {
+        {classes.map(cls => {
           const subj = MINE_FAG_OPTIONS.find(o => o.id === cls.subject)
+          const erAktiv = cls.code === activeClass?.code
           return (
             <button
               key={cls.code}
-              onClick={() => { setActiveIdx(i); setActiveClassroomCode(cls.code); setEditing(false) }}
+              onClick={() => { setActiveCode(cls.code); setEditing(false) }}
               style={{
                 padding: '8px 16px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                border: activeIdx === i ? '2px solid #0d9488' : '1px solid var(--border)',
-                background: activeIdx === i ? 'rgba(13,148,136,0.1)' : 'var(--card-bg)',
-                color: activeIdx === i ? '#0d9488' : 'var(--text-muted)',
+                border: erAktiv ? '2px solid #0d9488' : '1px solid var(--border)',
+                background: erAktiv ? 'rgba(13,148,136,0.1)' : 'var(--card-bg)',
+                color: erAktiv ? '#0d9488' : 'var(--text-muted)',
                 display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2,
               }}
             >
@@ -524,7 +540,7 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
                 ✏ Rediger klasse
               </button>
               {classes.length > 1 && (
-                <button onClick={() => deleteClass(activeIdx)} style={{ background: 'transparent', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 20px', fontSize: 14, color: '#ef4444', cursor: 'pointer' }}>
+                <button onClick={() => deleteClass(activeClass.code)} style={{ background: 'transparent', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 20px', fontSize: 14, color: '#ef4444', cursor: 'pointer' }}>
                   Slett klasse
                 </button>
               )}
@@ -633,9 +649,85 @@ function KlasserTab({ onStartLiveOkt }: { onStartLiveOkt?: () => void } = {}) {
   )
 }
 
+// ── Navigasjon: fire hovedområder med underfaner (spor D, steg 1) ─────────────
+
+type SubTabId =
+  | 'live' | 'konkurranser'
+  | 'laeringsinnhold' | 'spillet'
+  | 'prover' | 'sporsmal'
+  | 'elever' | 'leaderboard'
+
+interface HovedOmrade {
+  id: string
+  label: string
+  subs: SubTabId[]
+}
+
+const OMRADER: HovedOmrade[] = [
+  { id: 'i-timen',   label: 'I timen',   subs: ['live', 'konkurranser'] },
+  { id: 'innhold',   label: 'Innhold',   subs: ['laeringsinnhold', 'spillet'] },
+  { id: 'vurdering', label: 'Vurdering', subs: ['prover', 'sporsmal'] },
+  { id: 'klassen',   label: 'Klassen',   subs: ['elever', 'leaderboard'] },
+]
+
+const SUB_LABELS: Record<SubTabId, string> = {
+  live: 'Live økt',
+  konkurranser: 'Konkurranser',
+  laeringsinnhold: 'Læringsinnhold',
+  spillet: 'Spillstyring',
+  prover: 'Prøver',
+  sporsmal: 'Spørsmål',
+  elever: 'Klasser',
+  leaderboard: 'Nasjonalt leaderboard',
+}
+
+/** Grå beskrivelseslinje under nivå 2-pillene (erstatter hover-tooltipene). */
+const SUB_BESKRIVELSER: Record<SubTabId, string> = {
+  live: 'Start en presentasjon, minileksjon eller spilløkt som elevene følger i sanntid.',
+  konkurranser: 'Kahoot-stil konkurranse med ledertavle for klassen.',
+  laeringsinnhold: 'Bla i minileksjoner og presentasjoner.',
+  spillet: 'Styr hvilke fag og temaer klassen møter i spillet.',
+  prover: 'Digitale prøver med tid, kode og resultater.',
+  sporsmal: 'Elevene svarer skriftlig i spillet, du gir tilbakemelding. Skal du ha prøve med tid og karakter, bruk Prøver.',
+  elever: 'Opprett klasser, del klassekode og følg elevenes fremgang.',
+  leaderboard: 'Sammenlign klassen med andre skoler.',
+}
+
+/**
+ * Dyplenke-mapping: `/teacher?fane=<id>` lander på riktig underfane. Ingen
+ * lenker i kodebasen brukte faneparametre før omleggingen, men gamle fanenavn
+ * (inkludert «spillet», som nå heter Spillstyring) godtas her slik at bokmerker
+ * og delte lenker fortsatt virker.
+ */
+const LEGACY_FANE_MAP: Record<string, SubTabId> = {
+  live: 'live',
+  'live-okt': 'live',
+  konkurranser: 'konkurranser',
+  laeringsinnhold: 'laeringsinnhold',
+  spillet: 'spillet',
+  spillstyring: 'spillet',
+  prover: 'prover',
+  sporsmal: 'sporsmal',
+  elever: 'elever',
+  klasser: 'elever',
+  leaderboard: 'leaderboard',
+}
+
+function omradeForSub(sub: SubTabId): HovedOmrade {
+  return OMRADER.find(o => o.subs.includes(sub)) ?? OMRADER[0]
+}
+
 // ── Teacher Dashboard ─────────────────────────────────────────────────────────
 
 export default function TeacherDashboard() {
+  return (
+    <TeacherClassProvider>
+      <TeacherDashboardInner />
+    </TeacherClassProvider>
+  )
+}
+
+function TeacherDashboardInner() {
   useThemeEffect()
   const navigate = useNavigate()
 
@@ -654,46 +746,33 @@ export default function TeacherDashboard() {
     navigate('/')
   }
 
-  const [activeTab, setActiveTab] = useState<'laeringsinnhold' | 'sporsmal' | 'spillet' | 'elever' | 'prover' | 'konkurranser' | 'live' | 'leaderboard'>('laeringsinnhold')
-  const [hoveredTab, setHoveredTab] = useState<string | null>(null)
+  // Aktiv underfane. Standard ved innlasting: I timen / Live økt.
+  const [activeTab, setActiveTab] = useState<SubTabId>(() => {
+    const fane = new URLSearchParams(window.location.search).get('fane')
+    return (fane && LEGACY_FANE_MAP[fane.toLowerCase()]) || 'live'
+  })
+  const aktivtOmrade = omradeForSub(activeTab)
 
-  // Welcome empty-state: vis hvis ingen klasser er opprettet ennå
-  const noClassesExist = (() => {
-    try {
-      const arr = JSON.parse(localStorage.getItem('teacher-classes') ?? '[]')
-      return Array.isArray(arr) && arr.length === 0
-    } catch { return true }
-  })()
-  const [liveSessionActive, setLiveSessionActive] = useState(() => localStorage.getItem('live-session-active') === 'true')
+  // Global klassetilstand (klasselinja) — deles av alle faner.
+  const { activeCode: classroomCode, mySubjects, resetMySubjects, liveActive, ingenKlasserVedStart } = useTeacherClass()
 
-  useEffect(() => {
-    const check = () => setLiveSessionActive(localStorage.getItem('live-session-active') === 'true')
-    check()
-    const id = setInterval(check, 2000)
-    return () => clearInterval(id)
-  }, [])
+  // Welcome empty-state: vis hvis ingen klasser var opprettet ved innlasting
+  const noClassesExist = ingenKlasserVedStart
   const [learningSubTab, setLearningSubTab] = useState<'minileksjoner' | 'presentasjoner'>('minileksjoner')
   const [showAddQuestion, setShowAddQuestion] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState<string>('mfl1')
   const store = useGameStore()
 
-  // Classroom code
-  const [classroomCode] = useState<string>(() => {
-    const saved = localStorage.getItem('teacher-classroom-code')
-    if (saved) return saved
-    const code = generateClassroomCode()
-    localStorage.setItem('teacher-classroom-code', code)
-    return code
-  })
-  const [copied, setCopied] = useState(false)
-
   // Per-module visibility for students in this classroom
-  const [moduleVisibility, setModuleVisibility] = useState<Record<string, boolean>>(() => {
+  const [moduleVisibility, setModuleVisibility] = useState<Record<string, boolean>>({})
+
+  // Last synlighet på nytt når aktiv klasse endres (klasselinja bytter kode).
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(`adventure-modules-${classroomCode}`)
-      return saved ? JSON.parse(saved) : {}
-    } catch { return {} }
-  })
+      setModuleVisibility(saved ? JSON.parse(saved) : {})
+    } catch { setModuleVisibility({}) }
+  }, [classroomCode])
 
   // Persist classroom subject so students can inherit it
   useEffect(() => {
@@ -715,17 +794,7 @@ export default function TeacherDashboard() {
   const [teacherComments, setTeacherComments] = useState<Record<string, string>>({})
   const [showKahoot, setShowKahoot] = useState(false)
 
-  // Mine fag — teacher subject preferences (normalisert mot legacy IDer)
-  const [mySubjects, setMySubjects] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('adventure-teacher-subjects')
-      const arr: string[] = saved ? JSON.parse(saved) : []
-      return arr.map(normalizeSubjectId).filter(Boolean)
-    } catch { return [] }
-  })
-  const [showMineFagPanel, setShowMineFagPanel] = useState(false)
-
-  // Derived filters from Mine fag selection
+  // Derived filters from Mine fag selection («Mine fag» bor nå i klasselinja)
   const selectedFagOptions = mySubjects.length > 0
     ? MINE_FAG_OPTIONS.filter(o => mySubjects.includes(o.id))
     : MINE_FAG_OPTIONS // all if none selected
@@ -734,21 +803,19 @@ export default function TeacherDashboard() {
     ? subjects.filter(s => selectedFagOptions.some(o => o.lessonSubject === s.id))
     : subjects
 
-  const activeModuleKeys = mySubjects.length > 0
-    ? new Set(selectedFagOptions.map(o => o.moduleKey).filter((k): k is string => k !== null))
+  // Seksjonsnøkler på formen `${level}|${subject}|${ssrSubject}` — samme format
+  // som MODULE_SECTIONS og PRESENTATION_SECTIONS. (Tidligere ble `moduleKey`
+  // sammenlignet med `${subject}-${level}`, som nesten aldri matchet; se steg 4
+  // i rapporten.)
+  const activeSectionKeys = mySubjects.length > 0
+    ? new Set(selectedFagOptions.map(o => subjectToSectionKey(o.id)).filter((k): k is string => k !== null))
     : null // null means show all
+
+  const mineFagEtikett = selectedFagOptions.map(o => o.short).join(', ')
 
   const activeSporsmalFags = mySubjects.length > 0
     ? [...new Set(selectedFagOptions.map(o => o.sporsmalFag).filter((f): f is string => f !== null))]
     : null // null means show all
-
-  function toggleMySubject(id: string) {
-    setMySubjects(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-      localStorage.setItem('adventure-teacher-subjects', JSON.stringify(next))
-      return next
-    })
-  }
 
   // If selectedSubject is filtered out by Mine fag, reset to first available
   useEffect(() => {
@@ -790,13 +857,6 @@ export default function TeacherDashboard() {
   useEffect(() => {
     if (activeTab === 'sporsmal') refreshAnswers()
   }, [activeTab, refreshAnswers])
-
-  function handleCopyCode() {
-    navigator.clipboard.writeText(classroomCode).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
-  }
 
   function handleAddQuestion() {
     if (!qText.trim()) return
@@ -875,7 +935,7 @@ export default function TeacherDashboard() {
 
       {/* Global nav header */}
       <div className="px-4" style={{ background: "var(--card-bg)", borderBottom: '0.5px solid rgba(0,0,0,0.08)', height: '52px', display: 'flex', alignItems: 'center' }}>
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 w-full">
+        <div className="mx-auto flex items-center justify-between gap-3 w-full" style={{ maxWidth: 1000 }}>
           <span className="text-base font-medium shrink-0" style={{ color: '#0d9488' }}>Businesslaben</span>
           <nav className="hidden sm:flex items-center gap-6">
             <button onClick={() => navigate('/learning')} className="text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium">Læringsmoduler</button>
@@ -896,63 +956,32 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Page heading row */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '28px' }}>
+      <div className="mx-auto px-4 py-6" style={{ maxWidth: 1000 }}>
+        {/* Page heading row — live-pillen ligger nå her, ikke i viewport-kanten */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '18px' }}>
           <div>
             <h1 style={{ fontSize: '30px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px', letterSpacing: '-0.02em', lineHeight: 1.15 }}>Lærer-dashboard</h1>
             <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.5 }}>Aktiver innhold og følg elevenes fremgang</p>
           </div>
-          {/* Mine fag pill */}
-          <div style={{ position: 'relative' }}>
+          {liveActive && (
             <button
-              onClick={() => setShowMineFagPanel(v => !v)}
-              style={{ background: '#ccfbf1', border: '1px solid #99f6e4', borderRadius: '999px', padding: '7px 14px', fontSize: '13px', color: '#0f766e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', fontWeight: 500, transition: 'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#a7f3d0' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#ccfbf1' }}
+              onClick={() => setActiveTab('live')}
+              title="Gå til Live økt"
+              style={{
+                flexShrink: 0, marginTop: 4, background: 'rgba(13,148,136,0.12)', color: '#0f766e',
+                border: '1px solid rgba(13,148,136,0.35)', borderRadius: 999, padding: '6px 14px',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap',
+              }}
             >
-              <span style={{ fontWeight: 600 }}>Mine fag:</span>
-              {mySubjects.length > 0
-                ? MINE_FAG_OPTIONS.filter(o => mySubjects.includes(o.id)).map(o => o.short).join(', ')
-                : <span style={{ opacity: 0.75 }}>Alle fag</span>
-              }
-              <span style={{ fontSize: '11px', opacity: 0.6 }}>✏️</span>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+              Live økt
             </button>
-            <AnimatePresence>
-              {showMineFagPanel && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.15 }}
-                  style={{ position: 'absolute', top: '110%', right: 0, background: 'var(--card-bg)', border: '0.5px solid #e5e7eb', borderRadius: '10px', padding: '16px', width: '280px', zIndex: 50, boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }}
-                >
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>Hvilke fag underviser du i?</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {MINE_FAG_OPTIONS.map(opt => {
-                      const checked = mySubjects.includes(opt.id)
-                      return (
-                        <label
-                          key={opt.id}
-                          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '7px', border: checked ? '1px solid #99f6e4' : '1px solid #e5e7eb', background: checked ? '#f0fdf9' : '#fff', cursor: 'pointer', fontSize: '12px', color: checked ? '#0d9488' : 'var(--text-muted)' }}
-                        >
-                          <input type="checkbox" checked={checked} onChange={() => toggleMySubject(opt.id)} style={{ accentColor: '#0d9488' }} />
-                          <span style={{ fontWeight: 500, minWidth: '52px' }}>{opt.short}</span>
-                          <span style={{ fontSize: '11px', opacity: 0.8 }}>{opt.label.replace(` (${opt.short})`, '').replace(opt.short, '').trim()}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                  {mySubjects.length > 0 && (
-                    <button onClick={() => { setMySubjects([]); localStorage.removeItem('adventure-teacher-subjects') }} style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                      Nullstill (vis alle fag)
-                    </button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          )}
         </div>
+
+        {/* Global klasselinje (steg 2) */}
+        <KlasseLinje />
 
         {/* Velkommen-state for nye lærere uten klasser */}
         {noClassesExist && (
@@ -989,88 +1018,67 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* Tab selector */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-          {(['live', 'laeringsinnhold', 'sporsmal', 'spillet', 'elever', 'prover', 'konkurranser', 'leaderboard'] as const).map(tab => {
-            const labels: Record<typeof tab, string> = { laeringsinnhold: 'Læringsinnhold', sporsmal: 'Spørsmål', spillet: 'Spillet', elever: 'Klasser', prover: '📝 Prøver', konkurranser: '🏆 Konkurranser', live: 'Live økt', leaderboard: '📊 Nasjonalt leaderboard' }
-            const tooltips: Record<typeof tab, string> = {
-              laeringsinnhold: 'Aktiver presentasjoner og minileksjoner for klasser. Følg elevenes fremgang.',
-              sporsmal: 'Se og gi tilbakemelding på svar elevene har sendt inn.',
-              spillet: 'Åpne Business-simulatoren der elevene driver sin egen bedrift.',
-              elever: 'Opprett klasser og generer klassekoder som elevene logger inn med.',
-              prover: 'Lag og distribuer prøver til klassene dine.',
-              konkurranser: 'Sett opp konkurranser mellom klasser.',
-              live: 'Start en live presentasjon der elevene følger med i sanntid på sine enheter.',
-              leaderboard: 'Se klassens snitt mot andre klasser nasjonalt — kun aggregert data, GDPR-vennlig.',
-            }
-            const isActive = activeTab === tab
-            const isHovered = hoveredTab === tab
+        {/* Nivå 1 — hovedområder (understrek på aktivt område) */}
+        <div
+          role="tablist"
+          aria-label="Hovedområder"
+          style={{ display: 'flex', gap: '28px', borderBottom: '1px solid var(--border)', marginBottom: '16px', flexWrap: 'wrap' }}
+        >
+          {OMRADER.map(omr => {
+            const erAktiv = omr.id === aktivtOmrade.id
             return (
-              <div
-                key={tab}
-                style={{ position: 'relative' }}
-                onMouseEnter={() => setHoveredTab(tab)}
-                onMouseLeave={() => setHoveredTab(null)}
+              <button
+                key={omr.id}
+                role="tab"
+                aria-selected={erAktiv}
+                onClick={() => setActiveTab(omr.subs[0])}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                  padding: '0 0 10px', fontSize: '15px',
+                  fontWeight: erAktiv ? 600 : 500,
+                  color: erAktiv ? 'var(--text-primary)' : 'var(--text-muted)',
+                  borderBottom: erAktiv ? '2px solid #0d9488' : '2px solid transparent',
+                  marginBottom: '-1px',
+                }}
               >
-                <button
-                  onClick={() => setActiveTab(tab)}
-                  style={{
-                    padding: '7px 16px',
-                    borderRadius: '8px',
-                    border: isActive ? '1.5px solid #111827' : '1px solid #e5e7eb',
-                    background: 'var(--card-bg)',
-                    color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                    fontSize: '14px',
-                    fontWeight: isActive ? 500 : 400,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  {labels[tab]}
-                  {tab === 'live' && liveSessionActive && (
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
-                  )}
-                </button>
-                {isHovered && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 'calc(100% + 8px)',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: '#1e293b',
-                    color: '#f1f5f9',
-                    fontSize: '12px',
-                    fontWeight: 400,
-                    lineHeight: 1.4,
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    whiteSpace: 'normal',
-                    maxWidth: '220px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    zIndex: 1000,
-                    pointerEvents: 'none',
-                  }}>
-                    {tooltips[tab]}
-                    {/* Arrow */}
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: 0,
-                      height: 0,
-                      borderLeft: '6px solid transparent',
-                      borderRight: '6px solid transparent',
-                      borderTop: '6px solid #1e293b',
-                    }} />
-                  </div>
-                )}
-              </div>
+                {omr.label}
+              </button>
             )
           })}
         </div>
+
+        {/* Nivå 2 — underfaner som piller */}
+        <div role="tablist" aria-label={aktivtOmrade.label} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+          {aktivtOmrade.subs.map(sub => {
+            const erAktiv = sub === activeTab
+            return (
+              <button
+                key={sub}
+                role="tab"
+                aria-selected={erAktiv}
+                onClick={() => setActiveTab(sub)}
+                style={{
+                  padding: '6px 16px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: '14px', fontWeight: erAktiv ? 600 : 500,
+                  border: erAktiv ? '1px solid #0d9488' : '1px solid var(--border)',
+                  background: erAktiv ? 'rgba(13,148,136,0.10)' : 'var(--card-bg)',
+                  color: erAktiv ? '#0d9488' : 'var(--text-muted)',
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                }}
+              >
+                {SUB_LABELS[sub]}
+                {sub === 'live' && liveActive && (
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Beskrivelse av aktiv underfane (erstatter hover-tooltipene) */}
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '24px', maxWidth: '70ch' }}>
+          {SUB_BESKRIVELSER[activeTab]}
+        </p>
 
         {activeTab === 'spillet' && (
           <>
@@ -1084,6 +1092,14 @@ export default function TeacherDashboard() {
               <TemaAktiveringPanel />
             </motion.div>
 
+            {/* ── SEKSJON 3: Innholdspakke ─────────────────────────────── */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-200 mb-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Innholdspakke</h3>
+              <p className="text-xs text-gray-500 mb-4 leading-snug">
+                Velg hvilken bok/fagpakke leksjonslista under gjelder for, og styr
+                hvilke leksjoner som er åpne for elevene.
+              </p>
+
             {/* Subject selector */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -1091,7 +1107,7 @@ export default function TeacherDashboard() {
               transition={{ delay: 0.1 }}
               className="mb-6"
             >
-              <label className="block text-xs font-medium text-teal-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
                 Velg fag / bok
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1161,6 +1177,7 @@ export default function TeacherDashboard() {
                 Ingen leksjoner registrert for dette faget enn&aring;.
               </div>
             )}
+            </section>
           </>
         )}
 
@@ -1198,7 +1215,9 @@ export default function TeacherDashboard() {
                 moduleVisibility={moduleVisibility}
                 questions={questions}
                 onOpenSporsmalWithModule={handleOpenSporsmalWithModule}
-                mineFagModuleKeys={activeModuleKeys}
+                mineFagSectionKeys={activeSectionKeys}
+                mineFagEtikett={mineFagEtikett}
+                onVisAlleFag={resetMySubjects}
                 onToggle={(route) => {
                   setModuleVisibility(prev => {
                     if (route === '__reset_all__') {
@@ -1215,184 +1234,74 @@ export default function TeacherDashboard() {
             )}
 
             {learningSubTab === 'presentasjoner' && (
-              <div className="space-y-6">
-                <p className="text-gray-500 text-sm">Presentasjoner som er klare til bruk i klassen. Åpnes i fullskjerm.</p>
+              (() => {
+                // Samme Mine fag-filter som minileksjonene, med samme tomtilstand.
+                const grupper = PRESENTASJON_GRUPPER
+                  .map(g => ({
+                    ...g,
+                    items: activeSectionKeys
+                      ? g.items.filter(p => activeSectionKeys.has(p.seksjon))
+                      : g.items,
+                  }))
+                  .filter(g => g.items.length > 0)
 
-                {/* Forretningsdrift */}
-                <div className="space-y-2">
-                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Forretningsdrift</h3>
-                  {([
-                    { title: 'Regler og lovverk for servicenæringen', desc: 'Arbeidsmiljøloven, Forbrukerkjøp, Markedsføringsloven', route: '/learning/presentations/regler-lovverk' },
-                    { title: 'Ansvarsfordeling, roller og organisasjonskart', desc: 'Hierarki, flat struktur, linje og stab', route: '/learning/presentations/organisasjon' },
-                    { title: 'Verdikjeden og bærekraftig utvikling', desc: 'Primær- og støtteaktiviteter, sirkulær økonomi', route: '/learning/presentations/verdikjeden' },
-                    { title: 'Prissetting', desc: 'Kostnad, marked og konkurransebasert, Yield management', route: '/learning/presentations/prissetting' },
-                    { title: 'Regnskap, budsjett og lønnsomhet', desc: 'DB, DG, likviditet, faste og variable kostnader', route: '/learning/presentations/regnskap' },
-                    { title: 'Risikovurdering og forebyggende tiltak', desc: 'ROS-analyse, forebyggende og organisatoriske tiltak', route: '/learning/presentations/risikovurdering' },
-                    { title: 'Beredskapsplaner', desc: 'Varsling, handling og ansvar i kriser', route: '/learning/presentations/beredskapsplaner' },
-                    { title: 'Helse, miljø og sikkerhet (HMS)', desc: 'Internkontroll, verneombud, trivsel', route: '/learning/presentations/hms' },
-                  ] as { title: string; desc: string; route: string }[]).map(p => (
-                    <a
-                      key={p.route}
-                      href={p.route}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
-                      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-                    >
-                      <span className="text-xl shrink-0 text-gray-400">🎬</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm">{p.title}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">{p.desc}</p>
-                      </div>
-                      <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
-                    </a>
-                  ))}
-                </div>
+                if (grupper.length === 0) {
+                  return (
+                    <div className="rounded-xl border border-dashed border-gray-300 p-5">
+                      <p className="text-sm text-gray-500">Ingen presentasjoner i {mineFagEtikett || 'valgt fag'}.</p>
+                      <button
+                        onClick={resetMySubjects}
+                        className="mt-3 text-xs font-medium text-teal-600 hover:text-teal-800"
+                      >
+                        Vis alle fag
+                      </button>
+                    </div>
+                  )
+                }
 
-                {/* Markedsføring og innovasjon */}
-                <div className="space-y-2">
-                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Markedsføring og innovasjon</h3>
-                  {([
-                    { title: 'Regelverk for markedsføring og salg', desc: 'Forbrukertilsynet, etisk reklame, skjult reklame', route: '/learning/presentations/regelverk-markedsforing' },
-                    { title: 'Forretningsidé', desc: 'Visjon, behovsanalyse, USP og innovasjon', route: '/learning/presentations/forretningsidee' },
-                    { title: 'Forbrukeratferd og målgrupper', desc: 'Kjøpsprosess, Maslow, STP-modellen', route: '/learning/presentations/forbrukeratferd' },
-                    { title: 'Konkurransemidler', desc: 'De 5 P-ene: Produkt, Pris, Plass, Påvirkning, Personale', route: '/learning/presentations/konkurransemidlene' },
-                    { title: 'Markedsplan', desc: 'Situasjonsanalyse, SWOT, SMART-mål', route: '/learning/presentations/markedsplan' },
-                    { title: 'Markedsføringskampanje', desc: 'AIDA-modellen, budskapsutforming', route: '/learning/presentations/kampanje' },
-                    { title: 'Salg', desc: 'Salgssamtalens faser: Kontakt, behov, løsning, avslutning', route: '/learning/presentations/salg' },
-                    { title: 'Teknologi og KI i salg', desc: 'Chatbots, CRM, personalisering og algoritmer', route: '/learning/presentations/teknologi-ki' },
-                    { title: 'Administrative funksjoner', desc: 'Ordre, lagerstyring og rutiner bak kulissene', route: '/learning/presentations/administrative-funksjoner' },
-                  ] as { title: string; desc: string; route: string }[]).map(p => (
-                    <a
-                      key={p.route}
-                      href={p.route}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
-                      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-                    >
-                      <span className="text-xl shrink-0 text-gray-400">🎬</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm">{p.title}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">{p.desc}</p>
+                return (
+                  <div className="space-y-6">
+                    <p className="text-gray-500 text-sm">Presentasjoner som er klare til bruk i klassen. Åpnes i fullskjerm.</p>
+                    {grupper.map(gruppe => (
+                      <div key={gruppe.tittel} className="space-y-2">
+                        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">{gruppe.tittel}</h3>
+                        {gruppe.items.map(p => (
+                          <a
+                            key={p.route}
+                            href={p.route}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
+                            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                          >
+                            <span className="text-xl shrink-0 text-gray-400">🎬</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm">{p.title}</p>
+                              <p className="text-gray-400 text-xs mt-0.5">{p.desc}</p>
+                            </div>
+                            <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
+                          </a>
+                        ))}
                       </div>
-                      <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
-                    </a>
-                  ))}
-                </div>
-
-                {/* Kultur og samhandling */}
-                <div className="space-y-2">
-                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Kultur og samhandling</h3>
-                  {([
-                    { title: 'Partene i arbeidslivet', desc: 'Trepartssamarbeidet, LO/NHO, tariffavtaler', route: '/learning/presentations/partene-arbeidslivet' },
-                    { title: 'Relasjonsbygging og nettverk', desc: 'Lojalitetstigen, interne relasjoner', route: '/learning/presentations/relasjonsbygging' },
-                    { title: 'Etikk og bærekraft', desc: 'Forretningsetikk, CSR, personlig ansvar', route: '/learning/presentations/etikk-baerekraft' },
-                    { title: 'Kommunikasjon og kundebehandling', desc: 'Kommunikasjonsprosessen, aktiv lytting, kroppsspråk', route: '/learning/presentations/kommunikasjon' },
-                    { title: 'Vertskapsrollen', desc: 'Fra kunde til gjest, "det lille ekstra"', route: '/learning/presentations/vertskapsrollen' },
-                    { title: 'Konflikt- og nødssituasjonshåndtering', desc: 'De-eskalering, førstehjelp, varsling', route: '/learning/presentations/konflikt-nod' },
-                    { title: 'Klagehåndtering og konfliktforebygging', desc: 'Service recovery, LEST-modellen', route: '/learning/presentations/klaghandtering' },
-                  ] as { title: string; desc: string; route: string }[]).map(p => (
-                    <a
-                      key={p.route}
-                      href={p.route}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
-                      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-                    >
-                      <span className="text-xl shrink-0 text-gray-400">🎬</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm">{p.title}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">{p.desc}</p>
-                      </div>
-                      <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
-                    </a>
-                  ))}
-                </div>
-
-                {/* Markedsføring og Ledelse (ML) */}
-                <div className="space-y-2">
-                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Markedsføring og Ledelse (ML)</h3>
-                  {([
-                    { title: 'ML1 – Markedsføring og markeder', desc: 'Verdiskaping, behov vs. ønsker, B2C, B2B og globale markeder', route: '/learning/presentations/ml1' },
-                    { title: 'ML2 – Strategi og merkevare', desc: 'Strategisk planlegging, Porters fem krefter, Brand Equity, IMC', route: '/learning/presentations/ml2' },
-                  ] as { title: string; desc: string; route: string }[]).map(p => (
-                    <a
-                      key={p.route}
-                      href={p.route}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
-                      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-                    >
-                      <span className="text-xl shrink-0 text-gray-400">🎬</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm">{p.title}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">{p.desc}</p>
-                      </div>
-                      <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
-                    </a>
-                  ))}
-                </div>
-
-                {/* Entreprenørskap og Bedriftsutvikling (ENT) */}
-                <div className="space-y-2">
-                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Entreprenørskap og Bedriftsutvikling (ENT)</h3>
-                  {([
-                    { title: 'ENT1 – Innovatøren og kreativitet', desc: 'Entreprenørskap, innovasjonstyper, SCAMPER og Design Thinking', route: '/learning/presentations/ent1' },
-                    { title: 'ENT2 – Strategi og skalering', desc: 'Ansoff-matrise, VRIO, Blue Ocean Strategy og forretningsmodellinnovasjon', route: '/learning/presentations/ent2' },
-                  ] as { title: string; desc: string; route: string }[]).map(p => (
-                    <a
-                      key={p.route}
-                      href={p.route}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
-                      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-                    >
-                      <span className="text-xl shrink-0 text-gray-400">🎬</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm">{p.title}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">{p.desc}</p>
-                      </div>
-                      <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
-                    </a>
-                  ))}
-                </div>
-              </div>
+                    ))}
+                  </div>
+                )
+              })()
             )}
           </>
         )}
 
         {activeTab === 'sporsmal' && (
           <div className="space-y-6">
-            {/* Classroom code */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-teal-50 border-2 border-teal-200 rounded-2xl p-5 flex items-center justify-between gap-4"
-            >
-              <div>
-                <p className="text-xs font-medium text-teal-600 uppercase tracking-wider mb-1">Klassekode</p>
-                <p className="text-4xl font-medium text-gray-900 tracking-[0.2em]">{classroomCode}</p>
-                <p className="text-gray-500 text-xs mt-1.5">Del denne koden med elevene dine — de skriver den inn på /student-questions</p>
-              </div>
-              <div className="flex flex-col gap-2 shrink-0">
-                <button
-                  onClick={handleCopyCode}
-                  className="px-4 py-2 rounded-xl bg-teal-100 text-teal-700 text-sm font-medium border border-teal-200 hover:bg-teal-200 transition-colors"
-                >
-                  {copied ? '✓ Kopiert!' : 'Kopier'}
-                </button>
-                <button
-                  onClick={refreshAnswers}
-                  className="px-4 py-2 rounded-xl bg-white text-gray-600 text-sm font-medium border border-gray-200 hover:bg-gray-50 transition-colors"
-                >
-                  Oppdater
-                </button>
-              </div>
-            </motion.div>
+            {/* Klassekoden står i klasselinja øverst — her trengs bare oppdatering */}
+            <div className="flex justify-end">
+              <button
+                onClick={refreshAnswers}
+                className="px-4 py-2 rounded-xl bg-white text-gray-600 text-sm font-medium border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                Oppdater svar
+              </button>
+            </div>
 
             {/* Vis klasseresultater button */}
             {questions.length > 0 && (
@@ -2495,14 +2404,18 @@ function MinileksjonsTab({
   onToggle,
   questions,
   onOpenSporsmalWithModule,
-  mineFagModuleKeys,
+  mineFagSectionKeys,
+  mineFagEtikett,
+  onVisAlleFag,
 }: {
   classroomCode: string
   moduleVisibility: Record<string, boolean>
   onToggle: (route: string) => void
   questions: TeacherQuestion[]
   onOpenSporsmalWithModule: (moduleRoute: string, fag: string) => void
-  mineFagModuleKeys: Set<string> | null
+  mineFagSectionKeys: Set<string> | null
+  mineFagEtikett: string
+  onVisAlleFag: () => void
 }) {
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null)
   const selectedMod = selectedRoute ? ALL_MODULES.find(m => m.route === selectedRoute) ?? null : null
@@ -2511,26 +2424,40 @@ function MinileksjonsTab({
   const hiddenCount = ALL_MODULES.filter(m => moduleVisibility[m.route] === false).length
 
   // Filter sections by Mine fag if active
-  const visibleSections = mineFagModuleKeys
-    ? MODULE_SECTIONS.filter(s => mineFagModuleKeys.has(`${s.subject}-${s.level}`))
+  const visibleSections = mineFagSectionKeys
+    ? MODULE_SECTIONS.filter(s => mineFagSectionKeys.has(`${s.level}|${s.subject}|${s.ssrSubject ?? ''}`))
     : MODULE_SECTIONS
 
   // Count modules actually shown after Mine fag filter
   const displayedModules = ALL_MODULES.filter(m =>
-    visibleSections.some(s => s.subject === m.subject && s.level === m.level)
+    visibleSections.some(s => s.subject === m.subject && s.level === m.level && (s.ssrSubject ?? '') === (m.ssrSubject ?? ''))
   )
   const displayedVisibleCount = displayedModules.filter(m => isVisible(m.route)).length
+  const ingenTreff = displayedModules.length === 0
+  const tomMelding = `Ingen minileksjoner i ${mineFagEtikett || 'valgt fag'}.`
 
   return (
     <div className="flex gap-0 -mx-4 overflow-hidden">
       {/* ── Left: module list ─────────────────────────────────────────────── */}
       <div className="shrink-0 w-[260px] px-4 overflow-y-auto max-h-[calc(100vh-200px)]">
 
+        {ingenTreff ? (
+          <div className="rounded-xl border border-dashed border-gray-300 p-4">
+            <p className="text-sm text-gray-500 leading-snug">{tomMelding}</p>
+            <button
+              onClick={onVisAlleFag}
+              className="mt-3 text-xs font-medium text-teal-600 hover:text-teal-800"
+            >
+              Vis alle fag
+            </button>
+          </div>
+        ) : (
+        <>
         {/* Summary bar */}
         <div className="bg-gray-50 rounded-xl p-2 border border-gray-200 flex items-center justify-between gap-2 mb-3">
           <div className="text-xs text-gray-500 truncate">
             <span className="font-medium text-teal-600">{displayedVisibleCount}</span>
-            <span className="text-gray-400">/{ALL_MODULES.length}</span>
+            <span className="text-gray-400">/{displayedModules.length}</span>
             <span className="ml-1">synlige</span>
           </div>
           {hiddenCount > 0 && (
@@ -2545,7 +2472,8 @@ function MinileksjonsTab({
 
         {/* Section list */}
         {visibleSections.map(section => {
-          const mods = ALL_MODULES.filter(m => m.level === section.level && m.subject === section.subject)
+          const mods = ALL_MODULES.filter(m =>
+            m.level === section.level && m.subject === section.subject && (m.ssrSubject ?? '') === (section.ssrSubject ?? ''))
           if (mods.length === 0) return null
           return (
             <div key={section.title} className="mb-3">
@@ -2598,11 +2526,17 @@ function MinileksjonsTab({
             </div>
           )
         })}
+        </>
+        )}
       </div>
 
       {/* ── Right: content summary ────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 pl-4 border-l border-gray-200 overflow-y-auto max-h-[calc(100vh-200px)] pr-2">
-        {selectedMod ? (
+        {ingenTreff ? (
+          <div className="flex items-center justify-center h-full min-h-[200px]">
+            <p className="text-gray-500 text-sm">{tomMelding}</p>
+          </div>
+        ) : selectedMod ? (
           <ModuleSummaryPanel
             mod={selectedMod}
             classCode={classroomCode}
