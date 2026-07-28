@@ -118,7 +118,7 @@ export default function LeaderboardTab() {
     const sorted = [...participants].sort((a, b) => b.averageScore - a.averageScore || a.completedAt - b.completedAt)
     const ownEntries = sorted.filter(p => ownCodes.has(p.classroomCode))
     return (
-      <div style={{ maxWidth: 760 }}>
+      <div style={{ maxWidth: 1000 }}>
         <button
           onClick={() => setSelectedId(null)}
           style={{ background: 'none', border: 'none', color: '#0d9488', cursor: 'pointer', fontSize: 13, padding: 0, marginBottom: 12, fontFamily: 'inherit' }}
@@ -188,7 +188,7 @@ export default function LeaderboardTab() {
 
   // ── List view ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div style={{ maxWidth: 1000 }}>
       <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>📊 Nasjonalt leaderboard</h2>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
         Klasse-aggregerte quiz-resultater på tvers av skoler. Kun snitt og antall elever lagres — ingen elevnavn.

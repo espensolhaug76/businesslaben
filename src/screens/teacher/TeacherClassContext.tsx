@@ -31,6 +31,15 @@ export function generateClassroomCode(): string {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
+/**
+ * Leser lærerens klasser. Oppretter ALDRI en klasse på egen hånd — en fersk
+ * lærer skal møte velkomst-tomtilstanden og opprette sin første klasse selv.
+ * (Tidligere genererte denne en «Klasse 1» med tilfeldig kode ved mount.)
+ *
+ * Eneste unntak er migrering: har læreren den gamle enkeltnøkkelen
+ * `teacher-classroom-code` uten klasseliste, er det en reell klasse som skal
+ * bevares.
+ */
 export function loadClasses(): TeacherClass[] {
   try {
     const saved = JSON.parse(localStorage.getItem('teacher-classes') ?? 'null')
@@ -39,11 +48,9 @@ export function loadClasses(): TeacherClass[] {
       return saved.map((c: TeacherClass) => ({ ...c, subject: normalizeSubjectId(c.subject) }))
     }
   } catch { /* */ }
-  // Migrate legacy single code
   const legacy = localStorage.getItem('teacher-classroom-code')
-  const code = legacy ?? generateClassroomCode()
-  if (!legacy) localStorage.setItem('teacher-classroom-code', code)
-  const classes: TeacherClass[] = [{ code, name: 'Klasse 1', subject: '' }]
+  if (!legacy) return []
+  const classes: TeacherClass[] = [{ code: legacy, name: 'Klasse 1', subject: '' }]
   localStorage.setItem('teacher-classes', JSON.stringify(classes))
   return classes
 }
@@ -69,8 +76,8 @@ interface TeacherClassCtx {
   mySubjects: string[]
   toggleMySubject: (id: string) => void
   resetMySubjects: () => void
-  /** Sann når læreren ikke hadde noen klasser ved innlasting (velkomst-state). */
-  ingenKlasserVedStart: boolean
+  /** Sann når læreren ikke har noen klasser ennå (velkomst-tomtilstand). */
+  ingenKlasser: boolean
   /** Sann når klassen har en aktiv live økt (RTDB `sessions/{kode}/active`). */
   liveActive: boolean
 }
@@ -78,15 +85,6 @@ interface TeacherClassCtx {
 const Ctx = createContext<TeacherClassCtx | null>(null)
 
 export function TeacherClassProvider({ children }: { children: ReactNode }) {
-  // Må leses FØR loadClasses(), som oppretter en «Klasse 1» hvis lista er tom.
-  const [ingenKlasserVedStart] = useState<boolean>(() => {
-    try {
-      const raw = localStorage.getItem('teacher-classes')
-      if (!raw) return true
-      const arr = JSON.parse(raw)
-      return !Array.isArray(arr) || arr.length === 0
-    } catch { return true }
-  })
   const [classes, setClasses] = useState<TeacherClass[]>(() => loadClasses())
   const [activeCode, setActiveCodeState] = useState<string>(() => {
     const saved = localStorage.getItem('teacher-classroom-code') ?? ''
@@ -94,6 +92,7 @@ export function TeacherClassProvider({ children }: { children: ReactNode }) {
     if (saved && list.some(c => c.code === saved)) return saved
     const first = list[0]?.code ?? ''
     if (first) localStorage.setItem('teacher-classroom-code', first)
+    else localStorage.removeItem('teacher-classroom-code')
     return first
   })
   const [klasseNivaa, setKlasseNivaaState] = useState<TemaNivaa>('vg1')
@@ -159,10 +158,10 @@ export function TeacherClassProvider({ children }: { children: ReactNode }) {
   const value = useMemo<TeacherClassCtx>(() => ({
     classes, replaceClasses, activeCode, activeClass, setActiveCode,
     klasseNivaa, setKlasseNivaa, mySubjects, toggleMySubject, resetMySubjects,
-    ingenKlasserVedStart, liveActive,
+    ingenKlasser: classes.length === 0, liveActive,
   }), [classes, replaceClasses, activeCode, activeClass, setActiveCode,
        klasseNivaa, setKlasseNivaa, mySubjects, toggleMySubject, resetMySubjects,
-       ingenKlasserVedStart, liveActive])
+       liveActive])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

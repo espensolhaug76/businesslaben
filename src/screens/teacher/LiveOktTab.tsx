@@ -172,7 +172,7 @@ export default function LiveOktTab() {
   // ── Before session ──────────────────────────────────────────────────────────
   if (!session?.active) {
     return (
-      <div style={{ maxWidth: 720 }}>
+      <div style={{ maxWidth: 1000 }}>
         {!classroomCode && (
           <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', fontSize: 13, marginBottom: 16 }}>
             Ingen klassekode funnet. Opprett en klasse i Klasser-fanen.
@@ -316,7 +316,7 @@ export default function LiveOktTab() {
   const activeRoute = activePresentation?.route ?? `/learning/presentations/${session.presentationId}`
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 1000 }}>
 
       {/* Mode indicator */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: `${modeInfo.color}14`, border: `1px solid ${modeInfo.color}40` }}>

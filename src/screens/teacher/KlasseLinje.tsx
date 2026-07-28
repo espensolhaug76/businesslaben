@@ -39,7 +39,7 @@ const feltInput: React.CSSProperties = {
   cursor: 'pointer', outline: 'none', maxWidth: 220,
 }
 
-export default function KlasseLinje() {
+export default function KlasseLinje({ onOpprettKlasse }: { onOpprettKlasse: () => void }) {
   const {
     classes, activeCode, setActiveCode,
     klasseNivaa, setKlasseNivaa,
@@ -68,6 +68,8 @@ export default function KlasseLinje() {
     })
   }
 
+  const harKlasse = classes.length > 0
+
   const valgteFag = MINE_FAG_OPTIONS.filter(o => mySubjects.includes(o.id))
   const fagTekst = valgteFag.length > 0 ? valgteFag.map(o => o.short).join(', ') : 'Alle fag'
 
@@ -80,7 +82,7 @@ export default function KlasseLinje() {
       }}
     >
       <Felt etikett="Klasse">
-        {classes.length > 0 ? (
+        {harKlasse ? (
           <select
             value={activeCode}
             onChange={e => setActiveCode(e.target.value)}
@@ -92,12 +94,24 @@ export default function KlasseLinje() {
             ))}
           </select>
         ) : (
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Ingen klasser</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Ingen klasse valgt</span>
+            <button
+              onClick={onOpprettKlasse}
+              style={{
+                background: '#0d9488', color: '#fff', border: 'none', borderRadius: 8,
+                padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              Opprett klasse
+            </button>
+          </div>
         )}
       </Felt>
 
-      <Skille />
+      {harKlasse && <Skille />}
 
+      {harKlasse && (
       <Felt etikett="Kode">
         <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-primary)' }}>
           {activeCode || '—'}
@@ -123,9 +137,11 @@ export default function KlasseLinje() {
           </button>
         )}
       </Felt>
+      )}
 
-      <Skille />
+      {harKlasse && <Skille />}
 
+      {harKlasse && (
       <Felt etikett="Nivå i spillet" hjelp={NIVAA_HJELP}>
         <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }} title={NIVAA_HJELP}>
           {(['vg1', 'vg2'] as TemaNivaa[]).map(n => (
@@ -146,6 +162,7 @@ export default function KlasseLinje() {
         </div>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{NIVAA_HJELP}</span>
       </Felt>
+      )}
 
       {/* «Mine fag» styrer kun lærerens egen visning — skilt fra klassefeltene. */}
       <div style={{ marginLeft: 'auto' }} />

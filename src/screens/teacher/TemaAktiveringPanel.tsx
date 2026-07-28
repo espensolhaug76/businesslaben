@@ -134,55 +134,60 @@ export default function TemaAktiveringPanel() {
           ))}
         </div>
 
-        {/* ESPEN SPØR — lærerstyrt kunnskapsquiz. Av som standard; læreren skrur
-            den på og velger hvilke fag det spørres fra (kun aktive fag). */}
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="font-medium text-gray-900 text-sm">Espen spør</div>
-              <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">
-                Mentor-Espen stiller korte fagspørsmål i spillet. Av som standard —
-                skru på og velg fag.
-              </div>
-            </div>
-            <div className="flex items-center gap-2.5 flex-shrink-0">
-              <span className={`text-xs font-semibold w-6 text-right ${espen.aktiv ? 'text-teal-600' : 'text-gray-400'}`}>
-                {espen.aktiv ? 'På' : 'Av'}
-              </span>
-              <button
-                onClick={() => skrivEspenAktiv(!espen.aktiv)}
-                role="switch"
-                aria-checked={espen.aktiv}
-                aria-label={`Espen spør — ${espen.aktiv ? 'på' : 'av'}`}
-                className={`relative w-11 h-6 rounded-full transition-colors ${espen.aktiv ? 'bg-teal-500' : 'bg-gray-300'}`}
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${espen.aktiv ? 'translate-x-5' : ''}`} />
-              </button>
+      </section>
+
+
+      {/* «Espen spør» er ikke et fag — egen rad med skillelinje over, slik at
+          den ikke leses som en fjerde fag-bryter (spor D, jobb 5). */}
+      <section
+        className="bg-white rounded-2xl px-5 py-4 border border-gray-200"
+        style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderTop: '3px solid #e5e7eb' }}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="font-medium text-gray-900 text-sm">Espen spør</div>
+            <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+              Mentor-Espen stiller korte fagspørsmål i spillet. Av som standard —
+              skru på og velg fag.
             </div>
           </div>
-          {espen.aktiv && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {FAG_KODER.map(f => {
-                const globaltAv = !fag[f]
-                const valgt = espen.fag[f] && !globaltAv
-                return (
-                  <button
-                    key={f}
-                    disabled={globaltAv}
-                    onClick={() => skrivEspenFag(f, !espen.fag[f])}
-                    title={globaltAv ? `Faget «${FAG_META[f].navn}» er slått av` : FAG_META[f].navn}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors ${
-                      globaltAv ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
-                        : valgt ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    {valgt ? '✓ ' : ''}{FAG_META[f].kort}{globaltAv ? ' (av)' : ''}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            <span className={`text-xs font-semibold w-6 text-right ${espen.aktiv ? 'text-teal-600' : 'text-gray-400'}`}>
+              {espen.aktiv ? 'På' : 'Av'}
+            </span>
+            <button
+              onClick={() => skrivEspenAktiv(!espen.aktiv)}
+              role="switch"
+              aria-checked={espen.aktiv}
+              aria-label={`Espen spør — ${espen.aktiv ? 'på' : 'av'}`}
+              className={`relative w-11 h-6 rounded-full transition-colors ${espen.aktiv ? 'bg-teal-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${espen.aktiv ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
         </div>
+        {espen.aktiv && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {FAG_KODER.map(f => {
+              const globaltAv = !fag[f]
+              const valgt = espen.fag[f] && !globaltAv
+              return (
+                <button
+                  key={f}
+                  disabled={globaltAv}
+                  onClick={() => skrivEspenFag(f, !espen.fag[f])}
+                  title={globaltAv ? `Faget «${FAG_META[f].navn}» er slått av` : FAG_META[f].navn}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors ${
+                    globaltAv ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                      : valgt ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {valgt ? '✓ ' : ''}{FAG_META[f].kort}{globaltAv ? ' (av)' : ''}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       {/* ── SEKSJON 2: Temaer ───────────────────────────────────────────── */}
