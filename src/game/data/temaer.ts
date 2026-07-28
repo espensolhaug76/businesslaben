@@ -31,6 +31,10 @@ export interface TemaDef {
 export interface TemaAktivering {
   aktiv: boolean
   nivaa: TemaNivaa
+  /** Når true følger temaet «Elevenes nivå» fra klasselinja i stedet for et
+   *  fast nivå. `nivaa` holdes uansett synkronisert med det gjeldende nivået,
+   *  slik at spillklienten kan lese `nivaa` uendret. */
+  folgerKlassen?: boolean
 }
 
 // ── Registeret ────────────────────────────────────────────────────────────────
