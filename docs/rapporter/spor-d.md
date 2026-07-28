@@ -284,13 +284,13 @@ Spillstyring / Konkurranser / Læringsinnhold / Live økt ved 1280px.
    presentasjonslistene er statiske importer, så jeg fant ingen lastevei som kan
    feile. Jeg valgte å ikke legge inn en feiltilstand som aldri kan trigges. Sier
    du fra, legger jeg den inn (f.eks. hvis lista skal hentes fra Firebase senere).
-2. **Fag-filter på Presentasjoner.** Oppdraget sier «samme håndtering for
-   Presentasjoner-visningen», men fanen hadde ikke noe fag-filter i det hele
-   tatt — uten filter kunne tomtilstanden aldri oppstå. Jeg la derfor «Mine
-   fag»-filteret på presentasjonene også. Konsekvens: en lærer som bare har valgt
-   VG2-fagene (ØK/KOM/HMS) ser ingen presentasjoner, fordi det ikke finnes
-   presentasjonsgrupper for dem — men får «Vis alle fag» som utvei. Si fra hvis
-   presentasjonene heller skal vise alt uansett.
+2. ~~**Fag-filter på Presentasjoner.**~~ **RETTET — konklusjonen var feil.**
+   Jeg skrev at «det ikke finnes presentasjonsgrupper for ØK/KOM/HMS VG2».
+   Det stemmer ikke: de finnes, 26 stykker, i `src/lib/presentationRegistry.ts`.
+   Den faktiske årsaken var at Presentasjoner-visningen ikke leste registeret i
+   det hele tatt, men en hardkodet inline-liste i `TeacherDashboard.tsx` med bare
+   VG1-fagene. Jeg tok den lista for å være hele katalogen, sjekket ikke mot
+   registeret, og gjettet feil årsak. Rettet i jobb 1 under.
 3. **Hvor «Espen spør» hører hjemme.** Steg 5 nevner tre seksjoner og sier ikke
    hvor Espen spør skal stå. Jeg lot den bli i «Fag elevene ser», siden den
    styres per fag. Den kan flyttes til en egen seksjon hvis du vil.
@@ -310,3 +310,105 @@ Spillstyring / Konkurranser / Læringsinnhold / Live økt ved 1280px.
    Nasjonalt leaderboard (760px) har egne `maxWidth` i sine komponenter. Oppdraget
    nevnte bare Konkurranser og Spillstyring, så jeg lot dem stå — de ser nå litt
    smalere ut enn resten. Si fra hvis de også skal fylle 1000px.
+
+---
+
+## Runde 2 — én kilde for presentasjoner, nivåfilter, ryddet klasselinje
+
+### Jobb 1 — Læringsinnhold → Presentasjoner leser nå registeret
+
+Fanen leser `ALL_PRESENTATIONS` og `PRESENTATION_SECTIONS` fra
+`src/lib/presentationRegistry.ts` — samme kilde som `LiveOktTab`. Den hardkodede
+inline-lista i `TeacherDashboard.tsx` (som runde 1 flyttet inn i
+`PRESENTASJON_GRUPPER`) er slettet. Ny komponent `PresentasjonerVisning` gjør
+grupperingen etter `PRESENTATION_SECTIONS`' egen rekkefølge og titler, og
+«Mine fag» filtrerer via `subjectToSectionKey()` — samme mekanisme som
+minileksjonene, ingen egen mapping.
+
+**Antall presentasjoner per seksjon etter kildebyttet** (lest ut av UI-et, ikke
+av kildekoden — tallene under er det fanen faktisk viser):
+
+| Seksjon | Antall |
+| --- | --- |
+| Forretningsdrift — VG1 | 8 |
+| Markedsføring og innovasjon — VG1 | 11 |
+| Kultur og samhandling — VG1 | 6 |
+| Økonomi og administrasjon — VG2 | 10 |
+| Kommunikasjon og markedsføring — VG2 | 10 |
+| Helse, miljø og sikkerhet — VG2 | 6 |
+| Markedsføring og ledelse 1 — VG2 | 16 |
+| Entreprenørskap 1 — VG2 | 11 |
+| Markedsføring og ledelse 2 — VG3 | 18 |
+| Entreprenørskap 2 — VG3 | 12 |
+| **Totalt** | **108** |
+
+Registeret inneholder 108 oppføringer, ikke 109. Alle ti seksjoner vises nå;
+før viste fanen 25 presentasjoner fordelt på fem VG1-grupper.
+
+Telleren over lista viser filtrert/totalt av registeret: `108/108` uten filter,
+`25/108` på VG1, `53/108` på VG2, `30/108` på VG3 (25 + 53 + 30 = 108).
+
+To små konsekvenser av kildebyttet:
+- Registeret har ikke noe `desc`-felt, så undertekstene på presentasjonskortene
+  («Arbeidsmiljøloven, Forbrukerkjøp, …») er borte. De fantes bare i den
+  hardkodede lista og for VG1-fagene. Skal de tilbake, hører de hjemme i
+  registeret slik at Live økt får dem også.
+- Enkelte titler skiller seg fra de gamle håndskrevne (f.eks. «Roller og
+  organisasjon» mot «Ansvarsfordeling, roller og organisasjonskart»). Nå er de
+  identiske med det Live økt viser.
+
+Observert i registerdataene, ikke rørt: Entreprenørskap 1 — VG2 har to
+oppføringer med samme tittel «Innovatøren og entreprenøren» (ulike ruter).
+Registeret er autogenerert, så dette bør fikses i generatoren.
+
+### Jobb 2 — død kode slettet
+
+`grep -rn "presentationsData" src` ga null treff. `src/lib/presentationsData.ts`
+er **slettet**.
+
+### Jobb 3 — nivåfilter i Læringsinnhold
+
+Alle · VG1 · VG2 · VG3 ved siden av Minileksjoner/Presentasjoner-bryteren,
+standard «Alle». Filtrerer på `level` i både `MODULE_SECTIONS` og
+`PRESENTATION_SECTIONS`. Vises kun når «Mine fag» står på «Alle fag»; er et fag
+valgt, skjules det og behandles som «Alle» (verifisert: med `SSR-FD` valgt er
+nivåbryteren borte fra DOM-en). Rent visningsfilter — ingen skriving til
+Firebase, ingen berøring av «Nivå i spillet».
+
+Tom-tilstanden sier nå hvilket filter som tømte lista: «Ingen presentasjoner i
+\<fagkode\>.» med «Vis alle fag», eller «Ingen presentasjoner på VG3.» med
+«Vis alle nivåer».
+
+Merk: minileksjontelleren («55/55 synlige») betyr fortsatt *synlig for elevene*
+av *det filtrerte utvalget* — minileksjoner har en skjul-bryter, det har ikke
+presentasjoner. De to tellerne har derfor bevisst ulik betydning.
+
+### Jobb 4 — klasselinja
+
+- «Elevenes nivå» → **«Nivå i spillet»**, med hjelpeteksten «VG2 gir elevene
+  ekstra oppgaver i spillet.» både synlig ved siden av bryteren og som tooltip.
+- Klasse, Kode og Nivå i spillet står samlet til venstre med tynne skillelinjer
+  mellom seg. «Mine fag (bare mitt utvalg)» er skjøvet helt til høyre uten
+  skillelinje, siden den ikke beskriver klassen men bare lærerens egen visning.
+
+**Lagringstest (klasse ZJ58D8), resultat:**
+
+| Steg | Nivå |
+| --- | --- |
+| Utgangspunkt | VG1 |
+| Etter klikk på VG2 | VG2 |
+| Frisk nettleserøkt (kun lest fra Firebase) | **VG2** |
+| Etter tilbakestilling til VG1, frisk økt | **VG1** |
+
+Verdien lagres altså korrekt i `klasser/ZJ58D8/klasseNivaa` og overlever full
+sidelasting i begge retninger. Ingen fiks var nødvendig.
+
+### Verifisering runde 2
+
+- `tsc -b` grønn før commit.
+- Skjermbilder: `pres-alle.png`, `pres-vg1.png`, `pres-vg2.png` (Alle fag +
+  nivåfilter Alle/VG1/VG2) og `klasselinje.png`, i
+  `docs/rapporter/bilder/spor-d/`.
+- Testet kun mot klasse **ZJ58D8**.
+- Auth-vakta ble igjen midlertidig omgått for skjermbildeøkta og gjenopprettet
+  etterpå — ikke i noen commit.

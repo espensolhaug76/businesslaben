@@ -11,10 +11,13 @@ import type { TemaNivaa } from '../../game/data/temaer'
  * «Mine fag»-chip i tittelraden.
  */
 
-function Felt({ etikett, children }: { etikett: string; children: ReactNode }) {
+function Felt({ etikett, hjelp, children }: { etikett: string; hjelp?: string; children: ReactNode }) {
   return (
     <div style={{ padding: '2px 16px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+      <span
+        title={hjelp}
+        style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}
+      >
         {etikett}
       </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 26 }}>
@@ -27,6 +30,8 @@ function Felt({ etikett, children }: { etikett: string; children: ReactNode }) {
 function Skille() {
   return <div aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flexShrink: 0 }} />
 }
+
+const NIVAA_HJELP = 'VG2 gir elevene ekstra oppgaver i spillet.'
 
 const feltInput: React.CSSProperties = {
   border: '1px solid var(--border)', borderRadius: 8, background: 'var(--card-bg)',
@@ -121,8 +126,8 @@ export default function KlasseLinje() {
 
       <Skille />
 
-      <Felt etikett="Elevenes nivå">
-        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+      <Felt etikett="Nivå i spillet" hjelp={NIVAA_HJELP}>
+        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }} title={NIVAA_HJELP}>
           {(['vg1', 'vg2'] as TemaNivaa[]).map(n => (
             <button
               key={n}
@@ -139,9 +144,11 @@ export default function KlasseLinje() {
             </button>
           ))}
         </div>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{NIVAA_HJELP}</span>
       </Felt>
 
-      <Skille />
+      {/* «Mine fag» styrer kun lærerens egen visning — skilt fra klassefeltene. */}
+      <div style={{ marginLeft: 'auto' }} />
 
       <Felt etikett="Mine fag (bare mitt utvalg)">
         <div ref={fagRef} style={{ position: 'relative' }}>

@@ -18,6 +18,7 @@ import LeaderboardTab from './teacher/LeaderboardTab'
 import TemaAktiveringPanel from './teacher/TemaAktiveringPanel'
 import KonkurranserTab from './teacher/KonkurranserTab'
 import { MINE_FAG_OPTIONS, subjectToSectionKey } from '../lib/teacherSubjects'
+import { ALL_PRESENTATIONS, PRESENTATION_SECTIONS } from '../lib/presentationRegistry'
 import {
   TeacherClassProvider, useTeacherClass, generateClassroomCode,
   type TeacherClass,
@@ -46,67 +47,6 @@ const subjects = [
   { id: 'ent1', name: 'Entrepren\u00F8rskap og bedriftsutvikling 1', short: 'ENT1' },
 ] as const
 
-
-// Presentasjonskatalogen i Læringsinnhold-fanen. `seksjon` er samme nøkkelformat
-// som MODULE_SECTIONS/subjectToSectionKey (`${level}|${subject}|${ssrSubject}`),
-// slik at Mine fag-filteret virker likt for minileksjoner og presentasjoner.
-interface PresentasjonLenke { title: string; desc: string; route: string; seksjon: string }
-
-const PRESENTASJON_GRUPPER: { tittel: string; items: PresentasjonLenke[] }[] = [
-  {
-    tittel: 'Forretningsdrift',
-    items: ([
-      { title: 'Regler og lovverk for servicenæringen', desc: 'Arbeidsmiljøloven, Forbrukerkjøp, Markedsføringsloven', route: '/learning/presentations/regler-lovverk' },
-      { title: 'Ansvarsfordeling, roller og organisasjonskart', desc: 'Hierarki, flat struktur, linje og stab', route: '/learning/presentations/organisasjon' },
-      { title: 'Verdikjeden og bærekraftig utvikling', desc: 'Primær- og støtteaktiviteter, sirkulær økonomi', route: '/learning/presentations/verdikjeden' },
-      { title: 'Prissetting', desc: 'Kostnad, marked og konkurransebasert, Yield management', route: '/learning/presentations/prissetting' },
-      { title: 'Regnskap, budsjett og lønnsomhet', desc: 'DB, DG, likviditet, faste og variable kostnader', route: '/learning/presentations/regnskap' },
-      { title: 'Risikovurdering og forebyggende tiltak', desc: 'ROS-analyse, forebyggende og organisatoriske tiltak', route: '/learning/presentations/risikovurdering' },
-      { title: 'Beredskapsplaner', desc: 'Varsling, handling og ansvar i kriser', route: '/learning/presentations/beredskapsplaner' },
-      { title: 'Helse, miljø og sikkerhet (HMS)', desc: 'Internkontroll, verneombud, trivsel', route: '/learning/presentations/hms' },
-    ]).map(p => ({ ...p, seksjon: 'vg1|ssr|forretningsdrift' })),
-  },
-  {
-    tittel: 'Markedsføring og innovasjon',
-    items: ([
-      { title: 'Regelverk for markedsføring og salg', desc: 'Forbrukertilsynet, etisk reklame, skjult reklame', route: '/learning/presentations/regelverk-markedsforing' },
-      { title: 'Forretningsidé', desc: 'Visjon, behovsanalyse, USP og innovasjon', route: '/learning/presentations/forretningsidee' },
-      { title: 'Forbrukeratferd og målgrupper', desc: 'Kjøpsprosess, Maslow, STP-modellen', route: '/learning/presentations/forbrukeratferd' },
-      { title: 'Konkurransemidler', desc: 'De 5 P-ene: Produkt, Pris, Plass, Påvirkning, Personale', route: '/learning/presentations/konkurransemidlene' },
-      { title: 'Markedsplan', desc: 'Situasjonsanalyse, SWOT, SMART-mål', route: '/learning/presentations/markedsplan' },
-      { title: 'Markedsføringskampanje', desc: 'AIDA-modellen, budskapsutforming', route: '/learning/presentations/kampanje' },
-      { title: 'Salg', desc: 'Salgssamtalens faser: Kontakt, behov, løsning, avslutning', route: '/learning/presentations/salg' },
-      { title: 'Teknologi og KI i salg', desc: 'Chatbots, CRM, personalisering og algoritmer', route: '/learning/presentations/teknologi-ki' },
-      { title: 'Administrative funksjoner', desc: 'Ordre, lagerstyring og rutiner bak kulissene', route: '/learning/presentations/administrative-funksjoner' },
-    ]).map(p => ({ ...p, seksjon: 'vg1|ssr|mfi' })),
-  },
-  {
-    tittel: 'Kultur og samhandling',
-    items: ([
-      { title: 'Partene i arbeidslivet', desc: 'Trepartssamarbeidet, LO/NHO, tariffavtaler', route: '/learning/presentations/partene-arbeidslivet' },
-      { title: 'Relasjonsbygging og nettverk', desc: 'Lojalitetstigen, interne relasjoner', route: '/learning/presentations/relasjonsbygging' },
-      { title: 'Etikk og bærekraft', desc: 'Forretningsetikk, CSR, personlig ansvar', route: '/learning/presentations/etikk-baerekraft' },
-      { title: 'Kommunikasjon og kundebehandling', desc: 'Kommunikasjonsprosessen, aktiv lytting, kroppsspråk', route: '/learning/presentations/kommunikasjon' },
-      { title: 'Vertskapsrollen', desc: 'Fra kunde til gjest, "det lille ekstra"', route: '/learning/presentations/vertskapsrollen' },
-      { title: 'Konflikt- og nødssituasjonshåndtering', desc: 'De-eskalering, førstehjelp, varsling', route: '/learning/presentations/konflikt-nod' },
-      { title: 'Klagehåndtering og konfliktforebygging', desc: 'Service recovery, LEST-modellen', route: '/learning/presentations/klaghandtering' },
-    ]).map(p => ({ ...p, seksjon: 'vg1|ssr|kultur' })),
-  },
-  {
-    tittel: 'Markedsføring og Ledelse (ML)',
-    items: [
-      { title: 'ML1 – Markedsføring og markeder', desc: 'Verdiskaping, behov vs. ønsker, B2C, B2B og globale markeder', route: '/learning/presentations/ml1', seksjon: 'vg2|ml|' },
-      { title: 'ML2 – Strategi og merkevare', desc: 'Strategisk planlegging, Porters fem krefter, Brand Equity, IMC', route: '/learning/presentations/ml2', seksjon: 'vg3|ml|' },
-    ],
-  },
-  {
-    tittel: 'Entreprenørskap og Bedriftsutvikling (ENT)',
-    items: [
-      { title: 'ENT1 – Innovatøren og kreativitet', desc: 'Entreprenørskap, innovasjonstyper, SCAMPER og Design Thinking', route: '/learning/presentations/ent1', seksjon: 'vg2|ent|' },
-      { title: 'ENT2 – Strategi og skalering', desc: 'Ansoff-matrise, VRIO, Blue Ocean Strategy og forretningsmodellinnovasjon', route: '/learning/presentations/ent2', seksjon: 'vg3|ent|' },
-    ],
-  },
-]
 
 const OPTION_COLORS = ['bg-red-500', 'bg-blue-500', 'bg-amber-500', 'bg-purple-500']
 // const OPTION_COLORS_DIM = ['bg-red-500/20', 'bg-blue-500/20', 'bg-amber-500/20', 'bg-purple-500/20']
@@ -717,6 +657,21 @@ function omradeForSub(sub: SubTabId): HovedOmrade {
   return OMRADER.find(o => o.subs.includes(sub)) ?? OMRADER[0]
 }
 
+/**
+ * Nivåfilter i Læringsinnhold — REN VISNINGSFILTER for læreren. Rører verken
+ * klassens nivå eller noe som skrives til Firebase. Vises kun når «Mine fag»
+ * står på «Alle fag»; er et konkret fag valgt, ligger nivået allerede i
+ * fagkoden og to filtre ville motsagt hverandre.
+ */
+type NivaaFilter = 'alle' | 'vg1' | 'vg2' | 'vg3'
+
+const NIVAA_FILTRE: { id: NivaaFilter; label: string }[] = [
+  { id: 'alle', label: 'Alle' },
+  { id: 'vg1', label: 'VG1' },
+  { id: 'vg2', label: 'VG2' },
+  { id: 'vg3', label: 'VG3' },
+]
+
 // ── Teacher Dashboard ─────────────────────────────────────────────────────────
 
 export default function TeacherDashboard() {
@@ -759,6 +714,7 @@ function TeacherDashboardInner() {
   // Welcome empty-state: vis hvis ingen klasser var opprettet ved innlasting
   const noClassesExist = ingenKlasserVedStart
   const [learningSubTab, setLearningSubTab] = useState<'minileksjoner' | 'presentasjoner'>('minileksjoner')
+  const [nivaaFilter, setNivaaFilter] = useState<NivaaFilter>('alle')
   const [showAddQuestion, setShowAddQuestion] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState<string>('mfl1')
   const store = useGameStore()
@@ -812,6 +768,21 @@ function TeacherDashboardInner() {
     : null // null means show all
 
   const mineFagEtikett = selectedFagOptions.map(o => o.short).join(', ')
+
+  // Nivåfilteret gjelder kun når «Mine fag» står på «Alle fag».
+  const nivaaFilterAktivt = mySubjects.length === 0
+  const aktivtNivaa: NivaaFilter = nivaaFilterAktivt ? nivaaFilter : 'alle'
+
+  /** Tom-tilstand for Læringsinnhold: forklarer HVILKET filter som tømte lista. */
+  function tomTilstand(hva: 'minileksjoner' | 'presentasjoner') {
+    if (mySubjects.length > 0) {
+      return { melding: `Ingen ${hva} i ${mineFagEtikett}.`, knapp: 'Vis alle fag', onKlikk: resetMySubjects }
+    }
+    if (aktivtNivaa !== 'alle') {
+      return { melding: `Ingen ${hva} på ${aktivtNivaa.toUpperCase()}.`, knapp: 'Vis alle nivåer', onKlikk: () => setNivaaFilter('alle') }
+    }
+    return { melding: `Ingen ${hva} å vise.`, knapp: null, onKlikk: () => {} }
+  }
 
   const activeSporsmalFags = mySubjects.length > 0
     ? [...new Set(selectedFagOptions.map(o => o.sporsmalFag).filter((f): f is string => f !== null))]
@@ -1183,15 +1154,15 @@ function TeacherDashboardInner() {
 
         {activeTab === 'laeringsinnhold' && (
           <>
-            {/* Sub-tab selector */}
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', alignItems: 'center' }}>
+            {/* Sub-tab selector + nivåfilter */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 onClick={() => setLearningSubTab('minileksjoner')}
                 style={{
                   padding: '5px 14px', borderRadius: '20px', border: 'none',
                   background: learningSubTab === 'minileksjoner' ? '#0d9488' : 'transparent',
                   color: learningSubTab === 'minileksjoner' ? '#fff' : 'var(--text-muted)',
-                  fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                  fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
                 Minileksjoner
@@ -1202,11 +1173,37 @@ function TeacherDashboardInner() {
                   padding: '5px 14px', borderRadius: '20px', border: 'none',
                   background: learningSubTab === 'presentasjoner' ? '#0d9488' : 'transparent',
                   color: learningSubTab === 'presentasjoner' ? '#fff' : 'var(--text-muted)',
-                  fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                  fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
                 Presentasjoner
               </button>
+
+              {/* Nivåfilter — kun når «Mine fag» står på «Alle fag». Ren
+                  visningsfilter; rører ikke klassens nivå eller Firebase. */}
+              {nivaaFilterAktivt && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 12, paddingLeft: 14, borderLeft: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 500 }}>
+                    Nivå
+                  </span>
+                  <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                    {NIVAA_FILTRE.map(n => (
+                      <button
+                        key={n.id}
+                        onClick={() => setNivaaFilter(n.id)}
+                        style={{
+                          padding: '4px 11px', fontSize: 12, fontWeight: 600, border: 'none',
+                          cursor: 'pointer', fontFamily: 'inherit',
+                          background: nivaaFilter === n.id ? '#0d9488' : 'transparent',
+                          color: nivaaFilter === n.id ? '#fff' : 'var(--text-muted)',
+                        }}
+                      >
+                        {n.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {learningSubTab === 'minileksjoner' && (
@@ -1216,8 +1213,8 @@ function TeacherDashboardInner() {
                 questions={questions}
                 onOpenSporsmalWithModule={handleOpenSporsmalWithModule}
                 mineFagSectionKeys={activeSectionKeys}
-                mineFagEtikett={mineFagEtikett}
-                onVisAlleFag={resetMySubjects}
+                nivaaFilter={aktivtNivaa}
+                tom={tomTilstand('minileksjoner')}
                 onToggle={(route) => {
                   setModuleVisibility(prev => {
                     if (route === '__reset_all__') {
@@ -1234,59 +1231,11 @@ function TeacherDashboardInner() {
             )}
 
             {learningSubTab === 'presentasjoner' && (
-              (() => {
-                // Samme Mine fag-filter som minileksjonene, med samme tomtilstand.
-                const grupper = PRESENTASJON_GRUPPER
-                  .map(g => ({
-                    ...g,
-                    items: activeSectionKeys
-                      ? g.items.filter(p => activeSectionKeys.has(p.seksjon))
-                      : g.items,
-                  }))
-                  .filter(g => g.items.length > 0)
-
-                if (grupper.length === 0) {
-                  return (
-                    <div className="rounded-xl border border-dashed border-gray-300 p-5">
-                      <p className="text-sm text-gray-500">Ingen presentasjoner i {mineFagEtikett || 'valgt fag'}.</p>
-                      <button
-                        onClick={resetMySubjects}
-                        className="mt-3 text-xs font-medium text-teal-600 hover:text-teal-800"
-                      >
-                        Vis alle fag
-                      </button>
-                    </div>
-                  )
-                }
-
-                return (
-                  <div className="space-y-6">
-                    <p className="text-gray-500 text-sm">Presentasjoner som er klare til bruk i klassen. Åpnes i fullskjerm.</p>
-                    {grupper.map(gruppe => (
-                      <div key={gruppe.tittel} className="space-y-2">
-                        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">{gruppe.tittel}</h3>
-                        {gruppe.items.map(p => (
-                          <a
-                            key={p.route}
-                            href={p.route}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
-                            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-                          >
-                            <span className="text-xl shrink-0 text-gray-400">🎬</span>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm">{p.title}</p>
-                              <p className="text-gray-400 text-xs mt-0.5">{p.desc}</p>
-                            </div>
-                            <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
-                          </a>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )
-              })()
+              <PresentasjonerVisning
+                mineFagSectionKeys={activeSectionKeys}
+                nivaaFilter={aktivtNivaa}
+                tom={tomTilstand('presentasjoner')}
+              />
             )}
           </>
         )}
@@ -2396,6 +2345,92 @@ function ModuleSummaryPanel({
 }
 
 
+// ── Presentasjoner ────────────────────────────────────────────────────────────
+
+/** Tom-tilstand for begge visningene i Læringsinnhold. */
+interface TomTilstand {
+  melding: string
+  knapp: string | null
+  onKlikk: () => void
+}
+
+function TomBoks({ tom }: { tom: TomTilstand }) {
+  return (
+    <div className="rounded-xl border border-dashed border-gray-300 p-5">
+      <p className="text-sm text-gray-500">{tom.melding}</p>
+      {tom.knapp && (
+        <button onClick={tom.onKlikk} className="mt-3 text-xs font-medium text-teal-600 hover:text-teal-800">
+          {tom.knapp}
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Presentasjonsbiblioteket i Læringsinnhold. Leser ALL_PRESENTATIONS og
+ * PRESENTATION_SECTIONS fra presentationRegistry — samme kilde som LiveOktTab.
+ * (Fanen hadde tidligere en egen hardkodet liste med bare VG1-fagene, uten
+ * level-felt; se rapporten.)
+ */
+function PresentasjonerVisning({
+  mineFagSectionKeys,
+  nivaaFilter,
+  tom,
+}: {
+  mineFagSectionKeys: Set<string> | null
+  nivaaFilter: NivaaFilter
+  tom: TomTilstand
+}) {
+  const seksjonsNokkel = (s: { level: string; subject: string; ssrSubject?: string }) =>
+    `${s.level}|${s.subject}|${s.ssrSubject ?? ''}`
+
+  const grupper = PRESENTATION_SECTIONS
+    .filter(s => !mineFagSectionKeys || mineFagSectionKeys.has(seksjonsNokkel(s)))
+    .filter(s => nivaaFilter === 'alle' || s.level === nivaaFilter)
+    .map(s => ({
+      seksjon: s,
+      items: ALL_PRESENTATIONS.filter(p => seksjonsNokkel(p) === seksjonsNokkel(s)),
+    }))
+    .filter(g => g.items.length > 0)
+
+  const synlige = grupper.reduce((n, g) => n + g.items.length, 0)
+
+  if (grupper.length === 0) return <TomBoks tom={tom} />
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-baseline justify-between gap-4 flex-wrap">
+        <p className="text-gray-500 text-sm">Presentasjoner som er klare til bruk i klassen. Åpnes i fullskjerm.</p>
+        <p className="text-xs text-gray-500 shrink-0">
+          <span className="font-medium text-teal-600">{synlige}</span>
+          <span className="text-gray-400">/{ALL_PRESENTATIONS.length}</span>
+          <span className="ml-1">synlige</span>
+        </p>
+      </div>
+      {grupper.map(gruppe => (
+        <div key={gruppe.seksjon.title} className="space-y-2">
+          <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">{gruppe.seksjon.title}</h3>
+          {gruppe.items.map(p => (
+            <a
+              key={p.route}
+              href={p.route}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/50 transition-colors group"
+              style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+            >
+              <span className="text-xl shrink-0 text-gray-400">🎬</span>
+              <p className="font-medium text-gray-900 group-hover:text-teal-700 transition-colors text-sm min-w-0 flex-1">{p.title}</p>
+              <span className="text-gray-400 group-hover:text-teal-600 transition-colors text-sm shrink-0">Åpne →</span>
+            </a>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Minileksjoner tab ─────────────────────────────────────────────────────────
 
 function MinileksjonsTab({
@@ -2405,8 +2440,8 @@ function MinileksjonsTab({
   questions,
   onOpenSporsmalWithModule,
   mineFagSectionKeys,
-  mineFagEtikett,
-  onVisAlleFag,
+  nivaaFilter,
+  tom,
 }: {
   classroomCode: string
   moduleVisibility: Record<string, boolean>
@@ -2414,8 +2449,8 @@ function MinileksjonsTab({
   questions: TeacherQuestion[]
   onOpenSporsmalWithModule: (moduleRoute: string, fag: string) => void
   mineFagSectionKeys: Set<string> | null
-  mineFagEtikett: string
-  onVisAlleFag: () => void
+  nivaaFilter: NivaaFilter
+  tom: TomTilstand
 }) {
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null)
   const selectedMod = selectedRoute ? ALL_MODULES.find(m => m.route === selectedRoute) ?? null : null
@@ -2423,10 +2458,10 @@ function MinileksjonsTab({
   const isVisible = (route: string) => moduleVisibility[route] !== false
   const hiddenCount = ALL_MODULES.filter(m => moduleVisibility[m.route] === false).length
 
-  // Filter sections by Mine fag if active
-  const visibleSections = mineFagSectionKeys
-    ? MODULE_SECTIONS.filter(s => mineFagSectionKeys.has(`${s.level}|${s.subject}|${s.ssrSubject ?? ''}`))
-    : MODULE_SECTIONS
+  // Filtrer seksjoner på «Mine fag» og på nivåfilteret (kun visning).
+  const visibleSections = MODULE_SECTIONS
+    .filter(s => !mineFagSectionKeys || mineFagSectionKeys.has(`${s.level}|${s.subject}|${s.ssrSubject ?? ''}`))
+    .filter(s => nivaaFilter === 'alle' || s.level === nivaaFilter)
 
   // Count modules actually shown after Mine fag filter
   const displayedModules = ALL_MODULES.filter(m =>
@@ -2434,7 +2469,6 @@ function MinileksjonsTab({
   )
   const displayedVisibleCount = displayedModules.filter(m => isVisible(m.route)).length
   const ingenTreff = displayedModules.length === 0
-  const tomMelding = `Ingen minileksjoner i ${mineFagEtikett || 'valgt fag'}.`
 
   return (
     <div className="flex gap-0 -mx-4 overflow-hidden">
@@ -2442,15 +2476,7 @@ function MinileksjonsTab({
       <div className="shrink-0 w-[260px] px-4 overflow-y-auto max-h-[calc(100vh-200px)]">
 
         {ingenTreff ? (
-          <div className="rounded-xl border border-dashed border-gray-300 p-4">
-            <p className="text-sm text-gray-500 leading-snug">{tomMelding}</p>
-            <button
-              onClick={onVisAlleFag}
-              className="mt-3 text-xs font-medium text-teal-600 hover:text-teal-800"
-            >
-              Vis alle fag
-            </button>
-          </div>
+          <TomBoks tom={tom} />
         ) : (
         <>
         {/* Summary bar */}
@@ -2534,7 +2560,7 @@ function MinileksjonsTab({
       <div className="flex-1 min-w-0 pl-4 border-l border-gray-200 overflow-y-auto max-h-[calc(100vh-200px)] pr-2">
         {ingenTreff ? (
           <div className="flex items-center justify-center h-full min-h-[200px]">
-            <p className="text-gray-500 text-sm">{tomMelding}</p>
+            <p className="text-gray-500 text-sm">{tom.melding}</p>
           </div>
         ) : selectedMod ? (
           <ModuleSummaryPanel
