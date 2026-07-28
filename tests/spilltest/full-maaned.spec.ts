@@ -2111,6 +2111,57 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     ctx.ok(`bestill 130 → endre 30 → leveres 30 (differanse ${costKrFør - costKrEtter} kr refundert); bestill 50 → endre 0 → kansellert, ingen levering (stock ${stockFørRull}→${stockEtterRull})`)
   })
 
+  await steg(page, rapport, 47, 'Dagspuls «Lager på disken» viser ALLE utstilte varer (12 utstilt → 12 rader i DOM)', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 47')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    const ids = ['croissant', 'muffin-blabaer', 'kanelbolle', 'skolebrod', 'rundstykke-grovt', 'gulrotkake', 'baguette', 'focaccia', 'wrap-kylling', 'salat', 'grovbrod', 'surdeigsbrod']
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: ids.map(id => ({ productId: id, qty: 20 })) })
+    await ventState(page, s => ids.every(id => s.products.some(p => p.id === id)), 'alle 12 varer ført')
+    // Still ut alle 12 i vinduet (utstilt-settet = counterLayout ∪ vindu).
+    await dispatch(page, { type: 'SET_WINDOW_DISPLAY', fixtureId: 'vindu', items: ids.map((id, i) => ({ fixtureId: 'vindu', productId: id, x: 0.1 + (i % 4) * 0.25, y: 0.2 + Math.floor(i / 4) * 0.25, z: i })) })
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 47')
+    // Dagspulsen (fullskjerm) rendrer «Lager på disken» — ALLE 12 radene i DOM.
+    await expect(page.getByTestId('lager-disken-liste')).toBeVisible()
+    await expect.poll(async () => page.locator('[data-testid^="lager-rad-"]').count(), { message: '12 lager-rader i DOM' }).toBe(12)
+    // Lista holder den faste min-høyden (intern scroll) — beholderen er scrollbar.
+    const scrollbar = await page.getByTestId('lager-disken-liste').evaluate(el => el.scrollHeight > el.clientHeight)
+    ctx.ok(`12 utstilte varer → 12 rader i DOM; lista scroller internt (overflow: ${scrollbar}) innenfor fast min-høyde`)
+  })
+
+  await steg(page, rapport, 48, 'Produktregnskap i dagsoppgjøret: tabellsummer == totalkortene (svinn stk/kr + solgt stk)', async ctx => {
+    await page.goto('/game?skip=1')
+    await ventState(page, s => s.phase !== 'startup', 'boot 48')
+    await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
+    // Croissant er ferskvare (gir svinn ved stenging), coffee er drikke (selges).
+    await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 60 }, { productId: 'croissant', qty: 60 }] })
+    await ventState(page, s => s.products.some(p => p.id === 'croissant'), 'lager 48')
+    const prods = (await lesFull()).products.map(p => (p.id === 'coffee' || p.id === 'croissant') ? { ...p, retailPrice: p.markedsPris } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 't1', productId: 'croissant' }] })
+    await dispatch(page, { type: 'SET_WINDOW_DISPLAY', fixtureId: 'vindu', items: [{ fixtureId: 'vindu', productId: 'coffee', x: 0.5, y: 0.4, z: 0 }] })
+    // Åpen dag + selg litt (så det blir både salg OG restlager til svinn), så steng.
+    await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen 48')
+    await dispatchN(page, { type: 'TICK' }, 60); await page.waitForTimeout(150)
+    await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, s => s.dayPhase === 'oppgjør', 'oppgjør 48')
+    const r = (await lesFull()).lastDayResult!
+    const pr = r.produktRegnskap
+    expect(pr.length, 'produktregnskap har rader med aktivitet').toBeGreaterThan(0)
+    // AVSTEMMING mot totalkortene:
+    const sumSvinnStk = pr.reduce((a, x) => a + x.svinnStk, 0)
+    const sumSvinnKr = pr.reduce((a, x) => a + x.svinnKr, 0)
+    const sumSolgtStk = pr.reduce((a, x) => a + x.solgtStk, 0)
+    expect(sumSvinnStk, 'Σ svinnStk == svinn-totalkort (r.svinnStk)').toBe(r.svinnStk)
+    expect(sumSvinnKr, 'Σ svinnKr == svinn-totalkort (r.svinnKr)').toBe(r.svinnKr)
+    expect(sumSolgtStk, 'Σ solgtStk == solgt (møter + bakgrunn)').toBe(r.soldStk + r.bakgrunnStk)
+    // Kollapset som standard: toggle finnes, tabellen skjult til den åpnes.
+    await expect(page.getByTestId('produktregnskap-toggle')).toBeVisible()
+    expect(await page.getByTestId('produktregnskap-tabell').count(), 'tabellen er kollapset som standard').toBe(0)
+    await page.getByTestId('produktregnskap-toggle').click()
+    await expect(page.getByTestId('produktregnskap-tabell')).toBeVisible()
+    ctx.ok(`produktregnskap avstemmes: Σsvinn ${sumSvinnStk} stk/${sumSvinnKr} kr == totalkort; Σsolgt ${sumSolgtStk} stk == møter+bakgrunn; kollapset default, åpnes på klikk`)
+  })
+
   // ── Skriv rapport + gate på reelle FAIL ─────────────────────────────────────
   const { pass, fail, kjent } = skrivRapport(rapport, notater)
   expect(fail, `Reelle FAIL-steg (KJENT FEIL teller ikke): ${fail}. Se docs/rapporter/spilltest-siste.md`).toBe(0)

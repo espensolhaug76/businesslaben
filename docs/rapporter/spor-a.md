@@ -3474,3 +3474,85 @@ DevPanel «📰 Generer utgave nå»-hint: «havner i innboksen» → «publiser
 4. **Endre bestilling (DEL 4):** Produkter, bestill 130 → «I bestilling: 130» → [Endre]
    → 30 → Lagre → «I bestilling: 30», differansen tilbake i kassa. Bestill → [Endre]
    → 0 → «Bestilling kansellert». Neste dag: leveres den endrede/ingen mengde.
+
+## FIKSJOBB — dagsoppgjør, produktregnskap, scenario-fasit — 2026-07-28
+
+Gren `spor-a/fiks-oppgjor-og-innhold` (fra main da31998). Fem deler, commit per del,
+spilltest 48/48 grønt. IKKE merget.
+
+### DEL 1 — «Lager på disken» viste kun 8 av 12
+Dagspulsens lagerliste var kappet med `slice(0, 8)`. Nå vises ALLE utstilte varer,
+tomme nederst (alt røde/«Tom»), med INTERN scroll innenfor den faste min-høyden
+(230px) — layoutro-regelen består. Spilltest steg 47: 12 utstilt → 12 rader i DOM.
+
+### DEL 2 — Svinn-/tap-detaljene var trunkert uten å si det
+**Bekreftet:** `sammendrag()` viste topp-3 + «+N til» UTEN antall, mens totalkortet
+talte alt → «mer svinn enn det som står». **Fiks + valg (dokumentert):** viser ALLE
+varene når lista er kort (**≤ 6 varer** — sprenger ikke layout), ellers **topp 3 +
+«… og K varer til (M stk)»** der M er de utelatte varenes mengde. Totalen kan dermed
+alltid avstemmes mot detaljene med det blotte øye (verifisert visuelt: Svinn-linja
+«Croissant 46 stk, Kanelbolle 32 stk» ↔ Svinn-kort 78 stk).
+
+### DEL 3 — Produktregnskap i dagsoppgjøret
+Ny ekspanderbar «📊 Vis produktregnskap»: tabell per vare (Solgt stk/kr · Svinn
+stk/kr · Gikk tomt · Utstilt v/ stenging). Kollapset som standard (VG1-enkelhet),
+tilstand HUSKES IKKE (nullstilles pr. oppgjør). REN visning montert i CLOSE_DAY av
+`dayProductStats` (allerede talt — ingen ny telling) + varens pris/lager ved
+stenging → `DayResult.produktRegnskap`. `svinnKr` eksakt (stk × innkjøpspris);
+`solgtKr` INDIKATIV (stk × utsalgspris — realisert omsetning kan avvike marginalt
+pga. priselastisitet/hotellmargin; merket i UI). Kun varer med aktivitet. Spilltest
+steg 48: Σsvinn stk/kr + Σsolgt stk == totalkortene.
+
+### DEL 4 — Scenario-fasit: flere riktige svar
+**Mekanikken støtter ALLEREDE flere riktige svar:** `recommendNeed` er en TAG-LISTE,
+og `matchNeed` teller enhver vare som matcher ANY tag som behovstreff (full
+uttelling). Det trengs altså ingen ny `riktigSvarListe` — bare riktige tags.
+
+**Camilla (hastverkskunden):** behov «mettende, ferdig, ta med». Pekte på
+`BAKEVARE_TAGS` (søtt bakverk — og manglet baguette/wrap/salat HELT). → endret til
+`LUNSJ_TAGS` (baguette/wrap/salat/focaccia/sandwich). Nå gir alle mettende
+ferdigvarer full uttelling.
+
+**Audit av kafé-scenariene (Espen kan overprøve):**
+
+| Scenario | Kunde | Behov | Tags | Vurdering |
+|---|---|---|---|---|
+| hastverkskunden | Camilla | mettende, ta med | ~~BAKEVARE~~ → **LUNSJ** | **ENDRET** — wrap/baguette/salat likeverdige |
+| kryssalget | Amira | enkel mettende lunsj | LUNSJ | Beholdt — alt bred (alle lunsj-varer) |
+| morgenkunden | Morgenkunden | kaffe å ta med | KAFFE | Beholdt — kaffe ER behovet |
+| prutekunden | Roger | kaffe (test av press) | KAFFE | Beholdt |
+| studentrabatten | Emil | kaffe + respekt | KAFFE | Beholdt |
+| likeverd | Live | varm drikke, likeverd | VARM_DRIKKE | Beholdt — alle varme drikker |
+| forstegangskunden | Oda | forstå meny, varm drikke | VARM_DRIKKE | Beholdt |
+| språkbarrieren | Tilreisende | noe varmt å drikke | VARM_KALD_DRIKKE | Beholdt |
+| (nysgjerrig turist) | Turist | varm/kald drikke | VARM_KALD_DRIKKE | Beholdt |
+| den-usikre | Maren | hjelp til selskap (søtt) | KAKE_BOLLE | Beholdt — alle søte varer |
+| gavekjøpet | David | gave (mottakers smak) | SOT | Beholdt — alle søte varer |
+| angreretten | Bjørn | ryddig løsning (søtt) | SOT | Beholdt (service-tyngde) |
+| kulturmøtet | Reisende | søtt + respekt | KAKE_BOLLE | Beholdt |
+| taxfree-spørsmålet | Handlende | søtt + ærlig info | KAKE_BOLLE | Beholdt |
+| allergikeren | Sunniva | ÆRLIG svar om innhold | BAKEVARE | Beholdt — kjernen er ærlighet, ikke vare |
+| storbestillingen | Fredrik | ærlig kapasitet, 40 stk | RUNDSTYKKE | Beholdt — bevisst ÉN bulk-vare (stock-commit) |
+| reklamasjonen / ventetiden | Tom / Petter | service/klage | — | Ingen anbefal-steg |
+
+Skjønnsvurderinger (service/klage, mersalg-timing) beholder gradert utfall — kun
+Camillas objektivt-likeverdige varevalg ble endret.
+
+### DEL 5 — [Endre bestilling]-knappen
+**Verifisert: knappen RENDRES på main** (steg 46 bruker den). Espen fant den ikke
+fordi den var en diskret pille (2px padding, 0.16 opacitet) inne i «I bestilling»-
+tekstlinja. **Fiks:** solid blå knapp «✏️ Endre bestilling» på egen kant av linja —
+tydelig. (Espen spilte trolig B-treet/klesbutikk, som mangler funksjonen helt.)
+
+### Chrome-sjekkliste — fiksjobben
+1. **Lager på disken (DEL 1):** still ut 10+ varer, åpne dagen → dagspulsen viser
+   ALLE (tomme nederst), lista scroller internt uten å endre panelhøyden.
+2. **Svinn-avstemming (DEL 2):** en dag med svinn på flere varer → detalj-linja
+   summerer til Svinn-kortet (få varer: alle vist; mange: «… og N varer til (M stk)»).
+3. **Produktregnskap (DEL 3):** dagsoppgjør → «📊 Vis produktregnskap» → tabell per
+   vare; Σsvinn (stk/kr) og Σsolgt (stk) stemmer med totalkortene. Kollapset ved nytt
+   oppgjør.
+4. **Camilla (DEL 4):** møt Camilla, anbefal kyllingwrap ELLER baguette ELLER salat →
+   alle gir behovstreff/full uttelling.
+5. **Endre bestilling (DEL 5):** Produkter → bestill noe → tydelig blå «✏️ Endre
+   bestilling»-knapp ved «I bestilling»-linja.
