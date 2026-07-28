@@ -158,13 +158,19 @@ function GameContent() {
   // en ref (intervallet lages én gang). Pauser under salgsscenario, åpent
   // dashbord og aktivt kundemøte. Ved 17:00 (dayMinute >= DAG_VARIGHET) stenges
   // dagen automatisk (CLOSE_DAY, svinn + dagsoppgjør som før).
-  const tickCtx = useRef({ dayPhase: state.dayPhase, dayMinute: state.dayMinute, activeMeeting: state.activeMeetingScenarioId, salesOpen, dashboardOpen })
-  tickCtx.current = { dayPhase: state.dayPhase, dayMinute: state.dayMinute, activeMeeting: state.activeMeetingScenarioId, salesOpen, dashboardOpen }
+  // DEL A (28.07) — PLANLEGGING KOSTER ALDRI SPILLTID: enhver «tenke-flate» over
+  // butikken pauser HELE spillklokka (TICK driver bakgrunnssalg-bolker, kø-ticks
+  // OG møte-spawn — så én pause dekker alt). Planleggingsflater = dashbord + avis
+  // (menyer/lesing). Salgssamtaler (salesOpen/activeMeeting) er drift men er også
+  // modale, så de pauser som før. Regel: tid presser i DRIFT, aldri i menyene.
+  const planleggingPause = dashboardOpen || avisOpen
+  const tickCtx = useRef({ dayPhase: state.dayPhase, dayMinute: state.dayMinute, activeMeeting: state.activeMeetingScenarioId, salesOpen, dashboardOpen, avisOpen })
+  tickCtx.current = { dayPhase: state.dayPhase, dayMinute: state.dayMinute, activeMeeting: state.activeMeetingScenarioId, salesOpen, dashboardOpen, avisOpen }
   useEffect(() => {
     const iv = window.setInterval(() => {
       const c = tickCtx.current
       if (c.dayPhase !== 'åpen') return
-      if (c.salesOpen || c.dashboardOpen || c.activeMeeting) return // klokka pauser
+      if (c.salesOpen || c.dashboardOpen || c.avisOpen || c.activeMeeting) return // klokka pauser
       if (c.dayMinute >= DAG_VARIGHET) { dispatch({ type: 'CLOSE_DAY' }); return }
       dispatch({ type: 'TICK' })
     }, BALANCE.klokke.tickMs)
@@ -258,6 +264,7 @@ function GameContent() {
 
       <HUD
         onMaster={onMaster}
+        planleggingPause={planleggingPause}
         onOpenDashboard={() => { setDashboardTab('oversikt'); setDashboardOpen(true); setOverlay(true) }}
         onOpenAvis={() => { setAvisOpen(true); setOverlay(true) }}
       />

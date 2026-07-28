@@ -12,7 +12,7 @@ function formatKr(n: number) {
   return n.toLocaleString('nb-NO') + ' kr'
 }
 
-export default function HUD({ onMaster, onOpenDashboard, onOpenAvis }: { onMaster: boolean; onOpenDashboard: () => void; onOpenAvis: () => void }) {
+export default function HUD({ onMaster, onOpenDashboard, onOpenAvis, planleggingPause }: { onMaster: boolean; onOpenDashboard: () => void; onOpenAvis: () => void; planleggingPause?: boolean }) {
   const { state } = useGame()
   const { money, reputation, currentMonth, currentYear, companyName, industry,
           unreadCount, level, xp, xpToNextLevel, rentedLocationId, shopOpen, dayNumber, meetingsToday, avisUlest } = state
@@ -23,6 +23,23 @@ export default function HUD({ onMaster, onOpenDashboard, onOpenAvis }: { onMaste
   const visMoney = useAnimatedNumber(money, BALANCE.gamefeel.tallAnimMs)
 
   return (
+    <>
+    {/* DEL A (28.07) — PLANLEGGINGSPAUSE: diskret indikator ved klokka når en
+        tenke-flate (dashbord/avis) pauser spillklokka i en åpen dag. Egen høy
+        z-flate (over dashbord z-180 / avis z-400) så den er synlig MENS eleven
+        planlegger — ellers ligger den bak overlayet. Regel: tid presser i DRIFT. */}
+    {planleggingPause && shopOpen && (
+      <div data-testid="planlegging-pause" style={{
+        position: 'fixed', top: 68, left: '50%', transform: 'translateX(-50%)', zIndex: 500,
+        display: 'flex', alignItems: 'center', gap: '0.4rem',
+        background: 'rgba(15,20,32,0.92)', border: '1px solid rgba(148,163,184,0.45)',
+        borderRadius: 99, padding: '5px 14px', whiteSpace: 'nowrap',
+        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+        fontFamily: "'Outfit', sans-serif", pointerEvents: 'none',
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#cbd5e1' }}>⏸ Planlegging — tiden står</span>
+      </div>
+    )}
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, height: 60,
       background: 'rgba(10,14,26,0.88)',
@@ -67,6 +84,7 @@ export default function HUD({ onMaster, onOpenDashboard, onOpenAvis }: { onMaste
           color={shopOpen ? '#22c55e' : '#94a3b8'}
         />
       )}
+
 
       {/* «Vis veier»-røntgen — KUN på bykart-nivået (styrer by-røntgen; meningsløs
           i bydels-/butikk-visninger). */}
@@ -127,6 +145,7 @@ export default function HUD({ onMaster, onOpenDashboard, onOpenAvis }: { onMaste
         </button>
       </div>
     </div>
+    </>
   )
 }
 
