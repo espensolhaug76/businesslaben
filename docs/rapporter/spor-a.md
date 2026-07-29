@@ -3646,3 +3646,83 @@ hitboksen. (Intro-overlayet z-600 dekker figuren, men kun under selve introen.)
    📰-avisen. Under en salgssamtale går tiden fortsatt ikke (modal), men uten pause-teksten.
 2. **Mentor-figur (DEL B):** med kø-badge på figuren → klikk hvor som helst på figuren
    (hode, kropp, føtter) → neste melding vises. Klikk 📖 → ordboka åpnes (ikke en melding).
+
+## KRITISK — oppstartsløypa: åpningsbestillingen nådde aldri dag 1 — 2026-07-29
+
+Espen kjørte EKTE oppstart (navnemeny, uten `?skip=1`) for første gang på lenge: han
+landet i kaféen med TOMME trau — «Utsolgt» overalt. Åpningsbestillingen kom aldri som
+levering til dag 1. Skip-løypa (som spilltesten brukte) og elevløypa hadde divergert.
+Gren: `spor-a/fiks-oppstartslopa` (stablet på den ennå-umerge­de `fiks-oppgjor-og-innhold`).
+
+### DEL 1 — Rotårsak (bevisført)
+Det finnes TO veier å skaffe åpningslager, og de oppførte seg ULIKT:
+
+- **Vei 1 — åpningsbestillingen i menyen (`OpeningOrderOverlay` → `PLACE_OPENING_ORDER`):**
+  legger varene DIREKTE på `products` med `stock = qty` (kaféen «baker ferskt til
+  åpningsdagen», ingen leveringstid). Denne VIRKER — lageret overlever til dag 1.
+  (Bekreftet av den nye testvakta, se DEL 3.)
+- **Vei 2 — bestille fra dashbordet FØR første åpning (`ORDER_PRODUCT`):** la ordren i
+  leveringskøen (`incomingOrders`) med `ankomstDag = dayNumber + leadTime = dag 2`.
+  **Levering skjedde KUN i `START_NEW_DAY`.** Men den aller første dagen (dag 1) nås via
+  `START_GAME`, ALDRI via `START_NEW_DAY` — så en ordre med `ankomstDag ≤ 1` ble aldri
+  levert til dag 1. Den «strandet» og disken sto tom på åpningsdagen. **Dette er buggen.**
+
+Bevis (smoke via test-broen): `ORDER_PRODUCT coffee 60` mens dag 1 er `stengt` og
+`dayHistory` er tom → `incomingOrders=[coffee ankomst-dag2]`; etter `OPEN_DAY(dag 1)` var
+`products.coffee.stock = 0` (Utsolgt) — nøyaktig Espens symptom.
+
+### DEL 2 — Fiks (`src/game/GameContext.tsx`)
+1. **`OPEN_DAY` leverer nå ankomne ordrer** (samme leverings-aritmetikk som `START_NEW_DAY`):
+   `incomingOrders` med `ankomstDag ≤ dayNumber` legges på lager, køen tømmes, og
+   «📦 Varer ankommet»-kvitteringen (`lastDelivery`) settes. For dag 2+ er de alt levert
+   av `START_NEW_DAY` (`arrived` = tom) ⇒ ren no-op. Ingen dobbeltlevering (vei 1 går
+   direkte på `products`, ikke via køen).
+2. **`ORDER_PRODUCT`: ordrer lagt FØR første åpning får `ankomstDag = dag 1`.** Vilkår:
+   `dayHistory.length === 0 && dayPhase === 'stengt'` (butikken har aldri åpnet). Da leverer
+   `OPEN_DAY` dem på selve åpningsdagen. Etter første åpning gjelder vanlig leveringstid.
+
+Resultat: åpningsbestillingen ankommer dag 1 UANSETT vei — meny (vei 1) eller dashbord-før-
+åpning (vei 2). Kravet i mandatet er oppfylt.
+
+### DEL 3 — Permanent testvakt (`tests/spilltest/oppstart-elevlop.spec.ts`)
+Egen test som spiller HELE oppstarten UTEN `?skip` (den delen skip-løypa hoppet over):
+navnemeny (bransje→modell→finansiering→personlighet→navn) → **mentor-introen vises** →
+leie lokale → åpningsbestilling (kaffe = 50) → **åpne dag 1** → assert:
+`products.coffee.stock === 50` på lager, `incomingOrders` tom (ingen stranding),
+`dayNumber === 1`, og HUD-dagpilla viser «Dag 1». **4/4 grønt.** Vakta fanger både en
+regresjon av vei 1 OG at mentor-onboarding/dagpille faktisk vises for en fersk elev.
+
+`full-maaned`-løpets steg 3 er skrevet om til den korrigerte semantikken: en dashbord-
+bestilling lagt før første åpning (vei 2) ligger nå FRISK på disken ved dag 1-`OPEN_DAY`
+(ikke først dag 2). Hele løpet fortsatt **51/51 grønt**.
+
+### Avviksliste fra DEL 1 (også de som IKKE ble fikset)
+1. **[FIKSET] Vei 2 strandet på dag 1** — kjernebuggen over.
+2. **[FLAGGET — større designhull, IKKE improvisert] Full spilltilstand persisteres ikke.**
+   Kun `beredskap` + `budsjett/nøkkeltall/kampanje/avis` lagres i localStorage. `products`,
+   `incomingOrders`, `openingOrderPlaced`, `phase`, `money` m.m. gjør det IKKE — en
+   nettleser-**reload** nullstiller alt til `initialState` (phase `startup`). En elev som
+   laster siden på nytt midt i spillet mister butikken sin. Dette er et bevisst arkitektur-
+   valg som må tas stilling til (egen jobb: definér hva som skal persisteres og migrasjons-
+   regler) — jeg har ikke rørt det her.
+3. **[ALLEREDE FIKSET i forrige runde, DEL B] Mentor-figurens klikkflate/hitboks** — nevnt
+   her kun for sporbarhet; ikke en del av denne jobben.
+4. **[OBSERVERT, ufarlig] Mentor-introen (z-600, fullskjerm) dekker byen rett etter
+   `START_GAME`** til eleven lukker den (Neste/Hopp over). Det er tilsiktet onboarding, ikke
+   en bug — men verdt å vite: åpningsbestillingen (z-270) vises FØRST etter leie, altså
+   ETTER at introen normalt er lukket, så de kolliderer ikke i praksis.
+
+### Chrome-sjekkliste — fra navnemenyen (uten `?skip`)
+1. Åpne `/game` (INGEN `?skip=1`). **Navnemenyen** skal vises: velg Kafé & Bakeri →
+   forretningsmodell → finansiering → personlighet → skriv et bedriftsnavn → «Start spillet!».
+2. **Mentor-introen (Espen)** skal dukke opp med det samme. Les gjennom (Neste/Kom i gang)
+   eller «Hopp over».
+3. Finn et ledig lokale i byen, klikk «TIL LEIE» → leie. **Åpningsbestillingen** åpnes:
+   la forslaget stå (eller juster) og bekreft.
+4. Gå til butikken → **åpne dag 1**. **Sjekk: varene ligger på disken/lageret** (IKKE
+   «Utsolgt»), og HUD viser «Dag 1». «📦 Varer ankommet»-kvittering kan vises.
+5. **Vei 2-test:** start på nytt, men ved åpningsbestillingen velg «Åpne uten varer». Gå til
+   Dashbord → Produkter → bestill noen varer FØR du åpner dag 1. Åpne dag 1 → varene skal
+   ligge på lager (før fiksen sto de «i bestilling» til dag 2 og disken var tom).
+6. (Regresjon) Fra dag 2 og utover skal en NY bestilling fortsatt ha normal leveringstid
+   (ankommer neste dagstart), ikke samme dag.
