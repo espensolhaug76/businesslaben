@@ -1,63 +1,63 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-07-29T14:40:50.542Z
+> Startet: 2026-07-29T15:16:18.102Z
 
-**Resultat: ❌ RØDT** — 19 PASS · 32 FAIL · 0 KJENT FEIL (51 steg)
+**Resultat: ✅ GRØNT** — 51 PASS · 0 FAIL · 0 KJENT FEIL (51 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 95 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 4783 |
-| 3 | Levering ved åpningsdagen: dashbord-bestilling FØR første åpning ligger FRISK på disken ved dag 1-åpning (ikke dag 2) | ✅ PASS | 582 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 149 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 6782 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 4413 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 1748 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 10624 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 2269 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 3240 |
-| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 8799 |
-| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 1837 |
-| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 4158 |
-| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 2603 |
-| 15 | Reiseliv: turistsesong i kaféen er kun økonomisk (trafikkløft + varevekt, INGEN turist-scenarier i pool) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 6 |
-| 16 | Pakkebyggeren (treff == beregnPakke-fasit + kafé-trafikk) + reiselivs-inngangene (turistkontor/byhotell velger scenario + åpner dialogkort) | ✅ PASS | 7 |
-| 17 | Stasjons-hotspots (?dev=1): labels + tracer, ingen TIL LEIE/bransjevelger, tracer AV → turistkontor til rom-scenen, byhotell til hotell-lobbyen | ✅ PASS | 5318 |
-| 18 | Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen | ✅ PASS | 1961 |
-| 19 | Turistkontor-scene (?dev=1): kalibrerings-gjest DEKODER + rendrer ved disken, gjest-velger blar gjennom sprites | ✅ PASS | 2078 |
-| 20 | Priser-fanen (UI): elevsatt pris persisteres via «Lagre priser» og den prisede varen selges | ❌ FAIL | 818003 |
-| 21 | Innboksen: bestilling levert (betaling==fasit), sviktet levering (skuffet kunde), dårlig leverandørtilbud (negativt netto) | ❌ FAIL | 94 |
-| 22 | Espen spør: riktig svar → kunnskapsbonus == fasit, egen P&L-linje, dagstak håndhevet | ❌ FAIL | 47 |
-| 23 | Espen spør: feil svar → penger uendret, forklaring, spørsmål i cooldown | ❌ FAIL | 7 |
-| 24 | Stamkunder PARKERT (STAMKUNDER_AKTIV=false) + trekkeregel: uspilt foretrekkes, nullstill ved tom pool | ❌ FAIL | 5 |
-| 25 | Nivåbryter: VG1 skjuler VG2-spørsmål + pristilbud-felt; VG2 viser dem | ❌ FAIL | 32 |
-| 26 | Fagfilter: M av → M-faner + mkf-tilbud (7d) borte, FD-faner igjen; ↺ Nullstill → tilbake | ❌ FAIL | 28 |
-| 27 | Fagbytte i ÅPEN skjult fane → rolig retur til Oversikt (ingen feil) | ❌ FAIL | 4 |
-| 28 | Espen spør lærerstyrt: av default → ingen auto; fagfilter fd/m (finnKandidater-fasit) | ❌ FAIL | 6 |
-| 29 | Turistsesong PARKERT: sesong kan ikke starte, ⚙-knapper grå, sesong-trigger armes ikke | ❌ FAIL | 5 |
-| 30 | Datavakt: dynamisk trigger fyrer IKKE på tomt grunnlag (beredskap_risiko_levert) | ❌ FAIL | 4 |
-| 31 | Fagmapping: Personale=FD+M, Forretningsplan=FD+M, Økonomi=ren FD, KS styrer ingen fane | ❌ FAIL | 4 |
-| 32 | Vareeksponering: bakgrunnssalg selger KUN utstilte varer; tom disk → 0 salg/tap; tapte-kort = sum av tre | ❌ FAIL | 8 |
-| 33 | Dagspuls: «siste salg»-logg ruller (maks 10, ikke tømt av tick uten salg) + leverings-toast venter på kundemøte | ❌ FAIL | 3 |
-| 34 | Kø: nullstilt ved OPEN_DAY (aldri gårsdagens tall) + ventende kunde betjenes innen toleransen (ikke tapt) | ❌ FAIL | 4 |
-| 35 | Scenario-tidsvindu: Morgenkunden (09–11) / Kryssalget (11–14) spawner innenfor vinduet (seedet) | ❌ FAIL | 4 |
-| 36 | Salgslogg: append gir ny id øverst UTEN å endre key på eksisterende linjer (ingen re-mount) | ❌ FAIL | 3 |
-| 37 | Mentor daglig-refleksjon: kø vinner (Personale synlig, også ren M) · FD+M av → 0 kø-tap + svinn vinner · nullstill re-armer | ❌ FAIL | 2 |
-| 38 | Bestillings-UX: «I bestilling»-total vises og akkumulerer ved to klikk | ❌ FAIL | 2 |
-| 39 | Lagre-kvittering (Priser): endring → «Ulagrede endringer» → lagre → «Sist lagret»; utkast bevart ved fanebytte | ❌ FAIL | 3 |
-| 40 | Scene-melding: scenebytte forkaster ulest scene-melding og re-armer triggeren | ❌ FAIL | 5 |
-| 41 | Tema-fag-gating (HMS-bug): beredskap aktiv + FD av → ingen tema-trigger; FD på → fyrer | ❌ FAIL | 5 |
-| 42 | Mentor-pose: pose-bytte endrer ikke figurens LAYOUTBOKS (computed style + rect) | ❌ FAIL | 2 |
-| 43 | KROK 7c Sentrumsposten (revidert+fiks): to publiseringstempo · badge+NYTT-merke tennes/slukkes · gjeldende kun forside / 3 eldre i arkiv · avis_swot (mulighet/trussel) maks 1/utgave · trend-effekt == fasit · datavakt · fag-gating · mentor | ❌ FAIL | 9 |
-| 44 | Prislagring rører KUN retailPrice (disk/vindu/lager urørt midt på dagen) — TILLITSKRITISK | ❌ FAIL | 4 |
-| 45 | Kontekstbundet mentor-tips: fane-tips ulest + fanebytte → forkastet + re-armet (tilbake ved retur) | ❌ FAIL | 6 |
-| 46 | Endre/angre bestilling før levering: bestill 130 → endre 30 (leveres 30, differanse refundert); bestill → 0 → ingen levering | ❌ FAIL | 2 |
-| 47 | Dagspuls «Lager på disken» viser ALLE utstilte varer (12 utstilt → 12 rader i DOM) | ❌ FAIL | 2 |
-| 48 | Produktregnskap i dagsoppgjøret: tabellsummer == totalkortene (svinn stk/kr + solgt stk) | ❌ FAIL | 2 |
-| 49 | Bransje-gated vindusutstilling: CAFE (vindusUtstilling=false) → ingen vindusseksjon/tracer, disk-eksponering i stedet | ❌ FAIL | 4 |
-| 50 | Planlegging koster ikke spilltid: dashbord åpent i åpen dag → dayMinute fryser + «tiden står»-indikator; lukk → tiden går | ❌ FAIL | 3 |
-| 51 | Mentor-figuren har stor klikkflate: hode/senter/føtter klikkbare (også med dagspuls); klikk åpner neste kø-melding; 📖 åpner ordboka (ikke meldingen) | ❌ FAIL | 3 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 153 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 4953 |
+| 3 | Levering ved åpningsdagen: dashbord-bestilling FØR første åpning ligger FRISK på disken ved dag 1-åpning (ikke dag 2) | ✅ PASS | 637 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 250 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 7048 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 4599 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 1304 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 11133 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 2285 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 3278 |
+| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 7600 |
+| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 1781 |
+| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 4017 |
+| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 2292 |
+| 15 | Reiseliv: turistsesong i kaféen er kun økonomisk (trafikkløft + varevekt, INGEN turist-scenarier i pool) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 27 |
+| 16 | Pakkebyggeren (treff == beregnPakke-fasit + kafé-trafikk) + reiselivs-inngangene (turistkontor/byhotell velger scenario + åpner dialogkort) | ✅ PASS | 13 |
+| 17 | Stasjons-hotspots (?dev=1): labels + tracer, ingen TIL LEIE/bransjevelger, tracer AV → turistkontor til rom-scenen, byhotell til hotell-lobbyen | ✅ PASS | 3555 |
+| 18 | Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen | ✅ PASS | 1939 |
+| 19 | Turistkontor-scene (?dev=1): kalibrerings-gjest DEKODER + rendrer ved disken, gjest-velger blar gjennom sprites | ✅ PASS | 2030 |
+| 20 | Priser-fanen (UI): elevsatt pris persisteres via «Lagre priser» og den prisede varen selges | ✅ PASS | 3673 |
+| 21 | Innboksen: bestilling levert (betaling==fasit), sviktet levering (skuffet kunde), dårlig leverandørtilbud (negativt netto) | ✅ PASS | 3891 |
+| 22 | Espen spør: riktig svar → kunnskapsbonus == fasit, egen P&L-linje, dagstak håndhevet | ✅ PASS | 3031 |
+| 23 | Espen spør: feil svar → penger uendret, forklaring, spørsmål i cooldown | ✅ PASS | 2103 |
+| 24 | Stamkunder PARKERT (STAMKUNDER_AKTIV=false) + trekkeregel: uspilt foretrekkes, nullstill ved tom pool | ✅ PASS | 6379 |
+| 25 | Nivåbryter: VG1 skjuler VG2-spørsmål + pristilbud-felt; VG2 viser dem | ✅ PASS | 8169 |
+| 26 | Fagfilter: M av → M-faner + mkf-tilbud (7d) borte, FD-faner igjen; ↺ Nullstill → tilbake | ✅ PASS | 99290 |
+| 27 | Fagbytte i ÅPEN skjult fane → rolig retur til Oversikt (ingen feil) | ✅ PASS | 3260 |
+| 28 | Espen spør lærerstyrt: av default → ingen auto; fagfilter fd/m (finnKandidater-fasit) | ✅ PASS | 3820 |
+| 29 | Turistsesong PARKERT: sesong kan ikke starte, ⚙-knapper grå, sesong-trigger armes ikke | ✅ PASS | 2106 |
+| 30 | Datavakt: dynamisk trigger fyrer IKKE på tomt grunnlag (beredskap_risiko_levert) | ✅ PASS | 1658 |
+| 31 | Fagmapping: Personale=FD+M, Forretningsplan=FD+M, Økonomi=ren FD, KS styrer ingen fane | ✅ PASS | 5130 |
+| 32 | Vareeksponering: bakgrunnssalg selger KUN utstilte varer; tom disk → 0 salg/tap; tapte-kort = sum av tre | ✅ PASS | 5072 |
+| 33 | Dagspuls: «siste salg»-logg ruller (maks 10, ikke tømt av tick uten salg) + leverings-toast venter på kundemøte | ✅ PASS | 4071 |
+| 34 | Kø: nullstilt ved OPEN_DAY (aldri gårsdagens tall) + ventende kunde betjenes innen toleransen (ikke tapt) | ✅ PASS | 2719 |
+| 35 | Scenario-tidsvindu: Morgenkunden (09–11) / Kryssalget (11–14) spawner innenfor vinduet (seedet) | ✅ PASS | 2368 |
+| 36 | Salgslogg: append gir ny id øverst UTEN å endre key på eksisterende linjer (ingen re-mount) | ✅ PASS | 2212 |
+| 37 | Mentor daglig-refleksjon: kø vinner (Personale synlig, også ren M) · FD+M av → 0 kø-tap + svinn vinner · nullstill re-armer | ✅ PASS | 6106 |
+| 38 | Bestillings-UX: «I bestilling»-total vises og akkumulerer ved to klikk | ✅ PASS | 7235 |
+| 39 | Lagre-kvittering (Priser): endring → «Ulagrede endringer» → lagre → «Sist lagret»; utkast bevart ved fanebytte | ✅ PASS | 4195 |
+| 40 | Scene-melding: scenebytte forkaster ulest scene-melding og re-armer triggeren | ✅ PASS | 1304 |
+| 41 | Tema-fag-gating (HMS-bug): beredskap aktiv + FD av → ingen tema-trigger; FD på → fyrer | ✅ PASS | 1876 |
+| 42 | Mentor-pose: pose-bytte endrer ikke figurens LAYOUTBOKS (computed style + rect) | ✅ PASS | 1304 |
+| 43 | KROK 7c Sentrumsposten (revidert+fiks): to publiseringstempo · badge+NYTT-merke tennes/slukkes · gjeldende kun forside / 3 eldre i arkiv · avis_swot (mulighet/trussel) maks 1/utgave · trend-effekt == fasit · datavakt · fag-gating · mentor | ✅ PASS | 13557 |
+| 44 | Prislagring rører KUN retailPrice (disk/vindu/lager urørt midt på dagen) — TILLITSKRITISK | ✅ PASS | 2636 |
+| 45 | Kontekstbundet mentor-tips: fane-tips ulest + fanebytte → forkastet + re-armet (tilbake ved retur) | ✅ PASS | 1630 |
+| 46 | Endre/angre bestilling før levering: bestill 130 → endre 30 (leveres 30, differanse refundert); bestill → 0 → ingen levering | ✅ PASS | 5815 |
+| 47 | Dagspuls «Lager på disken» viser ALLE utstilte varer (12 utstilt → 12 rader i DOM) | ✅ PASS | 1696 |
+| 48 | Produktregnskap i dagsoppgjøret: tabellsummer == totalkortene (svinn stk/kr + solgt stk) | ✅ PASS | 2907 |
+| 49 | Bransje-gated vindusutstilling: CAFE (vindusUtstilling=false) → ingen vindusseksjon/tracer, disk-eksponering i stedet | ✅ PASS | 2469 |
+| 50 | Planlegging koster ikke spilltid: dashbord åpent i åpen dag → dayMinute fryser + «tiden står»-indikator; lukk → tiden går | ✅ PASS | 9509 |
+| 51 | Mentor-figuren har stor klikkflate: hode/senter/føtter klikkbare (også med dagspuls); klikk åpner neste kø-melding; 📖 åpner ordboka (ikke meldingen) | ✅ PASS | 3175 |
 
 ## Detaljer per steg
 
@@ -179,207 +179,167 @@ Verifiserte tall/tilstander:
 Verifiserte tall/tilstander:
 - turistkontor-scene: gjest «turist-kart.png» dekoder ved disken; velger → «turist-kamera.png» (også dekodet)
 
-### ❌ Steg 20 — Priser-fanen (UI): elevsatt pris persisteres via «Lagre priser» og den prisede varen selges
+### ✅ Steg 20 — Priser-fanen (UI): elevsatt pris persisteres via «Lagre priser» og den prisede varen selges
 
-```
-locator.click: Test timeout of 900000ms exceeded.
-Call log:
-[2m  - waiting for getByRole('button', { name: /Lagre priser/ }).first()[22m
-[2m    - locator resolved to <button>Lagre priser</button>[22m
-[2m  - attempting click action[22m
-[2m    - waiting for element to be visible, enabled and stable[22m
-[2m    - element is not stable[22m
-[2m  - retrying click action[22m
-[2m    - waiting for element to be visible, enabled and stable[22m
-[2m  - element was detached from the DOM, retrying[22m
+Verifiserte tall/tilstander:
+- Priser-fanen UI: coffee 0 → 50 kr (input→blur + Lagre), solgte 6 stk (300 kr) etter 30 tikk, mangler-pris-tap: 0
 
-```
+### ✅ Steg 21 — Innboksen: bestilling levert (betaling==fasit), sviktet levering (skuffet kunde), dårlig leverandørtilbud (negativt netto)
 
-### ❌ Steg 21 — Innboksen: bestilling levert (betaling==fasit), sviktet levering (skuffet kunde), dårlig leverandørtilbud (negativt netto)
+Verifiserte tall/tilstander:
+- A: bestilling levert — betalt 600 kr (== fasit), lager −12 stk
+- B: sviktet levering — rykte 50 → 44, ingen betaling
+- C: villedende tilbud akseptert — netto -200 kr (negativt), betalte 760 kr
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 22 — Espen spør: riktig svar → kunnskapsbonus == fasit, egen P&L-linje, dagstak håndhevet
 
-### ❌ Steg 22 — Espen spør: riktig svar → kunnskapsbonus == fasit, egen P&L-linje, dagstak håndhevet
+Verifiserte tall/tilstander:
+- Espen spør: 3 riktige → +400 kr (tak), 3. gav 0. Dagsoppgjør-linje = 400 kr
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 23 — Espen spør: feil svar → penger uendret, forklaring, spørsmål i cooldown
 
-### ❌ Steg 23 — Espen spør: feil svar → penger uendret, forklaring, spørsmål i cooldown
+Verifiserte tall/tilstander:
+- Feil svar: penger uendret (197200), forklaring vist, cooldown til dag 4
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 24 — Stamkunder PARKERT (STAMKUNDER_AKTIV=false) + trekkeregel: uspilt foretrekkes, nullstill ved tom pool
 
-### ❌ Steg 24 — Stamkunder PARKERT (STAMKUNDER_AKTIV=false) + trekkeregel: uspilt foretrekkes, nullstill ved tom pool
+Verifiserte tall/tilstander:
+- Parkert: 0 stamkundemøter; uspilt foretrekkes (morgenkunden holdt tilbake), pool nullstilt da alle 14 var spilt
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 25 — Nivåbryter: VG1 skjuler VG2-spørsmål + pristilbud-felt; VG2 viser dem
 
-### ❌ Steg 25 — Nivåbryter: VG1 skjuler VG2-spørsmål + pristilbud-felt; VG2 viser dem
+Verifiserte tall/tilstander:
+- Nivå: VG1-pool 18 spm (0 VG2), VG2-pool har VG2-spm; pristilbud-felt skjult i VG1, synlig i VG2
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 26 — Fagfilter: M av → M-faner + mkf-tilbud (7d) borte, FD-faner igjen; ↺ Nullstill → tilbake
 
-### ❌ Steg 26 — Fagfilter: M av → M-faner + mkf-tilbud (7d) borte, FD-faner igjen; ↺ Nullstill → tilbake
+Verifiserte tall/tilstander:
+- M av → 5 M-faner + mkf-tilbud (7d) borte, Produkter/Priser/kjerne igjen; ↺ Nullstill → M-faner tilbake
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 27 — Fagbytte i ÅPEN skjult fane → rolig retur til Oversikt (ingen feil)
 
-### ❌ Steg 27 — Fagbytte i ÅPEN skjult fane → rolig retur til Oversikt (ingen feil)
+Verifiserte tall/tilstander:
+- Fagbytte på åpen Målgruppe-fane → «Læreren har endret fagoppsettet» + tilbake på Oversikt, 0 feil
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 28 — Espen spør lærerstyrt: av default → ingen auto; fagfilter fd/m (finnKandidater-fasit)
 
-### ❌ Steg 28 — Espen spør lærerstyrt: av default → ingen auto; fagfilter fd/m (finnKandidater-fasit)
+Verifiserte tall/tilstander:
+- Av default: 0 auto-spørsmål over 4 dager. Fagfilter: 11 fd-spm (alle fd), M-pool alle m-tagget
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 29 — Turistsesong PARKERT: sesong kan ikke starte, ⚙-knapper grå, sesong-trigger armes ikke
 
-### ❌ Steg 29 — Turistsesong PARKERT: sesong kan ikke starte, ⚙-knapper grå, sesong-trigger armes ikke
+Verifiserte tall/tilstander:
+- Parkert: START_TURISTSESONG no-op (turistsesong=null), sesong-trigger armes ikke, ⚙-knapp grå «Parkert»
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 30 — Datavakt: dynamisk trigger fyrer IKKE på tomt grunnlag (beredskap_risiko_levert)
 
-### ❌ Steg 30 — Datavakt: dynamisk trigger fyrer IKKE på tomt grunnlag (beredskap_risiko_levert)
+Verifiserte tall/tilstander:
+- Datavakt (beredskap_risiko_levert): tomt/ulagret grunnlag → fyrer ikke; ≥1 tiltak → fyrer
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 31 — Fagmapping: Personale=FD+M, Forretningsplan=FD+M, Økonomi=ren FD, KS styrer ingen fane
 
-### ❌ Steg 31 — Fagmapping: Personale=FD+M, Forretningsplan=FD+M, Økonomi=ren FD, KS styrer ingen fane
+Verifiserte tall/tilstander:
+- Personale=FD+M (står så lenge FD el. M er på, borte når begge av); Forretningsplan=FD+M; Økonomi=ren FD (skjult ved FD av); KS av → 0 faner endres, men ks-spørsmål stilles ikke
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 32 — Vareeksponering: bakgrunnssalg selger KUN utstilte varer; tom disk → 0 salg/tap; tapte-kort = sum av tre
 
-### ❌ Steg 32 — Vareeksponering: bakgrunnssalg selger KUN utstilte varer; tom disk → 0 salg/tap; tapte-kort = sum av tre
+Verifiserte tall/tilstander:
+- Utstilte-only: tom disk 0 salg/0 tap (kunder teller); ikke-utstilt croissant aldri solgt/tapt; tapte-kort summerer (0 tomt · 8 pris · 5 dyr = 13)
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 33 — Dagspuls: «siste salg»-logg ruller (maks 10, ikke tømt av tick uten salg) + leverings-toast venter på kundemøte
 
-### ❌ Steg 33 — Dagspuls: «siste salg»-logg ruller (maks 10, ikke tømt av tick uten salg) + leverings-toast venter på kundemøte
+Verifiserte tall/tilstander:
+- sisteSalgLogg ruller (taket 10, urørt av tick uten salg); leverings-toast venter på møtet (borte under, tilbake etter)
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 34 — Kø: nullstilt ved OPEN_DAY (aldri gårsdagens tall) + ventende kunde betjenes innen toleransen (ikke tapt)
 
-### ❌ Steg 34 — Kø: nullstilt ved OPEN_DAY (aldri gårsdagens tall) + ventende kunde betjenes innen toleransen (ikke tapt)
+Verifiserte tall/tilstander:
+- kø nullstilt ved OPEN_DAY (dag1 hadde 1 gått); ventende kunde betjent innenfor toleransen uten tap
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 35 — Scenario-tidsvindu: Morgenkunden (09–11) / Kryssalget (11–14) spawner innenfor vinduet (seedet)
 
-### ❌ Steg 35 — Scenario-tidsvindu: Morgenkunden (09–11) / Kryssalget (11–14) spawner innenfor vinduet (seedet)
+Verifiserte tall/tilstander:
+- tidsbundne scenarier spawnet innenfor vinduet (2 observasjoner over dagene)
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 36 — Salgslogg: append gir ny id øverst UTEN å endre key på eksisterende linjer (ingen re-mount)
 
-### ❌ Steg 36 — Salgslogg: append gir ny id øverst UTEN å endre key på eksisterende linjer (ingen re-mount)
+Verifiserte tall/tilstander:
+- append gir ny id øverst; eksisterende logglinjers id-er står uendret (stabil key → ingen re-mount)
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 37 — Mentor daglig-refleksjon: kø vinner (Personale synlig, også ren M) · FD+M av → 0 kø-tap + svinn vinner · nullstill re-armer
 
-### ❌ Steg 37 — Mentor daglig-refleksjon: kø vinner (Personale synlig, også ren M) · FD+M av → 0 kø-tap + svinn vinner · nullstill re-armer
+Verifiserte tall/tilstander:
+- kø vinner (FD på OG ren M — Personale synlig), FD+M av → 0 kø-tap + svinn vinner (daglig-hint dag-scopet); nullstill tømmer fyrt-settet
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 38 — Bestillings-UX: «I bestilling»-total vises og akkumulerer ved to klikk
 
-### ❌ Steg 38 — Bestillings-UX: «I bestilling»-total vises og akkumulerer ved to klikk
+Verifiserte tall/tilstander:
+- «I bestilling: N stk — levering i morgen» vises og akkumulerer 10 → 20; knappen forblir «Bestill»
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 39 — Lagre-kvittering (Priser): endring → «Ulagrede endringer» → lagre → «Sist lagret»; utkast bevart ved fanebytte
 
-### ❌ Steg 39 — Lagre-kvittering (Priser): endring → «Ulagrede endringer» → lagre → «Sist lagret»; utkast bevart ved fanebytte
+Verifiserte tall/tilstander:
+- endring → «Ulagrede endringer», lagre → «Sist lagret kl.», utkast + indikator bevart ved fanebytte
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 40 — Scene-melding: scenebytte forkaster ulest scene-melding og re-armer triggeren
 
-### ❌ Steg 40 — Scene-melding: scenebytte forkaster ulest scene-melding og re-armer triggeren
+Verifiserte tall/tilstander:
+- scenebytte forkaster ulest scene-melding fra køen og re-armer triggeren (kan fyre igjen ved retur)
 
-```
-page.evaluate: Target page, context or browser has been closed
-```
+### ✅ Steg 41 — Tema-fag-gating (HMS-bug): beredskap aktiv + FD av → ingen tema-trigger; FD på → fyrer
 
-### ❌ Steg 41 — Tema-fag-gating (HMS-bug): beredskap aktiv + FD av → ingen tema-trigger; FD på → fyrer
+Verifiserte tall/tilstander:
+- tema-trigger fag-gated: beredskap aktiv + FD av → ingen HMS-melding; FD på → melding tilbake (Espen spør + innboks var alt fag-gated)
 
-```
-page.evaluate: Target page, context or browser has been closed
-```
+### ✅ Steg 42 — Mentor-pose: pose-bytte endrer ikke figurens LAYOUTBOKS (computed style + rect)
 
-### ❌ Steg 42 — Mentor-pose: pose-bytte endrer ikke figurens LAYOUTBOKS (computed style + rect)
+Verifiserte tall/tilstander:
+- figur-containeren låst til 150px×170px — pose-bytte (v5/v3/v2) endrer ikke bounding-box; poser preloades
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 43 — KROK 7c Sentrumsposten (revidert+fiks): to publiseringstempo · badge+NYTT-merke tennes/slukkes · gjeldende kun forside / 3 eldre i arkiv · avis_swot (mulighet/trussel) maks 1/utgave · trend-effekt == fasit · datavakt · fag-gating · mentor
 
-### ❌ Steg 43 — KROK 7c Sentrumsposten (revidert+fiks): to publiseringstempo · badge+NYTT-merke tennes/slukkes · gjeldende kun forside / 3 eldre i arkiv · avis_swot (mulighet/trussel) maks 1/utgave · trend-effekt == fasit · datavakt · fag-gating · mentor
+Verifiserte tall/tilstander:
+- to tempo OK: hovedutgave kun avisdag, løpende notis (1, ikke-trend) mellom; badge+NYTT tennes/slukkes; gjeldende=uke 5 på forside, arkiv=3 eldre (uker 4,3,2); avis_swot|5 maks 1/utgave; trend-effekt «Regnværsuke (−trafikk, ++varm drikke)» == fasit; datavakt + fag-gating + mentor OK
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 44 — Prislagring rører KUN retailPrice (disk/vindu/lager urørt midt på dagen) — TILLITSKRITISK
 
-### ❌ Steg 44 — Prislagring rører KUN retailPrice (disk/vindu/lager urørt midt på dagen) — TILLITSKRITISK
+Verifiserte tall/tilstander:
+- prislagring merger KUN retailPrice: lager (coffee:200, croissant:119) + plasseringer + utstilte urørt av stale utkast; croissant → 99 kr; salget fortsetter
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 45 — Kontekstbundet mentor-tips: fane-tips ulest + fanebytte → forkastet + re-armet (tilbake ved retur)
 
-### ❌ Steg 45 — Kontekstbundet mentor-tips: fane-tips ulest + fanebytte → forkastet + re-armet (tilbake ved retur)
+Verifiserte tall/tilstander:
+- fane-tips ulest + fanebytte → forkastet + re-armet; kommer tilbake ved retur (kontekst avledet av t.fane/t.scene i dataene)
 
-```
-page.evaluate: Target page, context or browser has been closed
-```
+### ✅ Steg 46 — Endre/angre bestilling før levering: bestill 130 → endre 30 (leveres 30, differanse refundert); bestill → 0 → ingen levering
 
-### ❌ Steg 46 — Endre/angre bestilling før levering: bestill 130 → endre 30 (leveres 30, differanse refundert); bestill → 0 → ingen levering
+Verifiserte tall/tilstander:
+- bestill 130 → endre 30 → leveres 30 (differanse 1400 kr refundert); bestill 50 → endre 0 → kansellert, ingen levering (stock 30→30)
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 47 — Dagspuls «Lager på disken» viser ALLE utstilte varer (12 utstilt → 12 rader i DOM)
 
-### ❌ Steg 47 — Dagspuls «Lager på disken» viser ALLE utstilte varer (12 utstilt → 12 rader i DOM)
+Verifiserte tall/tilstander:
+- 12 utstilte varer → 12 rader i DOM; lista scroller internt (overflow: true) innenfor fast min-høyde
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 48 — Produktregnskap i dagsoppgjøret: tabellsummer == totalkortene (svinn stk/kr + solgt stk)
 
-### ❌ Steg 48 — Produktregnskap i dagsoppgjøret: tabellsummer == totalkortene (svinn stk/kr + solgt stk)
+Verifiserte tall/tilstander:
+- produktregnskap avstemmes: Σsvinn 46 stk/874 kr == totalkort; Σsolgt 22 stk == møter+bakgrunn; kollapset default, åpnes på klikk
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 49 — Bransje-gated vindusutstilling: CAFE (vindusUtstilling=false) → ingen vindusseksjon/tracer, disk-eksponering i stedet
 
-### ❌ Steg 49 — Bransje-gated vindusutstilling: CAFE (vindusUtstilling=false) → ingen vindusseksjon/tracer, disk-eksponering i stedet
+Verifiserte tall/tilstander:
+- CAFE vindusUtstilling=false: ingen vindusflate/tracer i DOM, disk-eksponering vist, forste_vindu ikke armet
 
-```
-page.evaluate: Target page, context or browser has been closed
-```
+### ✅ Steg 50 — Planlegging koster ikke spilltid: dashbord åpent i åpen dag → dayMinute fryser + «tiden står»-indikator; lukk → tiden går
 
-### ❌ Steg 50 — Planlegging koster ikke spilltid: dashbord åpent i åpen dag → dayMinute fryser + «tiden står»-indikator; lukk → tiden går
+Verifiserte tall/tilstander:
+- planlegging pauser klokka: tid 3→ frøs på 3 mens dashbord åpent (3=3, bakgrunnskunder 1 urørt) → går igjen (8). Indikator vist/skjult.
 
-```
-page.goto: Target page, context or browser has been closed
-```
+### ✅ Steg 51 — Mentor-figuren har stor klikkflate: hode/senter/føtter klikkbare (også med dagspuls); klikk åpner neste kø-melding; 📖 åpner ordboka (ikke meldingen)
 
-### ❌ Steg 51 — Mentor-figuren har stor klikkflate: hode/senter/føtter klikkbare (også med dagspuls); klikk åpner neste kø-melding; 📖 åpner ordboka (ikke meldingen)
-
-```
-page.evaluate: Target page, context or browser has been closed
-```
+Verifiserte tall/tilstander:
+- figur-klikkflaten dekker hele figuren (hode/senter/føtter, også med dagspuls); klikk avslører neste kø-melding; 📖 åpner ordboka separat
 
 ## Notater
 
