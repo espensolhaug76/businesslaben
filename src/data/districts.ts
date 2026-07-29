@@ -28,6 +28,12 @@ export interface District {
    *  true. Settes false på bydeler der etablering ennå ikke er åpnet (skjuler
    *  KUN visningen; lokaldataene/mekanikken beholdes). */
   visLedigeLokaler?: boolean
+  /** ÆRLIG BYKART-STATUS (Espens beslutning 30.07): 'aktiv' = bydelen har
+   *  innhold (bilde/scener) og er klikkbar; 'kommer' = ikke bygget ennå →
+   *  «Kommer», IKKE klikkbar på bykartet (samme mønster som bransjegating).
+   *  Kun Sentrum + Stasjonsområdet er aktive nå. Datadrevet — flipp her når en
+   *  bydel får innhold. */
+  bydelStatus: 'aktiv' | 'kommer'
 }
 
 export interface Lokale {
@@ -39,12 +45,18 @@ export interface Lokale {
   kapasitet: number
   /** Leie = round(district.leieniva × rentFactor / 100) × 100. */
   rentFactor: number
+  /** ÆRLIG LOKALE-STATUS (Espens beslutning 30.07): kun lokaler som er fullt
+   *  utstyrt (storefront + interiør) er «Ledig» og klikkbare. Undefined/false ⇒
+   *  «Ikke ledig» (grå, ikke klikkbar). Flipp til true når lokalet har egne
+   *  scener. Pilotlokalet (sentrum-l2 «Gågata 12») er det eneste ledige nå. */
+  ledig?: boolean
 }
 
 export const DISTRICTS: District[] = [
   {
     id: 'sentrum',
     navn: 'Sentrum',
+    bydelStatus: 'aktiv',
     beskrivelse:
       'Gågata og torget — byens hjerte med høyest kundetrafikk, kafeer og spesialbutikker. Premium beliggenhet til premium pris.',
     leieniva: 45000,
@@ -57,6 +69,7 @@ export const DISTRICTS: District[] = [
   {
     id: 'stasjonsomradet',
     navn: 'Stasjonsområdet',
+    bydelStatus: 'aktiv',
     beskrivelse:
       'Området rundt jernbanestasjonen — jevn strøm av pendlere morgen og ettermiddag. Godt synlig, noe lavere leie enn gågata.',
     leieniva: 32000,
@@ -72,6 +85,7 @@ export const DISTRICTS: District[] = [
   {
     id: 'storhandel',
     navn: 'Storhandel',
+    bydelStatus: 'kommer',
     beskrivelse:
       'Bilbasert handelspark med store flater og rikelig parkering. Lav leie per kvadratmeter, kundene kommer med handleliste.',
     leieniva: 22000,
@@ -83,6 +97,7 @@ export const DISTRICTS: District[] = [
   {
     id: 'industri',
     navn: 'Industriområdet',
+    bydelStatus: 'kommer',
     beskrivelse:
       'Lager, verksteder og godsterminal langs jernbanen. Billigst i byen — men nesten ingen forbipasserende kunder.',
     leieniva: 12000,
@@ -94,6 +109,7 @@ export const DISTRICTS: District[] = [
   {
     id: 'bolig_vest',
     navn: 'Bolig vest',
+    bydelStatus: 'kommer',
     beskrivelse:
       'Etablert boligstrøk vest i byen med nærbutikk-potensial. Lojale naboer, men begrenset trafikk utenfra.',
     leieniva: 15000,
@@ -105,6 +121,7 @@ export const DISTRICTS: District[] = [
   {
     id: 'bolig_ost',
     navn: 'Bolig øst',
+    bydelStatus: 'kommer',
     beskrivelse:
       'Villastrøk i åssiden øst for sentrum. Rolig, kjøpesterkt nabolag — passer nisjekonsepter med stamkunder.',
     leieniva: 16000,
@@ -116,6 +133,7 @@ export const DISTRICTS: District[] = [
   {
     id: 'skole_idrett',
     navn: 'Skole og idrett',
+    bydelStatus: 'kommer',
     beskrivelse:
       'Skole, idrettshall og stadion — ungt publikum og arrangementstopper på kveldstid og i helger.',
     leieniva: 18000,
@@ -127,6 +145,7 @@ export const DISTRICTS: District[] = [
   {
     id: 'ovrebyen',
     navn: 'Øvrebyen',
+    bydelStatus: 'kommer',
     beskrivelse:
       'Den eldre bydelen mellom sentrum og villastrøkene — teglgater, kontorer og småbutikker med lokal sjarm.',
     leieniva: 26000,
@@ -165,7 +184,7 @@ export const LOKALER: Record<string, Lokale[]> = {
   // docs/VERDENSMODELL.md §3. Endrer du rentFactor her, oppdater basetrafikk der.
   sentrum: [
     { id: 'sentrum-l1', navn: 'Hjørnelokalet ved torget', rect: [4, 52, 16, 28], sqm: 85, kapasitet: 160, rentFactor: 1.2 },
-    { id: 'sentrum-l2', navn: 'Gågata 12',                rect: [20, 44, 11, 22], sqm: 60, kapasitet: 120, rentFactor: 1.0 },
+    { id: 'sentrum-l2', navn: 'Gågata 12',                rect: [20, 44, 11, 22], sqm: 60, kapasitet: 120, rentFactor: 1.0, ledig: true },
     { id: 'sentrum-l3', navn: 'Gågata 14',                rect: [30, 38, 9, 17],  sqm: 48, kapasitet: 95,  rentFactor: 0.9 },
     { id: 'sentrum-l4', navn: 'Gågata 16',                rect: [38, 32, 7, 14],  sqm: 40, kapasitet: 80,  rentFactor: 0.8 },
     { id: 'sentrum-l5', navn: 'Torggata 1',               rect: [73, 47, 17, 28], sqm: 92, kapasitet: 170, rentFactor: 1.25 },

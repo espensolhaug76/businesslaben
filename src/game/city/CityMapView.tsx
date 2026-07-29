@@ -88,8 +88,14 @@ export default function CityMapView() {
   }
   function onPointerUp() { drag.current = null }
 
+  // ÆRLIG BYKART (DEL 3): «Kommer»-bydeler er ikke klikkbare (samme mønster som
+  // bransjegating). Nummerert dev-overlay (?numbers=1) lar Espen navngi hotspotene.
+  const visNumre = new URLSearchParams(window.location.search).get('numbers') === '1'
+
   function openDistrict(id: string) {
     if (moved.current) return // drag, ikke klikk
+    const dd = DISTRICTS.find(x => x.id === id)!
+    if (dd.bydelStatus === 'kommer') return // ikke bygget ennå → ikke klikkbar
     // Zoom-transition mot polygonets centroid, så navigasjon.
     const d = DISTRICTS.find(x => x.id === id)!
     const [cx, cy] = polygonCentroid(d.polygon)
@@ -138,21 +144,59 @@ export default function CityMapView() {
         {/* ANIMASJON SYNLIG DEL 3: biltrafikk (egen reduced-fallback inni) */}
         <TrafficLayer />
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-          {DISTRICTS.map(d => (
+          {DISTRICTS.map(d => {
+            const kommer = d.bydelStatus === 'kommer'
+            const aktivHover = hover === d.id && !kommer
+            return (
             <polygon
               key={d.id}
               points={d.polygon.map(p => p.join(',')).join(' ')}
-              fill={hover === d.id ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.01)'}
-              stroke={hover === d.id ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.18)'}
-              strokeWidth={hover === d.id ? 0.4 : 0.2}
-              style={{ cursor: 'pointer', transition: 'fill 0.15s', pointerEvents: 'auto' }}
+              fill={kommer ? 'rgba(0,0,0,0.28)' : aktivHover ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.01)'}
+              stroke={aktivHover ? 'rgba(255,255,255,0.7)' : kommer ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)'}
+              strokeWidth={aktivHover ? 0.4 : 0.2}
+              style={{ cursor: kommer ? 'not-allowed' : 'pointer', transition: 'fill 0.15s', pointerEvents: 'auto' }}
               vectorEffect="non-scaling-stroke"
               onMouseEnter={() => setHover(d.id)}
               onMouseLeave={() => setHover(h => (h === d.id ? null : h))}
               onClick={() => openDistrict(d.id)}
             />
-          ))}
+          )})}
         </svg>
+        {/* «Kommer»-merke på bydeler uten innhold + valgfritt hotspot-nummer (?numbers=1) */}
+        {DISTRICTS.map(d => {
+          const [cx, cy] = polygonCentroid(d.polygon)
+          const kommer = d.bydelStatus === 'kommer'
+          if (!kommer && !visNumre) return null
+          return (
+            <div key={`lbl-${d.id}`} style={{
+              position: 'absolute', left: `${cx}%`, top: `${cy}%`,
+              transform: 'translate(-50%, -50%)', pointerEvents: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+              fontFamily: "'Outfit', sans-serif", textAlign: 'center',
+            }}>
+              {visNumre && (
+                <span style={{
+                  background: 'rgba(56,189,248,0.92)', color: '#04121f', fontWeight: 900,
+                  fontSize: 13, borderRadius: 99, minWidth: 22, padding: '1px 6px',
+                  border: '1px solid rgba(255,255,255,0.6)',
+                }}>{DISTRICTS.indexOf(d) + 1}</span>
+              )}
+              {kommer && (
+                <span style={{
+                  background: 'rgba(250,204,21,0.16)', border: '1px solid rgba(250,204,21,0.5)',
+                  color: '#facc15', fontSize: 11, fontWeight: 800, letterSpacing: '0.05em',
+                  borderRadius: 99, padding: '2px 9px', whiteSpace: 'nowrap',
+                }}>KOMMER</span>
+              )}
+              {visNumre && (
+                <span style={{
+                  background: 'rgba(10,14,26,0.85)', color: '#e2e8f0', fontSize: 10,
+                  borderRadius: 6, padding: '1px 5px', whiteSpace: 'nowrap',
+                }}>{d.navn}</span>
+              )}
+            </div>
+          )
+        })}
         {/* ?dev=1: rute-tracer for kalibrering av SMOKESTACKS/ROADS/polygons
             — eksisterende bilruter vises som overlay */}
         {visKal && <DevCoordHelper paths={ROADS.map(r => r.points)} />}
@@ -179,8 +223,10 @@ export default function CityMapView() {
           fontFamily: "'Outfit', sans-serif", color: '#f1f5f9', maxWidth: 260,
         }}>
           <div style={{ fontWeight: 800, fontSize: 14 }}>{hovered.navn}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-            Leienivå {hovered.leieniva.toLocaleString('nb-NO')} kr/mnd · Trafikk: {hovered.trafikk}
+          <div style={{ fontSize: 11, color: hovered.bydelStatus === 'kommer' ? '#facc15' : '#94a3b8', marginTop: 2 }}>
+            {hovered.bydelStatus === 'kommer'
+              ? 'Kommer snart — ikke åpnet ennå'
+              : `Leienivå ${hovered.leieniva.toLocaleString('nb-NO')} kr/mnd · Trafikk: ${hovered.trafikk}`}
           </div>
         </div>
       )}

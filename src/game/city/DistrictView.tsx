@@ -121,33 +121,35 @@ export default function DistrictView({
           // Etablering ikke åpnet i bydelen → skjul ledige lokaler helt (skilt +
           // leie-klikk). Eget lokale vises alltid (om man alt har et her).
           if (!mine && district.visLedigeLokaler === false) return null
+          // ÆRLIG LOKALE-STATUS (DEL 3): kun fullt utstyrte lokaler (l.ledig) er
+          // klikkbare og «Ledig». Resten vises som «Ikke ledig» (grå, ikke klikk).
+          const leibar = !!l.ledig
+          const klikkbar = mine || leibar
           return (
             <div key={l.id}>
-              {/* Usynlig klikkflate over butikkfronten */}
+              {/* Usynlig klikkflate over butikkfronten — kun aktiv for klikkbare lokaler */}
               <div
                 onClick={() => {
                   if (mine) {
                     // Zoom-overgang mot lokalets senter, så navigasjon.
                     setZoomOrigin([x + w / 2, y + h / 2])
                     window.setTimeout(() => navigate(`/game/d/${district.id}/l/${l.id}`), 450)
-                  } else {
+                  } else if (leibar) {
                     onVacantClick({ district, lokale: l, rent: lokaleRent(district, l) })
                   }
+                  // ellers: «Ikke ledig» — ingen handling.
                 }}
-                title={l.navn}
+                title={mine ? l.navn : leibar ? `${l.navn} — Ledig` : `${l.navn} — Ikke ledig ennå`}
                 style={{
                   position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`,
-                  cursor: 'pointer', borderRadius: 6,
-                  // Over CustomerFlow-korridoren (zIndex 2) — de fullskala
-                  // trace-te stiene gjorde at tooltip-flaten ellers slukte
-                  // lokale-klikkene.
+                  cursor: klikkbar ? 'pointer' : 'not-allowed', borderRadius: 6,
                   zIndex: 3,
                   outline: '1px solid rgba(255,255,255,0)', transition: 'outline 0.15s, background 0.15s',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLDivElement).style.outline = '1px solid rgba(255,255,255,0.5)' }}
+                onMouseEnter={e => { if (klikkbar) { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLDivElement).style.outline = '1px solid rgba(255,255,255,0.5)' } }}
                 onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.outline = '1px solid rgba(255,255,255,0)' }}
               />
-              {/* Badge: TIL LEIE (ledig) eller logo (eget lokale) */}
+              {/* Badge: eget lokale / TIL LEIE (ledig) / Ikke ledig */}
               <div style={{
                 position: 'absolute', left: `${x + w / 2}%`, top: `${y + h}%`,
                 transform: 'translate(-50%, -50%)', pointerEvents: 'none',
@@ -159,13 +161,20 @@ export default function DistrictView({
                     padding: '0.2rem 0.6rem', fontSize: 11, fontWeight: 800,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.4)', whiteSpace: 'nowrap',
                   }}>🏪 {state.companyName}</span>
-                ) : (
+                ) : leibar ? (
                   <span className={reduced ? undefined : 'badge-sway'} style={{
                     display: 'inline-block',
                     background: 'rgba(212,160,86,0.92)', color: '#3a2a10', borderRadius: 4,
                     padding: '0.12rem 0.45rem', fontSize: 10, fontWeight: 800, letterSpacing: 0.5,
                     boxShadow: '0 2px 6px rgba(0,0,0,0.35)', whiteSpace: 'nowrap',
                   }}>TIL LEIE</span>
+                ) : (
+                  <span style={{
+                    display: 'inline-block',
+                    background: 'rgba(30,41,59,0.85)', color: '#94a3b8', borderRadius: 4,
+                    padding: '0.12rem 0.45rem', fontSize: 10, fontWeight: 700, letterSpacing: 0.3,
+                    border: '1px solid rgba(148,163,184,0.3)', whiteSpace: 'nowrap',
+                  }}>Ikke ledig</span>
                 )}
               </div>
             </div>
