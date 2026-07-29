@@ -108,9 +108,79 @@ test('Oppstart uten ?skip — åpningsbestilling ankommer FRISK til dag 1', asyn
     ctx.ok(`dag 1 åpnet med ${kaffe!.stock} kaffe på disken; HUD-dagpille viser «Dag 1»`)
   })
 
+  // ── STEG 5 — Spill til dag 2 + RELOAD overlever (persistering) ──────────────
+  // Skolestart-kravet: lukk/relast nettleseren → finn butikken NØYAKTIG der den
+  // var. Vi endrer disk-oppsett + ruller til dag 2 (varer/penger endret fra start),
+  // laster siden på nytt, velger «Fortsett» i menyen, og sjekker at ALT står.
+  await steg(page, rapport, 5, 'Reload overlever: disk-oppsett + dag 2 + lager + penger står etter «Fortsett»', async ctx => {
+    // Disk-oppsett (2 trau) mens dag 1 er åpen.
+    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [
+      { trauId: 'trau-1', productId: 'coffee' },
+      { trauId: 'trau-2', productId: 'croissant' },
+    ] })
+    await ventState(page, s => s.counterLayout.length >= 2, 'disk-oppsett lagret')
+    // Rull til dag 2 (stengt) → stabil tilstand (ingen klokke som tikker ved reload).
+    await dispatch(page, { type: 'CLOSE_DAY' })
+    await ventState(page, s => s.dayPhase === 'oppgjør', 'dag 1 stengt (oppgjør)')
+    await dispatch(page, { type: 'START_NEW_DAY' })
+    await ventState(page, s => s.dayNumber === 2 && s.dayPhase === 'stengt', 'dag 2 (stengt)')
+
+    // Snapshot FØR reload (fasit).
+    const før = await lesState(page)
+    expect(før.money, 'penger endret fra startkapital (åpningskjøp trukket)').toBeLessThan(200_000)
+    const fasit = {
+      phase: før.phase, companyName: før.companyName, money: før.money,
+      dayNumber: før.dayNumber, dayPhase: før.dayPhase,
+      coffee: før.products.find(p => p.id === 'coffee')?.stock ?? -1,
+      counterLayout: JSON.stringify(før.counterLayout),
+      reputation: før.reputation, xp: før.xp, avisUlest: før.avisUlest,
+    }
+
+    // RELOAD → oppstartsmenyen skal tilby «Fortsett» (save finnes).
+    await page.reload()
+    const fortsett = page.getByRole('button', { name: /Fortsett som/ })
+    await expect(fortsett, '«Fortsett»-knappen vises etter reload').toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('body')).toContainText(`Dag ${fasit.dayNumber}`)
+    await fortsett.click()
+    await ventState(page, s => s.phase !== 'startup', 'spillet hydrert etter «Fortsett»')
+
+    const s = await lesState(page)
+    expect(s.phase, 'phase bevart').toBe(fasit.phase)
+    expect(s.companyName, 'bedriftsnavn bevart').toBe(fasit.companyName)
+    expect(s.money, 'penger bevart').toBe(fasit.money)
+    expect(s.dayNumber, 'dagnummer bevart (dag 2)').toBe(fasit.dayNumber)
+    expect(s.dayPhase, 'dagfase bevart').toBe(fasit.dayPhase)
+    expect(s.products.find(p => p.id === 'coffee')?.stock, 'kaffe-lager bevart').toBe(fasit.coffee)
+    expect(JSON.stringify(s.counterLayout), 'disk-oppsett bevart').toBe(fasit.counterLayout)
+    expect(s.reputation, 'rykte bevart').toBe(fasit.reputation)
+    expect(s.xp, 'XP bevart').toBe(fasit.xp)
+    expect(s.avisUlest, 'ulest-avis-teller bevart').toBe(fasit.avisUlest)
+    ctx.ok(`etter reload+Fortsett: «${s.companyName}» dag ${s.dayNumber}, ${fasit.coffee} kaffe, ${s.counterLayout.length} trau, ${s.money} kr — ALT bevart`)
+  })
+
   // ── Gate: en reell FAIL her betyr at oppstartsdivergensen er tilbake ─────────
   const fail = rapport.steg.filter(s => s.status === 'FAIL').length
   const pass = rapport.steg.filter(s => s.status === 'PASS').length
   process.stdout.write(`\nOppstart-elevløype: ${pass} PASS · ${fail} FAIL\n`)
-  expect(fail, `Reelle FAIL i oppstart-elevløypa: ${fail} (åpningsbestillingen når ikke dag 1?)`).toBe(0)
+  expect(fail, `Reelle FAIL i oppstart-elevløypa: ${fail} (åpningsbestillingen/persisteringen røk?)`).toBe(0)
+})
+
+// ─── KORRUPT LAGRING: trygg fallback + backup, ingen krasj ────────────────────
+test('Korrupt lagring → fersk oppstart uten krasj + backup-nøkkel finnes', async ({ page }) => {
+  // Plant en ugyldig save FØR appen laster (addInitScript kjører før side-JS).
+  await page.goto('/game')
+  await ryddLocalStorage(page)
+  await page.addInitScript(() => {
+    try { localStorage.setItem('adventure_save_v1', '{ dette er ikke gyldig json …') } catch { /* */ }
+  })
+  await page.goto('/game')
+
+  // Appen skal IKKE krasje: den ferske navnemenyen vises (ikke «Fortsett»).
+  await expect(page.getByText('Velg din bransje'), 'fersk oppstart tross korrupt save').toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('button', { name: /Fortsett som/ }), 'ingen «Fortsett» på korrupt save').toHaveCount(0)
+
+  // Den korrupte blobben skal være flyttet til backup (aldri slettet stille).
+  const backup = await page.evaluate(() => localStorage.getItem('adventure_save_backup'))
+  expect(backup, 'korrupt save bevart under adventure_save_backup').toContain('ikke gyldig json')
+  process.stdout.write('\nKorrupt lagring: fersk oppstart OK, backup bevart\n')
 })
