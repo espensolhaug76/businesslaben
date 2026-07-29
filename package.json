@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/parse-standard-competitions.mjs --check && node scripts/build-standard-exams.mjs --check && node scripts/build-presentation-registry.mjs --check",
+    "prebuild": "node scripts/parse-standard-competitions.mjs --check && node scripts/build-standard-exams.mjs --check && node scripts/build-presentation-registry.mjs --check && node scripts/check-presentation-sync.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

@@ -71,7 +71,6 @@ function Term({ word, onShow }: { word: string; onShow: (title: string, text: st
 }
 
 let _isLive = false
-let _lastWritten = -1
 
 function NavBtn({ onClick, disabled, children }: { onClick: () => void; disabled: boolean; children: React.ReactNode }) {
   if (_isLive) return null
@@ -319,19 +318,43 @@ function Slide10() {
 
 export default function LonnPersonalkostnaderPresentation() {
   const navigate = useNavigate()
-  const [current, setCurrent] = useState(0)
+  const [lokalSlide, setLokalSlide] = useState(0)
   const { liveSlide, isStudentLive, teacherLiveCode } = useLiveSync()
   const liveCode = teacherLiveCode ?? (isStudentLive ? localStorage.getItem('student-classroom-code') : null)
-  const fromFirebaseRef = useRef(false)
-  useEffect(() => { if (liveSlide !== null) { fromFirebaseRef.current = true; setCurrent(liveSlide) } }, [liveSlide])
+  // ── Slide-tilstand (spor D, runde 10) ─────────────────────────────────────
+  // Firebase er eneste sannhet for hvilken slide ELEVEN ser: læreren skriver,
+  // eleven leser. Eleven har ingen egen slide-tilstand som må forsones med noe.
+  // Samme mønster som _lib/PresentationShell.tsx.
+  const current = isStudentLive ? (liveSlide ?? 0) : lokalSlide
+  // Speiler lærerens slide synkront, så raske tastetrykk regner ut neste slide
+  // fra riktig utgangspunkt uten å vente på en render.
+  const naaRef = useRef(0)
+  useEffect(() => { naaRef.current = current }, [current])
+  // Sist skrevne slide — per montering, ikke modulvariabel. Brukes kun til å
+  // hoppe over en skriving identisk med forrige, aldri til å gate navigasjon.
+  const sistSkrevet = useRef<number | null>(null)
+  const harAdoptert = useRef(false)
+  const harNavigert = useRef(false)
   _isLive = isStudentLive
+  // Læreren adopterer remote ÉN gang ved oppstart, så storskjermen kan gjenoppta
+  // en pågående økt. Etterpå er læreren skriveren, og et forsinket ekko av egne
+  // skrivinger kan ikke flytte henne bakover.
   useEffect(() => {
     if (!teacherLiveCode) return
-    if (fromFirebaseRef.current) { fromFirebaseRef.current = false; return }
-    if (current + 1 === _lastWritten) return
-    _lastWritten = current + 1
-    fbUpdate(fbRef(db, 'sessions/' + teacherLiveCode), { currentSlide: current + 1, quizRevealedSlide: null })
-  }, [current, teacherLiveCode])
+    if (harAdoptert.current || harNavigert.current) return
+    if (liveSlide === null) return
+    harAdoptert.current = true
+    sistSkrevet.current = liveSlide
+    naaRef.current = liveSlide
+    setLokalSlide(liveSlide)
+  }, [liveSlide, teacherLiveCode])
+  /** Skriver lærerens slide. Ubetinget ved navigasjon. */
+  const skrivSlide = useCallback((n: number) => {
+    if (!teacherLiveCode) return
+    if (sistSkrevet.current === n) return
+    sistSkrevet.current = n
+    fbUpdate(fbRef(db, 'sessions/' + teacherLiveCode), { currentSlide: n + 1, quizRevealedSlide: null })
+  }, [teacherLiveCode])
   const PRESENTATION_ROUTE = window.location.pathname
   const [teacherSlides, setTeacherSlides] = useState<TeacherSlide[]>(() => loadTeacherSlides(window.location.pathname))
   const [hiddenSlides, setHiddenSlides] = useState<number[]>(() => loadHiddenSlides(PRESENTATION_ROUTE))
@@ -350,8 +373,25 @@ export default function LonnPersonalkostnaderPresentation() {
   function handleHideToggle(idx: number) {
     setHiddenSlides(prev => { const next = prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]; saveHiddenSlides(PRESENTATION_ROUTE, next); return next })
   }
-  const next = useCallback(() => { setCurrent(c => { let n = c + 1; while (n < TOTAL_SLIDES_WITH_TEACHER - 1 && hiddenSlides.includes(n)) n++; return Math.min(n, TOTAL_SLIDES_WITH_TEACHER - 1) }) }, [TOTAL_SLIDES_WITH_TEACHER, hiddenSlides])
-  const prev = useCallback(() => { setCurrent(c => { let n = c - 1; while (n > 0 && hiddenSlides.includes(n)) n--; return Math.max(n, 0) }) }, [hiddenSlides])
+  /** Eneste vei til en ny slide: setter lokal tilstand OG skriver, ubetinget. */
+  const gaaTil = useCallback((mal: number) => {
+    if (isStudentLive) return
+    const n = Math.max(0, Math.min(mal, TOTAL_SLIDES_WITH_TEACHER - 1))
+    harNavigert.current = true
+    naaRef.current = n
+    setLokalSlide(n)
+    skrivSlide(n)
+  }, [isStudentLive, TOTAL_SLIDES_WITH_TEACHER, skrivSlide])
+  const next = useCallback(() => {
+    let n = naaRef.current + 1
+    while (n < TOTAL_SLIDES_WITH_TEACHER - 1 && hiddenSlides.includes(n)) n++
+    gaaTil(n)
+  }, [TOTAL_SLIDES_WITH_TEACHER, hiddenSlides, gaaTil])
+  const prev = useCallback(() => {
+    let n = naaRef.current - 1
+    while (n > 0 && hiddenSlides.includes(n)) n--
+    gaaTil(n)
+  }, [hiddenSlides, gaaTil])
   function startLiveSession() {
     const pin = String(Math.floor(1000 + Math.random() * 9000))
     localStorage.setItem(`adventure-live-session-${pin}`, JSON.stringify({ pin, currentSlide: 0, activeQuestion: null, questionRevealed: false, status: 'active', presentationName: 'Lønn og personalkostnader' }))
@@ -423,7 +463,7 @@ export default function LonnPersonalkostnaderPresentation() {
       <AnimatePresence>
         {showPinModal && livePin && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPinModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)' }}><motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={e => e.stopPropagation()} style={{ background: '#0f172a', border: '2px solid rgba(56,189,248,0.4)', padding: '3rem 4rem', borderRadius: '2.5rem', textAlign: 'center', boxShadow: '0 0 80px rgba(56,189,248,0.2)', margin: '0 1rem', maxWidth: 500 }}><div style={{ fontSize: 13, fontWeight: 700, color: '#38bdf8', letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: 16 }}>Live sesjon startet</div><div style={{ fontSize: 'clamp(4rem, 15vw, 8rem)', fontWeight: 800, letterSpacing: '0.2em', color: '#f1f5f9', lineHeight: 1, marginBottom: 16 }}>{livePin}</div><p style={{ color: '#64748b', fontSize: 15, marginBottom: 8 }}>Elever går til <strong style={{ color: '#94a3b8' }}>adventure.no/join</strong></p><p style={{ color: '#475569', fontSize: 13, marginBottom: 32 }}>og skriver inn PIN-koden</p><button onClick={() => setShowPinModal(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', padding: '0.75rem 2rem', borderRadius: 99, color: '#f1f5f9', fontWeight: 600, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit' }}>Start presentasjon →</button></motion.div></motion.div>)}
       </AnimatePresence>
-      <TeacherPresentationEditor presentationRoute={PRESENTATION_ROUTE} onSlidesChange={setTeacherSlides} currentSlide={current} slideInfos={slideInfos} onJumpTo={setCurrent} hiddenSlides={hiddenSlides} onHideToggle={handleHideToggle} />
+      <TeacherPresentationEditor presentationRoute={PRESENTATION_ROUTE} onSlidesChange={setTeacherSlides} currentSlide={current} slideInfos={slideInfos} onJumpTo={gaaTil} hiddenSlides={hiddenSlides} onHideToggle={handleHideToggle} />
     </div>
   )
 }
