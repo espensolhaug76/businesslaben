@@ -3846,3 +3846,112 @@ dedikerte. Verifisert grønt: `full-maaned` 51/51 + testvakta.
    (flush ved fanebytte/lukking).
 5. (DEV) ⚙ → «💾 Slett lagring» → reload → fersk oppstart; `adventure_save_backup`
    finnes i DevTools → Application → Local Storage.
+
+## OPPSTART-2 — legacy-rydding, dag 1-regnskap, ærlig bykart — 2026-07-30
+
+Gren: `spor-a/fiks-oppstartslopa-2` (fra `spor-a/persistering` — hele stabelen er
+ennå ikke merget til main; verifiser merge-rekkefølgen). Espens funn fra EKTE
+oppstart.
+
+### DEL 1 — Legacy-stegene fjernet fra startveiviseren
+Startveiviseren hadde tre v1-rester som er FJERNET (Espens beslutning):
+«Velg forretningsmodell», «Velg finansiering», «Hvem er du som gründer?» — samt
+merketekstene «AdVenture 3.0» og «Bygg din bedrift i en isometrisk spillverden».
+
+**Ny løype:** navn → bransje → (bykart/lokalvalg → åpningsbestilling → inn). To steg.
+
+**Legacy-ryddeliste (StartupScreen.tsx):**
+- Fjernet `BUSINESS_MODELS`-arrayet (3 modeller) + hele modell-steget.
+- Fjernet finansierings-steget (`FINANSIERING_OPTIONS`-import + UI).
+- Fjernet personlighets-steget (`PERSONLIGHET_OPTIONS`-import + UI).
+- Fjernet `selectedModel/selectedFinansiering/selectedPersonlighet`-state.
+- Fjernet «AdVenture 3.0»/«isometrisk»-header → nøytral «Start bedriften din».
+- ~200 linjer veiviser-kode borte.
+
+**Trygg nøytralisering:** `START_GAME` kalles nå med faste standardverdier
+(businessModel `detaljhandel`, finansiering `ingen`, personlighet `analytisk`).
+Startkapitalen var ALLEREDE fast per bransje (`STARTING_MONEY`, kafé 200 000) —
+valgene ga ingen startkapital-bonus. De nøytraliserte flaggene brukes kun av
+Innovasjon-strategiens valgfrie events (`flagSystem.ts`): de dependent eventene
+fyrer bare ikke — ingen krasj, ingen tapt kjernemekanikk.
+
+### DEL 2 — Dag 1-regnskapet: rotårsak bevisført + fikset
+Espens skjermbilde: bestilte 3 varer i menyen (20/20/30), fikk «Utsolgt» på
+bestilte varer, dagsoppgjør 227 stk svinn inkl. 48 stk av en vare han kjøpte 30 av.
+
+**Etterprøvd (headless-repro, ekte reducer):**
+- **(a) Dobbeltlevering — MOTBEVIST.** Overlay 30 + dashbord 30 av samme vare →
+  nøyaktig 60 (ikke > 60). Ingen re-levering over dager (dag 2-lager = 0).
+- **Regnestykke-feil — MOTBEVIST.** Invarianten **levert == solgt + svinn +
+  restlager HOLDER per vare** i alle testede løyper. Regnskapet «lyver» ikke.
+- **(b/c) ROTÅRSAK — BEKREFTET (Espens hypotese b).** Åpningsbestillingen havnet i
+  `stock` UTEN å nå trau-paletten (`counterLayout` tom). Bakgrunnssalget trekker
+  KUN fra UTSTILTE varer → 0 solgt → all ferskvare kastet som svinn ved stenging,
+  og disken viser «Utsolgt» (stock 0 etter svinn). En stille katastrofe, men
+  matematisk konsistent.
+
+**Regnestykke som går opp (suggested sortiment coffee40/croissant20/kanelbolle20/
+rundstykke30, ingen stell/prising):**
+- FØR fiks: 0 solgt, **70 svinn** (croissant 20 + kanelbolle 20 + rundstykke 30),
+  coffee 40 rest (coffee er ikke ferskvare → ikke svinn). Invariant: 40=0+0+40 ✓,
+  20=0+20+0 ✓, 20=0+20+0 ✓, 30=0+30+0 ✓.
+- ETTER fiks (+ prising): **44 solgt, 33 svinn** — varene selger. Invariant holder.
+
+Espens «48 av en vare han kjøpte 30 av» kan IKKE reproduseres som over-levering av
+én 30-ordre (invarianten holder). Mest sannsynlig to ordrer på samme vare (overlay
++ dashbord) som summerte til 48 levert, eller hele forslags-sortimentet — begge gir
+svinn = levert-minus-solgt, ikke en regnefeil. De 227 = hans totale ikke-utstilte
+ferskvarelager, kastet fordi ingenting sto på paletten.
+
+**Fiks (`PLACE_OPENING_ORDER`):** åpningsbestillingen STILLES UT på disken
+(`counterLayout`) med det samme — varene når trau-paletten (Espens hypotese b) og
+viser ikke lenger «Utsolgt» mens lageret har varer. PRISING forblir elevens jobb
+(Priser-fanen) — uprisede varer gir nå ærlig «mangler pris»-tap i stedet for
+villedende «Utsolgt». Eleven overtar stell/prising selv fra neste bestilling.
+(Auto-prising ble vurdert, men forkastet: den ville fjerne prisings-pedagogikken
+og kollidere med spilltest-steg 20. Utstilling alene løser Espens rapporterte bug.)
+
+**Testvakt utvidet:** steg 3 asserter utstilling, steg 5 asserter at åpningsvarene
+SELGER (ikke 100% svinn) + regnskaps-invarianten `levert == solgt + svinn + rest`
+per vare. Elevløp-testen 6/6 grønn.
+
+### DEL 3 — Ærlig status på bykart og lokaler (datadrevet)
+- **Bydeler:** nytt `bydelStatus`-felt (`districts.ts`). Kun **Sentrum** og
+  **Stasjonsområdet** er `aktiv` (klikkbare); de 6 andre er `kommer` → «KOMMER»-
+  merke på bykartet, ikke klikkbare (samme mønster som bransjegating). Hover viser
+  «Kommer snart — ikke åpnet ennå».
+- **Lokaler:** nytt `ledig`-felt (`Lokale`). Kun fullt utstyrte lokaler er «Ledig»
+  (TIL LEIE, klikkbare). Resten vises som «Ikke ledig» (grå, ikke klikkbare).
+  Pilotlokalet **sentrum-l2 «Gågata 12»** er det eneste ledige nå (delte
+  storefront/interiør-assets → «fullt utstyrt» er en produktbeslutning; flipp
+  `ledig: true` når flere lokaler får egne scener).
+- **Nummerert dev-overlay (`?numbers=1`):** legger hotspot-nummer + navn på hver
+  bydel på bykartet, så Espen kan navngi/rolle-definere dem. Tabell under.
+
+**Bydel-tabell (hotspot-nummer → dagens navn/status)** — Espen fyller inn ønsket
+navn/rolle, så låses de i `districts.ts`:
+
+| # | Dagens navn | Status | Ønsket navn/rolle (Espen) |
+|---|-------------|--------|----------------------------|
+| 1 | Sentrum | aktiv | |
+| 2 | Stasjonsområdet | aktiv | |
+| 3 | Storhandel | kommer | |
+| 4 | Industriområdet | kommer | |
+| 5 | Bolig vest | kommer | |
+| 6 | Bolig øst | kommer | |
+| 7 | Skole og idrett | kommer | |
+| 8 | Øvrebyen | kommer | |
+
+### Chrome-sjekkliste (fra navnemenyen)
+1. `/game` uten `?skip`: menyen viser BARE navn → bransje (ingen forretningsmodell/
+   finansiering/personlighet, ingen «AdVenture 3.0»). Skriv navn → Neste → velg
+   Kafé & Bakeri → Start.
+2. **Bykart:** kun Sentrum + Stasjonsområdet er klikkbare; de andre 6 har «KOMMER»
+   og er ikke klikkbare (hover: «Kommer snart»). Prøv `/game?numbers=1` for
+   nummerert overlay (bydel-tabellen).
+3. **Sentrum:** kun «Gågata 12» viser TIL LEIE; de andre viser «Ikke ledig» (grå).
+   Leie Gågata 12 → åpningsbestilling.
+4. **Åpningsbestilling + dag 1:** bestill varer → gå inn → disken SKAL vise varene
+   (ikke «Utsolgt») fra start. Sett priser (Priser-fanen) → åpne dag → varene
+   selger. Uten prising: «mangler pris»-tap (ærlig), ikke stille «Utsolgt» + svinn.
+5. Dagsoppgjør: svinn + solgt + restlager går opp mot levert per vare.
