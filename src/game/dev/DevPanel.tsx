@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useGame, useErTemaAktivt, turistsesongInfo } from '../GameContext'
 import { useDevPanel, setDevPanel, toggleDevPanel } from './devPanel'
 import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from '../data/featureFlags'
+import { slettLagring } from '../save'
 import { FAG_KODER, FAG_META } from '../data/fag'
 import { SCENARIOS } from '../sales/scenarios'
 
@@ -268,6 +269,17 @@ export default function DevPanel({ onOpenSim, isInterior }: {
               onClick={() => window.dispatchEvent(new CustomEvent('mentor:reset'))}
             />
             <div style={hintStyle}>Glemmer ALT Espen har sagt (engangs, daglige og scene-triggere) + introen — kun lokalt. For å teste mentoropplevelsen som en fersk elev.</div>
+            <DevBtn
+              label="💾 Slett lagring (DEV)"
+              color="#fca5a5" bg="rgba(239,68,68,0.14)"
+              onClick={() => {
+                if (window.confirm('DEV: Slett lagret spill (adventure_save_v1)? En backup beholdes under adventure_save_backup. Last siden på nytt for fersk oppstart.')) {
+                  slettLagring()
+                  dispatch({ type: 'RESET' })
+                }
+              }}
+            />
+            <div style={hintStyle}>Sletter den lagrede spilltilstanden (beholder backup) → oppstartsmenyen som en fersk elev. Kun DEV.</div>
           </Group>
         </div>
       )}

@@ -5,6 +5,7 @@ import { INDUSTRY_META, isIndustryActive } from '../data/industries'
 import type { Industry } from '../types'
 import type { BusinessModel, GameFlags } from '../types'
 import { FINANSIERING_OPTIONS, PERSONLIGHET_OPTIONS } from '../../strategies/innovation/startupChoices'
+import { lagringSammendrag, fortsettState, slettLagring } from '../save'
 
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
@@ -58,6 +59,12 @@ export default function StartupScreen() {
   const [companyName, setCompanyName] = useState('')
   const [step, setStep] = useState<'choose' | 'model' | 'financing' | 'personality' | 'name'>('choose')
 
+  // LAGRING: finnes et fortsettbart spill (adventure_save_v1)? Snapshot ved mount.
+  // Er det en save vises «Fortsett/Ny»-menyen først; ellers rett i navnemenyen.
+  const [lagring] = useState(() => lagringSammendrag())
+  const [visMeny, setVisMeny] = useState<'fortsett' | 'ny'>(lagring ? 'fortsett' : 'ny')
+  const [bekreftNy, setBekreftNy] = useState(false)
+
   function handleStart() {
     if (!companyName.trim() || !selectedIndustry || !selectedModel) return
     dispatch({
@@ -68,6 +75,118 @@ export default function StartupScreen() {
       finansiering: selectedFinansiering ?? 'ingen',
       personlighet: selectedPersonlighet ?? 'analytisk',
     })
+  }
+
+  function handleFortsett() {
+    const s = fortsettState()
+    if (s) dispatch({ type: 'HYDRATE_SAVE', state: s })
+  }
+  function handleStartNy() {
+    // «Start ny bedrift» sletter lagringen (backup beholdes) → fersk navnemeny.
+    slettLagring()
+    setBekreftNy(false)
+    setVisMeny('ny')
+  }
+
+  // ── FORTSETT/NY-MENY (vises når det finnes et lagret spill) ──────────────────
+  if (visMeny === 'fortsett' && lagring) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', padding: '2rem',
+        background: 'linear-gradient(135deg, #0a0e1a 0%, #1e1b4b 50%, #0a0e1a 100%)',
+        fontFamily: "'Outfit', sans-serif", color: '#f1f5f9',
+      }}>
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <div style={{ fontSize: 52, marginBottom: '0.5rem' }}>🏪</div>
+          <h1 style={{
+            fontSize: 'clamp(1.8rem,4.5vw,3rem)', fontWeight: 900, margin: 0,
+            background: 'linear-gradient(135deg, #00d4aa, #4facfe)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>
+            Velkommen tilbake!
+          </h1>
+          <p style={{ color: '#94a3b8', fontSize: 16, margin: '0.75rem 0 0' }}>
+            Du har et lagret spill på denne maskinen.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          style={{
+            width: '100%', maxWidth: 460,
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '2rem', padding: '2rem', textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 6 }}>
+            LAGRET BEDRIFT
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
+            {lagring.companyName || 'Bedriften din'}
+          </div>
+          <div style={{ fontSize: 14, color: '#38bdf8', marginBottom: '1.75rem' }}>
+            Dag {lagring.dayNumber}
+          </div>
+
+          <button
+            onClick={handleFortsett}
+            style={{
+              width: '100%', background: 'linear-gradient(135deg, #00d4aa, #4facfe)',
+              border: 'none', borderRadius: 99, padding: '0.95rem', color: '#030712',
+              fontWeight: 800, fontSize: 16, cursor: 'pointer', fontFamily: 'inherit',
+              marginBottom: '0.9rem',
+            }}
+          >
+            ▶ Fortsett som {lagring.companyName || 'bedriften din'} — Dag {lagring.dayNumber}
+          </button>
+
+          {!bekreftNy ? (
+            <button
+              onClick={() => setBekreftNy(true)}
+              style={{
+                width: '100%', background: 'transparent', border: '1px solid rgba(248,113,113,0.4)',
+                borderRadius: 99, padding: '0.75rem', color: '#fca5a5',
+                fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              Start ny bedrift
+            </button>
+          ) : (
+            <div style={{
+              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)',
+              borderRadius: 14, padding: '1rem', textAlign: 'center',
+            }}>
+              <p style={{ fontSize: 14, color: '#fecaca', margin: '0 0 0.9rem', lineHeight: 1.5 }}>
+                Dette sletter <strong>{lagring.companyName || 'bedriften din'}</strong>. Er du sikker?
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setBekreftNy(false)}
+                  style={{
+                    background: 'transparent', border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 99, padding: '0.6rem 1.4rem', color: '#cbd5e1',
+                    fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={handleStartNy}
+                  style={{
+                    background: 'linear-gradient(135deg, #ef4444, #b91c1c)', border: 'none',
+                    borderRadius: 99, padding: '0.6rem 1.4rem', color: '#fff',
+                    fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  Ja, slett og start ny
+                </button>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </div>
+    )
   }
 
   return (
