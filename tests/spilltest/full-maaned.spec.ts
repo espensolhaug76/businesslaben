@@ -133,30 +133,54 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await lukkDashbord()
   })
 
-  // ── STEG 3 — Levering ved dagstart ──────────────────────────────────────────
-  await steg(page, rapport, 3, 'Levering ved dagstart: varene på lager FØR åpning (dag 2)', async ctx => {
+  // ── STEG 3 — Levering ved ÅPNINGSDAGEN (FIKS ELEVLØYPA 29.07) ────────────────
+  // Bestillinger lagt FØR første åpning (åpningsbestilling ELLER dashbord-ordre
+  // mens butikken aldri har åpnet) skal ankomme FRISK på disken ved DAG 1's egen
+  // OPEN_DAY — ikke først dag 2. Tidligere var dag 1 en tom «utsolgt» dag fordi
+  // leveringen kun skjedde i START_NEW_DAY (som dag 1 aldri passerer). Se rotårsak
+  // i docs/rapporter/spor-a.md. Egen ende-til-ende testvakt for hele oppstarten
+  // (uten ?skip) ligger i tests/spilltest/oppstart-elevlop.spec.ts (DEL 3).
+  await steg(page, rapport, 3, 'Levering ved åpningsdagen: dashbord-bestilling FØR første åpning ligger FRISK på disken ved dag 1-åpning (ikke dag 2)', async ctx => {
     const bestilt = await lesState(page)
     const forventet: Record<string, number> = {}
     for (const o of bestilt.incomingOrders) forventet[o.productId] = (forventet[o.productId] ?? 0) + o.qty
+    expect(bestilt.dayNumber, 'står fortsatt på åpningsdagen (dag 1)').toBe(1)
+    expect(bestilt.dayHistory.length, 'butikken har aldri åpnet (dayHistory tom)').toBe(0)
 
-    // Dag 1: åpne og steng (0 lager ⇒ ingen salg), rull så til dag 2 → levering.
+    // Åpne DAG 1 → leveringen skal skje HER (fiksen). Varene skal ligge friskt på
+    // lager straks dagen åpner, og ordrekøen skal være tømt.
     await dispatch(page, { type: 'OPEN_DAY' })
     await ventState(page, s => s.dayPhase === 'åpen', 'dag 1 åpen')
-    await dispatch(page, { type: 'CLOSE_DAY' })
-    await ventState(page, s => s.dayPhase === 'oppgjør', 'dag 1 stengt (oppgjør)')
-    await dispatch(page, { type: 'START_NEW_DAY' })
-    await ventState(page, s => s.dayNumber === 2 && s.dayPhase === 'stengt', 'ny dag (dag 2) startet')
 
     const s = await lesState(page)
     for (const [id, qty] of Object.entries(forventet)) {
       const p = s.products.find(pp => pp.id === id)
       expect(p, `vare ${id} finnes i sortimentet`).toBeTruthy()
-      expect(p!.stock, `vare ${id} levert på lager (${qty} stk) FØR åpning`).toBeGreaterThanOrEqual(qty)
-      ctx.ok(`${id}: lager ${p!.stock} stk (bestilt ${qty}) — levert ved dagstart`)
+      expect(p!.stock, `vare ${id} levert FRISK på disken (${qty} stk) ved dag 1-åpning`).toBeGreaterThanOrEqual(qty)
+      ctx.ok(`${id}: lager ${p!.stock} stk (bestilt ${qty}) — levert ved ÅPNINGSDAGEN (dag 1)`)
     }
-    expect(s.incomingOrders.length, 'alle bestillinger ankommet (ingen underveis)').toBe(0)
-    expect(s.dayPhase).toBe('stengt')
-    ctx.ok('dayPhase = «stengt» (varene lå på lager FØR åpning)')
+    expect(s.incomingOrders.length, 'alle bestillinger ankommet (ingen strandet til dag 2)').toBe(0)
+    expect(s.dayNumber, 'leveringen kom på dag 1, ikke dag 2').toBe(1)
+    expect(s.lastDelivery?.dayNumber, '«📦 Varer ankommet»-kvitteringen gjelder dag 1').toBe(1)
+    ctx.ok('varene lå friskt på disken på selve åpningsdagen (dag 1) — ikke først dag 2')
+
+    // Oppsett for steg 4–5 (ikke en assertion): dag 1 hadde ingen prisede varer å
+    // selge, så vi lukker den tomme åpningsdagen og ruller til dag 2 der resten av
+    // kjernesløyfa (stell disk → åpen dag → salg) kjøres. Ferskvare kastes ved
+    // stenging (svinnRegel), så vi gjenoppretter lageret til dag 2 via test-broen
+    // — samme deterministiske oppsettsgrep som pris-settingen under.
+    await dispatch(page, { type: 'CLOSE_DAY' })
+    await ventState(page, st => st.dayPhase === 'oppgjør', 'dag 1 stengt (oppgjør)')
+    await dispatch(page, { type: 'START_NEW_DAY' })
+    await ventState(page, st => st.dayNumber === 2 && st.dayPhase === 'stengt', 'ny dag (dag 2) startet')
+    await page.evaluate((f) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const st = window.__GAME_STATE__ as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const products = st.products.map((p: any) => (f[p.id] != null ? { ...p, stock: f[p.id] } : p))
+      window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products })
+    }, forventet)
+    await ventState(page, st => Object.entries(forventet).every(([id, q]) => (st.products.find(p => p.id === id)?.stock ?? 0) >= (q as number)), 'lager gjenopprettet for dag 2')
   })
 
   // ── STEG 4 — Stell disken (counterLayout ≥ 2 trau) ──────────────────────────

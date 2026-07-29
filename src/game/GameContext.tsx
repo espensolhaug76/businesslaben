@@ -929,8 +929,16 @@ function reducer(state: GameState, action: Action): GameState {
       // månedsskiftet: ankomst i ny måned regnes fra dag 1 (leadTime < daysPerMonth,
       // så maks én måned over). Dagstart-leverings-prinsippet består — varene ligger
       // på lager før åpning dag 1 i ny måned.
+      // FIKS ELEVLØYPA (29.07): bestiller eleven fra dashbordet FØR den aller
+      // første åpningen (butikken har aldri åpnet: dayHistory tom + dag 1 stengt),
+      // skal varene ankomme til DAG 1 (samme som åpningsbestillingen) — ikke dag 2.
+      // OPEN_DAY leverer ankomne ordrer, så ankomstDag = dag 1 gir levering ved
+      // første dagstart. Ellers gjelder den vanlige leveringstiden.
+      const førFørsteÅpning = state.dayHistory.length === 0 && state.dayPhase === 'stengt'
       const raaAnkomst = state.dayNumber + DAY_CONFIG.leadTimeDays
-      const ankomstDag = ((raaAnkomst - 1) % DAY_CONFIG.daysPerMonth) + 1
+      const ankomstDag = førFørsteÅpning
+        ? state.dayNumber
+        : ((raaAnkomst - 1) % DAY_CONFIG.daysPerMonth) + 1
       const order: Bestilling = {
         productId: action.product.id,
         qty: action.quantity,
@@ -1881,11 +1889,26 @@ function reducer(state: GameState, action: Action): GameState {
       // ikke tilby dette utenom 'stengt', se InteriorView).
       if (state.dayPhase !== 'stengt') return state
 
-      // Innkjøp/levering (docs/INNKJOP_LEVERING.md): varene ankommer nå ved
-      // DAGSTART (START_NEW_DAY) — lageret er allerede fylt FØR åpning, så
-      // eleven kan stelle disk/vindu med de nye varene og SÅ åpne. Her åpner vi
-      // bare butikken; lager/incomingOrders/lastDelivery røres ikke.
-      const products = state.products
+      // Innkjøp/levering (docs/INNKJOP_LEVERING.md): varene ankommer ved DAGSTART.
+      // FIKS ELEVLØYPA (29.07): levering skjedde KUN i START_NEW_DAY. Men den
+      // FØRSTE dagen (dag 1) nås via START_GAME, IKKE START_NEW_DAY — så bestillinger
+      // lagt FØR første åpning (åpningsbestilling + dashbord-bestilling med
+      // ankomstDag <= dag 1) ble ALDRI levert til dag 1 (de ventet på en dag-2-
+      // levering). Derfor står disken tom/«Utsolgt» på åpningsdagen. Vi leverer nå
+      // ankomne ordrer HER også, ved OPEN_DAY. For dag 2+ er de alt levert av
+      // START_NEW_DAY (arrived = tom) ⇒ ren no-op. Samme delte leverings-aritmetikk.
+      const arrived = state.incomingOrders.filter(o => o.ankomstDag <= state.dayNumber)
+      const stillPending = state.incomingOrders.filter(o => o.ankomstDag > state.dayNumber)
+      let products = state.products
+      let lastDelivery = state.lastDelivery
+      if (arrived.length > 0) {
+        const addByProduct = new Map<string, number>()
+        for (const o of arrived) addByProduct.set(o.productId, (addByProduct.get(o.productId) ?? 0) + o.qty)
+        products = state.products.map(p => { const add = addByProduct.get(p.id) ?? 0; return add > 0 ? { ...p, stock: p.stock + add } : p })
+        const lines: DeliveryNote['lines'] = []
+        for (const [productId, qty] of addByProduct) lines.push({ name: state.products.find(p => p.id === productId)?.name ?? productId, qty })
+        lastDelivery = { dayNumber: state.dayNumber, lines }   // «📦 Varer ankommet»-banneret
+      }
 
       // BAKGRUNNSSALG (snapshot ved OPEN_DAY): dagens passive kundestrøm
       // beregnes NÅ og DRYPPES løpende per klokke-tick (se TICK).
@@ -1977,6 +2000,8 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         products,
+        incomingOrders: stillPending,
+        lastDelivery,
         shopOpen: true,
         dayPhase: 'åpen',
         meetingsToday: 0,
