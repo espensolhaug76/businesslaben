@@ -999,3 +999,89 @@ som er fikset.
 til noe byggesteg. Blir en rute lagt til uten at noen kjører skriptet, henger
 registeret etter igjen — bare uten å miste noe stille. En sjekk i CI som kjører
 generatoren og feiler hvis `git diff` ikke er tom, ville lukket det hullet helt.
+
+---
+
+## Runde 7 — synk-sjekk på registeret, og status for de andre genererte filene
+
+### Sjekken
+
+`scripts/build-presentation-registry.mjs` har fått en `--check`-modus. Den
+genererer registeret **til minne**, sammenligner med fila på disk og avslutter
+med kode 1 hvis de avviker. Den skriver aldri noe i denne modusen.
+
+Sammenligningen går på generert innhold, ikke på `git diff`. En diff-basert
+sjekk ville slått ut på urelaterte lokale endringer og på et skittent
+arbeidstre — den ville vært ubrukelig midt i en arbeidsøkt.
+
+Koblet til `prebuild` i `package.json`, én linje:
+
+```json
+"prebuild": "node scripts/build-presentation-registry.mjs --check",
+```
+
+`npm` kjører `prebuild` automatisk før `build`, så feilen treffer lokalt ved
+`npm run build`, ikke først i CI.
+
+Feilmeldingen sier hva som må gjøres, og hvilke ruter det gjelder:
+
+```
+presentationRegistry.ts er ikke i synk med rutene i App.tsx.
+Kjør: node scripts/build-presentation-registry.mjs
+
+  Mangler i fila (1): ml1/paatatt-kapittel
+```
+
+Den lister «Mangler i fila» og «Ligger i fila uten rute» hver for seg, og sier
+fra hvis rutene er de samme men innholdet avviker (tittel, nivå, fag eller
+rekkefølge).
+
+### Verifisering
+
+| Steg | Resultat |
+| --- | --- |
+| `npm run build` som det står | **grønn** — «✓ presentationRegistry.ts er i synk med 109 ruter i App.tsx», deretter vellykket vite-build |
+| Påtatt rute `paatatt-rute` (uten klassifisering) | **exit 1** — «mangler klassifisering — legg den inn i SSR_KLASSIFISERING». Vite kjørte ikke |
+| Påtatt rute `ml1/paatatt-kapittel` (klassifiseres av regel, mangler i registeret) | **exit 1** med den spesifiserte meldingen over |
+| Registeret etter begge feilkjøringene | **urørt** — `git diff` tom, ingenting skrevet i `--check` |
+| `npm run build` etter at ruta ble fjernet | **grønn igjen** |
+
+De to påtatte rutene treffer hver sin vakt: den første klassifiseringsvakta
+(ruta lar seg ikke plassere), den andre synk-vakta (ruta er grei, men registeret
+henger etter). Begge stopper bygget.
+
+### Punkt 4 — de andre auto-genererte filene
+
+`grep -rl "IKKE ENDRE MANUELT" src` gir tre treff. **Ingen av dem har
+klaghandtering-bomben** — alle tre generatorene finnes og er sjekket inn, og
+ingen peker på `/tmp`:
+
+| Fil | Generator | Sjekket inn? | Inndata | Idempotent? |
+| --- | --- | --- | --- | --- |
+| `src/lib/presentationRegistry.ts` | `scripts/build-presentation-registry.mjs` | ja | `src/App.tsx` + presentasjonsfilene | ja |
+| `src/data/standardExams.ts` | `scripts/build-standard-exams.mjs` | ja | `src/data/standardCompetitions.ts` | ja |
+| `src/data/standardCompetitions.ts` | `scripts/parse-standard-competitions.mjs` | ja | `.manus/quiz-konkurranser.md` — **sporet i git** | **nei** |
+
+Jeg kjørte alle tre og sammenlignet mot fila før kjøringen (og gjenopprettet
+etterpå). To av tre gir identisk output. Det ene funnet:
+
+**`parse-standard-competitions.mjs` er ikke deterministisk.** Linje 184
+stempler `const NOW = '${new Date().toISOString()}'` på hver kjøring, så fila
+endrer seg hver gang selv om innholdet ellers er likt — én linje inn, én ut.
+Konsekvensen er at den **ikke kan få en `--check`-vakt slik den står**: sjekken
+ville feilet ved hver eneste `npm run build`. Fiksen er liten — les det
+eksisterende `NOW` fra fila og behold det, slik `build-standard-exams.mjs`
+allerede gjør (linje 53) — men den ligger utenfor denne jobben, som avtalt.
+
+Verdt å merke seg at `standardExams.ts` arver tidsstempelet fra
+`standardCompetitions.ts` i stedet for å lage sitt eget. Det er nettopp derfor
+den er idempotent, og hvorfor den kunne fått en `--check`-vakt uten videre.
+
+To ting som ikke er dekket av noen vakt i dag:
+
+- `standardExams.ts` og `standardCompetitions.ts` har ingen synk-sjekk. Endres
+  `.manus/quiz-konkurranser.md` uten at parseren kjøres, oppdager ingenting det.
+  `standardExams.ts` kan få `--check` med det samme mønsteret som registeret;
+  `standardCompetitions.ts` må gjøres deterministisk først.
+- Vakta på registeret dekker bare `npm run build`. `npm run dev` og
+  `tsc -b` går fortsatt gjennom med et register som henger etter.

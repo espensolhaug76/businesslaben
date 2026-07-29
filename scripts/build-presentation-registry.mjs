@@ -6,6 +6,15 @@
  * Kjør når en presentasjonsrute legges til, fjernes eller døpes om:
  *   node scripts/build-presentation-registry.mjs
  *
+ * Med --check genereres registeret til MINNE og sammenlignes med fila på disk.
+ * Ingenting skrives. Avviker de, avsluttes skriptet med kode 1. Denne modusen
+ * henger på `prebuild` i package.json, så `npm run build` stopper lokalt hvis
+ * registeret har kommet ut av synk med rutene — ikke først i CI.
+ *
+ * Sjekken sammenligner GENERERT INNHOLD mot fila, ikke `git diff`. En
+ * diff-basert sjekk ville slått ut på urelaterte lokale endringer og på et
+ * skittent arbeidstre.
+ *
  * Erstatter det tapte /tmp/gen_pres_registry.py. To ting er endret bevisst:
  *
  *  1. Rute → fil slås opp via IMPORT-setningen i App.tsx, ikke ved å utlede
@@ -28,6 +37,9 @@ const PRES_DIR = resolve(REPO_ROOT, 'src/screens/learninghub/presentations')
 const OUT = resolve(REPO_ROOT, 'src/lib/presentationRegistry.ts')
 
 const RUTE_PREFIKS = '/learning/presentations/'
+
+/** --check: generer til minne og sammenlign. Skriver aldri. */
+const SJEKKEMODUS = process.argv.includes('--check')
 
 /**
  * Klassifisering av SSR-rutene. Kan ikke utledes av rutestien — VG1-blokka og
@@ -255,6 +267,36 @@ export function findPresentation(id: string): PresentationEntry | null {
   return ALL_PRESENTATIONS.find(p => p.id === id) ?? null
 }
 `
+
+const KOMMANDO = 'node scripts/build-presentation-registry.mjs'
+
+if (SJEKKEMODUS) {
+  // Sammenlign mot disk. Skriv ALDRI noe i denne modusen.
+  const paaDisk = existsSync(OUT) ? readFileSync(OUT, 'utf-8') : null
+  if (paaDisk === ut) {
+    console.log(`✓ presentationRegistry.ts er i synk med ${ruter.length} ruter i App.tsx.`)
+    process.exit(0)
+  }
+  console.error('')
+  console.error('presentationRegistry.ts er ikke i synk med rutene i App.tsx.')
+  console.error(`Kjør: ${KOMMANDO}`)
+  console.error('')
+  if (paaDisk === null) {
+    console.error(`  (${OUT} finnes ikke.)`)
+  } else {
+    const genererte = new Map(oppforinger.map(e => [e.id, e]))
+    const paaDiskIder = new Set([...paaDisk.matchAll(/\{ id: '([^']+)',/g)].map(m => m[1]))
+    const mangler = [...genererte.keys()].filter(id => !paaDiskIder.has(id))
+    const overflodige = [...paaDiskIder].filter(id => !genererte.has(id))
+    if (mangler.length > 0) console.error(`  Mangler i fila (${mangler.length}): ${mangler.join(', ')}`)
+    if (overflodige.length > 0) console.error(`  Ligger i fila uten rute (${overflodige.length}): ${overflodige.join(', ')}`)
+    if (mangler.length === 0 && overflodige.length === 0) {
+      console.error('  Samme ruter, men innholdet avviker (tittel, nivå, fag eller rekkefølge).')
+    }
+  }
+  console.error('')
+  process.exit(1)
+}
 
 writeFileSync(OUT, ut, 'utf-8')
 console.log(`✓ ${ruter.length} ruter i App.tsx → ${oppforinger.length} oppføringer.`)
