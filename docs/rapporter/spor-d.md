@@ -1085,3 +1085,81 @@ To ting som ikke er dekket av noen vakt i dag:
   `standardCompetitions.ts` må gjøres deterministisk først.
 - Vakta på registeret dekker bare `npm run build`. `npm run dev` og
   `tsc -b` går fortsatt gjennom med et register som henger etter.
+
+---
+
+## Runde 8 — deterministisk parser og synk-vakt på alle tre
+
+### 1. `parse-standard-competitions.mjs` er nå deterministisk
+
+Tidsstempelet leses fra `standardCompetitions.ts` hvis fila finnes, og settes
+bare ved førstegangsgenerering:
+
+```js
+function lesEllerLagTidsstempel() {
+  if (existsSync(OUT)) {
+    const m = readFileSync(OUT, 'utf-8').match(/const NOW = '([^']+)'/)
+    if (m) return m[1]
+  }
+  return new Date().toISOString()
+}
+```
+
+Samme mønster som `build-standard-exams.mjs` allerede brukte.
+
+**Verifisert:** to kjøringer på rad gir **byte-identiske** filer (`cmp` uten
+avvik), og resultatet er også identisk med den som allerede lå i git — ingen
+utilsiktet endring av innholdet.
+
+### 2. `--check` på begge, koblet til `prebuild`
+
+Begge har fått samme mønster som registergeneratoren: generer til minne,
+sammenlign med disk, skriv aldri noe, exit 1 ved avvik. Feilmeldingene navngir
+sin egen fil og sitt eget skript:
+
+```
+standardExams.ts er ikke i synk med standardCompetitions.ts.
+Kjør: node scripts/build-standard-exams.mjs
+```
+
+```
+standardCompetitions.ts er ikke i synk med .manus/quiz-konkurranser.md.
+Kjør: node scripts/parse-standard-competitions.mjs
+```
+
+Begge lister «Mangler i fila» og «Ligger i fila uten kilde» hver for seg, og
+sier fra hvis nøklene er de samme men innholdet avviker.
+
+I begge skriptene er valideringen (quizer med ≠15 spørsmål, prøver med ≠30)
+flyttet **før** skrive-/sjekkegrenen, slik at et ødelagt datagrunnlag stopper
+kjøringen uansett modus. I parseren fjernet jeg samtidig en `process.exit(0)`
+som lå i advarselsgrenen og som ville hoppet over skrivingen helt.
+
+`prebuild` kjører alle tre i avhengighetsrekkefølge:
+
+```json
+"prebuild": "node scripts/parse-standard-competitions.mjs --check && node scripts/build-standard-exams.mjs --check && node scripts/build-presentation-registry.mjs --check",
+```
+
+Kilden først, så det som er avledet av den. `&&` gjør at den første feilen
+stopper resten — du fikser rota før du ser følgefeilene.
+
+### 3. Ingen sjekk i `dev` eller `tsc -b`
+
+`"dev": "vite"` og `"build": "tsc -b && vite build"` er urørt. Vaktene henger
+kun på `prebuild`.
+
+### Verifisering
+
+| Steg | Resultat |
+| --- | --- |
+| `parse-standard-competitions.mjs` kjørt to ganger | byte-identisk output ✓ |
+| `npm run build` som det står | **exit 0** — alle tre ✓, deretter vellykket vite-build |
+| `timeMinutes: 45` → `46` i `standardExams.ts` (ett tegn) | **exit 1**, «standardExams.ts er ikke i synk med standardCompetitions.ts. Kjør: node scripts/build-standard-exams.mjs — Samme prøver, men innholdet avviker» |
+| Registersjekken i samme kjøring | kjørte ikke — `&&` kortsluttet på første feil, som tiltenkt |
+| Etter `git checkout src/data/standardExams.ts` | byte-identisk med utgangspunktet, `npm run build` **exit 0** igjen |
+| Genererte filer etter alle feilkjøringene | urørt — `git status` tom for `src/data/` og `src/lib/` |
+
+En felle verdt å nevne: første forsøk på å måle exit-koden ga falsk rødt fordi
+`npm run build | head -14` brøt pipen og drepte npm. Målingene over er gjort med
+output til fil.

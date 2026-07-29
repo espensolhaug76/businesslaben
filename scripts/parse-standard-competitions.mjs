@@ -5,6 +5,9 @@
  * Build-time-skript. Kjør én gang når kildemarkdown endres:
  *   node scripts/parse-standard-competitions.mjs
  *
+ * Med --check genereres fila til MINNE og sammenlignes med disk. Ingenting
+ * skrives; avvik gir kode 1. Henger på `prebuild` i package.json.
+ *
  * Skriver et typet array av Competition-objekter med isStandard=true og
  * shareToLeaderboard=true. Hvert spørsmål har {question, options, correct,
  * difficulty, explanation?}. IDer er stabile (slug fra fagkode + variant).
@@ -17,6 +20,24 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
 const SRC = resolve(REPO_ROOT, '.manus/quiz-konkurranser.md')
 const OUT = resolve(REPO_ROOT, 'src/data/standardCompetitions.ts')
+
+/**
+ * Tidsstempelet gjenbrukes fra fila som allerede finnes, slik at to kjøringer
+ * på rad gir byte-identisk resultat. Bare førstegangsgenerering setter et nytt.
+ * (Tidligere ble `new Date()` stemplet hver gang, som gjorde output
+ * ikke-deterministisk og umulig å legge en synk-vakt på.)
+ */
+function lesEllerLagTidsstempel() {
+  if (existsSync(OUT)) {
+    const m = readFileSync(OUT, 'utf-8').match(/const NOW = '([^']+)'/)
+    if (m) return m[1]
+  }
+  return new Date().toISOString()
+}
+const NOW = lesEllerLagTidsstempel()
+
+/** --check: generer til minne og sammenlign med fila. Skriver aldri. */
+const SJEKKEMODUS = process.argv.includes('--check')
 
 // Map fagkode (markdown) → fag-ID (teacherSubjects)
 const FAGKODE_MAP = {
@@ -181,7 +202,7 @@ const out = `/**
  */
 import type { Competition } from '../types/Competition'
 
-const NOW = '${new Date().toISOString()}'
+const NOW = '${NOW}'
 
 export const STANDARD_COMPETITIONS: Competition[] = [
 ${competitions.map(c => `  {
@@ -214,21 +235,49 @@ export function findStandardCompetition(id: string): Competition | null {
 }
 `
 
+// ── Verifisering før skriving ───────────────────────────────────────────────
+if (warnings.length > 0) {
+  console.log(`\n⚠️  ${warnings.length} advarsler:`)
+  for (const w of warnings) console.log(`  - ${w}`)
+}
+
+const broken = competitions.filter(c => c.questions.length !== 15)
+if (broken.length > 0) {
+  console.error(`\n❌ ${broken.length} quiz(er) har ikke 15 spørsmål:`)
+  for (const c of broken) console.error(`  - ${c.id}: ${c.questions.length} spørsmål`)
+  process.exit(1)
+}
+
+// ── Sjekk eller skriv ───────────────────────────────────────────────────────
+if (SJEKKEMODUS) {
+  const paaDisk = existsSync(OUT) ? readFileSync(OUT, 'utf-8') : null
+  if (paaDisk === out) {
+    console.log(`✓ standardCompetitions.ts er i synk med ${competitions.length} quizer i quiz-konkurranser.md.`)
+    process.exit(0)
+  }
+  console.error('')
+  console.error('standardCompetitions.ts er ikke i synk med .manus/quiz-konkurranser.md.')
+  console.error('Kjør: node scripts/parse-standard-competitions.mjs')
+  console.error('')
+  if (paaDisk === null) {
+    console.error(`  (${OUT} finnes ikke.)`)
+  } else {
+    const genererte = new Set(competitions.map(c => c.id))
+    const paaDiskIder = new Set([...paaDisk.matchAll(/^    id: "([^"]+)",$/gm)].map(m => m[1]))
+    const mangler = [...genererte].filter(id => !paaDiskIder.has(id))
+    const overflodige = [...paaDiskIder].filter(id => !genererte.has(id))
+    if (mangler.length > 0) console.error(`  Mangler i fila (${mangler.length}): ${mangler.join(', ')}`)
+    if (overflodige.length > 0) console.error(`  Ligger i fila uten kilde (${overflodige.length}): ${overflodige.join(', ')}`)
+    if (mangler.length === 0 && overflodige.length === 0) {
+      console.error('  Samme quizer, men innholdet avviker (spørsmål, alternativer eller rekkefølge).')
+    }
+  }
+  console.error('')
+  process.exit(1)
+}
+
 mkdirSync(dirname(OUT), { recursive: true })
 writeFileSync(OUT, out, 'utf-8')
 
 console.log(`✓ Parset ${competitions.length} konkurranser, ${totalQ} spørsmål totalt.`)
 console.log(`✓ Skrev ${OUT}`)
-if (warnings.length > 0) {
-  console.log(`\n⚠️  ${warnings.length} advarsler:`)
-  for (const w of warnings) console.log(`  - ${w}`)
-  process.exit(warnings.length > 0 && competitions.some(c => c.questions.length !== 15) ? 1 : 0)
-}
-
-// Ekstra verifisering: rapporter quizer med ≠15 spørsmål
-const broken = competitions.filter(c => c.questions.length !== 15)
-if (broken.length > 0) {
-  console.log(`\n❌ ${broken.length} quiz(er) har ikke 15 spørsmål:`)
-  for (const c of broken) console.log(`  - ${c.id}: ${c.questions.length} spørsmål`)
-  process.exit(1)
-}

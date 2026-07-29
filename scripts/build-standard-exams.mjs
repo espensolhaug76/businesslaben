@@ -5,6 +5,9 @@
  * Build-time-skript. Kjør når standardkonkurransene endres:
  *   node scripts/build-standard-exams.mjs
  *
+ * Med --check genereres fila til MINNE og sammenlignes med disk. Ingenting
+ * skrives; avvik gir kode 1. Henger på `prebuild` i package.json.
+ *
  * Ingen nytt innhold skrives her — spørsmålene er de samme som i
  * konkurransene. Én prøve per fag, satt sammen av fagets to varianter
  * (2 × 15 = 30 spørsmål), sortert lett → middels → vanskelig med intern
@@ -15,7 +18,7 @@
  * SSR-fagene (se kommentaren i src/lib/teacherSubjects.ts). De finnes
  * fortsatt som konkurranser.
  */
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -23,6 +26,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
 const SRC = resolve(REPO_ROOT, 'src/data/standardCompetitions.ts')
 const OUT = resolve(REPO_ROOT, 'src/data/standardExams.ts')
+
+/** --check: generer til minne og sammenlign med fila. Skriver aldri. */
+const SJEKKEMODUS = process.argv.includes('--check')
 
 // Fag-ID → { tittel, slug }. Rekkefølgen her styrer rekkefølgen i fila.
 // Tverrfaglig er ikke med — se filhodet.
@@ -160,6 +166,51 @@ export function findStandardExam(id: string): StandardExam | null {
 }
 `
 
+// ── Verifisering før skriving ───────────────────────────────────────────────
+if (advarsler.length > 0) {
+  console.log(`\n⚠️  ${advarsler.length} advarsler:`)
+  for (const a of advarsler) console.log(`  - ${a}`)
+}
+
+const feil = proever.filter(p => p.questions.length !== 30)
+if (feil.length > 0) {
+  console.error(`\n❌ ${feil.length} prøve(r) har ikke 30 spørsmål:`)
+  for (const p of feil) console.error(`  - ${p.id}: ${p.questions.length}`)
+  process.exit(1)
+}
+if (proever.length !== Object.keys(FAG).length) {
+  console.error(`\n❌ Forventet ${Object.keys(FAG).length} prøver, fikk ${proever.length}.`)
+  process.exit(1)
+}
+
+// ── Sjekk eller skriv ───────────────────────────────────────────────────────
+if (SJEKKEMODUS) {
+  const paaDisk = existsSync(OUT) ? readFileSync(OUT, 'utf-8') : null
+  if (paaDisk === out) {
+    console.log(`✓ standardExams.ts er i synk med ${proever.length} fag i standardCompetitions.ts.`)
+    process.exit(0)
+  }
+  console.error('')
+  console.error('standardExams.ts er ikke i synk med standardCompetitions.ts.')
+  console.error('Kjør: node scripts/build-standard-exams.mjs')
+  console.error('')
+  if (paaDisk === null) {
+    console.error(`  (${OUT} finnes ikke.)`)
+  } else {
+    const genererte = new Set(proever.map(p => p.id))
+    const paaDiskIder = new Set([...paaDisk.matchAll(/^    id: "(std-exam-[^"]+)",$/gm)].map(m => m[1]))
+    const mangler = [...genererte].filter(id => !paaDiskIder.has(id))
+    const overflodige = [...paaDiskIder].filter(id => !genererte.has(id))
+    if (mangler.length > 0) console.error(`  Mangler i fila (${mangler.length}): ${mangler.join(', ')}`)
+    if (overflodige.length > 0) console.error(`  Ligger i fila uten kilde (${overflodige.length}): ${overflodige.join(', ')}`)
+    if (mangler.length === 0 && overflodige.length === 0) {
+      console.error('  Samme prøver, men innholdet avviker (spørsmål, poeng, tid eller rekkefølge).')
+    }
+  }
+  console.error('')
+  process.exit(1)
+}
+
 mkdirSync(dirname(OUT), { recursive: true })
 writeFileSync(OUT, out, 'utf-8')
 
@@ -171,19 +222,3 @@ for (const p of proever) {
   console.log(`  ${p.id.padEnd(20)} ${String(p.questions.length).padStart(3)} spm  (${fordeling})  ← ${p.varianter.join(' + ')}`)
 }
 console.log(`✓ Skrev ${OUT}`)
-
-if (advarsler.length > 0) {
-  console.log(`\n⚠️  ${advarsler.length} advarsler:`)
-  for (const a of advarsler) console.log(`  - ${a}`)
-}
-
-const feil = proever.filter(p => p.questions.length !== 30)
-if (feil.length > 0) {
-  console.log(`\n❌ ${feil.length} prøve(r) har ikke 30 spørsmål:`)
-  for (const p of feil) console.log(`  - ${p.id}: ${p.questions.length}`)
-  process.exit(1)
-}
-if (proever.length !== Object.keys(FAG).length) {
-  console.log(`\n❌ Forventet ${Object.keys(FAG).length} prøver, fikk ${proever.length}.`)
-  process.exit(1)
-}
