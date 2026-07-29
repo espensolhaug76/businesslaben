@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from './firebase'
 
@@ -24,33 +24,21 @@ export function useLiveSync(): LiveSyncState {
   const isTeacherBigScreen = !!urlCode
 
   const [state, setState] = useState<LiveSyncState>(EMPTY)
-  // For students: skip the first Firebase snapshot so a stale "currentSlide"
-  // from a previous session never hijacks a freshly-opened presentation.
-  // Teachers (with ?live-code) always use the initial value so they can resume.
-  const isFirstSnapshotRef = useRef(true)
 
   useEffect(() => {
     if (!classCode) return
-    isFirstSnapshotRef.current = true
     return onValue(ref(db, 'sessions/' + classCode), snap => {
-      const isFirst = isFirstSnapshotRef.current
-      isFirstSnapshotRef.current = false
-
       const val = snap.val()
       if (val?.active && val.mode === 'presentation') {
         const liveSlide = (val.currentSlide ?? 1) - 1
         const quizActive = val.quizActive === true
         const teacherLiveCode = isTeacherBigScreen ? classCode : null
 
-        // Students: suppress the initial snapshot so the presentation always
-        // opens at slide 0. Subsequent updates (teacher moves slide) still sync.
-        if (!isTeacherBigScreen && isFirst) {
-          setState(prev => {
-            if (prev.isStudentLive && prev.liveSlide === null) return prev
-            return { isLive: true, isStudentLive: true, liveSlide: null, quizActive, teacherLiveCode: null }
-          })
-          return
-        }
+        // Første snapshot ANVENDES også for eleven (spor D, runde 9). Før ble
+        // det undertrykt til `liveSlide: null`, så en elev som logget seg på
+        // midt i økta ble stående på slide 0 til læreren blad neste gang.
+        // Økta er bare «active» mens den faktisk pågår, så det finnes ingen
+        // gammel currentSlide å bli kapret av.
 
         // Only update state when values actually change — prevents render loops
         setState(prev => {

@@ -1163,3 +1163,107 @@ kun på `prebuild`.
 En felle verdt å nevne: første forsøk på å måle exit-koden ga falsk rødt fordi
 `npm run build | head -14` brøt pipen og drepte npm. Målingene over er gjort med
 output til fil.
+
+---
+
+## Runde 9 — live-synk fikset i roten
+
+### Hva som erstattet `fromFirebaseRef`
+
+Det boolske flagget er borte. Det som står der nå er tre ting, og ingen av dem
+kan settes av innkommende data:
+
+**1. Eleven har ingen slide-tilstand i det hele tatt.** `current` utledes:
+
+```ts
+const current = isStudentLive ? (liveSlide ?? 0) : lokalSlide
+```
+
+Det er ingenting å forsone. Firebase er eneste sannhet for hva eleven ser, og
+`gaaTil()` returnerer tidlig for elever, så det finnes ingen vei til lokal
+avdrift. Mekanisme 4 i diagnosen — «lokal state konkurrerer med Firebase» — er
+dermed ikke løst, men fjernet: konkurrenten finnes ikke lenger.
+
+**2. Læreren skriver ubetinget, i selve navigasjonshandlingen.** Skrivingen lå
+før i en `useEffect` på `[current]`, altså et sted der innkommende data kunne
+rekke å sette et flagg først. Nå skjer den i `gaaTil()`, som er eneste vei til
+en ny slide:
+
+```ts
+const gaaTil = useCallback((mal: number) => {
+  if (isStudentLive) return
+  const n = Math.max(0, Math.min(mal, TOTAL_SLIDES_WITH_TEACHER - 1))
+  harNavigert.current = true
+  naaRef.current = n
+  setLokalSlide(n)
+  skrivSlide(n)
+}, [...])
+```
+
+`naaRef` speiler lærerens slide synkront, så et raskt trykk nummer to regner ut
+neste slide fra riktig utgangspunkt uten å vente på en render. Ingen debounce,
+ingen throttle, ingen timer.
+
+**3. Læreren adopterer remote på VERDI, én gang.** Storskjermen skal kunne
+gjenoppta en pågående økt, så første ikke-null `liveSlide` anvendes — men bare
+hvis læreren ikke allerede har navigert. Etter det er læreren skriveren, og et
+forsinket ekko av hennes egen skriving kan ikke flytte henne bakover.
+
+`_lastWritten` er gått fra modulvariabel til `useRef` (`sistSkrevet`), så den
+nullstilles ved remount. Den brukes utelukkende til å hoppe over en skriving som
+er identisk med den forrige — aldri til å gate navigasjon. `_isLive`, den andre
+modulvariabelen, er samtidig blitt en `skjult`-prop på `NavBtn`.
+
+I `useLiveSync.ts` er undertrykkingen av elevens første snapshot fjernet
+(mekanisme 3). Økta er bare `active` mens den faktisk pågår, så det finnes ingen
+gammel `currentSlide` å bli kapret av — og en elev som logger seg på midt i økta
+lander nå der læreren står.
+
+Tastaturvakta fra runde 3 er urørt (`git diff` viser null treff på
+`erNavigasjonstast`), og de 56 frittstående presentasjonsfilene er ikke rørt.
+
+### Verifisering — lærer og elev i samme nettleser, port 5176
+
+Kjørt mot `ent1/behov-marked-segmentering` (14 slides), som bruker
+`PresentationShell`. Se forbeholdet under.
+
+**A) Læreren blar rolig 1 → 8.** BESTÅTT. Eleven fulgte hvert eneste steg:
+2→2, 3→3, 4→4, 5→5, 6→6, 7→7, 8→8.
+
+**B) Læreren blar RASKT 1 → 12 uten pause.** BESTÅTT. 11 tastetrykk uten
+opphold: lærer 12/14, elev 12/14, `currentSlide` i RTDB = 12. Dette er testen
+som avdekket feilen i runde 3; da endte læreren på 3 og eleven på 2.
+
+**C) Læreren står på 7, ny elev logger seg på.** BESTÅTT. Eleven landet på
+7/14, ikke 0.
+
+**D) Læreren går bakover 7 → 4.** BESTÅTT. Eleven fulgte: 6→6, 5→5, 4→4.
+
+**E) Eleven laster siden på nytt midt i økta.** BESTÅTT. Læreren sto på 4/14,
+eleven kom tilbake på 4/14.
+
+Ingen konsollfeil i noen av vinduene. Kontrollert i samme slengen at eleven
+fortsatt er låst: fem navigasjonstrykk (ArrowRight ×2, PageDown, mellomrom, End)
+flyttet ingenting, og nav-knappene er ikke i DOM-en.
+
+### Forbehold: fiksen dekker 53 av 109 presentasjoner
+
+Første testrunde så ut som om fiksen ikke virket i det hele tatt — helt til
+sporingen jeg la inn ikke ga et eneste utslag. Årsaken:
+**`beredskapsplaner`, presentasjonen runde 3 testet med, er en av de 56
+frittstående filene og bruker ikke `PresentationShell`.** Koden min kjørte
+aldri der.
+
+Oppdraget sa eksplisitt at de 56 ikke skulle røres, så det står slik. Men det
+betyr at feilen lever videre i dem. Kontrollmåling på `beredskapsplaner` etter
+fiksen: læreren står på 7/12 mens RTDB har `currentSlide` 6 — den droppede
+skrivingen er der fortsatt.
+
+Én ting bedret seg likevel for alle 109: `useLiveSync.ts` er delt, så en elev som
+logger seg på midt i økta lander nå på lærerens sist skrevne slide i stedet for
+å bli stående på slide 1. I målingen over landet eleven på 6/12 — lærerens siste
+vellykkede skriving, ikke 1.
+
+For å få A, B og D riktige i de frittstående filene må den samme endringen inn
+der. De har identisk kode, så det er et mekanisk sveip på linje med
+tastaturvakta i runde 3 — men det er en egen jobb.

@@ -149,11 +149,8 @@ export function CoverSlide({
   )
 }
 
-let _isLive = false
-let _lastWritten = -1
-
-function NavBtn({ onClick, disabled, children }: { onClick: () => void; disabled: boolean; children: React.ReactNode }) {
-  if (_isLive) return null
+function NavBtn({ onClick, disabled, skjult, children }: { onClick: () => void; disabled: boolean; skjult: boolean; children: React.ReactNode }) {
+  if (skjult) return null
   return (
     <button
       onClick={onClick}
@@ -200,26 +197,60 @@ export default function PresentationShell({
   contentSlides, quizSlides, slideTitles,
 }: PresentationShellProps) {
   const navigate = useNavigate()
-  const [current, setCurrent] = useState(0)
-  // Reset to slide 0 on mount (bug fix from earlier — state shouldn't carry over)
-  useEffect(() => { setCurrent(0) }, [])
 
   const ORIGINAL_SLIDES = contentSlides.length + 1   // +1 for cover slide
   const TOTAL_SLIDES = ORIGINAL_SLIDES + quizSlides.length
 
   const { liveSlide, isStudentLive, teacherLiveCode } = useLiveSync()
   const liveCode = teacherLiveCode ?? (isStudentLive ? localStorage.getItem('student-classroom-code') : null)
-  const fromFirebaseRef = useRef(false)
-  useEffect(() => { if (liveSlide !== null) { fromFirebaseRef.current = true; setCurrent(liveSlide) } }, [liveSlide])
-  _isLive = isStudentLive
 
+  // ── Slide-tilstand (spor D, runde 9) ──────────────────────────────────────
+  // Bærende prinsipp: i live-modus er Firebase eneste sannhet for hvilken slide
+  // ELEVEN ser. Læreren skriver, eleven leser. Eleven har derfor ingen egen
+  // slide-tilstand som må forsones med noe — `current` UTLEDES av remote.
+  //
+  // Det som sto her før: et boolsk `fromFirebaseRef` som ble satt av hvert
+  // innkommende liveSlide og nullstilt av neste skriving, uansett hvilken slide
+  // den gjaldt. Ekkoet av lærerens egen skriving spiste flagget, og skrivingen
+  // for den nye sliden ble droppet. Et flagg som ikke vet hvilken slide det
+  // gjelder kan ikke løse dette; nå sammenlignes VERDIER i stedet.
+  const [lokalSlide, setLokalSlide] = useState(0)
+
+  const current = isStudentLive ? (liveSlide ?? 0) : lokalSlide
+
+  // Speiler lærerens slide synkront, så raske tastetrykk etter hverandre regner
+  // ut neste slide fra riktig utgangspunkt uten å vente på en ny render.
+  const naaRef = useRef(0)
+  useEffect(() => { naaRef.current = current }, [current])
+
+  // Sist skrevne slide. Var en MODULVARIABEL som overlevde remount og kunne
+  // droppe første skriving i en ny presentasjon; nå en ref per montering.
+  // Brukes kun til å hoppe over en skriving som er identisk med den forrige —
+  // aldri til å gate navigasjon, og den kan ikke settes av innkommende data.
+  const sistSkrevet = useRef<number | null>(null)
+
+  // Læreren adopterer remote ÉN gang, ved oppstart, slik at storskjermen kan
+  // gjenoppta en pågående økt. Etterpå er læreren skriveren — innkommende ekko
+  // av egne skrivinger skal aldri kunne flytte henne bakover.
+  const harAdoptert = useRef(false)
+  const harNavigert = useRef(false)
   useEffect(() => {
     if (!teacherLiveCode) return
-    if (fromFirebaseRef.current) { fromFirebaseRef.current = false; return }
-    if (current + 1 === _lastWritten) return
-    _lastWritten = current + 1
-    fbUpdate(fbRef(db, 'sessions/' + teacherLiveCode), { currentSlide: current + 1, quizRevealedSlide: null })
-  }, [current, teacherLiveCode])
+    if (harAdoptert.current || harNavigert.current) return
+    if (liveSlide === null) return
+    harAdoptert.current = true
+    sistSkrevet.current = liveSlide
+    naaRef.current = liveSlide
+    setLokalSlide(liveSlide)
+  }, [liveSlide, teacherLiveCode])
+
+  /** Skriver lærerens slide. Ubetinget ved navigasjon. */
+  const skrivSlide = useCallback((n: number) => {
+    if (!teacherLiveCode) return
+    if (sistSkrevet.current === n) return   // identisk med forrige skriving
+    sistSkrevet.current = n
+    fbUpdate(fbRef(db, 'sessions/' + teacherLiveCode), { currentSlide: n + 1, quizRevealedSlide: null })
+  }, [teacherLiveCode])
 
   const PRESENTATION_ROUTE = window.location.pathname
   const [teacherSlides, setTeacherSlides] = useState<TeacherSlide[]>(() => loadTeacherSlides(window.location.pathname))
@@ -268,21 +299,34 @@ export default function PresentationShell({
     })
   }
 
+  /**
+   * Eneste vei til en ny slide. Setter lokal tilstand OG skriver til Firebase i
+   * samme handling — skrivingen er ubetinget og henger ikke på noe som kan
+   * settes av innkommende data.
+   *
+   * I live-modus er eleven ren leser: hen har ingen lokal tilstand å flytte, og
+   * skal heller ikke kunne skrive.
+   */
+  const gaaTil = useCallback((mal: number) => {
+    if (isStudentLive) return
+    const n = Math.max(0, Math.min(mal, TOTAL_SLIDES_WITH_TEACHER - 1))
+    harNavigert.current = true
+    naaRef.current = n
+    setLokalSlide(n)
+    skrivSlide(n)
+  }, [isStudentLive, TOTAL_SLIDES_WITH_TEACHER, skrivSlide])
+
   const next = useCallback(() => {
-    setCurrent(c => {
-      let n = c + 1
-      while (n < TOTAL_SLIDES_WITH_TEACHER - 1 && hiddenSlides.includes(n)) n++
-      return Math.min(n, TOTAL_SLIDES_WITH_TEACHER - 1)
-    })
-  }, [TOTAL_SLIDES_WITH_TEACHER, hiddenSlides])
+    let n = naaRef.current + 1
+    while (n < TOTAL_SLIDES_WITH_TEACHER - 1 && hiddenSlides.includes(n)) n++
+    gaaTil(n)
+  }, [TOTAL_SLIDES_WITH_TEACHER, hiddenSlides, gaaTil])
 
   const prev = useCallback(() => {
-    setCurrent(c => {
-      let n = c - 1
-      while (n > 0 && hiddenSlides.includes(n)) n--
-      return Math.max(n, 0)
-    })
-  }, [hiddenSlides])
+    let n = naaRef.current - 1
+    while (n > 0 && hiddenSlides.includes(n)) n--
+    gaaTil(n)
+  }, [hiddenSlides, gaaTil])
 
   function startLiveSession() {
     const pin = String(Math.floor(1000 + Math.random() * 9000))
@@ -410,10 +454,10 @@ export default function PresentationShell({
       {/* Forrige/Neste skjules på forsiden — der finnes "Start Presentasjon →" som primær handling. */}
       {current > 0 && (
         <div style={{ position: 'fixed', bottom: 40, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 16, zIndex: 50 }}>
-          <NavBtn onClick={prev} disabled={false}>← Forrige</NavBtn>
+          <NavBtn onClick={prev} disabled={false} skjult={isStudentLive}>← Forrige</NavBtn>
           {current === TOTAL_SLIDES_WITH_TEACHER - 1
-            ? <NavBtn onClick={closePresentation} disabled={false}>Avslutt presentasjon ✓</NavBtn>
-            : <NavBtn onClick={next} disabled={false}>Neste →</NavBtn>}
+            ? <NavBtn onClick={closePresentation} disabled={false} skjult={isStudentLive}>Avslutt presentasjon ✓</NavBtn>
+            : <NavBtn onClick={next} disabled={false} skjult={isStudentLive}>Neste →</NavBtn>}
         </div>
       )}
 
@@ -486,7 +530,7 @@ export default function PresentationShell({
         onSlidesChange={setTeacherSlides}
         currentSlide={current}
         slideInfos={slideInfos}
-        onJumpTo={setCurrent}
+        onJumpTo={gaaTil}
         hiddenSlides={hiddenSlides}
         onHideToggle={handleHideToggle}
       />
