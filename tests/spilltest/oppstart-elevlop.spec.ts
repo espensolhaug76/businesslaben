@@ -15,11 +15,12 @@
 // (docs/SPILLTESTER.md DEL 3) — ALT annet spilles via ekte DOM-klikk.
 
 import { test, expect } from '@playwright/test'
-import { Rapport, steg, dispatch, lesState, ventState, ryddLocalStorage } from './harness'
+import { Rapport, steg, dispatch, dispatchN, lesState, ventState, ryddLocalStorage } from './harness'
 
 test('Oppstart uten ?skip — åpningsbestilling ankommer FRISK til dag 1', async ({ page }) => {
   const rapport = new Rapport('Oppstart-elevløype')
   const N = 50   // distinkt åpningsordre-antall for kaffe (skiller seg fra forslaget)
+  let levert: Record<string, number> = {}   // per-vare levert-mengde (fasit for regnskaps-invarianten)
 
   // Boot UTEN ?skip → StartupScreen skal vises. Determinisme som full-maaned,
   // men vi setter BEVISST IKKE mentor_intro_v1 — introen SKAL dukke opp (assertes).
@@ -36,29 +37,27 @@ test('Oppstart uten ?skip — åpningsbestilling ankommer FRISK til dag 1', asyn
   })
   await page.goto('/game')
 
-  // ── STEG 1 — Navnemenyen (den delen skip-løypa hoppet over) ─────────────────
-  await steg(page, rapport, 1, 'Navnemeny uten ?skip: bransje → modell → finansiering → personlighet → navn → START_GAME', async ctx => {
-    await expect(page.getByText('Velg din bransje')).toBeVisible({ timeout: 15_000 })
+  // ── STEG 1 — Navnemenyen (forenklet: navn → bransje, ingen v1-mellomsteg) ────
+  await steg(page, rapport, 1, 'Navnemeny uten ?skip: navn → bransje → START_GAME (ingen modell/finansiering/personlighet)', async ctx => {
+    await expect(page.getByText('Gi bedriften din et navn')).toBeVisible({ timeout: 15_000 })
     await ventState(page, s => s.phase === 'startup', 'StartupScreen aktiv (ingen ?skip-seeding)')
 
-    await page.getByRole('button', { name: /Kafé & Bakeri/ }).click()
-    await page.getByRole('button', { name: 'Neste →' }).click()
-    await page.getByRole('button', { name: /Detaljhandel/ }).click()
-    await page.getByRole('button', { name: 'Neste →' }).click()
-    await page.getByRole('button', { name: /Bank/ }).click()
-    await page.getByRole('button', { name: 'Neste →' }).click()
-    // «Analytisk\b» skiller kortet fra «Kreativ»-kortets ulempe «Analytiske valg …».
-    await page.getByRole('button', { name: /Analytisk\b/ }).click()
-    await page.getByRole('button', { name: 'Neste →' }).click()
+    // De tre v1-stegene skal være BORTE.
+    await expect(page.getByText('Velg forretningsmodell'), 'ingen forretningsmodell-steg').toHaveCount(0)
+    await expect(page.getByText('Hvem er du som gründer?'), 'ingen personlighet-steg').toHaveCount(0)
+
     await page.getByPlaceholder(/Nordic Coffee/).fill('Testkafeen')
+    await page.getByRole('button', { name: 'Neste →' }).click()
+    await expect(page.getByText('Velg din bransje')).toBeVisible()
+    await page.getByRole('button', { name: /Kafé & Bakeri/ }).click()
     await page.getByRole('button', { name: /Start spillet/ }).click()
 
     await ventState(page, s => s.phase === 'exploring_city', 'spillet startet (exploring_city)')
     const s = await lesState(page)
-    expect(s.money, 'startkapital for kafé (200 000)').toBe(200_000)
+    expect(s.money, 'startkapital for kafé (fast standard 200 000)').toBe(200_000)
     expect(s.dayNumber, 'starter på dag 1').toBe(1)
     expect(s.rentedLocationId, 'intet lokale ennå').toBeNull()
-    ctx.ok(`navnemeny gjennomført → phase=exploring_city, kapital=${s.money} kr, dag ${s.dayNumber}`)
+    ctx.ok(`navnemeny gjennomført (navn → bransje) → phase=exploring_city, kapital=${s.money} kr, dag ${s.dayNumber}`)
   })
 
   // ── STEG 2 — Mentor-onboarding (introen skip-løypa undertrykte) ─────────────
@@ -89,7 +88,17 @@ test('Oppstart uten ?skip — åpningsbestilling ankommer FRISK til dag 1', asyn
     const kaffe = s.products.find(p => p.id === 'coffee')
     expect(kaffe, 'kaffe finnes i sortimentet etter åpningsbestilling').toBeTruthy()
     expect(kaffe!.stock, `kaffe bestilt ${N} stk → ligger på lager`).toBe(N)
-    ctx.ok(`åpningsbestilling: kaffe ${kaffe!.stock} stk på lager (bestilt ${N})`)
+
+    // FIKS DAG 1 (30.07): åpningsbestillingen STILLES UT på disken med det samme
+    // (counterLayout) — så varene når trau-paletten og ikke viser «Utsolgt» mens
+    // lageret har varer. PRISING er fortsatt elevens jobb (Priser-fanen), så varene
+    // starter upriset (retailPrice 0) — men nå SYNLIG på disken.
+    expect(s.counterLayout.length, 'åpningsvarene er stilt ut på disken (counterLayout)').toBeGreaterThan(0)
+    for (const p of s.products) {
+      expect(s.counterLayout.some(t => t.productId === p.id), `${p.id} er stilt ut på et trau`).toBe(true)
+    }
+    expect(kaffe!.retailPrice, 'åpningsvaren starter upriset (prising er elevens jobb)').toBe(0)
+    ctx.ok(`åpningsbestilling: kaffe ${kaffe!.stock} stk, ${s.counterLayout.length} varer stilt ut på disken (upriset)`)
   })
 
   // ── STEG 4 — Åpne dag 1: varene FRISK på lager + HUD viser «Dag 1» ───────────
@@ -103,31 +112,67 @@ test('Oppstart uten ?skip — åpningsbestilling ankommer FRISK til dag 1', asyn
     expect(s.incomingOrders.length, 'ingen bestillinger strandet i leveringskøen').toBe(0)
     expect(s.dayNumber, 'står på dag 1').toBe(1)
 
+    // FASIT for regnskaps-invarianten (steg 5): per-vare levert = lager ved dag 1-åpning
+    // (ingen salg ennå). Ingen ordrer underveis, så dette ER det som ble levert.
+    levert = {}
+    for (const p of s.products) levert[p.id] = p.stock
+
     // HUD-dagpilla (rentedLocationId satt) skal vise «Dag 1».
     await expect(page.locator('body')).toContainText('Dag 1')
     ctx.ok(`dag 1 åpnet med ${kaffe!.stock} kaffe på disken; HUD-dagpille viser «Dag 1»`)
   })
 
-  // ── STEG 5 — Spill til dag 2 + RELOAD overlever (persistering) ──────────────
-  // Skolestart-kravet: lukk/relast nettleseren → finn butikken NØYAKTIG der den
-  // var. Vi endrer disk-oppsett + ruller til dag 2 (varer/penger endret fra start),
-  // laster siden på nytt, velger «Fortsett» i menyen, og sjekker at ALT står.
-  await steg(page, rapport, 5, 'Reload overlever: disk-oppsett + dag 2 + lager + penger står etter «Fortsett»', async ctx => {
-    // Disk-oppsett (2 trau) mens dag 1 er åpen.
-    await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [
-      { trauId: 'trau-1', productId: 'coffee' },
-      { trauId: 'trau-2', productId: 'croissant' },
-    ] })
-    await ventState(page, s => s.counterLayout.length >= 2, 'disk-oppsett lagret')
-    // Rull til dag 2 (stengt) → stabil tilstand (ingen klokke som tikker ved reload).
-    await dispatch(page, { type: 'CLOSE_DAY' })
-    await ventState(page, s => s.dayPhase === 'oppgjør', 'dag 1 stengt (oppgjør)')
+  // ── STEG 5 — DAG 1-REGNSKAPET: varene SELGER (ikke 100% svinn) + invariant ───
+  // Rotårsak (bevisført): åpningsvarene havnet i lager UTEN pris/utstilling →
+  // bakgrunnssalget (kun utstilte, prisede varer) solgte 0 → ALT ble svinn, disken
+  // «Utsolgt». Etter fiksen er de priset + stilt ut → de selger. Vi asserterer at
+  // regnskapet går opp PER VARE: levert == solgt + svinn + restlager.
+  await steg(page, rapport, 5, 'Dag 1-regnskap: åpningsvarene selger (ikke 100% svinn) + levert == solgt + svinn + rest per vare', async ctx => {
+    // Eleven priser varene (Priser-fanen sin jobb) — her via test-broen til anbefalt
+    // markedspris. Nå er de BÅDE utstilt (fiksen) og priset → de skal selge.
+    await page.evaluate(() => {
+      const st = window.__GAME_STATE__
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products: (st!.products as any[]).map(p => ({ ...p, retailPrice: p.markedsPris })) })
+    })
+    await ventState(page, s => s.products.every(p => p.retailPrice > 0), 'varene priset (markedspris)')
+    // Spill dagen ferdig (bakgrunnssalg dryppes per tick; ingen kundemøte-avhengighet).
+    for (let i = 0; i < 60; i++) {
+      const s = await lesState(page)
+      if (s.dayPhase !== 'åpen') break
+      await dispatchN(page, { type: 'TICK' }, 15)
+    }
+    let s = await lesState(page)
+    if (s.dayPhase === 'åpen') { await dispatch(page, { type: 'CLOSE_DAY' }); await ventState(page, st => st.dayPhase === 'oppgjør', 'dag 1 stengt') }
+    s = await lesState(page)
+    const dr = s.lastDayResult as { svinnStk: number; soldStk: number; bakgrunnStk: number; produktRegnskap: { navn: string; solgtStk: number; svinnStk: number }[] }
+    expect(dr, 'dagsoppgjør finnes').toBeTruthy()
+    // FIKSEN: åpningsvarene solgte faktisk (ikke den gamle 100%-svinn-katastrofen).
+    expect(dr.bakgrunnStk, 'bakgrunnssalget solgte av åpningsvarene (fiksen: utstilt + priset)').toBeGreaterThan(0)
+
+    // REGNSKAPS-INVARIANT per vare: levert == solgt + svinn + restlager.
+    for (const [id, lev] of Object.entries(levert)) {
+      const navn = s.products.find(p => p.id === id)?.name
+      const r = dr.produktRegnskap.find(x => x.navn === navn)
+      const solgt = r?.solgtStk ?? 0
+      const svinn = r?.svinnStk ?? 0
+      const rest = s.products.find(p => p.id === id)?.stock ?? 0
+      expect(solgt + svinn + rest, `${id}: levert(${lev}) == solgt(${solgt}) + svinn(${svinn}) + rest(${rest})`).toBe(lev)
+    }
+    ctx.ok(`dag 1 solgte ${dr.bakgrunnStk} stk (ikke 100% svinn); regnskapet går opp per vare (levert == solgt+svinn+rest)`)
+  })
+
+  // ── STEG 6 — RELOAD overlever (persistering) ───────────────────────────────
+  // Skolestart-kravet: lukk/relast nettleseren → finn butikken NØYAKTIG der den var.
+  await steg(page, rapport, 6, 'Reload overlever: disk-oppsett + dag 2 + lager + penger står etter «Fortsett»', async ctx => {
+    // Dag 1 er alt stengt (oppgjør) fra steg 5. Rull til dag 2 (stengt) → stabil
+    // tilstand (ingen klokke som tikker ved reload).
     await dispatch(page, { type: 'START_NEW_DAY' })
     await ventState(page, s => s.dayNumber === 2 && s.dayPhase === 'stengt', 'dag 2 (stengt)')
 
     // Snapshot FØR reload (fasit).
     const før = await lesState(page)
-    expect(før.money, 'penger endret fra startkapital (åpningskjøp trukket)').toBeLessThan(200_000)
+    expect(før.money, 'kassa er endret fra startkapitalen (åpningskjøp + dag 1-salg)').not.toBe(200_000)
     const fasit = {
       phase: før.phase, companyName: før.companyName, money: før.money,
       dayNumber: før.dayNumber, dayPhase: før.dayPhase,
@@ -176,7 +221,7 @@ test('Korrupt lagring → fersk oppstart uten krasj + backup-nøkkel finnes', as
   await page.goto('/game')
 
   // Appen skal IKKE krasje: den ferske navnemenyen vises (ikke «Fortsett»).
-  await expect(page.getByText('Velg din bransje'), 'fersk oppstart tross korrupt save').toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Gi bedriften din et navn'), 'fersk oppstart tross korrupt save').toBeVisible({ timeout: 15_000 })
   await expect(page.getByRole('button', { name: /Fortsett som/ }), 'ingen «Fortsett» på korrupt save').toHaveCount(0)
 
   // Den korrupte blobben skal være flyttet til backup (aldri slettet stille).

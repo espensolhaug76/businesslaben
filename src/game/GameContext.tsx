@@ -1006,14 +1006,27 @@ function reducer(state: GameState, action: Action): GameState {
       // åpningsdagen», ingen ventetid. Kjøres én gang (openingOrderPlaced
       // gater OpeningOrderOverlay). Tom bestilling er lov (eleven ble advart):
       // ingen varer, ingen kostnad, men flagget settes så overlayet lukkes.
+      // FIKS DAG 1-REGNSKAPET (30.07): åpningsbestillingen STILLES UT på disken
+      // (counterLayout) med det samme. Rotårsak (bevisført): startlageret havnet i
+      // `stock` UTEN å nå trau-paletten, mens bakgrunnssalget KUN trekker fra
+      // UTSTILTE varer — så en fersk elev solgte 0, disken viste «Utsolgt» selv om
+      // lageret hadde varer, og ALT ferskvare-lageret ble kastet som svinn på
+      // åpningsdagen. Regnskapet «løy» ikke (levert == solgt + svinn + rest holder),
+      // men dagen var en stille katastrofe. Nå ligger varene synlig på disken fra
+      // start. PRISING beholdes som elevens jobb (Priser-fanen) — uprisede varer gir
+      // nå ærlig «mangler pris»-tap i stedet for villedende «Utsolgt». Eleven overtar
+      // stell/prising selv fra neste bestilling. MONTER_TRAU har 18 plasser, rikelig.
       const def = getActiveIndustryDefinition()
+      const trauIds = def.flater.lager.trau.map(t => t.id)
       const products: Product[] = []
+      const counterLayout: TrauItem[] = []
       let cost = 0
       for (const { productId, qty } of action.items) {
         if (qty <= 0) continue
         const item = def.katalog.find(c => c.id === productId)
         if (!item) continue
         products.push({ ...catalogToProduct(item), stock: qty })
+        if (counterLayout.length < trauIds.length) counterLayout.push({ trauId: trauIds[counterLayout.length], productId })
         cost += item.costPrice * qty
       }
       return {
@@ -1023,6 +1036,7 @@ function reducer(state: GameState, action: Action): GameState {
         // som resten av økonomien tåler (konkurs-sporet).
         money: state.money - cost,
         products,
+        counterLayout,
         openingOrderPlaced: true,
         p1_complete: products.length > 0 ? true : state.p1_complete,
       }
