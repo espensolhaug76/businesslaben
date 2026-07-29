@@ -3726,3 +3726,123 @@ bestilling lagt før første åpning (vei 2) ligger nå FRISK på disken ved dag
    ligge på lager (før fiksen sto de «i bestilling» til dag 2 og disken var tom).
 6. (Regresjon) Fra dag 2 og utover skal en NY bestilling fortsatt ha normal leveringstid
    (ankommer neste dagstart), ikke samme dag.
+
+## PERSISTERING — spillet overlever reload (skolestart-blokker) — 2026-07-29
+
+Gren: `spor-a/persistering` (stablet på den ennå-umerge­de `fiks-oppstartslopa` →
+main-merge venter fortsatt; verifiser rekkefølgen ved merge). Mål: en elev som
+lukker/relaster nettleseren finner butikken sin igjen NØYAKTIG der den var.
+Scope: **localStorage**. Sync på tvers av enheter er FLAGGET som egen jobb (under).
+
+### DEL 1 — Full state-persistering under ÉN versjonert nøkkel
+Ny modul `src/game/save.ts` eier **én** nøkkel `adventure_save_v1`:
+```
+{ version: 1, savedAt: <ISO>, state: <HELE GameState>, onboarding: {...} }
+```
+- `state` = alt reduceren eier (products, incomingOrders, money, dayPhase,
+  dayNumber, dayStats, counterLayout, rykte/XP, avisArkiv, budsjett/temaer …).
+- `onboarding` = de små «har-sett»-flaggene som bor i komponenter (mentor-intro,
+  mentor-triggere, budsjett-/kampanje-panelintro) — konsolidert hit.
+
+**Hva som konsolideres:** HELE `state` (products, incomingOrders, money, dayPhase,
+dayNumber, dayStats, counterLayout, rykte/XP, avisArkiv, budsjett/temaer … — alt
+reduceren eier) ligger i `adventure_save_v1 → state` og gjenopprettes i sin HELHET
+via «Fortsett». Det er dette som utgjør «butikken» og som tidligere ikke overlevde
+reload.
+
+**Konsolideringskart (nøkler):**
+
+| Nøkkel | Innhold | Status |
+|---|---|---|
+| `adventure_save_v1` | **HELE GameState** (`{version, savedAt, state}`) | NY — full-save, kilde for «Fortsett» |
+| `beredskap_state_v1` | state.beredskap | BEHOLDT (dedikert) — også i full-savens `state` |
+| `budsjett_state_v1` | budsjett/nøkkeltall/kampanje/avis/espenSpor/stamkunder/turist… | BEHOLDT (dedikert) — også i full-savens `state` |
+| `mentor_fired_v1`, `mentor_intro_v1` | mentor-triggere + intro | BEHOLDT (dedikert) |
+| `budsjett_intro_v1`, `kampanje_intro_v1` | panel-introer | BEHOLDT (dedikert) |
+
+**Hvorfor beholde de små flagg-nøklene dedikert (ikke i full-saven)?**
+- **Temaarbeid** (`beredskap_state_v1` / `budsjett_state_v1`) flettes inn på
+  `initialState` ved oppstart (nøyaktig som før). De dekker et ANNET behov enn
+  «Fortsett»: temaarbeid skal overleve et FERSKT spill — dev-seeding via
+  `?skip`/`?dev` (spilltesten) og «Start ny bedrift» — som full-saven (kun continue)
+  ikke gjør. Å konsolidere dem og la `?skip`-reseeden arve dem fra full-saven brakk
+  seed-avhengige steg (bl.a. reiselivs-hotspot-navigasjonen på stasjonen — reseeden
+  fikk feil reiseliv-state).
+- **Onboarding** (`mentor_fired_v1` m.fl.) er observérbare i spilltesten (steg som
+  seeder/leser fyrt-settet direkte). Å flytte dem inn i den ugjennomsiktige saven
+  brakk 6 mentor-trigger-steg. De er dessuten «har-sett»-markører, ikke spillet.
+
+Begge kategorier skrives fra samme reducer-state, så full-savens `state` inneholder
+dem OGSÅ (og «Fortsett» gjenoppretter dem). Full konsolidering av flagg-nøklene er
+en mulig oppfølger (krever egen «fersk-kilde» for reseed-stiene + at spilltesten
+leser fra ny plassering). Kjernemålet — hele butikken overlever reload — er levert.
+
+*Ikke* rørt (bevisst): lyd av/på (device-preferanse), samt lærer-/klasse-config
+(`tema-aktivering-dev`, `klasse-nivaa-dev`, `fag-aktivering-dev` m.fl.) — de er IKKE
+elevens spill og leses fra context/RTDB.
+
+**Autosave-strategi:** throttlet full-state-skriv (maks hvert 2. sek) i en effekt
+etter dispatch — ALDRI i render-løkka. I tillegg flush ved `visibilitychange`
+(skjult), `beforeunload` og `pagehide`, så det siste minuttet aldri går tapt når
+fanen lukkes. Autosave hopper over `phase === 'startup'`, så et ferskt
+oppstartsskjermbilde aldri overskriver en eksisterende save før eleven har valgt.
+
+**Restore:** `adventure_save_v1` lastes/valideres FØR spillet rendres. Gyldig save
++ riktig `version` → tilgjengelig for «Fortsett». Versjons-mismatch eller korrupt
+JSON → trygg fallback til ny oppstart, og den gamle bloben BEHOLDES under
+`adventure_save_backup` (aldri slett stille). Vi auto-hydrerer IKKE inn i spillet
+ved boot — oppstartsmenyen tilbyr «Fortsett» (HYDRATE_SAVE), se DEL 2.
+
+### DEL 2 — Oppstartsmenyen: Fortsett / Ny
+- Finnes et fortsettbart spill (lagret `state` med `phase !== 'startup'`) viser
+  menyen «▶ Fortsett som [bedriftsnavn] — Dag N» som primærvalg + «Start ny
+  bedrift». «Start ny» krever bekreftelse i tekst: «Dette sletter [bedriftsnavn].
+  Er du sikker?» → sletter saven (backup beholdes) og går til fersk navnemeny.
+- Ingen save → som før (rett i navnemenyen).
+- `?skip=1` går utenom menyen (dev-seeding, uendret). ⚙ DEV-panelet fikk
+  «💾 Slett lagring (DEV)»-knapp (bekreftelse + backup) for å teste fersk oppstart.
+
+### Integrasjonsfeller underveis (og hvorfor designet endte der det gjorde)
+To forsøk på FULL konsolidering (flagg-nøklene inn i saven) brakk spilltesten og
+avgjorde det endelige designet:
+1. **Onboarding i saven → `full-maaned` hang på steg 2.** Mentor-introens
+   fullskjerm-overlay (z-600) dekket dashbord-knappen fordi intro-flagget nå lå i
+   den ugjennomsiktige saven, mens testens `mentor_intro_v1`-preset ikke nådde
+   fram. Flere mentor-trigger-steg (som seeder/leser `mentor_fired_v1` direkte)
+   brakk også. → Onboarding-nøklene beholdes dedikert.
+2. **Temaarbeid arvet fra saven ved `?skip`/`?dev`-reseed → steg 17 brakk**
+   (reiselivs-hotspot-navigasjonen fikk feil reiseliv-state). → Temaarbeid blir
+   liggende i egne nøkler med baseline init-fletting.
+Konklusjon: full-saven eier `state` (butikken). De små flagg-nøklene forblir
+dedikerte. Verifisert grønt: `full-maaned` 51/51 + testvakta.
+
+### DEL 3 — Testvakt
+`tests/spilltest/oppstart-elevlop.spec.ts`:
+- Steg 5 (nytt): spill til dag 2 med disk-oppsett (2 trau) + endret lager/penger →
+  RELOAD → «Fortsett» i menyen → assert at phase, bedriftsnavn, penger, dagnummer,
+  dagfase, kaffe-lager, disk-oppsett, rykte, XP og ulest-avis ALLE står.
+- Ny test: korrupt `adventure_save_v1` → fersk oppstart uten krasj (navnemeny, ingen
+  «Fortsett») + `adventure_save_backup` finnes.
+- `full-maaned` (51 steg) kjørt på nytt — persisteringen knekker ingen seed-avhengige
+  steg.
+
+### FLAGGET (egne senere jobber — ikke bygget)
+- **Delt maskin (samme nettleserprofil, to elever):** localStorage er per profil.
+  To elever på samme innloggede Chrome-profil deler `adventure_save_v1` → de vil
+  overskrive hverandre. Trengs: per-elev-nøkkel (klassekode + elev-id) eller
+  RTDB-lagring per elev.
+- **RTDB-sync per klassekode (på tvers av enheter):** eleven som bytter maskin
+  finner ikke saven (den bor lokalt). Løsning: speil `state` til RTDB under
+  elevens node, med samme versjonering + konfliktregel (siste skriver / tidsstempel).
+
+### Chrome-sjekkliste
+1. Spill litt (lei lokale, legg åpningsbestilling, åpne en dag, selg noe).
+2. **DEN ENE TESTEN SOM TELLER:** LUKK CHROME HELT (ikke bare fanen) → åpne igjen
+   → gå til `/game`. Oppstartsmenyen skal vise «▶ Fortsett som [bedrift] — Dag N».
+   Klikk → butikken lever NØYAKTIG der du forlot den (lager, penger, dag, disk).
+3. «Start ny bedrift» → bekreftelsestekst «Dette sletter [bedrift]. Er du sikker?»
+   → Ja → fersk navnemeny; reload nå viser IKKE «Fortsett» (saven er slettet).
+4. Midt i en dag: bytt fane / minimer noen sekunder, kom tilbake, reload → alt står
+   (flush ved fanebytte/lukking).
+5. (DEV) ⚙ → «💾 Slett lagring» → reload → fersk oppstart; `adventure_save_backup`
+   finnes i DevTools → Application → Local Storage.
