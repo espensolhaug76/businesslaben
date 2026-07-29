@@ -3,40 +3,18 @@ import { motion } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_META, isIndustryActive } from '../data/industries'
 import type { Industry } from '../types'
-import type { BusinessModel, GameFlags } from '../types'
-import { FINANSIERING_OPTIONS, PERSONLIGHET_OPTIONS } from '../../strategies/innovation/startupChoices'
 import { lagringSammendrag, fortsettState, slettLagring } from '../save'
+
+// FORENKLET OPPSTART (Espens beslutning): de tre v1-restene «Velg
+// forretningsmodell», «Velg finansiering» og «Hvem er du som gründer?» er FJERNET.
+// Løypa er nå: navn → bransje → (bykart → åpningsbestilling). Forretningsmodell,
+// finansierings- og personlighetsvalgene settes til trygge standardverdier
+// (detaljhandel / ingen / analytisk) i START_GAME — startkapitalen er den faste
+// standarden per bransje (STARTING_MONEY), ingen valg-bonuser.
 
 function formatKr(n: number) { return n.toLocaleString('nb-NO') + ' kr' }
 
 const INDUSTRIES = Object.entries(INDUSTRY_META) as [Industry, typeof INDUSTRY_META[Industry]][]
-
-const BUSINESS_MODELS: { id: BusinessModel; label: string; emoji: string; desc: string; detail: string; cost: string }[] = [
-  {
-    id: 'detaljhandel',
-    label: 'Detaljhandel',
-    emoji: '🏪',
-    desc: 'Fysisk butikk. Kunder kommer inn døra.',
-    detail: 'Krev: Lokale + inventar',
-    cost: '150–400k',
-  },
-  {
-    id: 'netthandel',
-    label: 'Netthandel',
-    emoji: '💻',
-    desc: 'Selg på nett. Lavere oppstartskostnader.',
-    detail: 'Krev: Lager + nettside',
-    cost: '50–150k',
-  },
-  {
-    id: 'kombinasjon',
-    label: 'Kombinasjon',
-    emoji: '🔄',
-    desc: 'Fysisk butikk + netthandel. Maks rekkevidde.',
-    detail: 'Høyest kostnad, størst muligheter',
-    cost: '200–500k',
-  },
-]
 
 function nextBtn(enabled: boolean): React.CSSProperties {
   return {
@@ -53,11 +31,9 @@ function nextBtn(enabled: boolean): React.CSSProperties {
 export default function StartupScreen() {
   const { dispatch } = useGame()
   const [selectedIndustry, setSelectedIndustry] = useState<Industry | null>(null)
-  const [selectedModel, setSelectedModel] = useState<BusinessModel | null>(null)
-  const [selectedFinansiering, setSelectedFinansiering] = useState<GameFlags['finansieringStart'] | null>(null)
-  const [selectedPersonlighet, setSelectedPersonlighet] = useState<GameFlags['personlighet'] | null>(null)
   const [companyName, setCompanyName] = useState('')
-  const [step, setStep] = useState<'choose' | 'model' | 'financing' | 'personality' | 'name'>('choose')
+  // Forenklet løype: navn → bransje. (De tre v1-stegene er fjernet, se toppen.)
+  const [step, setStep] = useState<'name' | 'choose'>('name')
 
   // LAGRING: finnes et fortsettbart spill (adventure_save_v1)? Snapshot ved mount.
   // Er det en save vises «Fortsett/Ny»-menyen først; ellers rett i navnemenyen.
@@ -66,14 +42,15 @@ export default function StartupScreen() {
   const [bekreftNy, setBekreftNy] = useState(false)
 
   function handleStart() {
-    if (!companyName.trim() || !selectedIndustry || !selectedModel) return
+    if (!companyName.trim() || !selectedIndustry) return
     dispatch({
       type: 'START_GAME',
       companyName: companyName.trim(),
       industry: selectedIndustry,
-      businessModel: selectedModel,
-      finansiering: selectedFinansiering ?? 'ingen',
-      personlighet: selectedPersonlighet ?? 'analytisk',
+      // Trygge standardverdier — valgstegene er fjernet (nøytraliserte flagg).
+      businessModel: 'detaljhandel',
+      finansiering: 'ingen',
+      personlighet: 'analytisk',
     })
   }
 
@@ -197,19 +174,59 @@ export default function StartupScreen() {
       fontFamily: "'Outfit', sans-serif", color: '#f1f5f9',
     }}>
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <div style={{ fontSize: 52, marginBottom: '0.5rem' }}>🏆</div>
+        <div style={{ fontSize: 52, marginBottom: '0.5rem' }}>🏪</div>
         <h1 style={{
-          fontSize: 'clamp(2rem,5vw,3.5rem)', fontWeight: 900, margin: 0,
+          fontSize: 'clamp(2rem,5vw,3.2rem)', fontWeight: 900, margin: 0,
           background: 'linear-gradient(135deg, #00d4aa, #4facfe)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
-          AdVenture 3.0
+          Start bedriften din
         </h1>
         <p style={{ color: '#64748b', fontSize: 17, margin: '0.75rem 0 0' }}>
-          Bygg din bedrift i en isometrisk spillverden
+          Gi bedriften et navn og velg bransje — så er du i gang.
         </p>
       </motion.div>
 
+      {/* STEG 1 — NAVN */}
+      {step === 'name' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          style={{
+            width: '100%', maxWidth: 460,
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '2rem', padding: '2.5rem', textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: 44, marginBottom: '0.75rem' }}>🏪</div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: '0.4rem' }}>
+            Gi bedriften din et navn
+          </h2>
+          <p style={{ color: '#64748b', fontSize: 14, marginBottom: '1.5rem' }}>
+            Dette blir navnet på butikken din i byen.
+          </p>
+          <input
+            autoFocus
+            value={companyName}
+            onChange={e => setCompanyName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && companyName.trim() && setStep('choose')}
+            placeholder="F.eks. Nordic Coffee, Kafé Kongsvinger…"
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.06)',
+              border: '2px solid rgba(255,255,255,0.12)', borderRadius: 12,
+              padding: '0.9rem 1.2rem', color: '#f1f5f9', fontSize: 17,
+              fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none',
+              marginBottom: '1.5rem',
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <button onClick={() => companyName.trim() && setStep('choose')} disabled={!companyName.trim()} style={nextBtn(!!companyName.trim())}>
+              Neste →
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* STEG 2 — BRANSJE */}
       {step === 'choose' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ width: '100%', maxWidth: 900 }}>
           <h2 style={{ textAlign: 'center', fontSize: 20, fontWeight: 700, marginBottom: '1.5rem' }}>
@@ -254,55 +271,9 @@ export default function StartupScreen() {
               </motion.button>
             )})}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <button
-              onClick={() => selectedIndustry && setStep('model')}
-              disabled={!selectedIndustry}
-              style={nextBtn(!!selectedIndustry)}
-            >
-              Neste →
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {step === 'model' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ width: '100%', maxWidth: 700 }}>
-          <h2 style={{ textAlign: 'center', fontSize: 20, fontWeight: 700, marginBottom: '0.5rem' }}>
-            Velg forretningsmodell
-          </h2>
-          <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, marginBottom: '1.5rem' }}>
-            Hvordan vil du selge produktene dine?
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-            {BUSINESS_MODELS.map((m, i) => (
-              <motion.button
-                key={m.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08 }}
-                onClick={() => setSelectedModel(m.id)}
-                style={{
-                  background: selectedModel === m.id ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
-                  border: `2px solid ${selectedModel === m.id ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
-                  borderRadius: '1.5rem', padding: '1.5rem',
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'all 0.2s', fontFamily: 'inherit', color: '#f1f5f9',
-                }}
-              >
-                <div style={{ fontSize: 38, marginBottom: '0.6rem' }}>{m.emoji}</div>
-                <div style={{ fontWeight: 700, fontSize: 17, marginBottom: '0.3rem' }}>{m.label}</div>
-                <div style={{ fontSize: 13, color: '#64748b', marginBottom: '0.6rem', lineHeight: 1.5 }}>
-                  {m.desc}
-                </div>
-                <div style={{ fontSize: 11, color: '#475569', marginBottom: '0.5rem' }}>{m.detail}</div>
-                <Chip label={`Oppstart: ${m.cost} kr`} color="#38bdf8" />
-              </motion.button>
-            ))}
-          </div>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
             <button
-              onClick={() => setStep('choose')}
+              onClick={() => setStep('name')}
               style={{
                 background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
                 borderRadius: 99, padding: '0.75rem 1.75rem', color: '#94a3b8',
@@ -311,139 +282,7 @@ export default function StartupScreen() {
             >
               ← Tilbake
             </button>
-            <button
-              onClick={() => selectedModel && setStep('financing')}
-              disabled={!selectedModel}
-              style={nextBtn(!!selectedModel)}
-            >
-              Neste →
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {step === 'financing' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ width: '100%', maxWidth: 700 }}>
-          <h2 style={{ textAlign: 'center', fontSize: 20, fontWeight: 700, marginBottom: '0.5rem' }}>
-            Velg finansiering
-          </h2>
-          <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, marginBottom: '1.5rem' }}>
-            Hvor henter du startkapitalen? Valget gir bonuser og skjulte kostnader.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-            {FINANSIERING_OPTIONS.map((f, i) => (
-              <motion.button
-                key={f.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.07 }}
-                onClick={() => setSelectedFinansiering(f.id)}
-                style={{
-                  background: selectedFinansiering === f.id ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
-                  border: `2px solid ${selectedFinansiering === f.id ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
-                  borderRadius: '1.5rem', padding: '1.25rem',
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'all 0.2s', fontFamily: 'inherit', color: '#f1f5f9',
-                }}
-              >
-                <div style={{ fontSize: 32, marginBottom: '0.5rem' }}>{f.icon}</div>
-                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: '0.25rem' }}>{f.navn}</div>
-                {f.beloep > 0 && <Chip label={`+${formatKr(f.beloep)}`} color="#22c55e" />}
-                <div style={{ fontSize: 12, color: '#22c55e', marginTop: '0.5rem' }}>+ {f.bonus}</div>
-                <div style={{ fontSize: 11, color: '#f97316', marginTop: '0.25rem' }}>− {f.skjultKostnad}</div>
-              </motion.button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button onClick={() => setStep('model')} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 99, padding: '0.75rem 1.75rem', color: '#94a3b8', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 15 }}>← Tilbake</button>
-            <button onClick={() => selectedFinansiering && setStep('personality')} disabled={!selectedFinansiering} style={nextBtn(!!selectedFinansiering)}>Neste →</button>
-          </div>
-        </motion.div>
-      )}
-
-      {step === 'personality' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ width: '100%', maxWidth: 700 }}>
-          <h2 style={{ textAlign: 'center', fontSize: 20, fontWeight: 700, marginBottom: '0.5rem' }}>
-            Hvem er du som gründer?
-          </h2>
-          <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, marginBottom: '1.5rem' }}>
-            Din personlighetstype påvirker hvilke events du møter og dine styrker.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-            {PERSONLIGHET_OPTIONS.map((p, i) => (
-              <motion.button
-                key={p.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.07 }}
-                onClick={() => setSelectedPersonlighet(p.id)}
-                style={{
-                  background: selectedPersonlighet === p.id ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
-                  border: `2px solid ${selectedPersonlighet === p.id ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
-                  borderRadius: '1.5rem', padding: '1.25rem',
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'all 0.2s', fontFamily: 'inherit', color: '#f1f5f9',
-                }}
-              >
-                <div style={{ fontSize: 32, marginBottom: '0.5rem' }}>{p.icon}</div>
-                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: '0.25rem' }}>{p.navn}</div>
-                <div style={{ fontSize: 12, color: '#22c55e', marginTop: '0.25rem' }}>+ {p.bonus}</div>
-                <div style={{ fontSize: 11, color: '#f97316', marginTop: '0.25rem' }}>− {p.ulempe}</div>
-              </motion.button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button onClick={() => setStep('financing')} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 99, padding: '0.75rem 1.75rem', color: '#94a3b8', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 15 }}>← Tilbake</button>
-            <button onClick={() => selectedPersonlighet && setStep('name')} disabled={!selectedPersonlighet} style={nextBtn(!!selectedPersonlighet)}>Neste →</button>
-          </div>
-        </motion.div>
-      )}
-
-      {step === 'name' && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          style={{
-            width: '100%', maxWidth: 460,
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '2rem', padding: '2.5rem', textAlign: 'center',
-          }}
-        >
-          <div style={{ fontSize: 44, marginBottom: '0.75rem' }}>
-            {selectedIndustry ? INDUSTRY_META[selectedIndustry].emoji : '🏪'}
-          </div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: '0.4rem' }}>
-            Gi bedriften din et navn
-          </h2>
-          <p style={{ color: '#64748b', fontSize: 14, marginBottom: '1.5rem' }}>
-            {selectedIndustry ? INDUSTRY_META[selectedIndustry].name : ''}
-            {selectedModel ? ` · ${BUSINESS_MODELS.find(m => m.id === selectedModel)?.label ?? ''}` : ''}
-          </p>
-          <input
-            autoFocus
-            value={companyName}
-            onChange={e => setCompanyName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleStart()}
-            placeholder="F.eks. Nordic Coffee, FashionNord…"
-            style={{
-              width: '100%', background: 'rgba(255,255,255,0.06)',
-              border: '2px solid rgba(255,255,255,0.12)', borderRadius: 12,
-              padding: '0.9rem 1.2rem', color: '#f1f5f9', fontSize: 17,
-              fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none',
-              marginBottom: '1.5rem',
-            }}
-          />
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button
-              onClick={() => setStep('personality')}
-              style={{
-                background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: 99, padding: '0.75rem 1.75rem', color: '#94a3b8',
-                fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 15,
-              }}
-            >
-              ← Tilbake
-            </button>
-            <button onClick={handleStart} disabled={!companyName.trim()} style={nextBtn(!!companyName.trim())}>
+            <button onClick={handleStart} disabled={!selectedIndustry} style={nextBtn(!!selectedIndustry)}>
               Start spillet! 🚀
             </button>
           </div>
