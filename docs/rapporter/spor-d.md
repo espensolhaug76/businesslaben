@@ -1267,3 +1267,114 @@ vellykkede skriving, ikke 1.
 For å få A, B og D riktige i de frittstående filene må den samme endringen inn
 der. De har identisk kode, så det er et mekanisk sveip på linje med
 tastaturvakta i runde 3 — men det er en egen jobb.
+
+---
+
+## Runde 10 — live-synk sveipet inn i de frittstående presentasjonene
+
+### Antall filer
+
+| | |
+| --- | --- |
+| `.tsx`-filer i `presentations/` | 111 |
+| Delte byggeklosser, ikke presentasjoner (`QuizSlide.tsx`, `TeacherSlideRenderer.tsx`) | 2 |
+| Presentasjoner totalt | 109 — nøyaktig like mange som ruter |
+| Bruker `_lib/PresentationShell.tsx` (fikset i runde 9) | 53 |
+| **Frittstående, sveipet i denne runden** | **56** |
+| **Filer som avvek fra mønsteret og ble stående** | **0** |
+
+Presiseringen om «58 filer uten PresentationShell» stemmer på filnivå: 111 − 53 =
+58. To av dem er `QuizSlide.tsx` og `TeacherSlideRenderer.tsx`, som ikke er
+presentasjoner i det hele tatt, men komponenter de andre importerer. De bruker
+ikke `useLiveSync` og har ingen slide-tilstand. Igjen står **56 frittstående
+presentasjoner**, og alle 56 er endret.
+
+### 111 filer mot 109 ruter
+
+De to filene som ikke er rutet er nettopp `QuizSlide.tsx` og
+`TeacherSlideRenderer.tsx`. De er ikke foreldreløse presentasjoner — de er
+byggeklosser: `QuizSlide` importeres av 107 filer, `TeacherSlideRenderer` av 57.
+Det finnes altså **ingen urutede presentasjoner**; 109 presentasjonsfiler mot 109
+ruter, én til én. Ingenting er slettet.
+
+### Sveipet
+
+Alle 56 filene hadde samme kode i to rene formateringsvarianter: live-blokka med
+eller uten kommentarlinja «Teacher big-screen: …», og `next`/`prev` som flerlinjet
+eller ettlinjet. Begge varianter er semantisk identiske, og sveipet håndterer
+begge. Skriptet nektet å røre en fil som ikke matchet en kjent variant nøyaktig —
+ingen fil traff den grensen.
+
+Endringene per fil, identisk med `PresentationShell`:
+
+- `const current = isStudentLive ? (liveSlide ?? 0) : lokalSlide` — eleven har
+  ingen egen slide-tilstand, og `gaaTil()` returnerer tidlig for elever.
+- Lærerens skriving flyttet fra `useEffect` på `[current, teacherLiveCode]` og
+  inn i `gaaTil()`, med `naaRef` som speiler sliden synkront.
+- Remote adopteres på verdi, én gang ved oppstart, og bare hvis læreren ikke
+  allerede har navigert.
+- `_lastWritten` fra modulvariabel til `useRef` per montering.
+
+Tastaturvakta fra runde 3 er urørt, og ingen debounce, throttle eller timere er
+lagt inn.
+
+En ting jeg **ikke** rørte: modulvariabelen `_isLive`. Den er ikke på lista over
+de fire endringene, den settes på hver render, og den styrer kun synlighet
+(navigasjonsknapper og «Venter på at læreren …»-teksten på forsiden). Å gjøre den
+om til en prop ville krevd endringer i `CoverSlide`-signaturen i alle 56 filene,
+med tilsvarende variantrisiko, uten å påvirke synkingen. I `PresentationShell` er
+den likevel borte, siden det var én fil.
+
+Første kjøring av sveipet skrev ingenting: sikkerhetssjekken min forventet 4
+`setCurrent`-forekomster per fil, mens fasit er 5 (deklarasjonen teller også).
+Vakta stoppet altså riktig — den bare telte feil. Rettet, og kjørt på nytt.
+
+### Vakt mot tilbakefall
+
+Ny `scripts/check-presentation-sync.mjs`, koblet på `prebuild` etter de tre
+generator-sjekkene. Den feiler med kode 1 hvis en fil som bruker `useLiveSync`:
+
+- skriver til Firebase i en `useEffect` på `[current, teacherLiveCode]`
+- har modulvariabelen `_lastWritten`
+- bruker det boolske `fromFirebaseRef`
+- eller **mangler** en av de tre byggesteinene i det riktige mønsteret
+
+Det siste er med for at en fil ikke skal kunne bestå ved bare å fjerne det gamle.
+Kommentarer strippes før granskingen, så reglene treffer kode — ellers slo vakta
+ut på min egen kommentar som forklarer hva som ble fjernet.
+
+**Verifisert:** `VerdikjedenPresentation.tsx` satt tilbake til gammel kode ga
+exit 1 med filnavn og seks konkrete årsaker, og `npm run build` stoppet før vite.
+Etter gjenoppretting (byte-identisk) er bygget grønt igjen, med
+«✓ 57 presentasjonsfiler følger live-synk-mønsteret».
+
+### A–E per testfil
+
+Lærer i vanlig vindu, elev i egen kontekst, samme nettleser og port 5176.
+Testfilene er valgt blant de seks demo-kritiske.
+
+| Test | `regler-lovverk` (14) | `beredskapsplaner` (12) | `baerekraft-verdikjede` (14) |
+| --- | --- | --- | --- |
+| **A** rolig 1 → 8 | BESTÅTT — 2→2 3→3 4→4 5→5 6→6 7→7 8→8 | BESTÅTT — 2→2 3→3 4→4 5→5 6→6 7→7 8→8 | BESTÅTT — 2→2 3→3 4→4 5→5 6→6 7→7 8→8 |
+| **B** raskt 1 → 12 | BESTÅTT — lærer 12, elev 12, RTDB 12 | BESTÅTT — lærer 12, elev 12, RTDB 12 | BESTÅTT — lærer 12, elev 12, RTDB 12 |
+| **C** ny elev når lærer står på 7 | BESTÅTT — landet på 7 | BESTÅTT — landet på 7 | BESTÅTT — landet på 7 |
+| **D** bakover 7 → 4 | BESTÅTT — 6→6 5→5 4→4 | BESTÅTT — 6→6 5→5 4→4 | BESTÅTT — 6→6 5→5 4→4 |
+| **E** eleven laster på nytt | BESTÅTT — tilbake på 4 | BESTÅTT — tilbake på 4 | BESTÅTT — tilbake på 4 |
+
+Ingen konsollfeil i noen av vinduene.
+
+`beredskapsplaner` er den samme fila som i runde 9 målte lærer 7/12 mot RTDB 6.
+Den er nå riktig på alle fem punktene.
+
+### De tre resterende demo-filene
+
+De seks som skal brukes 11. august er alle sveipet. For de tre som ikke var
+hovedtestfiler kjørte jeg de to hardeste punktene:
+
+| Fil | B (raskt 1 → 12) | C (ny elev på 7) |
+| --- | --- | --- |
+| `prissetting` | BESTÅTT | BESTÅTT — elev på 7 / 14 |
+| `verdikjeden` | BESTÅTT | BESTÅTT — elev på 7 / 15 |
+| `beredskap` | BESTÅTT | BESTÅTT — elev på 7 / 14 |
+
+Alle seks demo-presentasjonene er dermed kontrollert i praksis, ikke bare i kode.
