@@ -1,4 +1,5 @@
-import { createContext, useContext, useReducer, useState, useEffect, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useReducer, useState, useEffect, useRef, useMemo, type ReactNode } from 'react'
+import { lastLagring, lagreState } from './save'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../lib/firebase'
 import type { TemaAktivering, TemaNivaa } from './data/temaer'
@@ -414,6 +415,8 @@ type Action =
   // Økonomi-samling (DEL 2): lukk månedsoppgjør-overlayet.
   | { type: 'DISMISS_MONTH_SETTLEMENT' }
   | { type: 'RESET' }
+  // LAGRING: gjenopprett hele state fra en lagring (oppstartsmenyens «Fortsett»).
+  | { type: 'HYDRATE_SAVE'; state: Partial<GameState> }
 
 // ─── Plan quality helper ─────────────────────────────────────────────────────
 
@@ -2561,6 +2564,12 @@ function reducer(state: GameState, action: Action): GameState {
     case 'RESET':
       return initialState
 
+    case 'HYDRATE_SAVE':
+      // Gjenopprett en lagret spilltilstand. Shallow-merge over initialState så
+      // felt som er NYE siden lagringen ble skrevet får sin default (ikke
+      // `undefined`) — sammen med save-versjonen verner det mot rar/krasjende state.
+      return { ...initialState, ...action.state }
+
     default:
       return state
   }
@@ -2680,13 +2689,22 @@ function lesEspenStyringDev(): { aktiv?: boolean; fag: Partial<Record<FagKode, b
   return { fag: {} }
 }
 
+const AUTOSAVE_THROTTLE_MS = 2000   // maks én full-state-skriv hvert 2. sek
 const BEREDSKAP_KEY = 'beredskap_state_v1'
 const BUDSJETT_KEY = 'budsjett_state_v1'   // TEMA 2/3: budsjett + nøkkeltall
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  // Persister state.beredskap OG state.budsjett/nokkeltall (TEMA 2/3) i
-  // localStorage — overlever reload (samme mønster som mentor-triggernes sett).
+  // LAGRING (src/game/save.ts): HELE spilltilstanden lagres under ÉN versjonert
+  // nøkkel (adventure_save_v1) og overlever reload. Vi HYDRERER den IKKE automatisk
+  // ved oppstart — oppstartsmenyen tilbyr «Fortsett» (HYDRATE_SAVE), se StartupScreen.
+  //
+  // TEMAARBEID (beredskap + budsjett-bunt) beholdes i tillegg i sine EGNE nøkler og
+  // flettes inn på initialState ved oppstart — NØYAKTIG som før. Det er BEVISST: de
+  // dekker et annet behov enn «Fortsett» — de skal overleve et FERSKT spill (dev-
+  // seeding via ?skip/?dev, og «Start ny bedrift»), som `adventure_save_v1` (kun
+  // continue) ikke gjør. Begge skrives fra samme reducer-state, så de holdes i sync.
   const [state, dispatch] = useReducer(reducer, initialState, init => {
+    lastLagring()   // laster/validerer full-save-blobben + onboarding (for «Fortsett» + intro/triggere)
     let s = init
     try {
       const raw = localStorage.getItem(BEREDSKAP_KEY)
@@ -2713,6 +2731,47 @@ export function GameProvider({ children }: { children: ReactNode }) {
     } catch { /* korrupt/utilgjengelig */ }
     return s
   })
+
+  // AUTOSAVE: throttlet full-state-skriv (aldri i render-løkka — kun i effekt).
+  // Hopper over 'startup' så et ferskt oppstartsskjermbilde ALDRI overskriver en
+  // eksisterende lagring før eleven har valgt Fortsett/Ny. Ved sideskjul/-lukking
+  // (visibilitychange/beforeunload) flushes en ev. ventende skriv umiddelbart.
+  const sisteSkrivRef = useRef(0)
+  const ventendeRef = useRef<number | null>(null)
+  const stateRef = useRef(state)
+  stateRef.current = state
+  useEffect(() => {
+    if (state.phase === 'startup') return
+    const flush = () => {
+      if (ventendeRef.current != null) { clearTimeout(ventendeRef.current); ventendeRef.current = null }
+      sisteSkrivRef.current = Date.now()
+      lagreState(stateRef.current)
+    }
+    const naa = Date.now()
+    const siden = naa - sisteSkrivRef.current
+    if (siden >= AUTOSAVE_THROTTLE_MS) {
+      flush()
+    } else if (ventendeRef.current == null) {
+      ventendeRef.current = window.setTimeout(flush, AUTOSAVE_THROTTLE_MS - siden)
+    }
+  }, [state])
+
+  // Flush ved fanebytte/lukking — så det siste minuttet aldri går tapt.
+  useEffect(() => {
+    const flushNaa = () => { if (stateRef.current.phase !== 'startup') lagreState(stateRef.current) }
+    const onVis = () => { if (document.visibilityState === 'hidden') flushNaa() }
+    window.addEventListener('visibilitychange', onVis)
+    window.addEventListener('beforeunload', flushNaa)
+    window.addEventListener('pagehide', flushNaa)
+    return () => {
+      window.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('beforeunload', flushNaa)
+      window.removeEventListener('pagehide', flushNaa)
+    }
+  }, [])
+
+  // TEMAARBEID i egne nøkler (reseed-kompat, se init over) — beholdt uendret fra
+  // baseline. Skrives fra samme state som full-saven, så de holdes i sync.
   useEffect(() => {
     try { localStorage.setItem(BEREDSKAP_KEY, JSON.stringify(state.beredskap)) } catch { /* ignore */ }
   }, [state.beredskap])
