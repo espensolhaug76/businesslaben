@@ -943,7 +943,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // Sett pris i den EKTE Priser-fanen: skriv i input-feltet + «Lagre priser».
     // DEL 4 (lagre-kvitteringer): pris lagres nå EKSPLISITT via knappen — ikke
     // lenger auto-lagre ved blur (endringer er utkast til eleven trykker Lagre).
-    await page.getByRole('button', { name: /Dashbord/ }).first().click()
+    await page.getByRole('button', { name: /Bedriftsdashbord/ }).first().click()
     await page.getByTestId('fane-priser').click()
     const inp = page.getByTestId('pris-coffee')
     await inp.fill('50')
@@ -1206,7 +1206,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
       await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
       await dispatch(page, { type: 'DEV_SEND_TEST_EPOSTER' })
       await ventState(page, s => s.messages.some(m => m.type === 'kundebestilling'), `bestilling i innboks (${nivaa})`)
-      await page.getByRole('button', { name: /Dashbord/ }).first().click()
+      await page.getByRole('button', { name: /Bedriftsdashbord/ }).first().click()
       await page.getByTestId('fane-innboks').click()
       await page.getByRole('button', { name: /📋 Bestilling/ }).first().click()   // ekspandér
     }
