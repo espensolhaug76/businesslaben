@@ -3955,3 +3955,68 @@ navn/rolle, så låses de i `districts.ts`:
    (ikke «Utsolgt») fra start. Sett priser (Priser-fanen) → åpne dag → varene
    selger. Uten prising: «mangler pris»-tap (ærlig), ikke stille «Utsolgt» + svinn.
 5. Dagsoppgjør: svinn + solgt + restlager går opp mot levert per vare.
+
+## DEMO-RUNDE — drikke/pris/varsler/felle — 2026-08-10
+
+Gren: `spor-a/fiks-oppstartslopa-2` (siste runde før merge; hele stabelen ennå ikke
+merget til main — verifiser rekkefølgen). Fem funksjoner.
+
+### DEL 1 — Drikke ut av trauene
+Drikke (`trauVare === false` — kaffe/smoothie/te) hører ikke hjemme i disk-trauet.
+- `PLACE_OPENING_ORDER` stiller nå KUN trau-varer (mat) ut på disken (counterLayout);
+  drikke går til lager.
+- Ny `utstilteProduktIds`-helper (én kilde for TICK-salg + CLOSE_DAY-regnskap):
+  trau-varer + PRISEDE drikker (auto via drikkemenyen/tavla) + evt. vindu. Drikke
+  selger dermed automatisk via tavla når de prises — ingen fysisk utstilling.
+- `HYDRATE_SAVE` migrerer stille: fjerner drikke fra persistert counterLayout.
+- Spilltest (demo-features steg 1 + full-maaned steg 32(A) oppdatert): åpningsordre
+  m/drikke → ingen drikke i counterLayout; kaffe selger via tavla når priset; «tom
+  disk → 0» gjelder nå trau-varer (upriset drikke er ikke i poolen).
+
+### DEL 2 — «Mangler pris» peker til løsningen + mentor-vakt før åpning
+- MonterScene-label: «⚠ Mangler pris — sett pris i 💻 Dashbord → Priser».
+- Mentor-vakt FØR åpning: klikker eleven «Åpne butikken» med ≥1 vare FRAMME (trau +
+  drikke på tavla) uten pris → Espen minner om Priser-fanen før dagen åpnes.
+  Blokkerer IKKE (konsekvens er lov, varselet er gitt). Dag-scopet ⇒ engangs/dag.
+  Gjenbruker `mangler_pris_apning`-mekanismen, nå bredere (drikke) + fyrt fra
+  åpne-knappen (før OPEN_DAY) med effekt-fallback ved dayPhase 'åpen'.
+- Spilltest (demo-features steg 2): utstilt upriset vare → vakten fyrer, dagen åpner.
+
+### DEL 3 — Varslingssenter på 🔔
+🔔 i HUD er klikkbar → enkel liste (nyeste øverst, maks 20): mentor-meldinger,
+leveringer, avis-utgaver, innboks-ankomster, tema-aktiveringer. Rad: ikon + tekst +
+spilldag/klokkeslett; klikk navigerer til innboks/avis der det finnes et mål (mentor
+står alltid i hjørnet). Badge = uleste; nullstilles når senteret lukkes. Persistert
+i saven (`state.varsler`, `ADD_VARSEL`/`MARK_VARSLER_LEST`, dedup + tak 30). Kilder
+wiret i OPEN_DAY/START_NEW_DAY (levering/avis/innboks) + Mentor (meldinger/tema).
+Spilltest (demo-features steg 5): varsler logges, 🔔 åpner senteret, lukking leser.
+
+### DEL 5 — Default-pris = innkjøpspris (Espens pedagogiske felle)
+- **Priser-fanen** forhåndsutfyller uprisede varer med varens EGEN innkjøpspris
+  (`costPrice`), ikke tomt felt. Redigerbart; «Lagre priser» lagrer det som står —
+  trykker eleven bare Lagre, prises varen til innkjøp → 0 margin → taper penger.
+  INGEN advarsel/margin-hint i fanen (fella er designet; margin vises «—» til eleven
+  redigerer). Varene starter fortsatt UPRISET i state, så «mangler pris» gjelder kun
+  varer eleven aktivt nuller ut.
+- **Mentor daglig-refleksjon**: nytt TOPPSIGNAL «nullmargin» (over kø/svinn) — tapsdag
+  (eller tynn bruttomargin, terskler i BALANCE.mentorDaglig) med reelt salgsvolum +
+  ≥1 solgt vare på ~innkjøpspris → navngir varen med elevens EGNE tall («Du solgte 60
+  × Croissant — kjøpt for 19 kr, solgt for 19 kr → 0 kr [[dekningsbidrag]]»), foreslår
+  ALDRI en pris. Datavakt.
+- **Espen spør**: nytt dynamisk kalkyle-spørsmål som foretrekker elevens lavest-margin-
+  vare som eksempel.
+- Spilltest (demo-features steg 3–4): forhåndsutfylling == costPrice; lagre-uten-
+  redigere → nullmargin; dag → resultat ≤ 0 + refleksjon «nullmargin» med varenavn.
+
+### Chrome-sjekkliste (demo)
+1. **Drikke:** åpningsbestilling med kaffe + bakevare → gå inn: KUN bakevarer i
+   trauene, kaffe på tavla/lager. Sett pris på kaffe (Priser) → kaffe selger.
+2. **Prisfella (DEL 5):** åpne 💻 Dashbord → Priser på en fersk vare: feltet er
+   forhåndsutfylt med INNKJØPSPRISEN (ikke tomt). Trykk «Lagre priser» uten å endre →
+   åpne dagen → selg → dagsoppgjøret viser tap TROSS salg, og Espen påpeker
+   nullmargin-varen med dine egne tall.
+3. **Mangler-pris-vakt (DEL 2):** la en utstilt vare stå upriset → «Åpne butikken» →
+   Espen minner om Priser-fanen FØR dagen kjører (åpningen skjer likevel). Disken
+   viser «Mangler pris — sett pris i 💻 Dashbord → Priser».
+4. **Varsler (DEL 3):** klikk 🔔 i HUD → liste over leveringer, avis, innboks, mentor,
+   tema (nyeste øverst). Klikk en innboks-/avis-rad → åpner dit. Lukk → badgen nulles.
