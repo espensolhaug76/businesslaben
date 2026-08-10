@@ -344,7 +344,7 @@ export default function MonterScene({ districtId, lokaleId }: {
                   </div>
                 ) : (
                   <div
-                    title="Mangler prismerking — prismerking er lovpålagt (prisopplysningsforskriften). Sett en utsalgspris på varen i Produkter-fanen."
+                    title="Mangler pris — prismerking er lovpålagt (prisopplysningsforskriften), og varen selges ikke uten pris. Sett en utsalgspris i 💻 Dashbord → Priser."
                     style={{
                       position: 'absolute', left: 4, top: 4, zIndex: 8,
                       background: 'rgba(120,53,15,0.88)', border: '1px solid rgba(251,191,36,0.6)',
@@ -353,7 +353,7 @@ export default function MonterScene({ districtId, lokaleId }: {
                       cursor: 'help',
                     }}
                   >
-                    ⚠ Mangler prismerking
+                    ⚠ Mangler pris — sett pris i 💻 Dashbord → Priser
                   </div>
                 )
               )}

@@ -427,7 +427,22 @@ export default function InteriorView({ districtId, lokaleId }: {
         {state.dayPhase !== 'oppgjør' && (
           <>
             <button
-              onClick={() => dispatch({ type: state.dayPhase === 'åpen' ? 'CLOSE_DAY' : 'OPEN_DAY' })}
+              onClick={() => {
+                if (state.dayPhase === 'åpen') { dispatch({ type: 'CLOSE_DAY' }); return }
+                // DEL 2 (10.08) — MENTOR-VAKT FØR ÅPNING: har eleven varer FRAMME
+                // (trau + drikke på tavla) uten pris, minner Espen om Priser-fanen
+                // FØR dagen åpnes. Blokkerer IKKE — konsekvens er lov, varselet er gitt.
+                // Dag-scopet id ⇒ engangs per dag (mentorens fyrt-sett deduper).
+                const framme = new Set<string>([
+                  ...state.counterLayout.map(t => t.productId),
+                  ...state.products.filter(p => p.trauVare === false).map(p => p.id),
+                ])
+                if (state.products.some(p => framme.has(p.id) && p.retailPrice <= 0)) {
+                  const dag = `${state.currentYear}-${state.currentMonth}-${state.dayNumber}`
+                  window.dispatchEvent(new CustomEvent('mentor:signal', { detail: { id: `mangler_pris_apning|${dag}`, scene: 'inne' } }))
+                }
+                dispatch({ type: 'OPEN_DAY' })
+              }}
               title={state.dayPhase === 'åpen' ? 'Steng butikken — dagen er over, dagsoppgjør vises' : 'Åpne butikken — kunder kan komme innom'}
               style={{
                 background: state.dayPhase === 'åpen'
