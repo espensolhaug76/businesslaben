@@ -454,3 +454,45 @@ test('Render-vakt: ukalibrert sizeAdjust klemmes — trau-vare rendres aldri i r
   expect(warnings.some(w => w.includes('croissant')), 'loggfella (console.warn) fyrte for den klemte varen').toBe(true)
   process.stdout.write(`\nRender-vakt: sizeAdjust 5 klemt → største sprite ${(maxFrac * 100).toFixed(1)} % av viewport; loggfella fyrte\n`)
 })
+
+// ─── RENDER-VAKT (DEL B runde 3): interiør-speilet gir ALDRI råstørrelse ───────
+// FUNN B runde 3 (Espens bevis): en full-displayScale vare (grovbrød 1.0) i et
+// speilet trau rendret i interiørscenen (/inne) i RÅSTØRRELSE (målt 24 % av
+// viewport) og fløt ut av montren over UI-knappene — UTEN [vareSkala]-warn, fordi
+// blow-up-en kom fra sonens `mirrorScale` (2.75) som lå UTENFOR per-vare-klemmen.
+// Denne vakta legger grovbrød i et speilet trau (trau-8 ↔ speil-5), rendrer /inne,
+// og krever at (a) sprite-en holdes innen båndet (ikke råstørrelse) og (b)
+// loggfella fyrer for den klemte varen.
+test('Render-vakt: interiør-speilet klemmer mirrorScale × vare — aldri råstørrelse', async ({ page }) => {
+  const warnings: string[] = []
+  page.on('console', m => { if (m.text().includes('[vareSkala]')) warnings.push(m.text()) })
+
+  await page.goto('/game?skip=1')
+  await ryddLocalStorage(page)
+  await page.addInitScript(() => { try { localStorage.setItem('mentor_intro_v1', '1') } catch { /* */ } })
+  await page.goto('/game/d/sentrum/l/sentrum-l2/inne?skip=1')
+  await ventState(page, s => s.phase !== 'startup', 'seedet /inne')
+  await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45000, capacity: 120 })
+  await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'grovbrod', qty: 20 }] })
+  await ventState(page, s => s.openingOrderPlaced, 'ordre')
+  // Legg grovbrød (displayScale 1.0) i trau-8 — speilet av speil-5 (mirrorScale 2.75).
+  await page.evaluate(() => {
+    window.__GAME_DISPATCH__!({ type: 'SET_COUNTER_LAYOUT', items: [{ trauId: 'trau-8', productId: 'grovbrod' }] })
+  })
+  await ventState(page, s => s.counterLayout.some(t => t.trauId === 'trau-8' && t.productId === 'grovbrod'), 'grovbrød i speilet trau')
+  await page.waitForTimeout(900)  // speil-scenen re-rendrer + sprites dekode
+
+  const maxFrac = await page.evaluate(() => {
+    const vw = window.innerWidth
+    const imgs = [...document.querySelectorAll('img[src*="/products/grovbrod"]')] as HTMLImageElement[]
+    let max = 0
+    for (const im of imgs) { const w = im.getBoundingClientRect().width; if (w > max) max = w }
+    return max / vw
+  })
+  console.log('interiør-speil: største grovbrød-sprite som andel av viewport:', maxFrac.toFixed(3))
+  // Uten klemmen: 24 % (råstørrelse). Med klemmen (itemScale ≤ 1.6): ~14 %. Grense
+  // godt under kvart skjerm, men over den klemte verdien.
+  expect(maxFrac, 'speil-sprite holdes under råstørrelse (mirrorScale klemt)').toBeLessThan(0.18)
+  expect(warnings.some(w => w.includes('grovbrod') && w.includes('speil')), 'loggfella fyrte for den klemte speil-varen').toBe(true)
+  process.stdout.write(`\nRender-vakt (speil): grovbrød ${(maxFrac * 100).toFixed(1)} % av viewport (mot 24 % uklemt); loggfella fyrte\n`)
+})

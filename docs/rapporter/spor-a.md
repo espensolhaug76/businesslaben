@@ -4234,3 +4234,58 @@ båndet (målt 8.4 % av viewport, mot 27 % uten klemmen), og (b) loggfella
    ÅPNE konsollen: en `[vareSkala] «<vare-id>» … klemt`-linje forteller nøyaktig hvilken
    vare + verdier som var utenfor bånd (send den til utvikler for endelig fiks).
    Normal spilling skal ALDRI vise linja.
+
+## FUNN B RUNDE 3 — RÅSTØRRELSE var interiør-SPEILET (mirrorScale) — 2026-08-10
+
+### Espens bevis (avgjørende)
+På f687b73 (verifisert git log, server restartet) rendret grovbrød m.fl. i råstørrelse
+i INTERIØRSCENEN (`/inne`, poppe-saven, dag 4) — og konsollfilter «vareSkala» ga NULL
+treff mens gigantbrødet var synlig. Kunden var riktig størrelse; kun varene gigantiske,
+nedre venstre, delvis UTENFOR disk-monteren, foran UI-knappene. ⇒ runde 2-vakten dekket
+ikke stien som tegner disse.
+
+### Rotårsak (BEVISFØRT headless — reprodusert + målt)
+Runde 2 klemte per-vare-faktoren (`displayScale × sizeAdjust`) men holdt sonens
+`mirrorScale` UTENFOR (antatt «bevisst forstørrelse»). Det var gapet. Speil-stien i
+`InteriorView` regner `itemScale = displayScale × sizeAdjust × mirrorScale` og bruker
+`transform: scale(itemScale)` på en montre-flate som **kun klipper bakkanten** → en for
+stor itemScale flyter fritt opp/til siden. Reprodusert: grovbrød (`displayScale 1.0`) i
+trau-8 (speilet av speil-5, `mirrorScale 2.75`) → **itemScale 2.75 → 24 % av viewport**
+(kvart skjerm), mens croissant (`0.55 × 2.8 ≈ 1.54`) → 11 % (ser riktig ut). INGEN
+`[vareSkala]`-warn fordi per-vare-faktoren (1.0) var i bånd — blow-up-en kom helt fra
+`mirrorScale`.
+
+### Renderstier — audit (alle varesprite-stier)
+| Sti | Fil | Skala-grunnlag | Kan overflyte? | Vakt |
+|---|---|---|---|---|
+| Disk-trau | `MonterScene` `TrauContents` | `base × displayScale × sizeAdjust`, `width %` | Nei (% av trau-sonen) | **Klemt** `klemVareSkala` + warn |
+| Disk-palett | `MonterScene` palett | `maxWidth/maxHeight:100%` | Nei (bundet av kortet) | — (bundet) |
+| Disk drag-preview | `MonterScene` | `maxWidth/maxHeight:100%` | Nei | — (bundet) |
+| **Interiør-speil** | `InteriorView` mirror | `displayScale × sizeAdjust × mirrorScale`, `scale()`, kun bakkant klippet | **JA → råstørrelse** | **NY: `klemSpeilSkala` + warn** ← buggen |
+| Vindu | `WindowDisplay` | `width:100%/height:auto` | Nei (bundet) | — (bundet) |
+| Kunde/scenario | `InteriorView` scenario | egen `spriteCal` | (riktig størrelse per Espen) | — (ikke varesprite) |
+
+Kun ÉN sti kan produsere råstørrelse — interiør-speilet — og den er nå klemt.
+
+### Fiks
+Ny `klemSpeilSkala(displayScale, sizeAdjust, mirrorScale)` i `vareSkala.ts`: klemmer
+først per-vare-faktoren (som før), så den ENDELIGE `itemScale` (× mirrorScale) til
+`MIRROR_ITEMSCALE_MAKS = 1.6` — utledet fra den KJENT-GODE croissant-refleksjonen
+(målt 1.54). Warn fyrer når taket slår inn, med vare-id + displayScale + mirrorScale +
+itemScale. Resultat (målt): grovbrød 24 % → **14 %**, croissant uendret 11 %.
+`MIRROR_ITEMSCALE_MAKS` er et defensivt sikkerhetstak — **Espen kan re-kalibrere
+`mirrorScale` per sone via `?dev=1`** om full-store varer skal se annerledes ut (da
+hever/senker han taket i takt). Latent (flagget): svært brede speil-soner (speil-1
+17.3 %) kan i teorn vise en stor sprite selv ved itemScale ≤ 1.6 — ikke observert, men
+verdt en ny trace om det dukker opp.
+
+### Vakt
+Ny render-vakt i `oppstart-elevlop.spec.ts`: legger grovbrød i et speilet trau (trau-8),
+rendrer `/inne`, og krever at sprite-en holdes under råstørrelse (målt 14.4 % mot 24 %
+uklemt) OG at loggfella fyrer for speil-varen.
+
+### Chrome-sjekkliste (tillegg)
+10. **Interiør-varer (FUNN B r3):** gå inn i butikken (`/inne`) med varer i disken —
+    ingen vare i glassmontrene skal fylle kvart skjerm eller flyte ut over knappene.
+    Ser du en `[vareSkala] «…(speil)»`-linje i konsollen: send verdiene — da bør
+    sonens `mirrorScale` re-kalibreres for den varestørrelsen.
