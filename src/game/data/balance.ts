@@ -249,6 +249,12 @@ export const BALANCE = {
     overprisAvstatt: 3,
     /** «Gikk tomt»: minst så mange ulike varer må ha gått tomt samme dag. */
     tomtVarer: 2,
+    // NULLMARGIN-FELLA (DEL 5): en solgt vare regnes som «på ~innkjøpspris» når
+    // marginen er ≤ dette (%). Refleksjonen fyrer bare med reelt salgsvolum
+    // (≥ nullmarginMinVolum solgte stk) OG tapsdag / tynn bruttomargin (< pst).
+    nullmarginMarginPst: 12,
+    nullmarginMinVolum: 6,
+    tynnBruttomarginPst: 25,
   },
 
   /** KROK 7 — DEN LEVENDE INNBOKSEN (docs/ENGASJEMENT.md). Seedet e-post-motor:

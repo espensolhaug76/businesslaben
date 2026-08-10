@@ -10,7 +10,7 @@
 import type { DayResult } from '../types'
 import { BALANCE } from './balance'
 
-export type DagligSignal = 'ko' | 'svinn' | 'overpris' | 'tomt' | 'anerkjennelse'
+export type DagligSignal = 'nullmargin' | 'ko' | 'svinn' | 'overpris' | 'tomt' | 'anerkjennelse'
 
 export interface DagligRefleksjon {
   /** Hvilket signal som vant prioriteringen (spilltest + telemetri). */
@@ -31,6 +31,24 @@ export function dagligRefleksjon(
   personaleSynlig: boolean,
 ): DagligRefleksjon | null {
   const T = BALANCE.mentorDaglig
+
+  // 0. NULLMARGIN-FELLA (DEL 5) — HØYESTE prioritet (over kø/svinn). Datavakt:
+  //    minst én SOLGT vare står på ~innkjøpspris (tynn/null margin), OG dagen gikk
+  //    i tap (eller tynn bruttomargin) TROSS reelt salgsvolum. Navngir varen med
+  //    elevens EGNE tall og [[dekningsbidrag]] — foreslår ALDRI en pris.
+  const omsetning = r.soldKr + r.bakgrunnKr
+  const bruttomargin = omsetning > 0 ? (omsetning - r.varekostKr) / omsetning : 1
+  const solgtVolum = r.soldStk + r.bakgrunnStk
+  const nullmarginVare = [...r.produktRegnskap]
+    .filter(p => p.solgtStk > 0 && p.retailPrice > 0 && p.retailPrice <= p.costPrice * (1 + T.nullmarginMarginPst / 100))
+    .sort((a, b) => (a.retailPrice - a.costPrice) - (b.retailPrice - b.costPrice))[0]  // lavest dekningsbidrag først
+  if (nullmarginVare && solgtVolum >= T.nullmarginMinVolum && (r.resultat <= 0 || bruttomargin < T.tynnBruttomarginPst / 100)) {
+    const db = nullmarginVare.retailPrice - nullmarginVare.costPrice
+    return {
+      signal: 'nullmargin',
+      melding: `Du solgte ${nullmarginVare.solgtStk} × ${nullmarginVare.navn} i dag — kjøpt for ${kr(nullmarginVare.costPrice)}, solgt for ${kr(nullmarginVare.retailPrice)}. Det gir bare ${kr(db)} i [[ECO_001|dekningsbidrag]] per stk. Hva må prisen dekke UTOVER innkjøpet — husleie, lønn, svinn?`,
+    }
+  }
 
   // 1. KØ-TAP (kun når Personale-fanen er synlig — ellers finnes ikke bemanning
   //    for eleven, jf. DEL 2). Terskel: flere enn koTapKunder gikk.

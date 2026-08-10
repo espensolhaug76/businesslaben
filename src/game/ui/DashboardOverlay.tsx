@@ -2240,11 +2240,20 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
   setLagretMin: (m: number) => void
 }) {
   const { state, dispatch } = useGame()
+  // DEFAULT-PRIS = INNKJØPSPRIS (DEL 5, 10.08 — Espens pedagogiske felle): uprisede
+  // varer forhåndsutfylles med varens EGEN innkjøpspris (costPrice), ikke tomt felt
+  // eller markedsverdi. Feltet er redigerbart; «Lagre priser» lagrer det som står
+  // (også hvis eleven bare trykker Lagre → varen prises til innkjøp → 0 margin →
+  // taper penger). INGEN advarsel/margin-hint i fanen — fella er designet;
+  // konsekvensen kommer i dagsoppgjøret + mentor-refleksjonen.
   // Arbeidslista: elevens utkast hvis hen har begynt å redigere, ellers en fersk
-  // kopi av lagret state. Utkastet ligger i PARENT → overlever fanebytte (DEL 4).
-  const products = utkast ?? state.products.map(p => ({ ...p }))
-  // Ulagret = utkast finnes OG minst én pris avviker fra lagret state.
-  const dirty = utkast != null && products.some(p => {
+  // kopi av lagret state MED innkjøpspris-forhåndsutfylling. Utkastet ligger i
+  // PARENT → overlever fanebytte (DEL 4).
+  const products = utkast ?? state.products.map(p => ({ ...p, retailPrice: p.retailPrice > 0 ? p.retailPrice : p.costPrice }))
+  // Har eleven begynt å redigere? (Da vises live margin; ellers holdes fella stille.)
+  const engaged = utkast != null
+  // Ulagret = minst én vist pris avviker fra lagret state (også forhåndsutfyllingen).
+  const dirty = products.some(p => {
     const lagret = state.products.find(s => s.id === p.id)
     return !lagret || lagret.retailPrice !== p.retailPrice
   })
@@ -2333,6 +2342,10 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
           const mg = p.retailPrice > 0 ? Math.round(((p.retailPrice - p.costPrice) / p.retailPrice) * 100) : 0
           const mgColor = mg >= 50 ? '#22c55e' : mg >= 20 ? '#facc15' : '#ef4444'
           const underCost = p.retailPrice > 0 && p.retailPrice < p.costPrice
+          // FELLA STILLE (DEL 5): en vare som fortsatt står på innkjøpspris-
+          // forhåndsutfyllingen (ikke priset i lagret state, eleven har ikke
+          // redigert) viser INGEN margin-hint — konsekvensen kommer i oppgjøret.
+          const stilleFelle = !engaged && (state.products.find(s => s.id === p.id)?.retailPrice ?? 0) <= 0
           const researched = researchedIds.has(p.id)
           const range = competitorRange(p.markedsPris)
           return (
@@ -2354,7 +2367,7 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
                       padding: '4px 8px', color: '#38bdf8', fontSize: 18, fontWeight: 800, fontFamily: 'inherit',
                     }}
                   /> <span style={{ fontSize: 13, color: '#64748b' }}>kr</span>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: mgColor }}><Fagord id="ECO_002">Margin</Fagord>: {p.retailPrice > 0 ? `${mg}%` : '—'}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: stilleFelle ? '#64748b' : mgColor }}><Fagord id="ECO_002">Margin</Fagord>: {!stilleFelle && p.retailPrice > 0 ? `${mg}%` : '—'}</div>
                 </div>
               </div>
 

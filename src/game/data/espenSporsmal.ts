@@ -80,6 +80,15 @@ function regneVare(state: GameState) {
     ?? null
 }
 
+/** DEL 5 (10.08): elevens LAVEST-MARGIN-vare (minst dekningsbidrag per stk) — brukt
+ *  av nullmargin-kalkylespørsmålet så eksempelet treffer der prisfella slo til.
+ *  Null hvis ingen priset vare finnes. */
+function lavestMarginVare(state: GameState) {
+  const priced = state.products.filter(p => p.retailPrice > 0)
+  if (priced.length === 0) return null
+  return [...priced].sort((a, b) => (a.retailPrice - a.costPrice) - (b.retailPrice - b.costPrice))[0]
+}
+
 // ── GRUNNPOOL — statiske spørsmål (hovedvekt VG1) ────────────────────────────
 export const ESPEN_SPORSMAL: EspenSporsmal[] = [
   // — kalkyle —
@@ -196,6 +205,21 @@ export const ESPEN_SPORSMAL: EspenSporsmal[] = [
         tekst: `Du satte prisen på «${v.name}» til ${v.retailPrice} kr. Varekosten er ${v.costPrice} kr. Hva er dekningsbidraget per stk?`,
         alternativer, riktigIndex,
         forklaring: `${v.retailPrice} − ${v.costPrice} = ${db} kr i [[ECO_001|dekningsbidrag]] per stk — det som skal dekke faste kostnader og gi overskudd.`,
+      }
+    },
+  },
+  {
+    // DEL 5 (10.08) — NULLMARGIN-KALKYLE: foretrekker elevens lavest-margin-vare,
+    // så eksempelet treffer der prisfella (default = innkjøpspris) slo til.
+    id: 'dyn_db_lavest', nivaa: 'vg1', kategori: 'kalkyle', glossaryId: 'ECO_001',
+    bygg: (s) => {
+      const v = lavestMarginVare(s); if (!v) return null
+      const db = v.retailPrice - v.costPrice
+      const { alternativer, riktigIndex } = numAlt(db, [v.retailPrice, v.costPrice, Math.max(1, Math.round(v.retailPrice * 0.5))])
+      return {
+        tekst: `Din tynneste vare er «${v.name}» — innkjøp ${v.costPrice} kr, din pris ${v.retailPrice} kr. Hvor mye sitter du igjen med per solgt stk til å dekke husleie og lønn?`,
+        alternativer, riktigIndex,
+        forklaring: `${v.retailPrice} − ${v.costPrice} = ${db} kr i [[ECO_001|dekningsbidrag]] per stk. Er det nok til å dekke de faste kostnadene når du selger «${v.name}»? Prisen må dekke MER enn bare innkjøpet.`,
       }
     },
   },
