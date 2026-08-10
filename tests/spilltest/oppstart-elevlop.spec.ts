@@ -89,16 +89,22 @@ test('Oppstart uten ?skip — åpningsbestilling ankommer FRISK til dag 1', asyn
     expect(kaffe, 'kaffe finnes i sortimentet etter åpningsbestilling').toBeTruthy()
     expect(kaffe!.stock, `kaffe bestilt ${N} stk → ligger på lager`).toBe(N)
 
-    // FIKS DAG 1 (30.07): åpningsbestillingen STILLES UT på disken med det samme
-    // (counterLayout) — så varene når trau-paletten og ikke viser «Utsolgt» mens
-    // lageret har varer. PRISING er fortsatt elevens jobb (Priser-fanen), så varene
-    // starter upriset (retailPrice 0) — men nå SYNLIG på disken.
-    expect(s.counterLayout.length, 'åpningsvarene er stilt ut på disken (counterLayout)').toBeGreaterThan(0)
-    for (const p of s.products) {
-      expect(s.counterLayout.some(t => t.productId === p.id), `${p.id} er stilt ut på et trau`).toBe(true)
+    // FIKS DAG 1 (30.07) + DEL 1 (10.08): KUN trau-varer (mat) stilles ut på disken.
+    // Drikke (kaffe, trauVare===false) hører hjemme på tavla/lager — IKKE i trauet.
+    // PRISING er fortsatt elevens jobb (varene starter upriset, retailPrice 0).
+    const trauVarer = s.products.filter(p => p.trauVare !== false)
+    const drikke = s.products.filter(p => p.trauVare === false)
+    expect(trauVarer.length, 'åpningsordren har trau-varer (mat)').toBeGreaterThan(0)
+    expect(drikke.some(p => p.id === 'coffee'), 'åpningsordren har kaffe (drikke)').toBe(true)
+    expect(s.counterLayout.length, 'trau-varene er stilt ut på disken (counterLayout)').toBeGreaterThan(0)
+    for (const p of trauVarer) {
+      expect(s.counterLayout.some(t => t.productId === p.id), `${p.id} (trau-vare) er stilt ut på et trau`).toBe(true)
+    }
+    for (const p of drikke) {
+      expect(s.counterLayout.some(t => t.productId === p.id), `${p.id} (drikke) er IKKE i trauet`).toBe(false)
     }
     expect(kaffe!.retailPrice, 'åpningsvaren starter upriset (prising er elevens jobb)').toBe(0)
-    ctx.ok(`åpningsbestilling: kaffe ${kaffe!.stock} stk, ${s.counterLayout.length} varer stilt ut på disken (upriset)`)
+    ctx.ok(`åpningsbestilling: ${trauVarer.length} trau-varer stilt ut, ${drikke.length} drikke til tavla/lager (ikke i trau); upriset`)
   })
 
   // ── STEG 4 — Åpne dag 1: varene FRISK på lager + HUD viser «Dag 1» ───────────

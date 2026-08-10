@@ -1442,11 +1442,15 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
       const prods = (await lesState(page)).products.map(p => ({ ...p, retailPrice: mut(p) }))
       await dispatch(page, { type: 'SET_PRODUCTS', products: prods })
     }
-    // Pris begge til markedspris (så de KAN selge når utstilt).
-    await settPris(p => (p.id === 'coffee' || p.id === 'croissant') ? p.markedsPris : p.retailPrice)
-    await ventState(page, s => s.products.find(p => p.id === 'coffee')!.retailPrice > 0, 'priset')
+    // DEL 1 (10.08): drikke (coffee) selger AUTOMATISK via tavla når den er priset
+    // — den ligger ikke i trauet. For «tom disk → 0»-sjekken (A) lar vi derfor
+    // coffee stå UPRISET (ikke i salgspoolen); kun croissant (trau-vare) prises.
+    // Coffee prises fra (B) og utover.
+    await settPris(p => p.id === 'croissant' ? p.markedsPris : p.retailPrice)
+    await ventState(page, s => s.products.find(p => p.id === 'croissant')!.retailPrice > 0, 'croissant priset')
 
-    // (A) TOM DISK: ingenting utstilt → 0 salg og 0 tap, men kundene teller.
+    // (A) TOM DISK: ingenting utstilt (coffee upriset ⇒ ikke på tavla-poolen,
+    //     croissant priset men ikke i trauet) → 0 salg og 0 tap, men kundene teller.
     await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [] })
     await dispatch(page, { type: 'OPEN_DAY' }); await ventState(page, s => s.dayPhase === 'åpen', 'åpen (tom disk)')
     let s = await tikkTil(x => x.dayStats.bakgrunnKunder >= 8)

@@ -551,6 +551,27 @@ function fullforKampanje(k: KampanjeAktiv, produkter: Product[], ctx: { aar: num
   return { resultat, produkter: nyeProdukter, tilsyn, bot }
 }
 
+// VAREEKSPONERING (DEL 1, 10.08): hvilke varer er «utstilt» og dermed i
+// bakgrunnssalgets pool. TRAU-VARER selges via disken (counterLayout). DRIKKE
+// (trauVare === false — kaffe/smoothie/te) hører IKKE hjemme i trauet; de
+// aktiveres automatisk via drikkemenyen/tavla når de er PRISET (retailPrice > 0)
+// — ingen fysisk utstilling. Vindusutstilling teller kun for bransjer med
+// vindusUtstilling (klesbutikk). Én kilde for både TICK-salget og CLOSE_DAY-
+// regnskapet, så de aldri divergerer.
+function utstilteProduktIds(state: GameState): Set<string> {
+  const def = getActiveIndustryDefinition()
+  return new Set<string>([
+    ...state.counterLayout.map(t => t.productId),
+    ...state.products.filter(p => p.trauVare === false && p.retailPrice > 0).map(p => p.id),
+    ...(def.vindusUtstilling ? state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId) : []),
+  ])
+}
+
+/** Er varen en drikke (aktiveres via tavla, aldri i trauet)? Katalog-oppslag. */
+function erDrikke(productId: string): boolean {
+  return getActiveIndustryDefinition().katalog.find(c => c.id === productId)?.trauVare === false
+}
+
 // ─── Reducer ────────────────────────────────────────────────────────────────
 
 function reducer(state: GameState, action: Action): GameState {
@@ -1026,7 +1047,12 @@ function reducer(state: GameState, action: Action): GameState {
         const item = def.katalog.find(c => c.id === productId)
         if (!item) continue
         products.push({ ...catalogToProduct(item), stock: qty })
-        if (counterLayout.length < trauIds.length) counterLayout.push({ trauId: trauIds[counterLayout.length], productId })
+        // DEL 1 (10.08): KUN displaybare varer (trau-varer) stilles ut på disken.
+        // Drikke (trauVare === false) hører ikke hjemme i trauet — de går til lager
+        // og aktiveres via drikkemenyen/tavla når de prises (se utstilteProduktIds).
+        if (item.trauVare !== false && counterLayout.length < trauIds.length) {
+          counterLayout.push({ trauId: trauIds[counterLayout.length], productId })
+        }
         cost += item.costPrice * qty
       }
       return {
@@ -2105,15 +2131,10 @@ function reducer(state: GameState, action: Action): GameState {
 
         let seed = state.dayBackground.seed
         if (betjent > 0) {
-          // VAREEKSPONERING: bakgrunnssalget trekker KUN fra utstilte varer (disk
-          // + vindu). Ikke-utstilte varer selges/tapes aldri.
-          // DESIGNENDRING (28.07): vindu-eksponering teller KUN for bransjer med
-          // vindusutstilling (klesbutikk). CAFE ignorerer windowDisplay-state.
-          const utstilteIds = new Set<string>([
-            ...state.counterLayout.map(t => t.productId),
-            ...(getActiveIndustryDefinition().vindusUtstilling
-              ? state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId) : []),
-          ])
+          // VAREEKSPONERING: bakgrunnssalget trekker KUN fra utstilte varer (disk-
+          // trau + prisede drikker på tavla + evt. vindu). Ikke-utstilte varer
+          // selges/tapes aldri. Se utstilteProduktIds (én kilde, DEL 1).
+          const utstilteIds = utstilteProduktIds(state)
           // Kun de BETJENTE kundene når disken (kan så tape til tomt lager).
           const r = simulerBakgrunnsbolk(state.products, betjent, state.dayBackground.seed, utstilteIds, state.dayBackground.vareVekt)
           products = r.products
@@ -2234,11 +2255,7 @@ function reducer(state: GameState, action: Action): GameState {
       // PRODUKTREGNSKAP (fiksjobb 28.07) — full per-vare-oppstilling, montert av dps
       // (allerede talt) + varens pris/lager. `state.products` = FØR svinn-fjerning,
       // så utstilt-ved-stenging er det som faktisk sto igjen på flaten. Kun aktivitet.
-      const utstilteIdsClose = new Set<string>([
-        ...state.counterLayout.map(t => t.productId),
-        ...(getActiveIndustryDefinition().vindusUtstilling
-          ? state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId) : []),
-      ])
+      const utstilteIdsClose = utstilteProduktIds(state)
       const produktRegnskap = Object.entries(dps).map(([id, p]) => {
         const vare = state.products.find(v => v.id === id)
         return {
@@ -2578,11 +2595,17 @@ function reducer(state: GameState, action: Action): GameState {
     case 'RESET':
       return initialState
 
-    case 'HYDRATE_SAVE':
+    case 'HYDRATE_SAVE': {
       // Gjenopprett en lagret spilltilstand. Shallow-merge over initialState så
       // felt som er NYE siden lagringen ble skrevet får sin default (ikke
       // `undefined`) — sammen med save-versjonen verner det mot rar/krasjende state.
-      return { ...initialState, ...action.state }
+      const merged = { ...initialState, ...action.state }
+      // MIGRERING (DEL 1, 10.08): eldre saver kan ha drikke i trauet (fra en
+      // tidligere fiks som stilte ALT ut). Fjern dem stille — drikke hører hjemme
+      // på tavla, ikke i counterLayout.
+      merged.counterLayout = (merged.counterLayout ?? []).filter(t => !erDrikke(t.productId))
+      return merged
+    }
 
     default:
       return state
