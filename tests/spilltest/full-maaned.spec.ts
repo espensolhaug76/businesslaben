@@ -59,7 +59,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
   const dashbord = page.getByTestId('dashbord')
   async function åpneDashbord() {
     if (!(await dashbord.isVisible().catch(() => false))) {
-      await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+      await page.getByRole('button', { name: /💻 Bedriftsdashbord/ }).first().click()
       await expect(dashbord).toBeVisible()
     }
   }
@@ -935,8 +935,10 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await ventState(page, s => s.phase !== 'startup', 'frisk boot for steg 20')
     await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45_000, capacity: 120 })
     await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 200 }] })
-    await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager (coffee, upriset)')
-    expect((await lesState(page)).products.find(p => p.id === 'coffee')!.retailPrice, 'coffee starter upriset').toBe(0)
+    await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager (coffee, priset til innkjøp)')
+    // DEL 6 (10.08): varer prises til innkjøpspris ved anskaffelse (ikke upriset).
+    const coffeeStart = (await lesState(page)).products.find(p => p.id === 'coffee')!
+    expect(coffeeStart.retailPrice, 'coffee starter priset til innkjøpspris').toBe(coffeeStart.costPrice)
 
     // Sett pris i den EKTE Priser-fanen: skriv i input-feltet + «Lagre priser».
     // DEL 4 (lagre-kvitteringer): pris lagres nå EKSPLISITT via knappen — ikke
@@ -1233,7 +1235,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
 
     // (A) Faner: rene M-faner HELT borte; FD-faner + FD-delte + kjerne igjen.
     // Personale + Forretningsplan + Lokasjon (alle FD+M) STÅR fordi FD er på.
-    await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+    await page.getByRole('button', { name: /💻 Bedriftsdashbord/ }).first().click()
     for (const id of ['malgruppe', 'markedsforing', 'utstilling', 'distribusjon']) {
       await expect(page.getByTestId(`fane-${id}`), `M-fane ${id} skjult`).toHaveCount(0)
     }
@@ -1254,7 +1256,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // (E) ↺ Nullstill → M tilbake, M-faner synlige igjen.
     await page.evaluate(() => (window as unknown as { __NULLSTILL_DEV__: () => void }).__NULLSTILL_DEV__())
     await ventState(page, s => s.fagAktiv?.m === true, 'M tilbake')
-    await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+    await page.getByRole('button', { name: /💻 Bedriftsdashbord/ }).first().click()
     await expect(page.getByTestId('fane-malgruppe'), 'Målgruppe synlig igjen').toBeVisible()
     await page.getByTestId('dashbord-lukk').click()
     ctx.ok('M av → 5 M-faner + mkf-tilbud (7d) borte, Produkter/Priser/kjerne igjen; ↺ Nullstill → M-faner tilbake')
@@ -1270,7 +1272,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // Legg åpningsbestilling så OpeningOrderOverlay lukkes (ellers fanger den klikk).
     await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 100 }] })
     await ventState(page, s => s.openingOrderPlaced && s.products.some(p => p.id === 'coffee'), 'åpningslager')
-    await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+    await page.getByRole('button', { name: /💻 Bedriftsdashbord/ }).first().click()
     await page.getByTestId('fane-malgruppe').click()   // stå på en M-fane
     // Læreren (her: DEV) slår M av MENS eleven står på Målgruppe.
     await page.evaluate(() => (window as unknown as { __SET_FAG_DEV__: (f: string, v: boolean) => void }).__SET_FAG_DEV__('m', false))
@@ -1369,7 +1371,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     await ventState(page, s => s.products.some(p => p.id === 'coffee'), 'lager')
     const setFag = (f: string, v: boolean) => page.evaluate(([ff, vv]) => (window as unknown as { __SET_FAG_DEV__: (f: string, v: boolean) => void }).__SET_FAG_DEV__(ff as string, vv as boolean), [f, v] as const)
     const nullstill = () => page.evaluate(() => (window as unknown as { __NULLSTILL_DEV__: () => void }).__NULLSTILL_DEV__())
-    const dash = () => page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+    const dash = () => page.getByRole('button', { name: /💻 Bedriftsdashbord/ }).first().click()
 
     // (A) FD av (M/KS på): Økonomi (ren FD) SKJULT; Personale (delt FD+M),
     //     Forretningsplan (FD+M) og Målgruppe (M) STÅR fordi M er på.
@@ -1451,8 +1453,10 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     // — den ligger ikke i trauet. For «tom disk → 0»-sjekken (A) lar vi derfor
     // coffee stå UPRISET (ikke i salgspoolen); kun croissant (trau-vare) prises.
     // Coffee prises fra (B) og utover.
-    await settPris(p => p.id === 'croissant' ? p.markedsPris : p.retailPrice)
-    await ventState(page, s => s.products.find(p => p.id === 'croissant')!.retailPrice > 0, 'croissant priset')
+    // DEL 6 (10.08): varer prises til innkjøp ved anskaffelse, så coffee må NULLES
+    // eksplisitt her (ellers selger den via tavla og bryter «tom disk → 0»).
+    await settPris(p => p.id === 'croissant' ? p.markedsPris : 0)
+    await ventState(page, s => s.products.find(p => p.id === 'croissant')!.retailPrice > 0 && s.products.find(p => p.id === 'coffee')!.retailPrice === 0, 'croissant priset, coffee nullet')
 
     // (A) TOM DISK: ingenting utstilt (coffee upriset ⇒ ikke på tavla-poolen,
     //     croissant priset men ikke i trauet) → 0 salg og 0 tap, men kundene teller.
@@ -2239,7 +2243,7 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     expect(dm0, 'tiden går i drift (klokka tikker)').toBeGreaterThan(0)
     // Minimer dagspulsen (drift-visning) for å nå HUD-en, åpne så dashbordet.
     await page.getByRole('button', { name: /Minimer/ }).click()
-    await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
+    await page.getByRole('button', { name: /💻 Bedriftsdashbord/ }).first().click()
     await expect(page.getByTestId('dashbord')).toBeVisible()
     // Indikator + FROSSEN tid mens dashbordet er åpent.
     await expect(page.getByTestId('planlegging-pause')).toBeVisible()

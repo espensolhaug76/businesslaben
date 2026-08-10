@@ -2646,6 +2646,10 @@ function reducer(state: GameState, action: Action): GameState {
       // tidligere fiks som stilte ALT ut). Fjern dem stille — drikke hører hjemme
       // på tavla, ikke i counterLayout.
       merged.counterLayout = (merged.counterLayout ?? []).filter(t => !erDrikke(t.productId))
+      // MIGRERING (DEL 6, 10.08): eldre saver kan ha uprisede varer (retailPrice 0
+      // fra den gamle «upriset ved oppstart»-regelen). Default er nå innkjøpspris —
+      // sett den på uprisede varer ved load, så de er priset (til null margin).
+      merged.products = (merged.products ?? []).map(p => p.retailPrice > 0 ? p : { ...p, retailPrice: p.costPrice })
       return merged
     }
 

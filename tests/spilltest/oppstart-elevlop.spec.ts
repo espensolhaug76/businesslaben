@@ -91,7 +91,8 @@ test('Oppstart uten ?skip — åpningsbestilling ankommer FRISK til dag 1', asyn
 
     // FIKS DAG 1 (30.07) + DEL 1 (10.08): KUN trau-varer (mat) stilles ut på disken.
     // Drikke (kaffe, trauVare===false) hører hjemme på tavla/lager — IKKE i trauet.
-    // PRISING er fortsatt elevens jobb (varene starter upriset, retailPrice 0).
+    // DEL 6 (10.08): varene prises til sin EGEN innkjøpspris ved anskaffelse — de
+    // selger dermed fra dag 1, men til null margin (prisjustering er elevens jobb).
     const trauVarer = s.products.filter(p => p.trauVare !== false)
     const drikke = s.products.filter(p => p.trauVare === false)
     expect(trauVarer.length, 'åpningsordren har trau-varer (mat)').toBeGreaterThan(0)
@@ -103,8 +104,8 @@ test('Oppstart uten ?skip — åpningsbestilling ankommer FRISK til dag 1', asyn
     for (const p of drikke) {
       expect(s.counterLayout.some(t => t.productId === p.id), `${p.id} (drikke) er IKKE i trauet`).toBe(false)
     }
-    expect(kaffe!.retailPrice, 'åpningsvaren starter upriset (prising er elevens jobb)').toBe(0)
-    ctx.ok(`åpningsbestilling: ${trauVarer.length} trau-varer stilt ut, ${drikke.length} drikke til tavla/lager (ikke i trau); upriset`)
+    expect(kaffe!.retailPrice, 'åpningsvaren priset til innkjøpspris ved anskaffelse (DEL 6)').toBe(kaffe!.costPrice)
+    ctx.ok(`åpningsbestilling: ${trauVarer.length} trau-varer stilt ut, ${drikke.length} drikke til tavla/lager; priset = innkjøp (${kaffe!.retailPrice} kr)`)
   })
 
   // ── STEG 4 — Åpne dag 1: varene FRISK på lager + HUD viser «Dag 1» ───────────

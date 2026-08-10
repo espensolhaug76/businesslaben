@@ -155,7 +155,7 @@ export default function HUD({ onMaster, onOpenDashboard, onOpenAvis, onOpenVarsl
             fontSize: 13, fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
         >
-          💻 Dashbord
+          💻 Bedriftsdashbord
         </button>
       </div>
     </div>

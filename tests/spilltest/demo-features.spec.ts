@@ -21,50 +21,38 @@ test('Demo-funksjoner DEL 1/2/3/5', async ({ page }) => {
   await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45000, capacity: 120 })
   await ventState(page, s => s.rentedLocationId === 'sentrum-l2', 'lokale leid')
 
-  // ── STEG 1 — DEL 1: drikke ut av trauene ────────────────────────────────────
-  await steg(page, rapport, 1, 'DEL 1: åpningsordre m/drikke → drikke IKKE i counterLayout; selger via tavla når priset', async ctx => {
+  // ── STEG 1 — DEL 1 + DEL 6: drikke ut av trauene + default-pris = innkjøpspris ─
+  await steg(page, rapport, 1, 'DEL 1: drikke IKKE i counterLayout · DEL 6: varene prises til innkjøpspris ANSKAFFES med det samme', async ctx => {
     await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 40 }, { productId: 'croissant', qty: 60 }] })
     await ventState(page, s => s.openingOrderPlaced, 'åpningsbestilling plassert')
     const s = await lesState(page)
+    // DEL 1
     expect(s.counterLayout.some(t => t.productId === 'coffee'), 'kaffe (drikke) IKKE i trauet').toBe(false)
     expect(s.counterLayout.some(t => t.productId === 'croissant'), 'croissant (trau-vare) i trauet').toBe(true)
-    ctx.ok(`counterLayout: ${s.counterLayout.map(t => t.productId).join(', ')} (ingen drikke)`)
+    // DEL 6: varene er priset til sin EGEN innkjøpspris allerede ved anskaffelse.
+    for (const p of s.products) {
+      expect(p.retailPrice, `${p.id} priset til innkjøpspris (${p.costPrice}) ved anskaffelse`).toBe(p.costPrice)
+    }
+    ctx.ok(`drikke ikke i trau; alle varer priset = innkjøpspris (kaffe ${s.products.find(p => p.id === 'coffee')?.retailPrice} kr)`)
   })
 
-  // ── STEG 2 — DEL 2: mentor-vakt ved åpning med utstilt upriset vare ─────────
-  await steg(page, rapport, 2, 'DEL 2: åpne med utstilt upriset vare → mentor-vakt «mangler_pris_apning» fyrer (blokkerer ikke)', async ctx => {
-    const s = await lesState(page)
-    expect(s.counterLayout.some(t => t.productId === 'croissant'), 'croissant utstilt').toBe(true)
-    expect(s.products.find(p => p.id === 'croissant')!.retailPrice, 'croissant upriset').toBe(0)
+  // ── STEG 2 — DEL 2: mentor-vakt ved åpning med AKTIVT nullet, utstilt vare ───
+  await steg(page, rapport, 2, 'DEL 2: eleven nuller ut en utstilt vare → åpne → mentor-vakt «mangler_pris_apning» fyrer (blokkerer ikke)', async ctx => {
+    // DEL 6: «mangler pris» oppstår nå KUN når eleven aktivt nuller ut prisen.
+    await page.evaluate(() => { const st = window.__GAME_STATE__; window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products: st!.products.map(p => p.id === 'croissant' ? { ...p, retailPrice: 0 } : p) }) })
+    await ventState(page, s => s.products.find(p => p.id === 'croissant')!.retailPrice === 0, 'croissant nullet ut')
     await dispatch(page, { type: 'OPEN_DAY' })
     await ventState(page, st => st.dayPhase === 'åpen', 'dag åpnet (ikke blokkert)')
-    // Vakten fyrer i mentorens fyrt-sett (dag-scopet, engangs/dag).
     await expect.poll(async () => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] } }), { timeout: 8000 })
       .toEqual(expect.arrayContaining([expect.stringContaining('mangler_pris_apning')]))
-    ctx.ok('mentor-vakt fyrte ved åpning med upriset utstilt vare (dagen åpnet like fullt)')
+    // Sett croissant tilbake til innkjøp så dagen kan selge nullmargin (steg 3).
+    await page.evaluate(() => { const st = window.__GAME_STATE__; window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products: st!.products.map(p => p.id === 'croissant' ? { ...p, retailPrice: p.costPrice } : p) }) })
+    ctx.ok('mentor-vakt fyrte da en nullet, utstilt vare møtte åpning (dagen åpnet like fullt)')
   })
 
-  // ── STEG 3 — DEL 5: Priser-fanen forhåndsutfylt med innkjøpspris ─────────────
-  await steg(page, rapport, 3, 'DEL 5: Priser-fanen forhåndsfyller innkjøpspris; «Lagre priser» uten redigering → varen prises til innkjøp (fella)', async ctx => {
-    await page.getByRole('button', { name: /💻 Dashbord/ }).first().click()
-    await page.getByTestId('fane-priser').click()
-    const croCost = (await lesState(page)).products.find(p => p.id === 'croissant')!.costPrice
-    const inp = page.getByTestId('pris-croissant')
-    await expect(inp).toHaveValue(String(croCost))
-    // Ingen «Mangler pris»-advarsel i fanen (fella er designet).
-    await expect(page.getByText(/Mangler pris/), 'ingen mangler-pris-advarsel i fanen').toHaveCount(0)
-    // Lagre uten å redigere → croissant prises til innkjøpspris.
-    await page.getByRole('button', { name: /Lagre priser/ }).first().click()
-    await ventState(page, s => s.products.find(p => p.id === 'croissant')!.retailPrice === croCost, 'croissant priset til innkjøp')
-    // Pris ALT til innkjøp (kaffe også) via broen, så hele dagen blir nullmargin.
-    await page.evaluate(() => { const st = window.__GAME_STATE__; window.__GAME_DISPATCH__?.({ type: 'SET_PRODUCTS', products: st!.products.map(p => ({ ...p, retailPrice: p.costPrice })) }) })
-    await page.getByTestId('dashbord-lukk').click()
-    ctx.ok(`Priser-fanen forhåndsfylte ${croCost} kr (= innkjøp); lagret uten redigering → nullmargin`)
-  })
-
-  // ── STEG 4 — DEL 5: nullmargin-dag → tap + mentor-refleksjon ────────────────
-  await steg(page, rapport, 4, 'DEL 5: dag med nullmargin-salg → resultat ≤ 0 + mentor-refleksjon «nullmargin» navngir varen med elevens tall', async ctx => {
-    // Dagen er alt åpen fra steg 2; varene er nå priset til innkjøp (steg 3).
+  // ── STEG 3 — DEL 6/5: nullmargin-dag → tap + mentor-refleksjon ──────────────
+  await steg(page, rapport, 3, 'DEL 6/5: dag med default-pris (= innkjøp) → salg skjer OG resultat ≤ 0 + mentor-refleksjon «nullmargin»', async ctx => {
+    // Dagen er alt åpen fra steg 2; varene står på innkjøpspris (default/tilbakestilt).
     for (let i = 0; i < 50; i++) {
       const s = await lesState(page)
       if (s.dayPhase !== 'åpen') break
@@ -83,8 +71,8 @@ test('Demo-funksjoner DEL 1/2/3/5', async ({ page }) => {
     ctx.ok(`resultat ${r!.resultat} kr (≤ 0), signal «${s.mentorDagligHint?.signal}»: ${(s.mentorDagligHint?.melding ?? '').slice(0, 80)}…`)
   })
 
-  // ── STEG 5 — DEL 3: varslingssenter (levering + mentor) + 🔔 ────────────────
-  await steg(page, rapport, 5, 'DEL 3: varsler logget (mentor m.fl.), 🔔 klikkbar med badge, lukking nullstiller uleste', async ctx => {
+  // ── STEG 4 — DEL 3: varslingssenter (levering + mentor) + 🔔 ────────────────
+  await steg(page, rapport, 4, 'DEL 3: varsler logget (mentor m.fl.), 🔔 klikkbar med badge, lukking nullstiller uleste', async ctx => {
     const s = await lesState(page)
     expect(s.varsler.length, 'varsler er logget').toBeGreaterThan(0)
     expect(s.varsler.some(v => v.maal === 'mentor'), 'minst ett mentor-varsel').toBe(true)

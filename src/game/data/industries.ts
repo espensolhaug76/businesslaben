@@ -227,9 +227,12 @@ export function catalogToProduct(item: IndustryCatalogItem): Product {
     icon: item.icon,
     tier: 'standard',
     costPrice: item.costPrice,
-    // UPRISET ved oppstart (DEL 7): eleven setter utsalgspris selv fra blankt
-    // felt. markedsPris beholdes som markedsanker (elastisitet + konkurrentpris).
-    retailPrice: 0,
+    // DEFAULT-PRIS = INNKJØPSPRIS (DEL 6, 10.08 — Espens pedagogiske felle): en vare
+    // ANSKAFFES priset til sin EGEN innkjøpspris. Den selger dermed fra første dag —
+    // men til NULL margin. Eleven justerer selv i Priser-fanen (får sjokket i
+    // dagsoppgjøret + mentor-refleksjonen). markedsPris beholdes som markedsanker.
+    // «Mangler pris» oppstår nå kun når eleven aktivt nuller ut prisen.
+    retailPrice: item.costPrice,
     markedsPris: item.markedsPris,
     stock: 0,
     quality: item.quality,
