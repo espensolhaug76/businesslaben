@@ -236,3 +236,55 @@ test('Korrupt lagring → fersk oppstart uten krasj + backup-nøkkel finnes', as
   expect(backup, 'korrupt save bevart under adventure_save_backup').toContain('ikke gyldig json')
   process.stdout.write('\nKorrupt lagring: fersk oppstart OK, backup bevart\n')
 })
+
+// ─── DEL 7 (VAKT): mentor-onboardingen er IKKE stum på et nytt spill ──────────
+// Rotårsak: mentor-nøklene (mentor_intro_v1/mentor_fired_v1) overlevde «Start ny
+// bedrift» → et nytt spill arvet «alt sett/fyrt» → mentoren ble stum. Denne vakta
+// simulerer et FORRIGE spill (nøklene satt) og krever at et nytt spill likevel
+// møter introen + scene-orienteringene (bykart → bydel).
+test('Mentor-onboarding er ikke stum på nytt spill (intro + bykart + bydel fyrer)', async ({ page }) => {
+  const firedSett = () => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mentor_fired_v1') || '[]') as string[] } catch { return [] } })
+
+  await page.goto('/game')
+  await ryddLocalStorage(page)
+  // SIMULER FORRIGE SPILL: intro sett + scene-orienteringer alt fyrt.
+  await page.evaluate(() => {
+    try {
+      localStorage.setItem('mentor_intro_v1', '1')
+      localStorage.setItem('mentor_fired_v1', JSON.stringify(['forste_bykart', 'forste_bydel', 'forste_disk_stell']))
+    } catch { /* */ }
+  })
+  await page.addInitScript(() => {
+    let a = 0x9e3779b9
+    Math.random = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
+  })
+  await page.goto('/game')
+  await ventState(page, s => s.phase === 'startup', 'StartupScreen (nytt spill)')
+
+  // Nytt spill via navnemenyen (wizard → START_GAME nullstiller mentor-onboardingen).
+  await page.getByPlaceholder(/Nordic Coffee/).fill('NyKafé')
+  await page.getByRole('button', { name: 'Neste →' }).click()
+  await page.getByRole('button', { name: /Kafé & Bakeri/ }).click()
+  await page.getByRole('button', { name: /Start spillet/ }).click()
+  await ventState(page, s => s.phase === 'exploring_city', 'spillet startet')
+
+  // (1) INTROEN vises tross at mentor_intro_v1 var satt (nullstilt ved START_GAME).
+  await expect(page.getByText(/Jeg er Espen/), 'intro vises på nytt spill (ikke stum)').toBeVisible({ timeout: 8_000 })
+  await page.getByRole('button', { name: 'Hopp over' }).click()
+  await expect(page.getByText(/Jeg er Espen/)).toBeHidden()
+
+  // (2) BYKART-orienteringen fyrer (forste_bykart re-armet av nullstillingen).
+  await expect.poll(firedSett, { timeout: 8_000 }).toEqual(expect.arrayContaining(['forste_bykart']))
+  await expect(page.locator('body')).toContainText('Her er byen')
+
+  // (3) BYDEL-orienteringen fyrer ved navigasjon inn i en bydel (klikk sentrum-polygon).
+  await page.evaluate(() => {
+    const svg = document.querySelector('svg')
+    const poly = svg ? [...svg.querySelectorAll('polygon')] : []
+    poly[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  })
+  await page.waitForURL(/\/game\/d\//, { timeout: 8_000 })
+  await expect.poll(firedSett, { timeout: 8_000 }).toEqual(expect.arrayContaining(['forste_bydel']))
+
+  process.stdout.write('\nMentor-onboarding: intro + bykart + bydel fyrer på nytt spill (ikke stum)\n')
+})

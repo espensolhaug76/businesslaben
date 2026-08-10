@@ -109,11 +109,21 @@ export function lagringSammendrag(): { companyName: string; dayNumber: number; s
   }
 }
 
+/** DEL 7 (10.08): nullstill mentor-onboardingen (intro + fyrt-sett + panel-introer)
+ *  så et NYTT spill møter introen og scene-orienteringene på nytt. Uten dette
+ *  overlevde mentor-nøklene «Start ny bedrift» → mentoren ble STUM (alt «allerede
+ *  fyrt»). Kalles ved wizard-start (START_GAME) og ved «Slett lagring». */
+export function nullstillMentorOnboarding() {
+  for (const k of ['mentor_intro_v1', 'mentor_fired_v1', 'budsjett_intro_v1', 'kampanje_intro_v1']) fjern(k)
+}
+
 /** Slett lagringen (Start ny bedrift / DEV «Slett lagring»). Beholder en backup
- *  under `adventure_save_backup` for feilsøking — aldri slett stille. */
+ *  under `adventure_save_backup` for feilsøking — aldri slett stille. Nullstiller
+ *  også mentor-onboardingen (DEL 7) så et nytt spill ikke blir «stumt». */
 export function slettLagring() {
   const raw = les(SAVE_KEY)
   if (raw != null) skriv(SAVE_BACKUP_KEY, raw)
   fjern(SAVE_KEY)
+  nullstillMentorOnboarding()
   blob = { version: SAVE_VERSION, savedAt: naaISO(), state: null }
 }

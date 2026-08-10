@@ -4020,3 +4020,52 @@ Spilltest (demo-features steg 5): varsler logges, 🔔 åpner senteret, lukking 
    viser «Mangler pris — sett pris i 💻 Dashbord → Priser».
 4. **Varsler (DEL 3):** klikk 🔔 i HUD → liste over leveringer, avis, innboks, mentor,
    tema (nyeste øverst). Klikk en innboks-/avis-rad → åpner dit. Lukk → badgen nulles.
+
+## DEMO-RUNDE 2 — default-pris i state, header-navn, stum mentor — 2026-08-10
+
+### DEL 6 — Default-pris = FAKTISK pris (korreksjon av DEL 5)
+Espens presisering: default-prisen skal være innkjøpsprisen i STATE, ikke bare en
+forhåndsutfylling i Priser-fanen.
+- `catalogToProduct` setter `retailPrice = costPrice`. Alle varer (åpningsbestilling,
+  `ORDER_PRODUCT`, katalog-føring) prises til sin egen innkjøpspris ved anskaffelse →
+  de selger fra dag 1, men til NULL margin.
+- Tavla (drikkemenyen) og trau-prislappene viser tallet automatisk («Kaffe 14 kr» i
+  stedet for «Kaffe —»), siden de rendrer `retailPrice > 0`.
+- Priser-fanen: DEL 5-forhåndsutfyllingslogikken RYDDET — fanen viser bare gjeldende
+  priser som før.
+- «Mangler pris»-tilstand + DEL 2-vakten gjelder nå KUN varer eleven aktivt har nullet
+  ut (redigert til 0) — mekanismen beholdt, smalere virkefelt.
+- `HYDRATE_SAVE`-migrering: persisterte uprisede varer (retailPrice 0) får
+  `retailPrice = costPrice` ved load.
+- Nullmargin-refleksjonen + Espen spør uendret — bare mer treffsikre (alle starter i
+  fella nå). Verifisert: anskaffelse → retailPrice == costPrice; dag 1 uten justering
+  → salg skjer + resultat ≤ 0 + nullmargin-refleksjon.
+
+### Header-navn
+HUD-knappen «💻 Dashbord» → «💻 Bedriftsdashbord» (tydeligere hva det er).
+
+### DEL 7 — Mentor-onboardingen var stum på nytt spill (rotårsak bevisført)
+Reprodusert headless (fersk state vs «Start ny bedrift»):
+- **HELT fersk state** (localStorage tømt): intro + bykart- + bydel-orienteringen fyrer
+  og vises. Kjeden er IKKE brutt fra bunnen.
+- **«Start ny bedrift» / returnerende elev**: `mentor_intro_v1` + `mentor_fired_v1`
+  OVERLEVDE (de er ikke en del av `adventure_save_v1`, og `slettLagring` rørte dem
+  ikke). Et nytt spill arvet dermed «intro sett» + «alle scene-orienteringer fyrt» →
+  **mentoren ble STUM** (0 ytringer før første fane-tips). Dette er kandidat (a):
+  trigger-state hydreres som «allerede fyrt». (b) scene-binding og (c) tapt
+  intro-innfyringspunkt ble MOTBEVIST — begge virker fra fersk state.
+- **Fiks:** ny `nullstillMentorOnboarding()` (save.ts) tømmer mentor_intro_v1 +
+  mentor_fired_v1 (+ panel-introer). Kalles ved `START_GAME` (wizardens `handleStart`)
+  og ved «Slett lagring». Fortsett-veien (HYDRATE_SAVE) rører den IKKE — en fortsatt
+  bedrift skal beholde det den har sett. Verifisert: nytt spill med gamle nøkler satt
+  → intro vises + bykart/bydel fyrer igjen.
+- **Vakt:** ny test i `oppstart-elevlop.spec.ts` — simulerer forrige spill (nøkler satt),
+  starter nytt spill, og krever at introen + bykart- + bydel-orienteringen faktisk
+  publiseres. Hindrer at mentoren blir stum igjen.
+
+### Chrome-sjekkliste (tillegg)
+5. **Default-pris (DEL 6):** fersk vare → gå inn: trau/tavle viser prisen (= innkjøp),
+   ikke «—». Åpne dag uten å røre Priser → salg skjer, men dagsoppgjøret viser tap +
+   Espen påpeker nullmargin-varen.
+6. **Nytt spill ikke stumt (DEL 7):** spill litt (se introen), «Start ny bedrift» →
+   introen skal komme IGJEN, og bykart-/bydel-tipsene skal dukke opp mens du navigerer.

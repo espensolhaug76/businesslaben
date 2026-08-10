@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useGame } from '../GameContext'
 import { INDUSTRY_META, isIndustryActive } from '../data/industries'
 import type { Industry } from '../types'
-import { lagringSammendrag, fortsettState, slettLagring } from '../save'
+import { lagringSammendrag, fortsettState, slettLagring, nullstillMentorOnboarding } from '../save'
 
 // FORENKLET OPPSTART (Espens beslutning): de tre v1-restene «Velg
 // forretningsmodell», «Velg finansiering» og «Hvem er du som gründer?» er FJERNET.
@@ -43,6 +43,11 @@ export default function StartupScreen() {
 
   function handleStart() {
     if (!companyName.trim() || !selectedIndustry) return
+    // DEL 7 (10.08): et NYTT spill (wizard → START_GAME) skal alltid møte mentor-
+    // onboardingen på nytt — nullstill mentor-nøklene FØR START_GAME, ellers arver
+    // et nytt spill «alt fyrt» fra forrige økt og mentoren blir stum. Fortsett-veien
+    // (HYDRATE_SAVE) rører IKKE dette — der skal onboardingen forbli sett.
+    nullstillMentorOnboarding()
     dispatch({
       type: 'START_GAME',
       companyName: companyName.trim(),
