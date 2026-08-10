@@ -1085,6 +1085,11 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
 
   await steg(page, rapport, 22, 'Espen spør: riktig svar → kunnskapsbonus == fasit, egen P&L-linje, dagstak håndhevet', async ctx => {
     await oppsettÅpenDag()
+    // DETERMINISME: hold dashbordet åpent så auto-klokka PAUSER — ellers kan dagen
+    // rulle (auto-CLOSE ved 17:00) mellom Q2 og Q3 under et tregt løp og nullstille
+    // kunnskapsbonus-taket → Q3 gir «uventet» ekstra. Quiz-bobla (z-500) vises over
+    // dashbordet, og dispatch-ene styres via broen, så dette endrer ikke logikken.
+    await åpneDashbord()
     const svarRiktig = async () => {
       await dispatch(page, { type: 'STILL_ESPEN_SPOR', nivaa: 'vg1', aktiveTemaIds: [], dev: true })
       await ventState(page, s => !!(s as unknown as GameState).espenSpor.aktivt, 'spørsmål stilt')
@@ -1515,9 +1520,13 @@ test('En full måned — kjernesløyfa ende til ende', async ({ page }) => {
     }
     expect(s.dayStats.sisteSalgLogg.length, 'loggen fyller opp til taket (10)').toBe(10)
     // Fjern alt fra disken → ingen utstilt vare → bakgrunnssalget kan ikke selge
-    // (verifiserer også vareeksponering-koblingen fra forrige fiks).
+    // (verifiserer også vareeksponering-koblingen fra forrige fiks). DEL 1 (10.08):
+    // coffee er DRIKKE og selger via tavla når den er priset — også uten trau — så
+    // vi upriser den også, ellers ville tavla-salget fortsatt.
     await dispatch(page, { type: 'SET_COUNTER_LAYOUT', items: [] })
-    await ventState(page, s => (s as unknown as { counterLayout: unknown[] }).counterLayout.length === 0, 'disk tømt')
+    const prods0 = (await lesFull()).products.map(p => p.id === 'coffee' ? { ...p, retailPrice: 0 } : p)
+    await dispatch(page, { type: 'SET_PRODUCTS', products: prods0 })
+    await ventState(page, s => (s as unknown as { counterLayout: unknown[] }).counterLayout.length === 0 && s.products.find(p => p.id === 'coffee')!.retailPrice === 0, 'disk tømt + drikke upriset')
     // Sett-le: noen ticks uten salg så loggen har konvergert (test-broen
     // window.__GAME_STATE__ ligger ett render-steg bak reduceren). Deretter er
     // loggen frosset (ingen salg mulig) → snapshot som fasit.

@@ -2252,8 +2252,11 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
   const products = utkast ?? state.products.map(p => ({ ...p, retailPrice: p.retailPrice > 0 ? p.retailPrice : p.costPrice }))
   // Har eleven begynt å redigere? (Da vises live margin; ellers holdes fella stille.)
   const engaged = utkast != null
-  // Ulagret = minst én vist pris avviker fra lagret state (også forhåndsutfyllingen).
-  const dirty = products.some(p => {
+  // «Ulagrede endringer»-indikatoren er REDIGERINGSBASERT (utkast finnes) — så
+  // forhåndsutfyllingen alene flagger den ikke. «Lagre priser»-knappen er uansett
+  // alltid klikkbar (se LagreBar), så eleven kan lagre forhåndsutfyllingen direkte
+  // (fella): trykker hen bare Lagre, prises varen til innkjøp.
+  const dirty = engaged && products.some(p => {
     const lagret = state.products.find(s => s.id === p.id)
     return !lagret || lagret.retailPrice !== p.retailPrice
   })
