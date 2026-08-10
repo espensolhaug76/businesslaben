@@ -136,7 +136,10 @@ export default function MonterScene({ districtId, lokaleId }: {
   // Paletten = FØRTE trau-varer (bestilt i Produkter-fanen), IKKE hele
   // katalogen (docs/INNKJOP_LEVERING.md). Varer uten lager vises fortsatt
   // (de er ført, kan stilles ut) — trauet renders bare tomt til de restokkes.
-  const trauVarer = state.products.filter(p => p.trauVare)
+  // UTSTILLBAR = IKKE eksplisitt drikke (default true). Robust mot produkter som
+  // mangler flagget (eldre saver) — samme «!== false»-regel som PLACE_OPENING_ORDER
+  // og HYDRATE bruker, så paletten aldri blanker ut mat-varer feilaktig.
+  const trauVarer = state.products.filter(p => p.trauVare !== false)
   const layout = state.counterLayout
   // Full trau-liste denne økten: de faste (fra den aktive bransjens
   // lager-flate) + evt. dev-trau lagt til via traceren (?dev=1). N vilkårlige

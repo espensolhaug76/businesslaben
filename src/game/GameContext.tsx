@@ -576,6 +576,11 @@ function erDrikke(productId: string): boolean {
   return getActiveIndustryDefinition().katalog.find(c => c.id === productId)?.trauVare === false
 }
 
+/** Katalogens trauVare-flagg for en vare (én sannhet). Ukjent id ⇒ undefined. */
+function trauVareFraKatalog(productId: string): boolean | undefined {
+  return getActiveIndustryDefinition().katalog.find(c => c.id === productId)?.trauVare
+}
+
 // VARSLINGSSENTER (DEL 3): legg til et varsel i loggen. Dedup på id (samme
 // hendelse legges aldri to ganger), og hold på de siste VARSEL_TAK (nyeste sist).
 const VARSEL_TAK = 30
@@ -2642,14 +2647,36 @@ function reducer(state: GameState, action: Action): GameState {
       // felt som er NYE siden lagringen ble skrevet får sin default (ikke
       // `undefined`) — sammen med save-versjonen verner det mot rar/krasjende state.
       const merged = { ...initialState, ...action.state }
-      // MIGRERING (DEL 1, 10.08): eldre saver kan ha drikke i trauet (fra en
-      // tidligere fiks som stilte ALT ut). Fjern dem stille — drikke hører hjemme
-      // på tavla, ikke i counterLayout.
+      // MIGRERING (kroker-fiks, 10.08 — Espens funn): en hydrert save kunne gi TOM
+      // disk (alle trau tomme, ingen mat utstilt) selv om lageret hadde varer.
+      // ROTÅRSAK (bevisført via headless): HYDRATE gjenopprettet counterLayout/
+      // produktene RÅTT — (a) saver plassert før auto-utstillingen (30.07) hadde
+      // counterLayout TOM, og hydrate bygde den aldri opp; (b) eldre produkter kunne
+      // mangle/ha stale `trauVare`, så paletten (som filtrerte på flagget)
+      // feilklassifiserte. En FERSK oppstart var alltid riktig — regresjonen bodde
+      // KUN i gjenopprettingen. Vi normaliserer derfor mot katalogen (den ene
+      // sannheten) ved hver load:
+      //
+      // (1) Re-utled `trauVare` fra katalogen for alle produkter → drikke=false,
+      //     mat=true uansett hva som lå i saven. (2) DEL 6: upriset vare (retailPrice
+      //     0 fra den gamle regelen) prises til innkjøpspris.
+      merged.products = (merged.products ?? []).map(p => {
+        const kat = trauVareFraKatalog(p.id)
+        const trauVare = kat !== undefined ? kat : p.trauVare
+        return { ...p, trauVare, retailPrice: p.retailPrice > 0 ? p.retailPrice : p.costPrice }
+      })
+      // (3) DEL 1: drikke hører aldri hjemme i trauet — fjern dem fra counterLayout.
       merged.counterLayout = (merged.counterLayout ?? []).filter(t => !erDrikke(t.productId))
-      // MIGRERING (DEL 6, 10.08): eldre saver kan ha uprisede varer (retailPrice 0
-      // fra den gamle «upriset ved oppstart»-regelen). Default er nå innkjøpspris —
-      // sett den på uprisede varer ved load, så de er priset (til null margin).
-      merged.products = (merged.products ?? []).map(p => p.retailPrice > 0 ? p : { ...p, retailPrice: p.costPrice })
+      // (4) AUTO-UTSTILL VED TOM DISK: har eleven en åpningsordre (openingOrderPlaced)
+      //     men en tom disk, still trau-varene med lager ut nå — samme regel som
+      //     PLACE_OPENING_ORDER. Heler saver plassert før auto-utstillingen. (Gates på
+      //     openingOrderPlaced så en bevisst tømt disk på et tomt/nytt spill ikke
+      //     «gjenoppstår»; en placed ordre SKAL ha varer framme.)
+      if (merged.openingOrderPlaced && merged.counterLayout.length === 0) {
+        const trauIds = getActiveIndustryDefinition().flater.lager.trau.map(t => t.id)
+        const trauVarer = merged.products.filter(p => p.trauVare !== false && p.stock > 0)
+        merged.counterLayout = trauVarer.slice(0, trauIds.length).map((p, i) => ({ trauId: trauIds[i], productId: p.id }))
+      }
       return merged
     }
 

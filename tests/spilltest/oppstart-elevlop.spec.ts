@@ -288,3 +288,91 @@ test('Mentor-onboarding er ikke stum på nytt spill (intro + bykart + bydel fyre
 
   process.stdout.write('\nMentor-onboarding: intro + bykart + bydel fyrer på nytt spill (ikke stum)\n')
 })
+
+// ─── DISK-DOM-VAKT: paletten VISER trau-varene (Espens kroker-funn, 10.08) ────
+// SKJERPET VAKT: elevløypa sjekket bare STATEN (counterLayout) — den var grønn
+// selv om disken sto tom i praksis («voktet feil dør»). Denne rendrer den
+// frontale disk-scenen (MonterScene) og krever at paletten faktisk viser minst
+// én trau-vare med lager (IKKE «Utsolgt», IKKE «Ingen varer ført ennå»). Fanger
+// render-nivå-brudd (f.eks. et utstillingsfilter som blanker mat-varer) som
+// state-asserts glipper. Dyplenke ?skip=1 seeder spillet så disk-scenen mountes
+// klientside (ingen reload som ville nullstilt til StartupScreen).
+test('Disk-DOM: paletten viser trau-varene med lager (ikke «Utsolgt»/tom disk)', async ({ page }) => {
+  await page.goto('/game?skip=1')
+  await ryddLocalStorage(page)
+  // Demp mentor-introen (z-600) så den ikke dekker disk-scenen.
+  await page.addInitScript(() => { try { localStorage.setItem('mentor_intro_v1', '1') } catch { /* */ } })
+  // Dyplenke rett til disk-scenen — ?skip seeder et spill (phase != startup).
+  await page.goto('/game/d/sentrum/l/sentrum-l2/disk?skip=1')
+  await ventState(page, s => s.phase !== 'startup', 'seedet spill (disk-dyplenke)')
+
+  // Lei + åpningsbestilling via broen (bekreft-overlayet lukkes når ordren plasseres).
+  await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45000, capacity: 120 })
+  await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [
+    { productId: 'coffee', qty: 10 }, { productId: 'croissant', qty: 10 }, { productId: 'kanelbolle', qty: 10 }, { productId: 'baguette', qty: 10 },
+  ] })
+  await ventState(page, s => s.openingOrderPlaced && s.counterLayout.length > 0, 'åpningsordre auto-stilt')
+
+  // Disk-paletten er montert og IKKE tom.
+  await expect(page.getByText('🧺 TRAU-VARER — dra opp i et trau for å stille ut'), 'disk-paletten montert').toBeVisible({ timeout: 12_000 })
+  await expect(page.getByText('Ingen varer ført ennå'), 'paletten er IKKE tom').toHaveCount(0)
+
+  // Minst én trau-vare viser lager («N stk») → IKKE «Utsolgt».
+  const s = await lesState(page)
+  const enMat = s.products.find(p => p.trauVare !== false && p.stock > 0)!
+  await expect(page.getByText(`${enMat.stock} stk`).first(), `trau-vare «${enMat.name}» viser lager, ikke «Utsolgt»`).toBeVisible()
+  // Drikke (kaffe) er IKKE en trau-vare og skal ikke stå i paletten/trauet.
+  expect(s.counterLayout.some(t => t.productId === 'coffee'), 'kaffe (drikke) ikke i trauet').toBe(false)
+  process.stdout.write(`\nDisk-DOM: paletten viser trau-varer med lager (f.eks. «${enMat.name}» ${enMat.stock} stk), disken er ikke tom\n`)
+})
+
+// ─── HYDRATE-VAKT: en gammel save med tom disk HELES ved «Fortsett» ────────────
+// Regresjonen Espen fant: en HYDRERT save kunne gi tom disk (alle trau tomme,
+// ingen mat utstilt) selv med varer på lager. En FERSK oppstart var alltid riktig
+// — feilen bodde i gjenopprettingen: (a) saver plassert før auto-utstillingen
+// (30.07) hadde counterLayout TOM og hydrate bygde den aldri opp, (b) eldre
+// produkter kunne mangle/ha stale `trauVare` → paletten feilklassifiserte. Denne
+// vakta SIMULERER en slik save (strip trauVare + tøm counterLayout) og krever at
+// HYDRATE_SAVE HELER: re-utleder trauVare fra katalogen OG auto-stiller trau-varene
+// med lager (drikke holdes ute).
+test('Hydrate heler tom disk: gammel save (uten trauVare + tom counterLayout) → auto-stilt', async ({ page }) => {
+  await page.goto('/game?skip=1')
+  await ryddLocalStorage(page)
+  await page.goto('/game?skip=1')
+  await ventState(page, s => s.phase !== 'startup', 'seedet spill')
+  await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45000, capacity: 120 })
+  await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [
+    { productId: 'coffee', qty: 10 }, { productId: 'croissant', qty: 10 }, { productId: 'kanelbolle', qty: 10 }, { productId: 'baguette', qty: 10 },
+  ] })
+  await ventState(page, s => s.openingOrderPlaced, 'ordre plassert')
+
+  // Bygg «gammel save»-blob: strip trauVare + tøm counterLayout. RETURNER strengen
+  // (ikke skriv nå — kjørende autosave ville klobbet den).
+  const blobStr = await page.evaluate(() => {
+    const st = JSON.parse(JSON.stringify(window.__GAME_STATE__)) as Record<string, unknown>
+    st.products = (st.products as Array<Record<string, unknown>>).map(p => { const { trauVare, ...rest } = p; void trauVare; return rest })
+    st.counterLayout = []
+    st.phase = 'exploring_city'
+    return JSON.stringify({ version: 1, savedAt: '1970-01-01T00:00:00.000Z', state: st })
+  })
+
+  // Drep siden, injiser save-blobben FØR JS kjører, hydrer via «Fortsett».
+  await page.goto('about:blank')
+  await page.addInitScript((b: string) => { try { localStorage.setItem('adventure_save_v1', b) } catch { /* */ } }, blobStr)
+  await page.goto('/game')
+  const fortsett = page.getByRole('button', { name: /Fortsett som/ })
+  await expect(fortsett, '«Fortsett» tilbys for den gamle saven').toBeVisible({ timeout: 15_000 })
+  await fortsett.click()
+  await ventState(page, s => s.phase !== 'startup', 'gammel save hydrert')
+
+  const s = await lesState(page)
+  // (1) trauVare re-utledet fra katalogen.
+  expect(s.products.find(p => p.id === 'coffee')?.trauVare, 'kaffe re-utledet til drikke (false)').toBe(false)
+  expect(s.products.find(p => p.id === 'croissant')?.trauVare, 'croissant re-utledet til mat (true)').toBe(true)
+  // (2) disken auto-stilt (ikke tom), drikke holdt ute.
+  expect(s.counterLayout.length, 'HYDRATE auto-stilte trau-varene (disken ikke tom)').toBeGreaterThan(0)
+  expect(s.counterLayout.some(t => t.productId === 'croissant'), 'croissant stilt ut på disken').toBe(true)
+  const drikkeIds = new Set(s.products.filter(p => p.trauVare === false).map(p => p.id))
+  expect(s.counterLayout.some(t => drikkeIds.has(t.productId)), 'ingen drikke i trauet').toBe(false)
+  process.stdout.write(`\nHydrate helet tom disk: ${s.counterLayout.length} trau-varer auto-stilt, trauVare re-utledet, drikke ute\n`)
+})

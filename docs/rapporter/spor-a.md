@@ -4069,3 +4069,64 @@ Reprodusert headless (fersk state vs «Start ny bedrift»):
    Espen påpeker nullmargin-varen.
 6. **Nytt spill ikke stumt (DEL 7):** spill litt (se introen), «Start ny bedrift» →
    introen skal komme IGJEN, og bykart-/bydel-tipsene skal dukke opp mens du navigerer.
+
+## REGRESJON — tom disk på hydrert save (kroker-fiks) — 2026-08-10
+
+### Symptom (Espens funn)
+Fersk oppstart: åpningsbestilling (10 stk av alt) lå på LAGER (Produkter-fanen viste
+10 stk / «Ferskt dag 1»), men disken sto TOM — alle trau tomme, paletten viste ikke
+mat-varene. Mistenkt: DEL 1 (drikke-filteret) og/eller DEL 6 (catalogToProduct).
+
+### Rotårsak (BEVISFØRT headless — ikke gjettet)
+Espens hypotese #1 (mat-varene mangler `trauVare`-feltet i katalogen) ble **motbevist
+for fersk oppstart**: `catalogItem(...)` gir hver mat-vare `trauVare: true`, og en
+FERSK åpningsbestilling er alltid riktig. Bevist ved to headless-reproer:
+- **Bro-dispatch, 10 av alt:** `counterLayout` = 12 mat-varer, alle produkter
+  `trauVare` korrekt, drikke ute.
+- **HELT ekte UI-løp** (wizard → leie → OpeningOrderOverlay med 10 i alle 22 felt →
+  bekreft): `counterLayout` = 12, mat stock 10, `trauVare: true`. **Ingen bug på fersk.**
+
+Regresjonen bodde i **`HYDRATE_SAVE` (gjenoppretting via «Fortsett»)**, bekreftet ved å
+injisere en «gammel save» FØR side-JS kjører (så den kjørende autosaven ikke klobbet
+den):
+- **(a) Tom counterLayout ble aldri bygd opp:** saver plassert før auto-utstillingen
+  (30.07-fiksen) hadde `counterLayout` tom. HYDRATE gjenopprettet den RÅTT → disken
+  forble tom selv med fullt lager. (Reprodusert: `counterLayout n=0` etter Fortsett.)
+- **(b) Produkter uten/med stale `trauVare`:** eldre produkter kunne mangle feltet.
+  Palett-filteret (`p.trauVare` truthy) klassifiserte dem da som «ikke trau-vare» →
+  paletten blanket ut mat-varene. Espens «default true»-regel (`!== false`) alene er
+  IKKE nok: en vare UTEN flagg er da udefinert drikke/mat, og `!== false` ville feilaktig
+  tatt med kaffe (drikke) i trauet.
+
+### Fiks
+`HYDRATE_SAVE` NORMALISERER nå mot katalogen (den ene sannheten) ved hver load:
+1. **Re-utleder `trauVare`** fra katalogen for alle produkter (`trauVareFraKatalog`) →
+   drikke=false, mat=true uansett hva som lå i saven.
+2. Beholder DEL 6-prising (upriset → innkjøpspris) og DEL 1-drikkefilteret på counterLayout.
+3. **Auto-utstiller ved tom disk:** har eleven en åpningsordre (`openingOrderPlaced`) men
+   tom `counterLayout`, stilles trau-varene med lager ut nå — samme regel som
+   `PLACE_OPENING_ORDER`. Gated på `openingOrderPlaced` så en bevisst tømt disk på et
+   tomt/nytt spill ikke «gjenoppstår»; en placed ordre SKAL ha varer framme.
+
+Render herdet: `MonterScene`-paletten filtrerer nå `p.trauVare !== false` (default-true,
+Espens regel) — robust mot et manglende flagg, og nå trygt fordi (1) sikrer at drikke
+alltid har `trauVare === false`.
+
+Verifisert: tre hydrate-varianter heles (gammel save uten flagg + tom disk; nyere save
+med flagg + tom disk; full disk røres ikke / ingen dobbelstilling).
+
+### Skjerpet elevløp-vakt (task 3 — «voktet feil dør»)
+Elevløypa sjekket bare STATEN (`counterLayout`), og var grønn selv når disken sto tom i
+praksis. To nye permanente vakter i `oppstart-elevlop.spec.ts`:
+- **Disk-DOM:** rendrer den frontale disk-scenen (MonterScene) via ?skip-dyplenke og
+  krever at paletten VISER minst én trau-vare med lager («N stk», IKKE «Utsolgt», IKKE
+  «Ingen varer ført ennå») — fanger render-nivå-brudd som state-asserts glipper. Drikke
+  er IKKE i trauet.
+- **Hydrate heler tom disk:** simulerer en gammel save (strip `trauVare` + tøm
+  counterLayout) og krever at HYDRATE re-utleder flagget OG auto-stiller trau-varene
+  (drikke ute).
+
+### Chrome-sjekkliste (tillegg)
+7. **Tom disk heles (kroker-fiks):** har du en gammel bedrift der disken sto tom med
+   varer på lager → «Fortsett»: trauene skal fylles automatisk med mat-varene (drikke
+   forblir på tavla), og paletten skal vise «N stk», ikke «Utsolgt».
