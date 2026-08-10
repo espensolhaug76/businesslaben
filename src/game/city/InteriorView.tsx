@@ -13,6 +13,7 @@ import { BALANCE } from '../data/balance'
 import './cityAnim.css'
 import { dagSeed } from '../data/backgroundSales'
 import { velgAmbientTurister } from '../data/reiseliv'
+import { klemVareSkala, advarVareSkalaKlemt } from './vareSkala'
 
 // BRANSJE-DEFINISJON: speil-trau + tavle-sonen leses fra den AKTIVE bransjens
 // IndustryDefinition. SPILLKLOKKE: kunden spawner IKKE lenger fra en lokal
@@ -539,7 +540,13 @@ export default function InteriorView({ districtId, lokaleId }: {
           const n = tileCount(product, m.mirrorsTrauId, density)
           const cols = Math.min(n, trauCols(m.mirrorsTrauId))
           const rows = Math.ceil(n / cols)
-          const itemScale = (product.displayScale ?? 1) * (entry?.sizeAdjust ?? 1) * (m.mirrorScale ?? 1)
+          // DEFENSIV RENDER-VAKT (DEL B): klem den per-vare skala-faktoren
+          // (displayScale × sizeAdjust) til kalibrert bånd — mirrorScale (2.25–2.8,
+          // bevisst forstørrelse) holdes UTENFOR. Speil-monteren klipper KUN bakkanten,
+          // så en ukalibrert faktor ville overflydd fritt opp/til siden (verst her).
+          const { faktor: vareFaktor, klemt: skalaKlemt } = klemVareSkala(product.displayScale, entry?.sizeAdjust)
+          if (skalaKlemt) advarVareSkalaKlemt('inne/InteriorView', product.id, { displayScale: product.displayScale, sizeAdjust: entry?.sizeAdjust, mirrorScale: m.mirrorScale, trauId: m.mirrorsTrauId, n })
+          const itemScale = vareFaktor * (m.mirrorScale ?? 1)
           const tiltX = m.mirrorTiltX ?? 0
           const tiltY = m.mirrorTiltY ?? 0
           return (

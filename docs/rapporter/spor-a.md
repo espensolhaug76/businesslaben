@@ -4130,3 +4130,107 @@ praksis. To nye permanente vakter i `oppstart-elevlop.spec.ts`:
 7. **Tom disk heles (kroker-fiks):** har du en gammel bedrift der disken sto tom med
    varer på lager → «Fortsett»: trauene skal fylles automatisk med mat-varene (drikke
    forblir på tavla), og paletten skal vise «N stk», ikke «Utsolgt».
+
+## FUNN A — «Gå til butikken» lå bak mentoren + mentor-sone-audit — 2026-08-10
+
+### Symptom (Espens funn)
+På en bydel uten elevens butikk (Stasjonsområdet) lå «🏪 Gå til butikken»-knappen
+(grønn pille) delvis BAK mentor-figuren i nedre høyre hjørne — synlig, men
+klikkflaten var dekket.
+
+### Rotårsak
+Knappen var `position: fixed; bottom: 30; right: 24; zIndex: 92` (GamePage) — RETT i
+mentorens faste hjørne (`Mentor.tsx`: `right:14 bottom:14`, figur 150×170 px, z-500).
+Lavere z-index + overlappende posisjon → knappen rendret under figuren.
+
+### Fiks
+Regel: **mentoren eier nedre høyre; interaktive elementer legges aldri der.** Knappen
+flyttet til nedre VENSTRE (`bottom:30 left:24`) — samme plass som scenenes øvrige
+primær-handlingsknapper. Klar av mentoren på alle skjermbredder. Bekreftet headless:
+knappens høyre kant (x+bredde = 201 px @ 1280) er godt til venstre for mentor-sonen
+(~1110 px), og knappen er faktisk klikkbar (navigerer til egen butikk).
+
+### Mentor-sone-audit (alle scener)
+Mentor-sonen = nedre høyre ~180×270 px (`right:14 bottom:14` + figur 150×170 + bok).
+Skannet alle `position:fixed`-elementer forankret nedre høyre / fullbredde-bunn:
+
+| Scene | Element | Anker (før) | I mentor-sonen? | Tiltak |
+|---|---|---|---|---|
+| Alle (GamePage) | «🏪 Gå til butikken» | `right:24 bottom:30` z92 | **JA — bak figuren** | Flyttet til `left:24 bottom:30` |
+| Disk (MonterScene) | Trau-varer-paletten (drabar, fullbredde) | `left:0 right:0 bottom:0` z85 | **Høyre ende ja** | `paddingRight:190px` reserverer sonen |
+| Interiør (InteriorView) | Åpne/steng + stell-disk | `bottom:30 left:24` z80 | Nei (venstre) | — |
+| Interiør/Front/Lobby | handlingslinje | `bottom:16 left:50%` z80 | Nei (senter) | — |
+| Bydel (DistrictView) | tilbake | `top:64 left:20` z80 | Nei (topp venstre) | — |
+| Dev-panel (⚙) | dev-verktøy | `bottom:20 left:20` z95 | Nei (venstre, kun ?dev) | — |
+| Dev-tracere (ZoneTracer/DevCoordHelper/Turistkontor) | tracer-paneler | `top:64 right:16` z300 | Nei (øvre høyre) | — |
+
+To elementer krysset sonen (knappen + disk-paletten) — begge fikset. Ingen andre
+interaktive elementer ligger i mentorens hjørne. Permanent vakt lagt til i
+`oppstart-elevlop.spec.ts` (knappen synlig + høyre kant klar av sonen + klikkbar).
+
+### Chrome-sjekkliste (tillegg)
+8. **Mentor-sonen (FUNN A):** stå i en bydel uten butikken din (f.eks. Stasjons-
+   området) → «🏪 Gå til butikken» skal ligge nede til VENSTRE, fullt synlig og
+   klikkbar, aldri bak Espen. På disken: den høyre trau-varen i paletten skal ikke
+   forsvinne bak figuren.
+
+## FUNN B — trau-varer i råstørrelse (ukalibrert skala) — 2026-08-10
+
+### Symptom (Espens funn)
+Midt i en økt (ansettelse, mye dashbord av/på, aktiv autosave) rendret først skole-
+brød, så surdeigsbrød i RÅSTØRRELSE (~kvart skjerm) i disk-/interiørscenen. Tilfeldig
+vare, gradvis (først én, senere en til).
+
+### Rotårsak — INNRINGET, men IKKE bevisført
+En undersøkelsesagent kjørte ~24 min headless (målte rendrede bbox-er mot viewport)
+med tidsboks. Konklusjon, ærlig:
+- **Mekanismen er BEVIST:** vare-størrelsen = `base × displayScale × sizeAdjust`
+  (MonterScene `TrauContents`, `src/game/city/MonterScene.tsx`) og
+  `displayScale × sizeAdjust × mirrorScale` (InteriorView speil-sti,
+  `src/game/city/InteriorView.tsx`) — og den var **UKLEMT**. Injisert `sizeAdjust ≈ 5`
+  gir nøyaktig «kvart skjerm» (målt 27 % av viewport); skala følger multiplikatoren
+  lineært uten øvre grense.
+- **Ledende hypotese motbevist:** tap av `displayScale` alene gjør IKKE varen
+  gigantisk (fallback 1.0 → ~10 %). `NaN`/streng/undefined kolapser heller ikke
+  `<img>` til råstørrelse (`width:NaN%` forkastes, boksen forblir liten).
+- **Ingen ren spillevei reproduserte blow-up-en:** alle reducer-muteringer bevarer
+  `displayScale` (spread), `sizeAdjust` skrives kun av slideren (bånd 0.5–1.5), og
+  autosave→serialisering→HYDRATE-runden er ren (12 sykluser med ansettelse + churn +
+  autosave: null drift). Rotårsak-hypotese (ubevist): ÉN `counterLayout.sizeAdjust`
+  (eller `displayScale`) havner utenfor bånd i Espens spesifikke, lang-levde save —
+  trolig en legacy/hånd-redigert `adventure_save_v1` — og den uklemte formelen blåser
+  den opp. Det gradvise «først én, så en til» passer per-trau-verdier som ryker
+  uavhengig.
+
+### Fiks (midlertidig, med loggfelle)
+Per avtale: siden rotårsaken ikke lot seg bevisføre innen tidsboksen, la vi inn en
+**defensiv render-vakt** (`src/game/city/vareSkala.ts`, brukt i BÅDE MonterScene og
+InteriorView): hver skala-komponent klemmes til sitt EGET kalibrerte bånd —
+`displayScale → [0.3, 1.1]`, `sizeAdjust → [0.5, 1.5]` (og NaN/negativ → trygg 1.0).
+Å klemme komponentene hver for seg (ikke bare produktet) gjør at ingen vare kan
+overstige sin egen kalibrerte maks — en lav-`displayScale` vare (croissant 0.55) blir
+aldri blåst opp til en høy varestørrelse. Strukturelle ledd (base/cols/mirrorScale)
+holdes utenfor (mirrorScale forstørrer speilet med hensikt).
+
+**LOGGFELLE:** når klemmen slår inn, logges `console.warn('[vareSkala] «<id>» …')`
+ÉN gang per vare med vare-id + kontekst (displayScale, sizeAdjust, trau, antall). Så
+NESTE gang feilen inntreffer i Espens nettleser, står rotårsaken svart på hvitt i
+konsollen — planen for endelig diagnose. Klemmen sikrer at det aldri blir råstørrelse
+i mellomtiden, uansett state.
+
+I tillegg: `HYDRATE_SAVE` re-utleder nå `displayScale`/`sprite`/`displayRotation` fra
+katalogen (som `trauVare`) — så en persistert dårlig visuell-skala ikke kan overleve
+«Fortsett». (Retter agentens flaggede asymmetri; katalogen er nå den ene sannheten
+for visuell skala ved load.)
+
+### Vakt
+Ny render-vakt i `oppstart-elevlop.spec.ts`: injiserer `sizeAdjust: 5` på et trau,
+rendrer disk-scenen, og krever at (a) den STØRSTE trau-vare-spriten holder seg innen
+båndet (målt 8.4 % av viewport, mot 27 % uten klemmen), og (b) loggfella
+(`console.warn`) fyrer med vare-id.
+
+### Chrome-sjekkliste (tillegg)
+9. **Ingen gigantvarer (FUNN B):** om en trau-vare noen gang rendres uvanlig stor —
+   ÅPNE konsollen: en `[vareSkala] «<vare-id>» … klemt`-linje forteller nøyaktig hvilken
+   vare + verdier som var utenfor bånd (send den til utvikler for endelig fiks).
+   Normal spilling skal ALDRI vise linja.

@@ -1,63 +1,63 @@
 # Spilltest — siste kjøring
 
 > Auto-generert av `npm run spilltest` (En full måned). Overskrives hver kjøring.
-> Startet: 2026-08-10T12:07:21.793Z
+> Startet: 2026-08-10T13:59:35.291Z
 
 **Resultat: ✅ GRØNT** — 51 PASS · 0 FAIL · 0 KJENT FEIL (51 steg)
 
 | # | Steg | Status | ms |
 |---|------|--------|----|
-| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 312 |
-| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 10782 |
-| 3 | Levering ved åpningsdagen: dashbord-bestilling FØR første åpning ligger FRISK på disken ved dag 1-åpning (ikke dag 2) | ✅ PASS | 883 |
-| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 238 |
-| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 10873 |
-| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5999 |
-| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 3856 |
-| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 14352 |
-| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 6348 |
-| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 4891 |
-| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 11330 |
-| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 3320 |
-| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 7159 |
-| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 4553 |
-| 15 | Reiseliv: turistsesong i kaféen er kun økonomisk (trafikkløft + varevekt, INGEN turist-scenarier i pool) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 19 |
-| 16 | Pakkebyggeren (treff == beregnPakke-fasit + kafé-trafikk) + reiselivs-inngangene (turistkontor/byhotell velger scenario + åpner dialogkort) | ✅ PASS | 14 |
-| 17 | Stasjons-hotspots (?dev=1): labels + tracer, ingen TIL LEIE/bransjevelger, tracer AV → turistkontor til rom-scenen, byhotell til hotell-lobbyen | ✅ PASS | 6338 |
-| 18 | Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen | ✅ PASS | 3814 |
-| 19 | Turistkontor-scene (?dev=1): kalibrerings-gjest DEKODER + rendrer ved disken, gjest-velger blar gjennom sprites | ✅ PASS | 3091 |
-| 20 | Priser-fanen (UI): elevsatt pris persisteres via «Lagre priser» og den prisede varen selges | ✅ PASS | 5390 |
-| 21 | Innboksen: bestilling levert (betaling==fasit), sviktet levering (skuffet kunde), dårlig leverandørtilbud (negativt netto) | ✅ PASS | 7541 |
-| 22 | Espen spør: riktig svar → kunnskapsbonus == fasit, egen P&L-linje, dagstak håndhevet | ✅ PASS | 79491 |
-| 23 | Espen spør: feil svar → penger uendret, forklaring, spørsmål i cooldown | ✅ PASS | 3701 |
-| 24 | Stamkunder PARKERT (STAMKUNDER_AKTIV=false) + trekkeregel: uspilt foretrekkes, nullstill ved tom pool | ✅ PASS | 8955 |
-| 25 | Nivåbryter: VG1 skjuler VG2-spørsmål + pristilbud-felt; VG2 viser dem | ✅ PASS | 13149 |
-| 26 | Fagfilter: M av → M-faner + mkf-tilbud (7d) borte, FD-faner igjen; ↺ Nullstill → tilbake | ✅ PASS | 104039 |
-| 27 | Fagbytte i ÅPEN skjult fane → rolig retur til Oversikt (ingen feil) | ✅ PASS | 4786 |
-| 28 | Espen spør lærerstyrt: av default → ingen auto; fagfilter fd/m (finnKandidater-fasit) | ✅ PASS | 5436 |
-| 29 | Turistsesong PARKERT: sesong kan ikke starte, ⚙-knapper grå, sesong-trigger armes ikke | ✅ PASS | 3409 |
-| 30 | Datavakt: dynamisk trigger fyrer IKKE på tomt grunnlag (beredskap_risiko_levert) | ✅ PASS | 2916 |
-| 31 | Fagmapping: Personale=FD+M, Forretningsplan=FD+M, Økonomi=ren FD, KS styrer ingen fane | ✅ PASS | 6755 |
-| 32 | Vareeksponering: bakgrunnssalg selger KUN utstilte varer; tom disk → 0 salg/tap; tapte-kort = sum av tre | ✅ PASS | 7466 |
-| 33 | Dagspuls: «siste salg»-logg ruller (maks 10, ikke tømt av tick uten salg) + leverings-toast venter på kundemøte | ✅ PASS | 8909 |
-| 34 | Kø: nullstilt ved OPEN_DAY (aldri gårsdagens tall) + ventende kunde betjenes innen toleransen (ikke tapt) | ✅ PASS | 4829 |
-| 35 | Scenario-tidsvindu: Morgenkunden (09–11) / Kryssalget (11–14) spawner innenfor vinduet (seedet) | ✅ PASS | 4065 |
-| 36 | Salgslogg: append gir ny id øverst UTEN å endre key på eksisterende linjer (ingen re-mount) | ✅ PASS | 3636 |
-| 37 | Mentor daglig-refleksjon: kø vinner (Personale synlig, også ren M) · FD+M av → 0 kø-tap + svinn vinner · nullstill re-armer | ✅ PASS | 10953 |
-| 38 | Bestillings-UX: «I bestilling»-total vises og akkumulerer ved to klikk | ✅ PASS | 9591 |
-| 39 | Lagre-kvittering (Priser): endring → «Ulagrede endringer» → lagre → «Sist lagret»; utkast bevart ved fanebytte | ✅ PASS | 7052 |
-| 40 | Scene-melding: scenebytte forkaster ulest scene-melding og re-armer triggeren | ✅ PASS | 2867 |
-| 41 | Tema-fag-gating (HMS-bug): beredskap aktiv + FD av → ingen tema-trigger; FD på → fyrer | ✅ PASS | 3606 |
-| 42 | Mentor-pose: pose-bytte endrer ikke figurens LAYOUTBOKS (computed style + rect) | ✅ PASS | 2218 |
-| 43 | KROK 7c Sentrumsposten (revidert+fiks): to publiseringstempo · badge+NYTT-merke tennes/slukkes · gjeldende kun forside / 3 eldre i arkiv · avis_swot (mulighet/trussel) maks 1/utgave · trend-effekt == fasit · datavakt · fag-gating · mentor | ✅ PASS | 18642 |
-| 44 | Prislagring rører KUN retailPrice (disk/vindu/lager urørt midt på dagen) — TILLITSKRITISK | ✅ PASS | 3989 |
-| 45 | Kontekstbundet mentor-tips: fane-tips ulest + fanebytte → forkastet + re-armet (tilbake ved retur) | ✅ PASS | 2858 |
-| 46 | Endre/angre bestilling før levering: bestill 130 → endre 30 (leveres 30, differanse refundert); bestill → 0 → ingen levering | ✅ PASS | 9334 |
-| 47 | Dagspuls «Lager på disken» viser ALLE utstilte varer (12 utstilt → 12 rader i DOM) | ✅ PASS | 3305 |
-| 48 | Produktregnskap i dagsoppgjøret: tabellsummer == totalkortene (svinn stk/kr + solgt stk) | ✅ PASS | 4316 |
-| 49 | Bransje-gated vindusutstilling: CAFE (vindusUtstilling=false) → ingen vindusseksjon/tracer, disk-eksponering i stedet | ✅ PASS | 4844 |
-| 50 | Planlegging koster ikke spilltid: dashbord åpent i åpen dag → dayMinute fryser + «tiden står»-indikator; lukk → tiden går | ✅ PASS | 11766 |
-| 51 | Mentor-figuren har stor klikkflate: hode/senter/føtter klikkbare (også med dagspuls); klikk åpner neste kø-melding; 📖 åpner ordboka (ikke meldingen) | ✅ PASS | 5336 |
+| 1 | Oppstart: /game?skip=1 laster, HUD viser startkapital + Januar År 1 | ✅ PASS | 267 |
+| 2 | Bestilling: Produkter-fanen, bestill 3 varer (ingen dup-linjer, beløp trukket) | ✅ PASS | 8345 |
+| 3 | Levering ved åpningsdagen: dashbord-bestilling FØR første åpning ligger FRISK på disken ved dag 1-åpning (ikke dag 2) | ✅ PASS | 749 |
+| 4 | Stell disken: legg varer i minst 2 trau, plassering i state | ✅ PASS | 218 |
+| 5 | Åpen dag: bakgrunnssalg tikker, kundemøte spilles, dagsoppgjør summerer | ✅ PASS | 8490 |
+| 6 | Forretningsplan → lån: plankvalitet > 0, lån opptatt, rente mot stjernenivå | ✅ PASS | 5945 |
+| 7 | Månedsrull: månedsoppgjør med LÅNEAVDRAG (== amortiserLaan-fasit) + faste kostnader | ✅ PASS | 3487 |
+| 8 | Tema på/av: beredskap aktiverer HMS-fanen; deaktivering fjerner den | ✅ PASS | 17062 |
+| 9 | Persistens: state.beredskap overlever reload | ✅ PASS | 5920 |
+| 10 | Navigasjonsvakt: hub-lenker i spill-UI skal ALDRI navigere spillfanen bort | ✅ PASS | 6159 |
+| 11 | Budsjett: sett budsjett, rull måneden, avvik == fasit + oppsummeringslinje | ✅ PASS | 13369 |
+| 12 | Kampanje: multiplikator + effektrapport == delt fasit + førpris-brudd → tilsynsbrev | ✅ PASS | 2921 |
+| 13 | Månedsskifte-levering: ordre siste handledag → ankommer dag 1 neste måned, trukket én gang | ✅ PASS | 7840 |
+| 14 | Prising: upriset vare → «mangler pris»-tap; overpriset HØY-vare (2×) selger ~0 → «for høy pris»-tap | ✅ PASS | 4948 |
+| 15 | Reiseliv: turistsesong i kaféen er kun økonomisk (trafikkløft + varevekt, INGEN turist-scenarier i pool) + byhotell-avtale gir riktig effekt ved aksept | ✅ PASS | 8 |
+| 16 | Pakkebyggeren (treff == beregnPakke-fasit + kafé-trafikk) + reiselivs-inngangene (turistkontor/byhotell velger scenario + åpner dialogkort) | ✅ PASS | 13 |
+| 17 | Stasjons-hotspots (?dev=1): labels + tracer, ingen TIL LEIE/bransjevelger, tracer AV → turistkontor til rom-scenen, byhotell til hotell-lobbyen | ✅ PASS | 6029 |
+| 18 | Hotell-lobby: booking med match → provisjon == fasit; feilmatch → ingen | ✅ PASS | 3709 |
+| 19 | Turistkontor-scene (?dev=1): kalibrerings-gjest DEKODER + rendrer ved disken, gjest-velger blar gjennom sprites | ✅ PASS | 2990 |
+| 20 | Priser-fanen (UI): elevsatt pris persisteres via «Lagre priser» og den prisede varen selges | ✅ PASS | 5956 |
+| 21 | Innboksen: bestilling levert (betaling==fasit), sviktet levering (skuffet kunde), dårlig leverandørtilbud (negativt netto) | ✅ PASS | 7264 |
+| 22 | Espen spør: riktig svar → kunnskapsbonus == fasit, egen P&L-linje, dagstak håndhevet | ✅ PASS | 78810 |
+| 23 | Espen spør: feil svar → penger uendret, forklaring, spørsmål i cooldown | ✅ PASS | 3610 |
+| 24 | Stamkunder PARKERT (STAMKUNDER_AKTIV=false) + trekkeregel: uspilt foretrekkes, nullstill ved tom pool | ✅ PASS | 8140 |
+| 25 | Nivåbryter: VG1 skjuler VG2-spørsmål + pristilbud-felt; VG2 viser dem | ✅ PASS | 13367 |
+| 26 | Fagfilter: M av → M-faner + mkf-tilbud (7d) borte, FD-faner igjen; ↺ Nullstill → tilbake | ✅ PASS | 101727 |
+| 27 | Fagbytte i ÅPEN skjult fane → rolig retur til Oversikt (ingen feil) | ✅ PASS | 4721 |
+| 28 | Espen spør lærerstyrt: av default → ingen auto; fagfilter fd/m (finnKandidater-fasit) | ✅ PASS | 4565 |
+| 29 | Turistsesong PARKERT: sesong kan ikke starte, ⚙-knapper grå, sesong-trigger armes ikke | ✅ PASS | 3278 |
+| 30 | Datavakt: dynamisk trigger fyrer IKKE på tomt grunnlag (beredskap_risiko_levert) | ✅ PASS | 2657 |
+| 31 | Fagmapping: Personale=FD+M, Forretningsplan=FD+M, Økonomi=ren FD, KS styrer ingen fane | ✅ PASS | 6709 |
+| 32 | Vareeksponering: bakgrunnssalg selger KUN utstilte varer; tom disk → 0 salg/tap; tapte-kort = sum av tre | ✅ PASS | 8103 |
+| 33 | Dagspuls: «siste salg»-logg ruller (maks 10, ikke tømt av tick uten salg) + leverings-toast venter på kundemøte | ✅ PASS | 8430 |
+| 34 | Kø: nullstilt ved OPEN_DAY (aldri gårsdagens tall) + ventende kunde betjenes innen toleransen (ikke tapt) | ✅ PASS | 4354 |
+| 35 | Scenario-tidsvindu: Morgenkunden (09–11) / Kryssalget (11–14) spawner innenfor vinduet (seedet) | ✅ PASS | 4397 |
+| 36 | Salgslogg: append gir ny id øverst UTEN å endre key på eksisterende linjer (ingen re-mount) | ✅ PASS | 3665 |
+| 37 | Mentor daglig-refleksjon: kø vinner (Personale synlig, også ren M) · FD+M av → 0 kø-tap + svinn vinner · nullstill re-armer | ✅ PASS | 12498 |
+| 38 | Bestillings-UX: «I bestilling»-total vises og akkumulerer ved to klikk | ✅ PASS | 13460 |
+| 39 | Lagre-kvittering (Priser): endring → «Ulagrede endringer» → lagre → «Sist lagret»; utkast bevart ved fanebytte | ✅ PASS | 12708 |
+| 40 | Scene-melding: scenebytte forkaster ulest scene-melding og re-armer triggeren | ✅ PASS | 3898 |
+| 41 | Tema-fag-gating (HMS-bug): beredskap aktiv + FD av → ingen tema-trigger; FD på → fyrer | ✅ PASS | 3657 |
+| 42 | Mentor-pose: pose-bytte endrer ikke figurens LAYOUTBOKS (computed style + rect) | ✅ PASS | 4263 |
+| 43 | KROK 7c Sentrumsposten (revidert+fiks): to publiseringstempo · badge+NYTT-merke tennes/slukkes · gjeldende kun forside / 3 eldre i arkiv · avis_swot (mulighet/trussel) maks 1/utgave · trend-effekt == fasit · datavakt · fag-gating · mentor | ✅ PASS | 18423 |
+| 44 | Prislagring rører KUN retailPrice (disk/vindu/lager urørt midt på dagen) — TILLITSKRITISK | ✅ PASS | 4435 |
+| 45 | Kontekstbundet mentor-tips: fane-tips ulest + fanebytte → forkastet + re-armet (tilbake ved retur) | ✅ PASS | 3243 |
+| 46 | Endre/angre bestilling før levering: bestill 130 → endre 30 (leveres 30, differanse refundert); bestill → 0 → ingen levering | ✅ PASS | 10238 |
+| 47 | Dagspuls «Lager på disken» viser ALLE utstilte varer (12 utstilt → 12 rader i DOM) | ✅ PASS | 4227 |
+| 48 | Produktregnskap i dagsoppgjøret: tabellsummer == totalkortene (svinn stk/kr + solgt stk) | ✅ PASS | 5296 |
+| 49 | Bransje-gated vindusutstilling: CAFE (vindusUtstilling=false) → ingen vindusseksjon/tracer, disk-eksponering i stedet | ✅ PASS | 4207 |
+| 50 | Planlegging koster ikke spilltid: dashbord åpent i åpen dag → dayMinute fryser + «tiden står»-indikator; lukk → tiden går | ✅ PASS | 11997 |
+| 51 | Mentor-figuren har stor klikkflate: hode/senter/føtter klikkbare (også med dagspuls); klikk åpner neste kø-melding; 📖 åpner ordboka (ikke meldingen) | ✅ PASS | 5500 |
 
 ## Detaljer per steg
 

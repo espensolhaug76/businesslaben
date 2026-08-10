@@ -576,9 +576,10 @@ function erDrikke(productId: string): boolean {
   return getActiveIndustryDefinition().katalog.find(c => c.id === productId)?.trauVare === false
 }
 
-/** Katalogens trauVare-flagg for en vare (én sannhet). Ukjent id ⇒ undefined. */
-function trauVareFraKatalog(productId: string): boolean | undefined {
-  return getActiveIndustryDefinition().katalog.find(c => c.id === productId)?.trauVare
+/** Katalog-oppslag for en vare (én sannhet for klassifisering + visuell skala).
+ *  Ukjent id ⇒ undefined. */
+function katalogVare(productId: string) {
+  return getActiveIndustryDefinition().katalog.find(c => c.id === productId)
 }
 
 // VARSLINGSSENTER (DEL 3): legg til et varsel i loggen. Dedup på id (samme
@@ -2657,13 +2658,22 @@ function reducer(state: GameState, action: Action): GameState {
       // KUN i gjenopprettingen. Vi normaliserer derfor mot katalogen (den ene
       // sannheten) ved hver load:
       //
-      // (1) Re-utled `trauVare` fra katalogen for alle produkter → drikke=false,
-      //     mat=true uansett hva som lå i saven. (2) DEL 6: upriset vare (retailPrice
-      //     0 fra den gamle regelen) prises til innkjøpspris.
+      // (1) Re-utled KLASSIFISERING + VISUELL SKALA fra katalogen (den ene sannheten)
+      //     for alle produkter: `trauVare` (drikke=false, mat=true) OG `displayScale`/
+      //     `sprite`/`displayRotation` (DEL B — kroker-fiks 10.08: eldre/hånd-redigerte
+      //     saver kunne mangle/ha stale visuell-skala → varen rendret ukalibrert. Med
+      //     katalogen som kilde ved load kan ikke en persistert dårlig displayScale
+      //     overleve «Fortsett»). (2) DEL 6: upriset vare prises til innkjøpspris.
       merged.products = (merged.products ?? []).map(p => {
-        const kat = trauVareFraKatalog(p.id)
-        const trauVare = kat !== undefined ? kat : p.trauVare
-        return { ...p, trauVare, retailPrice: p.retailPrice > 0 ? p.retailPrice : p.costPrice }
+        const kat = katalogVare(p.id)
+        return {
+          ...p,
+          trauVare: kat ? kat.trauVare : p.trauVare,
+          displayScale: kat ? kat.displayScale : p.displayScale,
+          displayRotation: kat ? kat.displayRotation : p.displayRotation,
+          sprite: kat ? kat.sprite : p.sprite,
+          retailPrice: p.retailPrice > 0 ? p.retailPrice : p.costPrice,
+        }
       })
       // (3) DEL 1: drikke hører aldri hjemme i trauet — fjern dem fra counterLayout.
       merged.counterLayout = (merged.counterLayout ?? []).filter(t => !erDrikke(t.productId))

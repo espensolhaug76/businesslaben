@@ -9,6 +9,7 @@ import { DAY_CONFIG } from '../data/dayConfig'
 import { BackButton } from './DistrictView'
 import { IS_DEV_COORDS } from './DevCoordHelper'
 import ZoneTracer, { type Rect, type Target, type DrawZone } from './ZoneTracer'
+import { klemVareSkala, advarVareSkalaKlemt } from './vareSkala'
 import type { Product, TrauDensity, TrauItem } from '../types'
 
 // ── MonterScene (FRONTAL MONTER — kunde-siden) ───────────────────────────────
@@ -459,11 +460,16 @@ export default function MonterScene({ districtId, lokaleId }: {
         )
       })()}
 
-      {/* PALETT — FØRTE trau-varer (bestilt i Produkter-fanen), drabare */}
+      {/* PALETT — FØRTE trau-varer (bestilt i Produkter-fanen), drabare.
+          MENTOR-SONE (10.08 — Espens audit): den fullbredde palettlinja strekker seg
+          inn under mentor-figurens faste hjørne (Mentor.tsx: right:14, figur 150 bred,
+          z-500). Uten margin ligger de høyre, DRABARE trau-varene BAK Espen. Reserverer
+          derfor ~190px til høyre (paddingRight) så ingen interaktiv vare hviler i
+          mentor-sonen. */}
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 85,
         background: 'rgba(10,14,26,0.92)', borderTop: '1px solid rgba(255,255,255,0.1)',
-        padding: '0.6rem 1rem', backdropFilter: 'blur(8px)',
+        padding: '0.6rem 190px 0.6rem 1rem', backdropFilter: 'blur(8px)',
       }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 6 }}>
           🧺 TRAU-VARER — dra opp i et trau for å stille ut
@@ -570,7 +576,12 @@ function TrauContents({ product, trauId, n, scale: sizeScale, sizeAdjust, skewAd
 }) {
   const cols = trauCols(trauId)
   const rows = Math.ceil(n / cols)
-  const tileW = (cols === 1 ? 82 : (100 / cols) * 1.05) * sizeScale * (product.displayScale ?? 1) * sizeAdjust
+  // DEFENSIV RENDER-VAKT (DEL B): klem den per-vare skala-faktoren til kalibrert
+  // bånd så en ukalibrert sizeAdjust/displayScale (legacy/korrupt save) ALDRI kan
+  // rendre varen i råstørrelse. base/cols/sizeScale er strukturelle → utenfor.
+  const { faktor: vareFaktor, klemt } = klemVareSkala(product.displayScale, sizeAdjust)
+  if (klemt) advarVareSkalaKlemt('disk/MonterScene', product.id, { displayScale: product.displayScale, sizeAdjust, sizeScale, trauId, n })
+  const tileW = (cols === 1 ? 82 : (100 / cols) * 1.05) * sizeScale * vareFaktor
   const baseRotation = product.displayRotation ?? 0
   const hue = productHue(product.id)
   const useSprite = product.sprite && !failedSprites.has(product.sprite)

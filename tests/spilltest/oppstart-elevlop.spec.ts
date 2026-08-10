@@ -376,3 +376,81 @@ test('Hydrate heler tom disk: gammel save (uten trauVare + tom counterLayout) �
   expect(s.counterLayout.some(t => drikkeIds.has(t.productId)), 'ingen drikke i trauet').toBe(false)
   process.stdout.write(`\nHydrate helet tom disk: ${s.counterLayout.length} trau-varer auto-stilt, trauVare re-utledet, drikke ute\n`)
 })
+
+// ─── MENTOR-SONE-VAKT: «Gå til butikken» klar av mentoren (Espens funn, 10.08) ─
+// Mentoren EIER nedre høyre hjørne (Mentor.tsx: right:14 bottom:14, figur 150×170,
+// z-500). «Gå til butikken»-knappen lå tidligere right:24 → BAK figuren, delvis
+// synlig og ikke klikkbar. Denne vakta rendrer en bydel uten elevens butikk og
+// krever at knappen (a) er synlig, (b) har høyre kant KLAR av mentor-sonen, og
+// (c) faktisk er klikkbar (navigerer) — ikke dekket av figuren.
+test('Mentor-sone: «Gå til butikken» ligger klar av mentorens hjørne + er klikkbar', async ({ page }) => {
+  await page.goto('/game?skip=1')
+  await ryddLocalStorage(page)
+  await page.addInitScript(() => { try { localStorage.setItem('mentor_intro_v1', '1') } catch { /* */ } })
+  // Seed spillet PÅ en bydel uten elevens butikk (stasjonsområdet) — der knappen vises.
+  await page.goto('/game/d/stasjonsomradet?skip=1')
+  await ventState(page, s => s.phase !== 'startup', 'seedet på bydel')
+  await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45000, capacity: 120 })
+  await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'coffee', qty: 10 }, { productId: 'croissant', qty: 10 }] })
+  await ventState(page, s => s.rentedLocationId === 'sentrum-l2' && s.openingOrderPlaced, 'leid + ordre (overlay lukket)')
+
+  const knapp = page.getByRole('button', { name: /Gå til butikken/ })
+  await expect(knapp, '«Gå til butikken» synlig i bydelsvisning').toBeVisible({ timeout: 12_000 })
+  const bb = (await knapp.boundingBox())!
+  const vw = page.viewportSize()!.width
+  // Mentor-sonen: figur 150 bred, right:14 → venstre kant ~ vw-164. Krev margin.
+  expect(bb.x + bb.width, 'knappens høyre kant er klar av mentor-sonen (nedre høyre)').toBeLessThan(vw - 170)
+  // Klikkbar (ikke dekket av figuren) → navigerer til egen butikk.
+  await knapp.click()
+  await page.waitForURL(/\/game\/d\/sentrum\/l\/sentrum-l2/, { timeout: 8_000 })
+  process.stdout.write('\nMentor-sone: «Gå til butikken» klar av hjørnet + klikkbar\n')
+})
+
+// ─── RENDER-VAKT (DEL B): ukalibrert sizeAdjust gir ALDRI råstørrelse ──────────
+// Espens funn: en trau-vare rendret plutselig i råstørrelse (~kvart skjerm) midt i
+// økta. Rotårsak innringet (en counterLayout-`sizeAdjust`/`displayScale` utenfor
+// bånd — trolig legacy/korrupt save), men ikke bevisført fra ren spilling. Fiks:
+// disk-/speil-rendringen KLEMMER den per-vare skala-faktoren til kalibrert bånd.
+// Denne vakta INJISERER en ukalibrert sizeAdjust (5×) på et trau og krever at (a)
+// den rendrede spriten holder seg innenfor båndet (ikke råstørrelse), og (b)
+// loggfella (console.warn) fyrer med vare-id — så en ekte forekomst blir synlig.
+test('Render-vakt: ukalibrert sizeAdjust klemmes — trau-vare rendres aldri i råstørrelse', async ({ page }) => {
+  const warnings: string[] = []
+  page.on('console', m => { if (m.type() === 'warning' && m.text().includes('[vareSkala]')) warnings.push(m.text()) })
+
+  await page.goto('/game?skip=1')
+  await ryddLocalStorage(page)
+  await page.addInitScript(() => { try { localStorage.setItem('mentor_intro_v1', '1') } catch { /* */ } })
+  await page.goto('/game/d/sentrum/l/sentrum-l2/disk?skip=1')
+  await ventState(page, s => s.phase !== 'startup', 'seedet på disk')
+  await dispatch(page, { type: 'RENT_LOCATION', id: 'sentrum-l2', zone: 'gagata', rent: 45000, capacity: 120 })
+  await dispatch(page, { type: 'PLACE_OPENING_ORDER', items: [{ productId: 'croissant', qty: 20 }, { productId: 'kanelbolle', qty: 20 }] })
+  await ventState(page, s => s.openingOrderPlaced && s.counterLayout.length > 0, 'ordre auto-stilt')
+
+  // INJISER en ukalibrert sizeAdjust (5×) på croissant-trauet (som en korrupt save
+  // ville hatt) via SET_COUNTER_LAYOUT.
+  await page.evaluate(() => {
+    const st = window.__GAME_STATE__!
+    const items = st.counterLayout.map(t => t.productId === 'croissant' ? { ...t, sizeAdjust: 5 } : t)
+    window.__GAME_DISPATCH__!({ type: 'SET_COUNTER_LAYOUT', items })
+  })
+  await ventState(page, s => s.counterLayout.some(t => t.productId === 'croissant' && (t as { sizeAdjust?: number }).sizeAdjust === 5), 'ukalibrert sizeAdjust satt')
+  await page.waitForTimeout(600)  // la disk-scenen re-rendre + sprites dekode
+
+  // Mål STØRSTE trau-vare-sprite mot viewport. Uten klemmen ville croissant nå
+  // ~kvart skjerm (agenten målte 27 % @ sizeAdjust 5). Med klemmen: godt under.
+  const maxFrac = await page.evaluate(() => {
+    const vw = window.innerWidth
+    const imgs = [...document.querySelectorAll('img[src*="/products/"]')] as HTMLImageElement[]
+    let max = 0
+    for (const im of imgs) { const w = im.getBoundingClientRect().width; if (w > max) max = w }
+    return max / vw
+  })
+  console.log('største trau-vare-sprite som andel av viewport:', maxFrac.toFixed(3))
+  // Kalibrert bånd: selv med sizeAdjust 5 skal spriten holde seg godt under kvart
+  // skjerm. Klemmen (faktor ≤ 1.6) gir ~8–9 %; sett en romslig, men avslørende grense.
+  expect(maxFrac, 'trau-vare-sprite holdes innenfor kalibrert bånd (ikke råstørrelse)').toBeLessThan(0.15)
+  // Loggfella fyrte med vare-id.
+  expect(warnings.some(w => w.includes('croissant')), 'loggfella (console.warn) fyrte for den klemte varen').toBe(true)
+  process.stdout.write(`\nRender-vakt: sizeAdjust 5 klemt → største sprite ${(maxFrac * 100).toFixed(1)} % av viewport; loggfella fyrte\n`)
+})

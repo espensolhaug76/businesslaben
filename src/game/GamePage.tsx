@@ -283,14 +283,18 @@ function GameContent() {
         />
       )}
 
-      {/* «Gå til butikken»-snarvei nederst til høyre når man leier og står ute i
-          byen. Dashbord åpnes KUN fra topp-knappen (💻 Dashbord i HUD) — den
-          gamle Dashbord-knappen her (bak mentoren) er fjernet, så mentoren står
-          fritt i hjørnet. */}
+      {/* «Gå til butikken»-snarvei når man leier og står ute i byen. Dashbord åpnes
+          KUN fra topp-knappen (💻 Dashbord i HUD). MENTOR-SONE (10.08 — Espens funn):
+          knappen lå tidligere nederst til HØYRE (right:24) — RETT i mentorens faste
+          hjørne (Mentor.tsx: right:14 bottom:14, figur 150×170, z-500) → den havnet
+          BAK Espen-figuren, delvis synlig og ikke klikkbar. Mentoren EIER nedre høyre;
+          interaktive elementer legges aldri der. Flyttet til nedre VENSTRE (samme
+          plass som scenenes øvrige primær-handlingsknapper, f.eks. InteriorView
+          «Åpne butikken») — klar av mentoren på alle skjermbredder. */}
       {state.rentedLocationId && !lokaleId && !simOpen && !dashboardOpen && !vacantInfo && (
         <div style={{
-          position: 'fixed', bottom: 30, right: 24, zIndex: 92,
-          display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end',
+          position: 'fixed', bottom: 30, left: 24, zIndex: 92,
+          display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start',
           fontFamily: "'Outfit', sans-serif",
         }}>
           <button onClick={() => gotoOwnStorefront()} style={pillStyle('linear-gradient(135deg, #0d9488, #0f766e)', 'rgba(14,165,141,0.4)')}>
