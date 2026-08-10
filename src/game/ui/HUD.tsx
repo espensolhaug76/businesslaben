@@ -12,10 +12,12 @@ function formatKr(n: number) {
   return n.toLocaleString('nb-NO') + ' kr'
 }
 
-export default function HUD({ onMaster, onOpenDashboard, onOpenAvis, planleggingPause }: { onMaster: boolean; onOpenDashboard: () => void; onOpenAvis: () => void; planleggingPause?: boolean }) {
+export default function HUD({ onMaster, onOpenDashboard, onOpenAvis, onOpenVarsler, planleggingPause }: { onMaster: boolean; onOpenDashboard: () => void; onOpenAvis: () => void; onOpenVarsler: () => void; planleggingPause?: boolean }) {
   const { state } = useGame()
   const { money, reputation, currentMonth, currentYear, companyName, industry,
-          unreadCount, level, xp, xpToNextLevel, rentedLocationId, shopOpen, dayNumber, meetingsToday, avisUlest } = state
+          level, xp, xpToNextLevel, rentedLocationId, shopOpen, dayNumber, meetingsToday, avisUlest, varsler } = state
+  // VARSLINGSSENTER (DEL 3): 🔔-badge = uleste varsler.
+  const varslerUlest = varsler.filter(v => !v.lest).length
 
   const meta = INDUSTRY_META[industry]
   const xpPct = Math.round((xp / xpToNextLevel) * 100)
@@ -120,15 +122,27 @@ export default function HUD({ onMaster, onOpenDashboard, onOpenAvis, planlegging
           </button>
         )}
 
-        {unreadCount > 0 && (
-          <div style={{ position: 'relative', cursor: 'pointer' }} title={`${unreadCount} uleste meldinger`}>
-            <span style={{ fontSize: 20 }}>🔔</span>
-            <span style={{
-              position: 'absolute', top: -4, right: -4,
-              background: '#ef4444', color: '#fff', borderRadius: 99,
-              fontSize: 10, fontWeight: 800, padding: '1px 5px', lineHeight: 1.4,
-            }}>{unreadCount}</span>
-          </div>
+        {rentedLocationId && (
+          <button
+            onClick={onOpenVarsler}
+            data-testid="varsler-knapp"
+            title={varslerUlest > 0 ? `Varsler — ${varslerUlest} uleste` : 'Varsler'}
+            aria-label={varslerUlest > 0 ? `Åpne varsler, ${varslerUlest} uleste` : 'Åpne varsler'}
+            style={{
+              position: 'relative', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 99, width: 30, height: 30, cursor: 'pointer', color: '#f1f5f9', fontSize: 16, lineHeight: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
+            }}
+          >
+            🔔
+            {varslerUlest > 0 && (
+              <span style={{
+                position: 'absolute', top: -5, right: -5,
+                background: '#ef4444', color: '#fff', borderRadius: 99,
+                fontSize: 10, fontWeight: 800, padding: '1px 5px', lineHeight: 1.4,
+              }}>{varslerUlest}</span>
+            )}
+          </button>
         )}
 
         <button

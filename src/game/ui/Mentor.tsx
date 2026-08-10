@@ -226,7 +226,7 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
   }
   // DEL 7 — prisingsmentorer (dag-/vare-scopede id-er).
   if (id.startsWith('mangler_pris_apning|')) {
-    return 'Du har varer i disken uten pris — dem får du ikke solgt før du prissetter dem i Priser-fanen. Bruk [[MKT_048|kalkylen]]: innkjøpspris + [[ECO_011|påslag]].'
+    return 'Du har varer framme uten pris — dem får du ikke solgt før du prissetter dem. Sett pris i 💻 Dashbord → Priser. Bruk [[MKT_048|kalkylen]]: innkjøpspris + [[ECO_011|påslag]].'
   }
   if (id.startsWith('mangler_pris_oppgjor|')) {
     const r = s.lastDayResult
@@ -319,6 +319,11 @@ function dynamiskMentorMelding(id: string, s: GameState): string | undefined {
 }
 
 /** Render en melding med [[GLOSSARY_ID|tekst]]-tokens som klikkbare <Fagord>. */
+/** Strip [[GLOSSARY|tekst]]/[[tekst]]-tokens til ren tekst (til varsel-loggen). */
+function stripTokens(s: string): string {
+  return s.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1').replace(/\[\[([^\]]*)\]\]/g, '$1')
+}
+
 function renderMelding(melding: string): ReactNode {
   const re = /\[\[([A-Z0-9_]+)\|([^\]]+)\]\]/g
   const parts: ReactNode[] = []
@@ -442,6 +447,21 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     }
   }, [aktiveTemaer, dashApnet, fire])
 
+  // VARSLINGSSENTER (DEL 3): logg TEMA-AKTIVERINGER (læreren åpner et tema). Første
+  // kjøring registrerer bare det som alt var på (varsler ikke det). Dedup på tema-id.
+  const temaVarselRef = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    const naa = new Set(Object.entries(aktiveTemaer).filter(([, v]) => v?.aktiv).map(([k]) => k))
+    if (temaVarselRef.current === null) { temaVarselRef.current = naa; return }
+    const NAVN: Record<string, string> = { beredskap: 'Beredskap & HMS', budsjett: 'Budsjett', nokkeltall: 'Nøkkeltall', kampanje: 'Kampanje', reiseliv: 'Reiseliv' }
+    for (const t of naa) {
+      if (!temaVarselRef.current.has(t)) {
+        dispatch({ type: 'ADD_VARSEL', varsel: { id: `tema|${t}`, ikon: '📚', tekst: `Nytt tema åpnet: ${NAVN[t] ?? t}`, dag: stateRef.current.dayNumber } })
+      }
+    }
+    temaVarselRef.current = naa
+  }, [aktiveTemaer, dispatch])
+
   // Scene-signaler (bykart/bydel/disk/vindu + rute-scener uten trigger) → scene-bytte
   // (forkast/re-arm) + ev. fyr scenens engangs-trigger. `scene` = gjeldende rute-scene,
   // `id` = ev. engangs-trigger for scenen.
@@ -528,6 +548,8 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     if (state.dayPhase === 'åpen') {
       const iExpo = new Set<string>([
         ...state.counterLayout.map(t => t.productId),
+        // DEL 1 (10.08): drikke er «framme» på tavla (uten trau) — teller også med.
+        ...state.products.filter(p => p.trauVare === false).map(p => p.id),
         // DESIGNENDRING (28.07): vindu-eksponering kun for bransjer med vindusutstilling.
         ...(getIndustryDefinitionFor(state.industry)?.vindusUtstilling
           ? state.windowDisplayLayout.filter(w => w.fixtureId === 'vindu').map(w => w.productId) : []),
@@ -655,6 +677,15 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   const faneMeldingTekst = (id: string) => id.startsWith('prisstrategi_gjentak|') ? mentorMelding('prisstrategi_gjentak') : mentorMelding(id)
   const faneMelding = (faneMsg && !ordbokOpen && !blocked && !hasQueued && !quizVises) ? faneMeldingTekst(faneMsg) : null
   const melding = eventMelding ?? faneMelding     // én boble; hendelse har forrang
+
+  // VARSLINGSSENTER (DEL 3): logg en mentor-melding i 🔔-loggen når den FAKTISK
+  // vises. Dedup på trigger-id i reduceren, så samme melding logges bare én gang.
+  useEffect(() => {
+    if (!eventId || !eventMelding) return
+    const s = stateRef.current
+    dispatch({ type: 'ADD_VARSEL', varsel: { id: `mentor|${eventId}`, ikon: '💬', tekst: stripTokens(eventMelding).slice(0, 100), dag: s.dayNumber, minutt: s.dayMinute, maal: 'mentor' } })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
 
   // VENTER: meldinger/quiz står i kø men ingen boble vises ⇒ figuren PEKER +
   // «N»-badge; neste vises når eleven klikker figuren.

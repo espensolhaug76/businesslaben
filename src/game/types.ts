@@ -477,6 +477,9 @@ export interface DayResult {
     svinnStk: number; svinnKr: number
     tapteStk: number
     utstiltVedStenging: number
+    /** DEL 5 (10.08): elevens pris + innkjøpspris per vare — så mentor-refleksjonen
+     *  kan navngi en nullmargin-vare med elevens EGNE tall («kjøpt for X, solgt for X»). */
+    costPrice: number; retailPrice: number
   }[]
   /** ORGANISASJONSDESIGN: ÉN diskret refleksjonslinje (spørsmål, aldri fasit)
    *  når en org-regel slår ut ved stenging. Null = ingen regel slo ut. */
@@ -576,6 +579,17 @@ export interface MonthSettlement {
 }
 
 // ── Game state ───────────────────────────────────────────────────────────────
+
+/** VARSLINGSSENTER (DEL 3): én hendelse i 🔔-loggen. */
+export interface Varsel {
+  id: string          // unik (dedup + React-key), f.eks. `levering|dag3`
+  ikon: string        // emoji
+  tekst: string
+  dag: number         // spilldag da hendelsen skjedde
+  minutt?: number     // dayMinute (klokkeslett) — valgfritt
+  maal?: 'innboks' | 'avis' | 'mentor'   // navigasjonsmål ved klikk (der det finnes)
+  lest: boolean
+}
 
 export interface GameState {
   /** Speil av lærerens fagaktivering (fd/m/ks) fra context — så reduceren kan
@@ -813,6 +827,13 @@ export interface GameState {
    *  daglige mentor-triggeren. Overlever at lastDayResult nullstilles ved dagsbytte.
    *  `dag` = «år-måned-dag» (per-dag re-arm). Null når dagen ikke ga noe å si. */
   mentorDagligHint: { dag: string; signal: string; melding: string } | null
+
+  /** VARSLINGSSENTER (DEL 3, 10.08) — samlet logg over hendelser (nyeste sist i
+   *  listen; overlayet snur til nyeste øverst). Kilder: mentor-meldinger,
+   *  leveringer, avis-utgaver, innboks-ankomster, tema-aktiveringer. Persistert i
+   *  saven. Taket håndheves i reduceren (siste N). `lest` nullstilles når senteret
+   *  lukkes. `maal` gir navigasjon der det finnes et mål. */
+  varsler: Varsel[]
 
   // ── TEMA 8 Kampanje og markedsplan (kun i bruk når temaet er aktivt) ──
   /** Aktiv kampanje + effektrapport-historikk. Persistert. */

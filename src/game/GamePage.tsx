@@ -13,6 +13,7 @@ import KampanjeRapportOverlay from './ui/KampanjeRapportOverlay'
 import DagspulsOverlay from './ui/DagspulsOverlay'
 import OpeningOrderOverlay from './ui/OpeningOrderOverlay'
 import AvisOverlay from './ui/AvisOverlay'
+import VarslerOverlay from './ui/VarslerOverlay'
 import Mentor from './ui/Mentor'
 import { BALANCE } from './data/balance'
 
@@ -91,6 +92,7 @@ function GameContent() {
   // KROK 7c — Sentrumsposten: åpnes fra 📰-ikonet i HUD-en. Lukking nullstiller
   // ulest-badgen (CLEAR_AVIS_ULEST).
   const [avisOpen, setAvisOpen] = useState(false)
+  const [varslerOpen, setVarslerOpen] = useState(false)   // DEL 3 — 🔔 varslingssenter
   const [vacantInfo, setVacantInfo] = useState<VacantInfo | null>(null)
   const [tutorialDismissed, setTutorialDismissed] = useState(false)
   // Salgssituasjon-overlay (DEL 4: midlertidig dev-inngang via CustomEvent fra
@@ -267,6 +269,7 @@ function GameContent() {
         planleggingPause={planleggingPause}
         onOpenDashboard={() => { setDashboardTab('oversikt'); setDashboardOpen(true); setOverlay(true) }}
         onOpenAvis={() => { setAvisOpen(true); setOverlay(true) }}
+        onOpenVarsler={() => { setVarslerOpen(true); setOverlay(true) }}
       />
 
       {/* KROK 4 — Game feel: lyd-observatør (rendrer ingenting) */}
@@ -340,6 +343,18 @@ function GameContent() {
       {/* KROK 7c — SENTRUMSPOSTEN: bla-bart avisoverlay åpnet fra 📰-ikonet i
           HUD-en. Leser state.avisArkiv (gjeldende utgave + arkiv). */}
       <AvisOverlay open={avisOpen} onClose={closeAvis} />
+
+      {/* DEL 3 — VARSLINGSSENTER (🔔). Lukking markerer alle varsler som lest.
+          Rad-klikk navigerer til innboks/avis/mentor der det finnes et mål. */}
+      <VarslerOverlay
+        open={varslerOpen}
+        onClose={() => { setVarslerOpen(false); setOverlay(dashboardOpen); dispatch({ type: 'MARK_VARSLER_LEST' }) }}
+        onNavigate={maal => {
+          if (maal === 'avis') { setAvisOpen(true); setOverlay(true) }
+          else if (maal === 'innboks') { setDashboardTab('innboks'); setDashboardOpen(true); setOverlay(true) }
+          // 'mentor' — Espen står alltid i hjørnet; lukking av senteret er nok.
+        }}
+      />
 
       {vacantInfo && (
         <RentPanel

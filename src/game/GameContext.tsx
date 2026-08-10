@@ -8,7 +8,7 @@ import { type FagKode, type FagAktivering, FAG_DEFAULT, normaliserFag } from './
 import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
-  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement, DayBackground,
+  GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement, DayBackground, Varsel,
   EmployeeRole, Shift, TickerLinje,
 } from './types'
 import { EMPTY_CANVAS } from './types'
@@ -261,6 +261,7 @@ const initialState: GameState = {
   nokkeltall: {},
   budsjettOppgjorHint: null,
   mentorDagligHint: null,
+  varsler: [],
   kampanje: { aktiv: null, historikk: [], visRapportFor: null },
   prisendretDag: {},
   mkfBoost: null,
@@ -403,6 +404,9 @@ type Action =
   | { type: 'DEV_SPOL_KAMPANJE' }   // ?dev=1: spol aktiv kampanje til slutt
   // KROK 7c — Sentrumsposten.
   | { type: 'CLEAR_AVIS_ULEST' }    // 📰-overlay lukket → nullstill ulest-badgen
+  // VARSLINGSSENTER (DEL 3): legg til et varsel (dedup på id) / marker alle lest.
+  | { type: 'ADD_VARSEL'; varsel: Omit<Varsel, 'lest'> }
+  | { type: 'MARK_VARSLER_LEST' }
   | { type: 'DEV_GENERER_AVIS' }    // ?dev=1: generer ukens utgave nå
   | { type: 'DEV_UTLOS_AVIS_EFFEKT' } // ?dev=1: aktiver en seedet trend-effekt straks
   // TEMA 15 Reiseliv — turistsesong + reiselivsavtaler.
@@ -570,6 +574,14 @@ function utstilteProduktIds(state: GameState): Set<string> {
 /** Er varen en drikke (aktiveres via tavla, aldri i trauet)? Katalog-oppslag. */
 function erDrikke(productId: string): boolean {
   return getActiveIndustryDefinition().katalog.find(c => c.id === productId)?.trauVare === false
+}
+
+// VARSLINGSSENTER (DEL 3): legg til et varsel i loggen. Dedup på id (samme
+// hendelse legges aldri to ganger), og hold på de siste VARSEL_TAK (nyeste sist).
+const VARSEL_TAK = 30
+function leggTilVarsel(varsler: Varsel[], v: Omit<Varsel, 'lest'>): Varsel[] {
+  if (varsler.some(x => x.id === v.id)) return varsler
+  return [...varsler, { ...v, lest: false }].slice(-VARSEL_TAK)
 }
 
 // ─── Reducer ────────────────────────────────────────────────────────────────
@@ -1944,6 +1956,7 @@ function reducer(state: GameState, action: Action): GameState {
       const stillPending = state.incomingOrders.filter(o => o.ankomstDag > state.dayNumber)
       let products = state.products
       let lastDelivery = state.lastDelivery
+      let varslerOpen = state.varsler
       if (arrived.length > 0) {
         const addByProduct = new Map<string, number>()
         for (const o of arrived) addByProduct.set(o.productId, (addByProduct.get(o.productId) ?? 0) + o.qty)
@@ -1951,6 +1964,9 @@ function reducer(state: GameState, action: Action): GameState {
         const lines: DeliveryNote['lines'] = []
         for (const [productId, qty] of addByProduct) lines.push({ name: state.products.find(p => p.id === productId)?.name ?? productId, qty })
         lastDelivery = { dayNumber: state.dayNumber, lines }   // «📦 Varer ankommet»-banneret
+        // VARSLINGSSENTER (DEL 3): logg leveringen.
+        const sum = lines.reduce((a, l) => a + l.qty, 0)
+        varslerOpen = leggTilVarsel(state.varsler, { id: `levering|${state.dayNumber}`, ikon: '📦', tekst: `Varer levert: ${sum} stk (${lines.map(l => l.name).slice(0, 3).join(', ')})`, dag: state.dayNumber })
       }
 
       // BAKGRUNNSSALG (snapshot ved OPEN_DAY): dagens passive kundestrøm
@@ -2045,6 +2061,7 @@ function reducer(state: GameState, action: Action): GameState {
         products,
         incomingOrders: stillPending,
         lastDelivery,
+        varsler: varslerOpen,
         shopOpen: true,
         dayPhase: 'åpen',
         meetingsToday: 0,
@@ -2266,6 +2283,8 @@ function reducer(state: GameState, action: Action): GameState {
           svinnKr: Math.round(p.svinnStk * (vare?.costPrice ?? 0)),    // eksakt (stk × innkjøpspris)
           tapteStk: p.tapteSalgStk,
           utstiltVedStenging: utstilteIdsClose.has(id) ? (vare?.stock ?? 0) : 0,
+          costPrice: vare?.costPrice ?? 0,       // DEL 5 — elevens tall til nullmargin-refleksjonen
+          retailPrice: vare?.retailPrice ?? 0,
         }
       })
         .filter(r => r.solgtStk > 0 || r.svinnStk > 0 || r.tapteStk > 0 || r.utstiltVedStenging > 0)
@@ -2528,12 +2547,27 @@ function reducer(state: GameState, action: Action): GameState {
         budsjettOppgjorHint = (storstAvvik || dekningsgradAvvik) ? { storstAvvik, dekningsgradAvvik } : null
       }
 
+      // VARSLINGSSENTER (DEL 3): logg dagstart-hendelsene (levering / avis / innboks).
+      const dagId = `${newYear}-${newMonth}-${newDayNumber}`
+      let varslerNy = state.varsler
+      if (deliveryLines.length > 0) {
+        const sumLev = deliveryLines.reduce((a, l) => a + l.qty, 0)
+        varslerNy = leggTilVarsel(varslerNy, { id: `levering|${dagId}`, ikon: '📦', tekst: `Varer levert: ${sumLev} stk (${deliveryLines.map(l => l.name).slice(0, 3).join(', ')})`, dag: newDayNumber })
+      }
+      if (avisUlest > state.avisUlest) {
+        varslerNy = leggTilVarsel(varslerNy, { id: `avis|${dagId}`, ikon: '📰', tekst: 'Ny utgave av Sentrumsposten', dag: newDayNumber, maal: 'avis' })
+      }
+      if (nyeEposter.length > 0) {
+        varslerNy = leggTilVarsel(varslerNy, { id: `epost|${dagId}`, ikon: '✉️', tekst: `${nyeEposter.length} ny${nyeEposter.length > 1 ? 'e' : ''} e-post i innboksen`, dag: newDayNumber, maal: 'innboks' })
+      }
+
       return {
         ...state,
         money,
         loans,
         monthlyLoanPayment,
         totalDebt,
+        varsler: varslerNy,
         // LEVERING VED DAGSTART: lager fylt + «Ferske varer klare»-pille (eller
         // null hvis ingenting ankom denne morgenen).
         products: deliveredProducts,
@@ -2594,6 +2628,14 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'RESET':
       return initialState
+
+    case 'ADD_VARSEL':
+      return { ...state, varsler: leggTilVarsel(state.varsler, action.varsel) }
+
+    case 'MARK_VARSLER_LEST':
+      return state.varsler.some(v => !v.lest)
+        ? { ...state, varsler: state.varsler.map(v => v.lest ? v : { ...v, lest: true }) }
+        : state
 
     case 'HYDRATE_SAVE': {
       // Gjenopprett en lagret spilltilstand. Shallow-merge over initialState så
