@@ -4289,3 +4289,42 @@ uklemt) OG at loggfella fyrer for speil-varen.
     ingen vare i glassmontrene skal fylle kvart skjerm eller flyte ut over knappene.
     Ser du en `[vareSkala] «…(speil)»`-linje i konsollen: send verdiene — da bør
     sonens `mirrorScale` re-kalibreres for den varestørrelsen.
+
+## FUNN B RUNDE 4 (siste) — kap SPEIL-sluttbredden, ikke itemScale — 2026-08-10
+
+### Espens presisering + bilde
+`/disk` (elevens egen stell) har ALDRI vært problemet og skal IKKE røres — der styrer
+eleven størrelse/rotasjon selv, og den er riktig. Problemet er UTELUKKENDE speilingen av
+diskvarene inn i «bak disken»/interiør (`/inne`). Runde-3-taket (`itemScale ≤ 1.6`) var
+utilstrekkelig: rendret bredde = sonebredde × (1/cols) × itemScale, så en BRED sone
+(speil-1 ↔ trau-18, 17.3 %) ga 17.3 × 1.6 = **~27 %** — fortsatt digert (bekreftet på
+fersk 961169b, topphylla). 
+
+### Fiks — KUN i speilstien (InteriorView mirror)
+`klemSpeilSkala` kapper nå den RENDREDE SLUTTBREDDEN per speilet vare til
+`BALANCE.speilMaksViewportAndel` (**0.08** = 8 % av viewport), utledet fra
+sonegeometrien: maks itemScale = maksAndel / ((sonebredde/100)/cols). Brede soner får
+dermed AUTOMATISK lavere effektiv skala; alle speilvarer havner under samme visuelle
+tak uansett sonebredde/mirrorScale/displayScale. Loggfella (`[vareSkala] …(speil)`)
+logger sone-id + `andelFør`/`andelEtter` når kappingen slår inn.
+- **Dev-slider (`?dev=1` → 🪞 Speil-kalibrering):** «maks vare-bredde (alle speil)» —
+  Espen finpusser visuelt og leser av verdien i konsollen for å låse den i
+  `balance.ts`. Global (gjelder alle speil-soner).
+- **`/disk` er URØRT:** `MonterScene`-stien er ikke endret i runde 4 — `klemSpeilSkala`
+  brukes kun i `InteriorView`-speilet.
+
+### Verifisert headless (poppe-lignende oppsett)
+Fylte ALLE speil-soner inkl. den brede toppsonen (trau-18 ↔ speil-1). Målt i `/inne`:
+27 varesprites, største **8.3 %** av viewport (mot ~27 % uklemt) — alle under taket.
+`/disk`: samme grovbrød rendres på **10.4 %** (sin normale trau-størrelse — STØRRE enn
+speil-taket, som beviser at kappingen IKKE lekker inn i disken). Loggfella fyrte.
+
+### Vakt
+Render-vakten (`oppstart-elevlop.spec.ts`) fyller alle speil-soner, krever at HVER
+speilvare ≤ taket i `/inne` OG at `/disk`-grovbrød rendres i normal (uklemt) størrelse.
+
+### Chrome-sjekkliste (tillegg)
+11. **Speil-tak (FUNN B r4):** `/inne` — ingen vare i montrene (heller ikke øverste
+    hylle) skal være unormalt stor. Vil du justere: `?dev=1` → 🪞 Speil-kalibrering →
+    «maks vare-bredde (alle speil)»-slideren; verdien logges — lås den i
+    `BALANCE.speilMaksViewportAndel`. `/disk` skal se nøyaktig ut som før.

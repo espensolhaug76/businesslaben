@@ -28,14 +28,14 @@ export const SIZE_ADJUST_MIN = 0.5
 export const SIZE_ADJUST_MAKS = 1.5
 
 // SPEIL-/MONTRE-STIEN (InteriorView) forstørrer i tillegg med sonens `mirrorScale`
-// (2.25–2.8, dev-kalibrert) — den er UTENFOR per-vare-klemmen over. Men mirrorScale ×
-// en full-displayScale vare (grovbrød 1.0) gir itemScale ≈ 2.75 → varen fyller ~kvart
-// skjerm og flyter UT av montren (montren klipper kun bakkanten) og legger seg over
-// UI-knappene (FUNN B runde 3, målt 24 % av viewport). En KJENT-GOD montre-refleksjon
-// (croissant 0.55 × mirrorScale 2.8 ≈ 1.54, målt ~11 %, ser riktig ut) gir taket:
-// den ENDELIGE itemScale klemmes til litt over det. Defensivt sikkerhetstak — Espen
-// kan re-kalibrere mirrorScale via ?dev=1 om full-store varer skal se annerledes ut.
-export const MIRROR_ITEMSCALE_MAKS = 1.6
+// (2.25–2.8, dev-kalibrert) — den er UTENFOR per-vare-klemmen over. Et itemScale-tak
+// alene (runde 3) fanget IKKE brede soner: den rendrede bredden = sonebredde × (1/cols)
+// × itemScale, så en 17 %-sone (speil-1) ga ~27 % av viewport selv ved itemScale 1.6.
+// RUNDE 4-fiks: kap den rendrede SLUTTBREDDEN per speilet vare til en andel av
+// viewport (BALANCE.speilMaksViewportAndel ~8 %). Vi utleder maks itemScale FRA
+// sonegeometrien, så brede soner automatisk får lavere effektiv skala og alle speil-
+// varer holder seg innenfor samme visuelle tak. KUN speilstien påvirkes — /disk røres
+// aldri (elevens egen stell er riktig).
 
 /** Klem `displayScale` og `sizeAdjust` til hvert sitt kalibrerte bånd og returner
  *  den samlede per-vare faktoren. `undefined` ⇒ nøytral 1.0 (legitim fallback, ingen
@@ -57,16 +57,30 @@ export function klemVareSkala(displayScale: number | undefined, sizeAdjust: numb
   return { faktor: ds * sa, klemt }
 }
 
-/** Speil-/montre-stien: klem den ENDELIGE itemScale (per-vare-faktor × mirrorScale)
- *  til `MIRROR_ITEMSCALE_MAKS` så en vare aldri flyter ut av montren i råstørrelse,
- *  UANSETT displayScale/sizeAdjust/mirrorScale i state. `klemt` er true hvis enten
- *  per-vare-komponenten ELLER det endelige taket slo inn. */
-export function klemSpeilSkala(displayScale: number | undefined, sizeAdjust: number | undefined, mirrorScale: number | undefined): { itemScale: number; klemt: boolean } {
+/** Speil-/montre-stien: kap den RENDREDE SLUTTBREDDEN per speilet vare til
+ *  `maksAndel` av viewport-bredden, utledet fra sonegeometrien. Rendret bredde-andel
+ *  = (soneBreddeProsent/100) × (1/cols) × itemScale, der itemScale = per-vare-faktor ×
+ *  mirrorScale. Vi løser ut maks itemScale som holder andelen ≤ maksAndel, så brede
+ *  soner automatisk får lavere effektiv skala. Returnerer andel FØR/ETTER for
+ *  loggfella. `klemt` = true hvis per-vare-komponenten ELLER sluttbredde-taket slo inn. */
+export function klemSpeilSkala(
+  displayScale: number | undefined,
+  sizeAdjust: number | undefined,
+  mirrorScale: number | undefined,
+  soneBreddeProsent: number,
+  cols: number,
+  maksAndel: number,
+): { itemScale: number; andelFor: number; andelEtter: number; klemt: boolean } {
   const { faktor, klemt: vareKlemt } = klemVareSkala(displayScale, sizeAdjust)
   const ms = Number.isFinite(mirrorScale) && (mirrorScale as number) > 0 ? (mirrorScale as number) : 1
-  const rå = faktor * ms
-  const itemScale = Math.min(MIRROR_ITEMSCALE_MAKS, rå)
-  return { itemScale, klemt: vareKlemt || itemScale !== rå }
+  const råItemScale = faktor * ms
+  // Andel av viewport-bredden én flis (før scale) utgjør.
+  const flisAndel = (Number.isFinite(soneBreddeProsent) && soneBreddeProsent > 0 ? soneBreddeProsent : 0) / 100 / Math.max(1, cols)
+  const andelFor = flisAndel * råItemScale
+  const maksItemScale = flisAndel > 0 ? maksAndel / flisAndel : råItemScale
+  const itemScale = Math.min(råItemScale, maksItemScale)
+  const andelEtter = flisAndel * itemScale
+  return { itemScale, andelFor, andelEtter, klemt: vareKlemt || itemScale < råItemScale }
 }
 
 const advart = new Set<string>()

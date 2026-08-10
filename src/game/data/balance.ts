@@ -257,6 +257,15 @@ export const BALANCE = {
     tynnBruttomarginPst: 25,
   },
 
+  /** SPEILING AV DISKVARER inn i «bak disken»-/interiørvisningen (/inne). Speil-
+   *  sonene arver counterLayout-varene og forstørrer med sonens `mirrorScale`. FUNN B
+   *  (10.08): brede soner (speil-1 ~17 %) ga digre varer selv med klemt itemScale.
+   *  `speilMaksViewportAndel` = maks RENDRET bredde per speilet vare som andel av
+   *  viewport-bredden. Brede soner får da automatisk lavere effektiv skala. KUN
+   *  speilstien påvirkes — /disk (elevens egen stell) røres ikke. Tunbart via
+   *  ?dev=1-speilkalibreringen (slider) — lås verdien her. */
+  speilMaksViewportAndel: 0.08,
+
   /** KROK 7 — DEN LEVENDE INNBOKSEN (docs/ENGASJEMENT.md). Seedet e-post-motor:
    *  taket (VG1 skal ikke drukne), sannsynlighetsvekter for dagsantall, andeler
    *  villedende/overprisede tilbud, og mkf-boostens styrke. ALT tunbart her. */

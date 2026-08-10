@@ -201,6 +201,9 @@ export default function InteriorView({ districtId, lokaleId }: {
   // perspektiv), så én universal verdi for alle så rart ut. Samme
   // mutér-kjørende-objekt-og-logg-mønster som resten av dev-verktøyene.
   const [calMirrorId, setCalMirrorId] = useState('speil-1')
+  // FUNN B runde 4: maks rendret bredde per speilet vare (andel av viewport). Dev-
+  // slider for live-finpuss; start fra BALANCE, lås verdien der. Påvirker KUN speilet.
+  const [speilMaksAndel, setSpeilMaksAndel] = useState(BALANCE.speilMaksViewportAndel)
   function setMirrorScale(m: InteriorMirrorTrau, v: number) {
     m.mirrorScale = v
     console.log(`[InteriorView] ${m.id}.mirrorScale = ${v} — lim inn i INTERIOR_MIRROR_TRAU i districts.ts`)
@@ -540,13 +543,15 @@ export default function InteriorView({ districtId, lokaleId }: {
           const n = tileCount(product, m.mirrorsTrauId, density)
           const cols = Math.min(n, trauCols(m.mirrorsTrauId))
           const rows = Math.ceil(n / cols)
-          // DEFENSIV RENDER-VAKT (DEL B, runde 3): klem den ENDELIGE itemScale —
-          // per-vare-faktor (displayScale × sizeAdjust) OG sonens mirrorScale — til
-          // det kalibrerte taket. Montren klipper KUN bakkanten, så en for stor
-          // itemScale overflyter fritt opp/til siden og legger seg over UI-knappene
-          // (FUNN B runde 3: grovbrød 1.0 × mirrorScale 2.75 = 24 % av viewport).
-          const { itemScale, klemt: skalaKlemt } = klemSpeilSkala(product.displayScale, entry?.sizeAdjust, m.mirrorScale)
-          if (skalaKlemt) advarVareSkalaKlemt('inne/InteriorView(speil)', product.id, { displayScale: product.displayScale, sizeAdjust: entry?.sizeAdjust, mirrorScale: m.mirrorScale, itemScale, trauId: m.mirrorsTrauId, n })
+          // DEFENSIV RENDER-VAKT (DEL B, runde 4): kap den RENDREDE SLUTTBREDDEN per
+          // speilet vare til `speilMaksAndel` av viewport (utledet fra sonegeometrien),
+          // så brede soner (speil-1 ~17 %) automatisk får lavere effektiv skala. Montren
+          // klipper KUN bakkanten, så uten dette overflyter store varer opp/til siden og
+          // legger seg over UI-knappene. KUN speilstien — /disk er urørt.
+          const { itemScale, andelFor, andelEtter, klemt: skalaKlemt } = klemSpeilSkala(
+            product.displayScale, entry?.sizeAdjust, m.mirrorScale, m.rect[2], cols, speilMaksAndel,
+          )
+          if (skalaKlemt) advarVareSkalaKlemt('inne/InteriorView(speil)', product.id, { sone: m.id, displayScale: product.displayScale, sizeAdjust: entry?.sizeAdjust, mirrorScale: m.mirrorScale, andelFor: +andelFor.toFixed(3), andelEtter: +andelEtter.toFixed(3), itemScale: +itemScale.toFixed(2), trauId: m.mirrorsTrauId, n })
           const tiltX = m.mirrorTiltX ?? 0
           const tiltY = m.mirrorTiltY ?? 0
           return (
@@ -879,6 +884,12 @@ export default function InteriorView({ districtId, lokaleId }: {
                   <option key={x.id} value={x.id} style={{ background: '#0a0e1a', color: '#f1f5f9' }}>{x.id} ({x.mirrorsTrauId})</option>
                 ))}
               </select>
+              {/* GLOBAL: maks rendret vare-bredde (andel av viewport) for ALLE speil-
+                  soner (FUNN B runde 4). Kapper sluttbredden så brede soner ikke gir
+                  digre varer. Lås verdien i BALANCE.speilMaksViewportAndel. */}
+              <CalSlider label="maks vare-bredde (alle speil)" value={speilMaksAndel} min={0.03} max={0.2} step={0.005}
+                onChange={v => { setSpeilMaksAndel(v); console.log(`[InteriorView] BALANCE.speilMaksViewportAndel = ${v.toFixed(3)} — lim inn i balance.ts`) }}
+                fmt={v => `${(v * 100).toFixed(1)}%`} />
               {m && (
                 <>
                   <CalSlider label="mirrorScale" value={m.mirrorScale ?? 1} min={0.2} max={6} step={0.05}
