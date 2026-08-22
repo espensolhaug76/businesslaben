@@ -16,6 +16,9 @@ export interface OrgKontekst {
   disponerte: number
   /** Omsetning så langt denne måneden (salg + bakgrunn). */
   omsetningMnd: number
+  /** REKRUTTERING: antall ansatte med lønn under tariff-referansen for sitt
+   *  nivå. Valgfritt — eldre kall som ikke sender den, behandles som 0. */
+  underTariffAntall?: number
 }
 
 export interface RefleksjonRegel {
@@ -50,6 +53,12 @@ export const REFLEKSJONSREGLER: RefleksjonRegel[] = [
     prioritet: 10,
     spørsmål: 'Alle ansatte står på benken — du betaler lønn, men hvem gjør hva?',
     test: k => k.ansatte > 0 && k.disponerte === 0,
+  },
+  {
+    id: 'lonn-under-tariff',
+    prioritet: 15,
+    spørsmål: 'Du har ansatte med lønn under tariff-referansen for stillingen — hva tror du det gjør med hvem som søker neste gang, og hvor lenge de blir?',
+    test: k => (k.underTariffAntall ?? 0) > 0,
   },
 ]
 

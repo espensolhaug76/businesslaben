@@ -3474,3 +3474,65 @@ DevPanel «📰 Generer utgave nå»-hint: «havner i innboksen» → «publiser
 4. **Endre bestilling (DEL 4):** Produkter, bestill 130 → «I bestilling: 130» → [Endre]
    → 30 → Lagre → «I bestilling: 30», differansen tilbake i kassa. Bestill → [Endre]
    → 0 → «Bestilling kansellert». Neste dag: leveres den endrede/ingen mengde.
+
+## REKRUTTERING — erstatter ett-klikks «Ansett» — 2026-08-22 (gren spor-a/rekruttering)
+
+Kontrakt: `docs/REKRUTTERING.md`. Erstatter den gamle ett-klikks «Ansett ny
+medarbeider»-knappen i Personale → ② Organisasjonskart med en full
+rekrutteringsflyt: **lys ut stilling → søkerliste (3 kandidater) → valgfritt
+intervju → ansett**.
+
+### Hva ble gjort
+- **Ny `src/game/data/rekruttering.ts`:** `EGENSKAPER` (9), `REFERANSELONN`
+  (junior 15k/senior 25k/ekspert 40k — samme beløp som gamle `LEVEL_INFO.salary`,
+  nå tariff-referanse), `generateKandidater()` (3 kandidater; tilbudt lønn vs.
+  referanse gir svak/normal/sterk pool — styrer antall egenskaps-treff,
+  lønnsforventning og erfaring), og `INTERVJUSPORSMAL` (2 spørsmål, narrativ
+  tilbakemelding per svar — ALDRI poeng).
+- **`types.ts`:** `Employee.egenskaper?`, nye `Kandidat` + `AktivRekruttering`,
+  `GameState.aktivRekruttering`.
+- **`GameContext.tsx`:** `aktivRekruttering: null` i initial state; actions
+  `POST_JOB` (genererer kandidater) + `CANCEL_RECRUITMENT`; `HIRE_EMPLOYEE` lukker
+  utlysningen; `CLOSE_DAY` sender `underTariffAntall` til refleksjonsmotoren.
+- **`orgRefleksjon.ts`:** `OrgKontekst.underTariffAntall?` + ny regel
+  `lonn-under-tariff` (prioritet 15) — konsekvensen av lønn under tariff vises som
+  et SPØRSMÅL i «Se over organisasjonen» / dagsoppgjøret, aldri i selve flyten.
+- **`DashboardOverlay.tsx`:** fjernet `salary`/`canAfford`/`hire()`/`valgtRolle` +
+  den gamle `tilfeldigNavn`; ANSETT-blokken erstattet av `<RekrutteringPanel/>`
+  (skjema med drag-inn egenskaper + lønnsfelt) og `<KandidatKort/>` (søker +
+  intervju + ansett); `evaluerRefleksjon`-kallet får `underTariffAntall`.
+
+### Avvik fra prompten (bevisste)
+1. **Annonseteksten bruker `state.companyName`, ikke `getActiveIndustryDefinition().navn`.**
+   `IndustryDefinition.navn` er BRANSJENS navn («Kafé & Bakeri»), ikke bedriftens —
+   det ga «Kafé & Bakeri søker ny Selger». Bedriftsnavnet ligger i `state.companyName`
+   (f.eks. «poppe»), som RekrutteringPanel har via `useGame()`. Bruker
+   `{state.companyName || 'Bedriften'} søker ny …`. (Prompten ba eksplisitt om å
+   sjekke feltnavnet og velge riktig felt.)
+2. **Fjernet også `valgtRolle`/`tilfeldigNavn`** (utover de spesifiserte
+   `salary`/`canAfford`/`hire`): begge ble ubrukte etter omleggingen og feilet
+   `tsc -b` (noUnusedLocals). RekrutteringPanel beregner sin egen `valgtRolle`;
+   kandidatnavn genereres nå i `rekruttering.ts`.
+3. **`rekruttering.ts`-importen:** droppet `EmployeeRole` fra
+   `import type { EmployeeLevel, EmployeeRole, Kandidat }` — den var ubrukt i fila.
+
+### Validering
+- **`tsc -b` rent.**
+- **Headless smoke (Playwright, seedet Math.random):** LAVT tier (tilbud 10k) →
+  kandidat-lønnsforventning [16500, 16500, 17000] (alle over tilbudt) + svak
+  egenskaps-match [1,1,0]; HØYT tier (tilbud 20k) → match [3,2,3]; ansettelse under
+  tariff lukker utlysningen + den ansatte bærer kandidatens egenskaper; UI:
+  RekrutteringPanel-skjemaet rendres, tariff-referansen vises i lønnsfeltet, og «Se
+  over organisasjonen» viser tariff-refleksjonsspørsmålet. Regresjon: kjørte
+  eksisterende full-maaned + oppstart-elevlop.
+- **Manuelt (Espen):** `5173/game?skip=1&dev=1` → Personale → ② Organisasjonskart →
+  opprett funksjon → lys ut med/uten egenskaper → sjekk at lønn under/over referanse
+  endrer søkerne synlig → intervju → ansett → «Se over organisasjonen».
+
+### TODO / mulige oppfølgere for Espen
+- Kladden i annonseskjemaet (valgte egenskaper + lønn) persisteres ikke ved
+  fanebytte — bevisst v1, men kan flyttes til state om ønskelig.
+- Egenskaps-mismatch har ingen MEKANISK effekt ennå (kun refleksjon) — en senere
+  balansejobb kan koble egenskaper til kapasitet/turnover.
+- Kandidater takker aldri nei og forhandler ikke — `lonnsforventning` vises men
+  gater ikke ansettelse.

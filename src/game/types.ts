@@ -241,6 +241,10 @@ export interface Employee {
   role: EmployeeRole
   level: EmployeeLevel
   monthlySalary: number
+  /** REKRUTTERING: kandidatens egenskaper ved ansettelse (EGENSKAPER-ider) —
+   *  brukt av refleksjonsmotoren til å vurdere match mot annonsen. Tom/undefined
+   *  for eldre states (migrerer trygt). */
+  egenskaper?: string[]
   /** Org-kart-plassering (BEMANNING): satt (= rolle-id) = disponert i sin
    *  funksjon, undefined = står på PERSONALBENKEN (udisponert, men koster
    *  fortsatt full lønn). */
@@ -248,6 +252,27 @@ export interface Employee {
   /** Gulvvakt på dagsmalen (kun salgsrollen kan settes på vakt). Undefined =
    *  ikke satt på vakt ⇒ koster lønn, bidrar 0 kapasitet. */
   vakt?: Shift
+}
+
+// ─── Rekruttering ────────────────────────────────────────────────────────────
+
+export interface Kandidat {
+  id: string
+  navn: string
+  /** EGENSKAPER-ider (se data/rekruttering.ts). */
+  egenskaper: string[]
+  lonnsforventning: number
+  erfaring: string
+}
+
+/** Én aktiv utlysning. Null = ingen utlysning pågår (skjema vises). Fjernes
+ *  (settes til null) når eleven ansetter en kandidat eller avlyser. */
+export interface AktivRekruttering {
+  rolleId: EmployeeRole
+  level: EmployeeLevel
+  tilbudtLonn: number
+  onskedeEgenskaper: string[]
+  kandidater: Kandidat[]
 }
 
 // ── Monthly result ───────────────────────────────────────────────────────────
@@ -713,6 +738,8 @@ export interface GameState {
   // Staff
   employees: Employee[]
   monthlyPayroll: number
+  /** REKRUTTERING: pågående utlysning, eller null. */
+  aktivRekruttering: AktivRekruttering | null
   /** BEMANNING: spillerens (daglig leder) egen gulvvakt på dagsmalen. Gratis
    *  arbeidskraft (lønn 0) med Junior-kapasitet. Null = ikke satt på vakt. */
   playerShift: Shift | null

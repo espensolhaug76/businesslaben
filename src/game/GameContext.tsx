@@ -8,7 +8,7 @@ import type {
   GameState, GamePhase, Industry, LocationZone, BusinessModel,
   Product, Employee, DistributionChannel, MonthResult, InboxMessage, PestEvent, Loan, GameProgress,
   GameFlags, BusinessCanvas, WindowDisplayItem, TrauItem, DayResult, Bestilling, DeliveryNote, MonthSettlement, DayBackground,
-  EmployeeRole, Shift, TickerLinje,
+  EmployeeRole, EmployeeLevel, Shift, TickerLinje,
 } from './types'
 import { EMPTY_CANVAS } from './types'
 import type { SaleLine } from './sales/types'
@@ -25,6 +25,7 @@ import { maanedNokkel, TOM_BUDSJETT, BUDSJETT_LINJER, faktiskeLinjer, bokfortNok
 import { kampanjefaktor, kampanjeKostnad, kampanjeFaktiskProsent, kampanjeMerinntekt, kampanjeRoi, MARKEDSFORINGSLOVEN_RUTE, type KampanjeAktiv, type KampanjeResultat, type KampanjeSalgsvare, type KampanjeKanalValg } from './data/kampanje'
 import { beregnBakgrunnskunder, simulerBakgrunnsbolk, dagSeed, moterForDag, planleggMoter, kapasitetPaaVakt } from './data/backgroundSales'
 import { aktiveFunksjoner, toppRefleksjon } from './data/orgRefleksjon'
+import { generateKandidater, REFERANSELONN } from './data/rekruttering'
 import { BALANCE } from './data/balance'
 import { dagligRefleksjon } from './data/mentorDaglig'
 import { genererAvisutgave, avisEffektAktiv, avisUke, erAvisdag, løpendeNotiser, devUtlosTrend, kvalifiserteNotiser } from './data/avis'
@@ -197,6 +198,7 @@ const initialState: GameState = {
 
   employees: [],
   monthlyPayroll: 0,
+  aktivRekruttering: null,
   playerShift: null,
   orgRoller: [],
   oppgaveFordeling: {},
@@ -329,6 +331,8 @@ type Action =
   | { type: 'SET_EMPLOYEE_SHIFT'; id: string; vakt: Shift | null }
   | { type: 'SET_PLAYER_SHIFT'; vakt: Shift | null }
   | { type: 'CREATE_ORG_ROLE'; roleId: EmployeeRole }
+  | { type: 'POST_JOB'; rolleId: EmployeeRole; level: EmployeeLevel; tilbudtLonn: number; onskedeEgenskaper: string[] }
+  | { type: 'CANCEL_RECRUITMENT' }
   | { type: 'REMOVE_ORG_ROLE'; roleId: EmployeeRole }
   // DEL 5 — «Hvem gjør hva?» (steg 1): oppgavefordeling + outsourcing + seed.
   | { type: 'SET_OPPGAVE'; personId: string; roleId: EmployeeRole; on: boolean }
@@ -1407,8 +1411,26 @@ function reducer(state: GameState, action: Action): GameState {
     case 'HIRE_EMPLOYEE': {
       const employees = [...state.employees, action.employee]
       const monthlyPayroll = employees.reduce((s, e) => s + e.monthlySalary, 0)
-      return { ...state, employees, monthlyPayroll }
+      // Ansettelse lukker en ev. aktiv utlysning — resten av søkerne går videre.
+      return { ...state, employees, monthlyPayroll, aktivRekruttering: null }
     }
+
+    // REKRUTTERING — lys ut stillingen: genererer 3 kandidater basert på
+    // tilbudt lønn vs. tariff-referanse og ønskede egenskaper.
+    case 'POST_JOB': {
+      const kandidater = generateKandidater(action.level, action.tilbudtLonn, action.onskedeEgenskaper)
+      return {
+        ...state,
+        aktivRekruttering: {
+          rolleId: action.rolleId, level: action.level, tilbudtLonn: action.tilbudtLonn,
+          onskedeEgenskaper: action.onskedeEgenskaper, kandidater,
+        },
+      }
+    }
+
+    // REKRUTTERING — avlys utlysningen uten å ansette.
+    case 'CANCEL_RECRUITMENT':
+      return { ...state, aktivRekruttering: null }
 
     case 'FIRE_EMPLOYEE': {
       const employees = state.employees.filter(e => e.id !== action.id)
@@ -2203,11 +2225,15 @@ function reducer(state: GameState, action: Action): GameState {
         .filter(d => d.month === state.currentMonth && d.year === state.currentYear)
         .reduce((s, d) => s + d.soldKr + d.bakgrunnKr, 0) + soldKr + bakgrunnKr
       const funksjoner = aktiveFunksjoner(state.orgRoller, state.employees)
+      const underTariffAntall = state.employees.filter(
+        e => e.monthlySalary < REFERANSELONN[e.level],
+      ).length
       const refleksjon = toppRefleksjon({
         harFunksjon: id => funksjoner.includes(id),
         ansatte: state.employees.length,
         disponerte: state.employees.filter(e => e.grenId).length,
         omsetningMnd,
+        underTariffAntall,
       })
 
       const result: DayResult = {

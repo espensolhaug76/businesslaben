@@ -35,6 +35,8 @@ import {
 } from '../data/innboksEpost'
 import MarkedsplanOppsummering from './MarkedsplanOppsummering'
 import { aktiveFunksjoner, evaluerRefleksjon, oppgaveRefleksjoner } from '../data/orgRefleksjon'
+import { EGENSKAPER, egenskapLabel, REFERANSELONN, INTERVJUSPORSMAL } from '../data/rekruttering'
+import type { Kandidat } from '../types'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift, InboxMessage } from '../types'
 import type { Loan } from '../types'
 
@@ -2827,13 +2829,8 @@ function rolleEmoji(id: EmployeeRole): string { return rolleDef(id)?.emoji ?? '�
 
 // Norske navn til nyansatte (BEMANNING) — fornavn + etternavn, valgt tilfeldig
 // i ansett-handleren (ikke i render).
-const FORNAVN = ['Ingrid', 'Jonas', 'Sara', 'Mathias', 'Emma', 'Oliver', 'Nora', 'Aksel', 'Maja', 'Henrik', 'Sofie', 'Filip', 'Thea', 'Elias', 'Frida', 'Kasper']
-const ETTERNAVN = ['Berg', 'Haugen', 'Dahl', 'Lund', 'Moen', 'Solberg', 'Nilsen', 'Aas', 'Ruud', 'Vik', 'Strand', 'Fossum']
-function tilfeldigNavn(): string {
-  const f = FORNAVN[Math.floor(Math.random() * FORNAVN.length)]
-  const e = ETTERNAVN[Math.floor(Math.random() * ETTERNAVN.length)]
-  return `${f} ${e}`
-}
+// (Kandidat-navn genereres nå i data/rekruttering.ts — den gamle tilfeldigNavn
+//  som matet ett-klikks-ansettelsen er fjernet med Rekruttering-flyten.)
 
 // Vaktliste-timegrid: 8 én-times luker 09:00–17:00.
 const VAKT_START_TIME = BALANCE.klokke.apneMinutt / 60   // 9
@@ -2891,18 +2888,6 @@ function OrgKartSteg() {
   const benk = state.employees.filter(e => !e.grenId)
   const salgsIVakt = state.employees.filter(e => e.grenId && rolleDef(e.role)?.vaktrolle)
 
-  // Ansett-rolle: kun opprettede funksjoner kan ansettes; fall til første.
-  const valgtRolle = opprettede.some(r => r.id === role) ? role : (opprettede[0]?.id ?? null)
-  const salary = LEVEL_INFO[level].salary
-  const canAfford = state.money >= salary
-
-  function hire() {
-    if (!valgtRolle || !canAfford) return
-    dispatch({ type: 'HIRE_EMPLOYEE', employee: {
-      id: `emp_${Date.now()}`, navn: tilfeldigNavn(), role: valgtRolle, level, monthlySalary: salary,
-    } })
-  }
-
   // Felles drop-sone: `accept` avgjør om målet tar imot dagens drag; `slipp`
   // utfører handlingen. Rydder drag/hover uansett.
   function sone(key: string, accept: (d: OrgDrag) => boolean, slipp: (d: OrgDrag) => void) {
@@ -2922,6 +2907,7 @@ function OrgKartSteg() {
     omsetningMnd: state.dayHistory
       .filter(d => d.month === state.currentMonth && d.year === state.currentYear)
       .reduce((s, d) => s + d.soldKr + d.bakgrunnKr, 0),
+    underTariffAntall: state.employees.filter(e => e.monthlySalary < REFERANSELONN[e.level]).length,
   })
 
   return (
@@ -3131,79 +3117,310 @@ function OrgKartSteg() {
         <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(state.monthlyPayroll)}</span>
       </div>
 
-      {/* ANSETT — kun roller eleven har opprettet i kartet. */}
+      {/* REKRUTTERING — erstatter gammel ett-klikks Ansett. */}
+      <RekrutteringPanel opprettede={opprettede} role={role} setRole={setRole} level={level} setLevel={setLevel} />
+    </div>
+  )
+}
+
+// ── RekrutteringPanel — stillingsannonse → søkerliste → intervju → ansett ────
+function RekrutteringPanel({
+  opprettede, role, setRole, level, setLevel,
+}: {
+  opprettede: RolleDef[]
+  role: EmployeeRole
+  setRole: (r: EmployeeRole) => void
+  level: EmployeeLevel
+  setLevel: (l: EmployeeLevel) => void
+}) {
+  const { state, dispatch } = useGame()
+  const [onskedeEgenskaper, setOnskedeEgenskaper] = useState<string[]>([])
+  const [tilbudtLonn, setTilbudtLonn] = useState<number>(LEVEL_INFO[level].salary)
+  const [egenskapDrag, setEgenskapDrag] = useState<string | null>(null)
+  const [egenskapOver, setEgenskapOver] = useState<'slot' | 'bank' | null>(null)
+  const [apentIntervju, setApentIntervju] = useState<string | null>(null)
+  const [intervjuSvar, setIntervjuSvar] = useState<Record<string, Record<string, string>>>({})
+
+  const valgtRolle = opprettede.some(r => r.id === role) ? role : (opprettede[0]?.id ?? null)
+  const rek = state.aktivRekruttering
+  const canAfford = state.money >= tilbudtLonn
+
+  if (opprettede.length === 0) {
+    return (
       <div style={{
         background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: '1rem', padding: '1.25rem',
       }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: '1rem' }}>Ansett ny medarbeider</div>
-
-        {opprettede.length === 0 ? (
-          <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-            Opprett en funksjon i org-kartet først (dra et rollekort fra paletten
-            inn i kartet) — så kan du ansette inn i den.
-          </div>
-        ) : (
-          <>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Stilling</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {opprettede.map(r => (
-                  <button key={r.id} onClick={() => setRole(r.id)} style={{
-                    flex: '1 1 30%', minWidth: 100,
-                    background: valgtRolle === r.id ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${valgtRolle === r.id ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: '0.6rem', padding: '0.55rem 0.4rem',
-                    cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
-                  }}>
-                    <div style={{ fontSize: 17, marginBottom: 2 }}>{r.emoji}</div>
-                    <div style={{ fontSize: 11, fontWeight: 700 }}>{r.tittel}</div>
-                  </button>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
-                {valgtRolle && rolleDef(valgtRolle)?.vaktrolle
-                  ? 'Går på gulvvakt og betjener bakgrunnskunder (kapasitet stiger med nivå).'
-                  : valgtRolle && rolleDef(valgtRolle)?.maanedseffekt
-                    ? 'Bidrar til månedseffekten sin — går ikke på gulvvakt.'
-                    : 'Organisasjonsrolle — ingen direkte motoreffekt, men en del av kartet.'}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Nivå</div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {(Object.keys(LEVEL_INFO) as EmployeeLevel[]).map(lv => (
-                  <button key={lv} onClick={() => setLevel(lv)} style={{
-                    flex: 1, background: level === lv ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${level === lv ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: '0.6rem', padding: '0.6rem',
-                    cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
-                  }}>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{LEVEL_INFO[lv].label}</div>
-                    <div style={{ fontSize: 11, color: '#64748b' }}>{formatKr(LEVEL_INFO[lv].salary)}/mnd</div>
-                    {valgtRolle && rolleDef(valgtRolle)?.vaktrolle && (
-                      <div style={{ fontSize: 10, color: '#00d4aa', marginTop: 1 }}>{BALANCE.kapasitetPerTime[lv]}/t</div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button onClick={hire} disabled={!canAfford} style={{
-              width: '100%',
-              background: canAfford ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(255,255,255,0.06)',
-              border: 'none', borderRadius: 8, padding: '0.75rem',
-              color: canAfford ? '#fff' : '#475569',
-              fontWeight: 700, fontSize: 15, cursor: canAfford ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-            }}>
-              {canAfford && valgtRolle
-                ? `✅ Ansett ${LEVEL_INFO[level].label} ${rolleTittel(valgtRolle)} — ${formatKr(salary)}/mnd`
-                : '💸 Ikke råd til denne ansettelsen'}
-            </button>
-          </>
-        )}
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: '0.5rem' }}>Rekruttering</div>
+        <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+          Opprett en funksjon i org-kartet først (dra et rollekort fra paletten
+          inn i kartet) — så kan du lyse ut stillingen.
+        </div>
       </div>
+    )
+  }
+
+  // ── SØKERLISTE (utlysning aktiv) ──────────────────────────────────────────
+  if (rek) {
+    const rolleTitt = rolleTittel(rek.rolleId)
+    return (
+      <div style={{
+        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '1rem', padding: '1.25rem',
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: '0.3rem' }}>
+          Søkere til {rolleTitt} ({LEVEL_INFO[rek.level].label})
+        </div>
+        <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: '1rem' }}>
+          Tilbudt lønn: {formatKr(rek.tilbudtLonn)}/mnd ·
+          Ønskede egenskaper: {rek.onskedeEgenskaper.length
+            ? rek.onskedeEgenskaper.map(egenskapLabel).join(', ')
+            : 'ingen valgt'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem', marginBottom: '1rem' }}>
+          {rek.kandidater.map(k => (
+            <KandidatKort key={k.id} kandidat={k} rekruttering={rek}
+              apent={apentIntervju === k.id}
+              svar={intervjuSvar[k.id] ?? {}}
+              onApneIntervju={() => setApentIntervju(a => a === k.id ? null : k.id)}
+              onSvar={(spmId, valgId) => setIntervjuSvar(s => ({
+                ...s, [k.id]: { ...(s[k.id] ?? {}), [spmId]: valgId },
+              }))}
+              onAnsett={() => dispatch({ type: 'HIRE_EMPLOYEE', employee: {
+                id: `emp_${Date.now()}`, navn: k.navn, role: rek.rolleId, level: rek.level,
+                monthlySalary: rek.tilbudtLonn, egenskaper: k.egenskaper,
+              } })} />
+          ))}
+        </div>
+        <button onClick={() => dispatch({ type: 'CANCEL_RECRUITMENT' })} style={{
+          width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 8, padding: '0.6rem', color: '#94a3b8', fontFamily: 'inherit',
+          fontSize: 12.5, cursor: 'pointer',
+        }}>✕ Avlys utlysningen</button>
+      </div>
+    )
+  }
+
+  // ── STILLINGSANNONSE (skjema) ─────────────────────────────────────────────
+  const bankEgenskaper = EGENSKAPER.filter(e => !onskedeEgenskaper.includes(e.id))
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: '1rem', padding: '1.25rem',
+    }}>
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: '1rem' }}>Lys ut ny stilling</div>
+
+      <div style={{ marginBottom: '0.75rem' }}>
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Stilling</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {opprettede.map(r => (
+            <button key={r.id} onClick={() => setRole(r.id)} style={{
+              flex: '1 1 30%', minWidth: 100,
+              background: valgtRolle === r.id ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${valgtRolle === r.id ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: '0.6rem', padding: '0.55rem 0.4rem',
+              cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
+            }}>
+              <div style={{ fontSize: 17, marginBottom: 2 }}>{r.emoji}</div>
+              <div style={{ fontSize: 11, fontWeight: 700 }}>{r.tittel}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Nivå</div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {(Object.keys(LEVEL_INFO) as EmployeeLevel[]).map(lv => (
+            <button key={lv} onClick={() => { setLevel(lv); setTilbudtLonn(LEVEL_INFO[lv].salary) }} style={{
+              flex: 1, background: level === lv ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${level === lv ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: '0.6rem', padding: '0.6rem',
+              cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{LEVEL_INFO[lv].label}</div>
+              {valgtRolle && rolleDef(valgtRolle)?.vaktrolle && (
+                <div style={{ fontSize: 10, color: '#00d4aa', marginTop: 1 }}>{BALANCE.kapasitetPerTime[lv]}/t</div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stillingsannonse med drag-inn egenskaper */}
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>
+          Stillingsannonse — dra inn inntil 3 ønskede egenskaper
+        </div>
+        <div style={{
+          background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.25)',
+          borderRadius: 10, padding: '0.7rem 0.85rem', marginBottom: '0.5rem', fontSize: 13, color: '#f1f5f9',
+        }}>
+          {state.companyName || 'Bedriften'} søker ny{' '}
+          <strong>{valgtRolle ? rolleTittel(valgtRolle) : '…'}</strong>.
+        </div>
+        <div
+          onDragOver={e => { if (egenskapDrag) { e.preventDefault(); setEgenskapOver('slot') } }}
+          onDragLeave={() => setEgenskapOver(o => (o === 'slot' ? null : o))}
+          onDrop={e => {
+            e.preventDefault()
+            if (egenskapDrag && onskedeEgenskaper.length < 3 && !onskedeEgenskaper.includes(egenskapDrag)) {
+              setOnskedeEgenskaper(o => [...o, egenskapDrag])
+            }
+            setEgenskapDrag(null); setEgenskapOver(null)
+          }}
+          style={{
+            background: egenskapOver === 'slot' ? 'rgba(0,212,170,0.08)' : 'transparent',
+            border: `1px dashed ${egenskapOver === 'slot' ? '#00d4aa' : 'rgba(255,255,255,0.14)'}`,
+            borderRadius: 10, padding: '0.6rem', minHeight: 44, marginBottom: '0.5rem',
+            display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center',
+          }}>
+          {onskedeEgenskaper.length === 0 && (
+            <span style={{ fontSize: 11.5, color: '#475569' }}>Dra egenskaper hit (maks 3)</span>
+          )}
+          {onskedeEgenskaper.map(id => (
+            <div key={id} draggable
+              onDragStart={() => setEgenskapDrag(id)}
+              title="Dra ned i banken for å fjerne"
+              style={{
+                cursor: 'grab', background: 'rgba(0,212,170,0.14)', border: '1px solid #00d4aa',
+                borderRadius: 8, padding: '0.3rem 0.6rem', fontSize: 12, fontWeight: 700, color: '#00d4aa',
+              }}>{egenskapLabel(id)}</div>
+          ))}
+        </div>
+        <div
+          onDragOver={e => { if (egenskapDrag) { e.preventDefault(); setEgenskapOver('bank') } }}
+          onDragLeave={() => setEgenskapOver(o => (o === 'bank' ? null : o))}
+          onDrop={e => {
+            e.preventDefault()
+            if (egenskapDrag) setOnskedeEgenskaper(o => o.filter(id => id !== egenskapDrag))
+            setEgenskapDrag(null); setEgenskapOver(null)
+          }}
+          style={{
+            background: egenskapOver === 'bank' ? 'rgba(248,113,113,0.08)' : 'rgba(255,255,255,0.02)',
+            border: `1px dashed ${egenskapOver === 'bank' ? '#f87171' : 'rgba(255,255,255,0.1)'}`,
+            borderRadius: 10, padding: '0.55rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem',
+          }}>
+          {bankEgenskaper.map(e => (
+            <div key={e.id} draggable onDragStart={() => setEgenskapDrag(e.id)}
+              title="Dra opp i annonsen"
+              style={{
+                cursor: 'grab', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.14)',
+                borderRadius: 8, padding: '0.3rem 0.6rem', fontSize: 12, color: '#cbd5e1',
+              }}>{e.label}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Lønn */}
+      <div style={{ marginBottom: '1.1rem' }}>
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>
+          Lønn du tilbyr — <Fagord id="JUS_007">tariff</Fagord>-referanse for {LEVEL_INFO[level].label}: {formatKr(REFERANSELONN[level])}/mnd
+        </div>
+        <input type="number" step={500} min={Math.round(REFERANSELONN[level] * 0.5 / 500) * 500}
+          value={tilbudtLonn} onChange={e => setTilbudtLonn(Math.max(0, Number(e.target.value)))}
+          style={{
+            width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: 8, padding: '0.55rem 0.7rem', color: '#f1f5f9', fontFamily: 'inherit', fontSize: 14,
+          }} />
+      </div>
+
+      <button
+        onClick={() => valgtRolle && dispatch({
+          type: 'POST_JOB', rolleId: valgtRolle, level, tilbudtLonn, onskedeEgenskaper,
+        })}
+        disabled={!canAfford || !valgtRolle}
+        style={{
+          width: '100%',
+          background: canAfford ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(255,255,255,0.06)',
+          border: 'none', borderRadius: 8, padding: '0.75rem',
+          color: canAfford ? '#fff' : '#475569',
+          fontWeight: 700, fontSize: 15, cursor: canAfford ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+        }}>
+        {canAfford ? '📢 Lys ut stillingen' : '💸 Ikke råd til denne lønna'}
+      </button>
+    </div>
+  )
+}
+
+function KandidatKort({
+  kandidat, rekruttering, apent, svar, onApneIntervju, onSvar, onAnsett,
+}: {
+  kandidat: Kandidat
+  rekruttering: { tilbudtLonn: number; onskedeEgenskaper: string[] }
+  apent: boolean
+  svar: Record<string, string>
+  onApneIntervju: () => void
+  onSvar: (spmId: string, valgId: string) => void
+  onAnsett: () => void
+}) {
+  const villHaMer = kandidat.lonnsforventning > rekruttering.tilbudtLonn
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
+      borderRadius: 12, padding: '0.85rem',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>{kandidat.navn}</div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>{kandidat.erfaring}</div>
+        </div>
+        <div style={{ textAlign: 'right', fontSize: 11 }}>
+          <div style={{ color: villHaMer ? '#f59e0b' : '#64748b' }}>
+            Ønsker: {formatKr(kandidat.lonnsforventning)}/mnd
+          </div>
+          {villHaMer && <div style={{ color: '#f59e0b', fontSize: 10 }}>vil ha mer enn tilbudt</div>}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.6rem' }}>
+        {kandidat.egenskaper.map(id => {
+          const matcher = rekruttering.onskedeEgenskaper.includes(id)
+          return (
+            <span key={id} style={{
+              fontSize: 10.5, padding: '0.2rem 0.5rem', borderRadius: 6,
+              background: matcher ? 'rgba(0,212,170,0.14)' : 'rgba(255,255,255,0.05)',
+              color: matcher ? '#00d4aa' : '#94a3b8',
+              border: `1px solid ${matcher ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+            }}>{egenskapLabel(id)}</span>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button onClick={onApneIntervju} style={{
+          flex: 1, background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.35)',
+          borderRadius: 8, padding: '0.5rem', color: '#7dd3fc', fontFamily: 'inherit',
+          fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+        }}>🎤 {apent ? 'Lukk intervju' : 'Intervju'}</button>
+        <button onClick={onAnsett} style={{
+          flex: 1, background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none',
+          borderRadius: 8, padding: '0.5rem', color: '#fff', fontFamily: 'inherit',
+          fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+        }}>✅ Ansett {kandidat.navn.split(' ')[0]}</button>
+      </div>
+      {apent && (
+        <div style={{ marginTop: '0.7rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+          {INTERVJUSPORSMAL.map(spm => (
+            <div key={spm.id}>
+              <div style={{ fontSize: 12.5, color: '#cbd5e1', marginBottom: '0.4rem' }}>{spm.sporsmal}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                {spm.valg.map(v => (
+                  <button key={v.id} onClick={() => onSvar(spm.id, v.id)} style={{
+                    textAlign: 'left', background: svar[spm.id] === v.id ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${svar[spm.id] === v.id ? '#00d4aa' : 'rgba(255,255,255,0.09)'}`,
+                    borderRadius: 8, padding: '0.4rem 0.6rem', fontFamily: 'inherit',
+                    fontSize: 11.5, color: '#e2e8f0', cursor: 'pointer',
+                  }}>{v.tekst}</button>
+                ))}
+              </div>
+              {svar[spm.id] && (
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: '0.3rem', fontStyle: 'italic' }}>
+                  {spm.valg.find(v => v.id === svar[spm.id])?.tilbakemelding}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
