@@ -3261,7 +3261,7 @@ function RekrutteringPanel({
   // endrer ikke farge når du bytter lys i rommet. Kalam = håndskrift.
   const bankEgenskaper = EGENSKAPER.filter(e => !onskedeEgenskaper.includes(e.id))
   const PAPIR = '#f4ecd8', PAPIR_LYS = '#faf4e2', BLEKK = '#3a2f1f', BLEKK_SVAK = '#6b5d45'
-  const KALAM = "'Kalam', cursive"
+  const NOTAT_FONT = 'inherit'
   const papirKant = '1px solid rgba(58,47,31,0.28)'
   return (
     <div style={{
@@ -3269,7 +3269,7 @@ function RekrutteringPanel({
       background: PAPIR, border: '1px solid rgba(58,47,31,0.18)',
       borderRadius: '0.4rem', padding: '1.5rem 1.25rem 1.25rem',
       boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transform: 'rotate(-0.6deg)',
-      color: BLEKK, fontFamily: KALAM,
+      color: BLEKK, fontFamily: NOTAT_FONT,
     }}>
       {/* «tape»-remse øverst i midten */}
       <div style={{
@@ -3277,12 +3277,12 @@ function RekrutteringPanel({
         width: 78, height: 20, background: 'rgba(255,251,214,0.55)',
         border: '1px solid rgba(210,190,120,0.4)', boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
       }} />
-      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: '1rem', fontFamily: KALAM, color: BLEKK, textAlign: 'center' }}>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: '1rem', fontFamily: NOTAT_FONT, color: BLEKK, textAlign: 'center' }}>
         📌 Vi søker folk
       </div>
 
       <div style={{ marginBottom: '0.75rem' }}>
-        <div style={{ fontSize: 12.5, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: KALAM }}>Stilling</div>
+        <div style={{ fontSize: 12.5, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: NOTAT_FONT }}>Stilling</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
           {alleRoller.map(r => (
             <button key={r.id} onClick={() => setRole(r.id)} style={{
@@ -3290,7 +3290,7 @@ function RekrutteringPanel({
               background: valgtRolle === r.id ? 'rgba(0,212,170,0.16)' : PAPIR_LYS,
               border: `1px solid ${valgtRolle === r.id ? '#0d9488' : 'rgba(58,47,31,0.22)'}`,
               borderRadius: '0.5rem', padding: '0.55rem 0.4rem',
-              cursor: 'pointer', fontFamily: KALAM, color: BLEKK,
+              cursor: 'pointer', fontFamily: NOTAT_FONT, color: BLEKK,
             }}>
               <div style={{ fontSize: 17, marginBottom: 2 }}>{r.emoji}</div>
               <div style={{ fontSize: 11.5, fontWeight: 700 }}>{r.tittel}</div>
@@ -3300,14 +3300,14 @@ function RekrutteringPanel({
       </div>
 
       <div style={{ marginBottom: '1rem' }}>
-        <div style={{ fontSize: 12.5, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: KALAM }}>Nivå</div>
+        <div style={{ fontSize: 12.5, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: NOTAT_FONT }}>Nivå</div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {(Object.keys(LEVEL_INFO) as EmployeeLevel[]).map(lv => (
             <button key={lv} onClick={() => { setLevel(lv); setTilbudtLonn(LEVEL_INFO[lv].salary) }} style={{
               flex: 1, background: level === lv ? 'rgba(56,189,248,0.16)' : PAPIR_LYS,
               border: `1px solid ${level === lv ? '#0284c7' : 'rgba(58,47,31,0.22)'}`,
               borderRadius: '0.5rem', padding: '0.6rem',
-              cursor: 'pointer', fontFamily: KALAM, color: BLEKK,
+              cursor: 'pointer', fontFamily: NOTAT_FONT, color: BLEKK,
             }}>
               <div style={{ fontSize: 13, fontWeight: 700 }}>{LEVEL_INFO[lv].label}</div>
               {valgtRolle && rolleDef(valgtRolle)?.vaktrolle && (
@@ -3321,13 +3321,13 @@ function RekrutteringPanel({
       {/* Håndskrevet annonselinje + drag-inn egenskaper */}
       <div style={{ marginBottom: '1rem' }}>
         <div style={{
-          fontSize: 18, fontWeight: 700, fontFamily: KALAM, color: BLEKK,
+          fontSize: 18, fontWeight: 700, fontFamily: NOTAT_FONT, color: BLEKK,
           marginBottom: '0.5rem', lineHeight: 1.3,
         }}>
           {state.companyName || 'Bedriften'} søker ny{' '}
           <span style={{ textDecoration: 'underline' }}>{valgtRolle ? rolleTittel(valgtRolle) : '…'}</span>
         </div>
-        <div style={{ fontSize: 12, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: KALAM }}>
+        <div style={{ fontSize: 12, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: NOTAT_FONT }}>
           Vi ser etter (dra inn inntil 3):
         </div>
         <div
@@ -3347,7 +3347,7 @@ function RekrutteringPanel({
             display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center',
           }}>
           {onskedeEgenskaper.length === 0 && (
-            <span style={{ fontSize: 12.5, color: 'rgba(58,47,31,0.5)', fontFamily: KALAM }}>Dra egenskaper hit (maks 3)</span>
+            <span style={{ fontSize: 12.5, color: 'rgba(58,47,31,0.5)', fontFamily: NOTAT_FONT }}>Dra egenskaper hit (maks 3)</span>
           )}
           {onskedeEgenskaper.map(id => (
             <div key={id} draggable
@@ -3356,7 +3356,7 @@ function RekrutteringPanel({
               style={{
                 cursor: 'grab', background: PAPIR_LYS, border: `1px solid ${BLEKK_SVAK}`,
                 borderRadius: '3px 7px 3px 7px', padding: '0.3rem 0.6rem', fontSize: 12.5, fontWeight: 700,
-                color: BLEKK, fontFamily: KALAM, boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                color: BLEKK, fontFamily: NOTAT_FONT, boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
               }}>{egenskapLabel(id)}</div>
           ))}
         </div>
@@ -3379,7 +3379,7 @@ function RekrutteringPanel({
               style={{
                 cursor: 'grab', background: PAPIR_LYS, border: papirKant,
                 borderRadius: '3px 7px 3px 7px', padding: '0.3rem 0.6rem', fontSize: 12.5,
-                color: BLEKK, fontFamily: KALAM,
+                color: BLEKK, fontFamily: NOTAT_FONT,
               }}>{e.label}</div>
           ))}
         </div>
@@ -3387,14 +3387,14 @@ function RekrutteringPanel({
 
       {/* Lønn — skjemakontroll (lys inputfelt, ikke papir) */}
       <div style={{ marginBottom: '1.1rem' }}>
-        <div style={{ fontSize: 12.5, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: KALAM }}>
+        <div style={{ fontSize: 12.5, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: NOTAT_FONT }}>
           Lønn du tilbyr — <Fagord id="JUS_007">tariff</Fagord>-referanse for {LEVEL_INFO[level].label}: {formatKr(REFERANSELONN[level])}/mnd
         </div>
         <input type="number" step={500} min={Math.round(REFERANSELONN[level] * 0.5 / 500) * 500}
           value={tilbudtLonn} onChange={e => setTilbudtLonn(Math.max(0, Number(e.target.value)))}
           style={{
             width: '100%', background: PAPIR_LYS, border: papirKant,
-            borderRadius: 6, padding: '0.55rem 0.7rem', color: BLEKK, fontFamily: KALAM, fontSize: 15, fontWeight: 700,
+            borderRadius: 6, padding: '0.55rem 0.7rem', color: BLEKK, fontFamily: NOTAT_FONT, fontSize: 15, fontWeight: 700,
           }} />
       </div>
 
@@ -3408,7 +3408,7 @@ function RekrutteringPanel({
           background: canAfford ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(58,47,31,0.12)',
           border: 'none', borderRadius: 8, padding: '0.75rem',
           color: canAfford ? '#fff' : BLEKK_SVAK,
-          fontWeight: 700, fontSize: 15, cursor: canAfford ? 'pointer' : 'not-allowed', fontFamily: KALAM,
+          fontWeight: 700, fontSize: 15, cursor: canAfford ? 'pointer' : 'not-allowed', fontFamily: NOTAT_FONT,
         }}>
         {canAfford ? '📢 Lys ut stillingen' : '💸 Ikke råd til denne lønna'}
       </button>
@@ -3430,7 +3430,7 @@ function KandidatKort({
   // Papir-palett (DEL B) — søkerlappene ser ut som avrevne papirlapper, ikke
   // mørke UI-kort. HARDKODET (unntatt dashbord-temaet).
   const PAPIR = '#f5eeda', PAPIR_LYS = '#faf4e2', BLEKK = '#3a2f1f', BLEKK_SVAK = '#6b5d45'
-  const KALAM = "'Kalam', cursive"
+  const NOTAT_FONT = 'inherit'
   const villHaMer = kandidat.lonnsforventning > rekruttering.tilbudtLonn
   const rot = ((kandidat.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 5) - 2) * 0.55
   return (
@@ -3438,11 +3438,11 @@ function KandidatKort({
       background: PAPIR, border: '1px solid rgba(58,47,31,0.18)',
       borderRadius: '2px 8px 4px 10px', padding: '0.85rem',
       boxShadow: '0 2px 6px rgba(0,0,0,0.13)', transform: `rotate(${rot}deg)`,
-      color: BLEKK, fontFamily: KALAM,
+      color: BLEKK, fontFamily: NOTAT_FONT,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: BLEKK, fontFamily: KALAM }}>{kandidat.navn}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: BLEKK, fontFamily: NOTAT_FONT }}>{kandidat.navn}</div>
           <div style={{ fontSize: 11.5, color: BLEKK_SVAK }}>{kandidat.erfaring}</div>
         </div>
         <div style={{ textAlign: 'right', fontSize: 11.5 }}>
@@ -3457,7 +3457,7 @@ function KandidatKort({
           const matcher = rekruttering.onskedeEgenskaper.includes(id)
           return (
             <span key={id} style={{
-              fontSize: 11, padding: '0.2rem 0.5rem', borderRadius: '2px 6px 2px 6px', fontFamily: KALAM,
+              fontSize: 11, padding: '0.2rem 0.5rem', borderRadius: '2px 6px 2px 6px', fontFamily: NOTAT_FONT,
               background: matcher ? 'rgba(13,148,136,0.16)' : PAPIR_LYS,
               color: matcher ? '#0d7a6f' : BLEKK,
               border: `1px solid ${matcher ? '#0d9488' : 'rgba(58,47,31,0.25)'}`,
@@ -3468,12 +3468,12 @@ function KandidatKort({
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button onClick={onApneIntervju} style={{
           flex: 1, background: 'rgba(2,132,199,0.12)', border: '1px solid #0284c7',
-          borderRadius: 7, padding: '0.5rem', color: '#0369a1', fontFamily: KALAM,
+          borderRadius: 7, padding: '0.5rem', color: '#0369a1', fontFamily: NOTAT_FONT,
           fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
         }}>🎤 {apent ? 'Lukk intervju' : 'Intervju'}</button>
         <button onClick={onAnsett} style={{
           flex: 1, background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none',
-          borderRadius: 7, padding: '0.5rem', color: '#fff', fontFamily: KALAM,
+          borderRadius: 7, padding: '0.5rem', color: '#fff', fontFamily: NOTAT_FONT,
           fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
         }}>✅ Ansett {kandidat.navn.split(' ')[0]}</button>
       </div>
@@ -3481,19 +3481,19 @@ function KandidatKort({
         <div style={{ marginTop: '0.7rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
           {INTERVJUSPORSMAL.map(spm => (
             <div key={spm.id}>
-              <div style={{ fontSize: 13, color: BLEKK, marginBottom: '0.4rem', fontFamily: KALAM, fontWeight: 700 }}>{spm.sporsmal}</div>
+              <div style={{ fontSize: 13, color: BLEKK, marginBottom: '0.4rem', fontFamily: NOTAT_FONT, fontWeight: 700 }}>{spm.sporsmal}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 {spm.valg.map(v => (
                   <button key={v.id} onClick={() => onSvar(spm.id, v.id)} style={{
                     textAlign: 'left', background: svar[spm.id] === v.id ? 'rgba(13,148,136,0.14)' : PAPIR_LYS,
                     border: `1px solid ${svar[spm.id] === v.id ? '#0d9488' : 'rgba(58,47,31,0.22)'}`,
-                    borderRadius: 7, padding: '0.4rem 0.6rem', fontFamily: KALAM,
+                    borderRadius: 7, padding: '0.4rem 0.6rem', fontFamily: NOTAT_FONT,
                     fontSize: 12, color: BLEKK, cursor: 'pointer',
                   }}>{v.tekst}</button>
                 ))}
               </div>
               {svar[spm.id] && (
-                <div style={{ fontSize: 11.5, color: BLEKK_SVAK, marginTop: '0.3rem', fontStyle: 'italic', fontFamily: KALAM }}>
+                <div style={{ fontSize: 11.5, color: BLEKK_SVAK, marginTop: '0.3rem', fontStyle: 'italic', fontFamily: NOTAT_FONT }}>
                   {spm.valg.find(v => v.id === svar[spm.id])?.tilbakemelding}
                 </div>
               )}

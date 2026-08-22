@@ -3605,8 +3605,11 @@ lapp, (C) globalt lys/middels/mørk-tema for hele Bedriftsdashboardet.
   → tema består.
 
 ### Avvik / merknader
-- Papir-fargene og Kalam er en FØRSTEPASSING (som NB-kalibrering) — Espen finpusser
-  i Chrome. Google Fonts krever nett; uten nett faller Kalam tilbake til `cursive`.
+- Papirlappen er en FØRSTEPASSING (som NB-kalibrering) — Espen finpusser i Chrome.
+- **FONT-KORREKSJON (Espens tilbakemelding):** den håndskrevne Kalam-fonten så ut som
+  Comic Sans og ble byttet til vanlig UI-font (`fontFamily: 'inherit'`, konstanten
+  `NOTAT_FONT`). Papir-utseendet (farge, tape, rotasjon) er beholdt; Google Fonts-
+  lenka i `index.html` er fjernet (ikke lenger nødvendig).
 - Lys tema er kalibrert konservativt (kort = svakt mørk-på-lys). Om noen enkeltkort
   fortsatt føles «romskip» i lys modus, er det et tunbart CSS-var-tall i
   `dashboardTema.ts`, ikke en kodeendring.
