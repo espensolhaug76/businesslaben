@@ -3613,3 +3613,48 @@ lapp, (C) globalt lys/middels/mørk-tema for hele Bedriftsdashboardet.
 - Lys tema er kalibrert konservativt (kort = svakt mørk-på-lys). Om noen enkeltkort
   fortsatt føles «romskip» i lys modus, er det et tunbart CSS-var-tall i
   `dashboardTema.ts`, ikke en kodeendring.
+
+## STI-MILEPÆLER — mentor-dytt (klient) — 2026-08-22 (spor-a/rekruttering)
+
+Klient-delen av den lærerstyrte «stien» (lærerpanelet ligger på
+`spor-d/sti-milepaeler`, se docs/rapporter/spor-d.md). Mentoren dytter eleven mot
+neste udekkede milepæl når læreren har satt opp en sti — aldri en sperre, tom sti =
+dagens frispill uendret.
+
+### Hva ble gjort
+- **Ny `src/game/data/sti.ts`** (delt katalog, identisk på begge grener): 7 faste
+  milepæler (`lei-lokale`, `apningsordre`, `still-ut-vare`, `sett-pris`,
+  `apne-butikken`, `ansett`, `markedsforing`) med ren `fullfort(state)`-sjekk mot
+  eksisterende GameState-felt (`rentedLocationId`, `openingOrderPlaced`,
+  `counterLayout`, `products[].retailPrice`, `dayHistory/dayPhase/dayNumber`,
+  `employees`, `marketingBudget`). `nesteMilepael(sti, state)` gir neste udekkede
+  milepæl (eller null).
+- **`GameContext.tsx`:** abonnerer på `klasser/{kode}/sti` (søster til
+  `temaAktivering`) → eksponerer `stiAktiv: string[]` i context (tom uten
+  klassekode/data). Dev-fallback `localStorage 'sti-dev'` (JSON-array) så dyttet kan
+  testes uten en levende klasse.
+- **`Mentor.tsx`:** en LAV-prioritets, IKKE-engangs boble som nevner neste milepæl
+  (`nesteMilepael(stiAktiv, state)`). Vises kun når ingen annen boble/quiz/intro er
+  oppe. Re-armes når (1) milepælen endrer seg (steg fullført → «Bra jobba! Neste …»)
+  og (2) ved scenebytte (`mentor:signal`) — så et lukket dytt kommer TILBAKE uten å
+  mase. Lukking (`✕`) skjuler den for gjeldende milepæl. Aldri en sperre — ingen
+  handling/fane blokkeres.
+
+### Skjønn (mentor-visning)
+- Valgte milepæl-ENDRING + scenebytte som «naturlige» visningspunkter (i stedet for
+  en rå idle-timer, som ville vært flaky og maset). Milepæl-endring gir den viktigste
+  tilbakemeldingen («bra, neste er X») akkurat når eleven gjør framgang.
+- «Bra jobba!»-prefikset vises kun rett etter at et steg ble fullført (flagget nulles
+  ved lukking), ikke som fast tekst.
+
+### Validering
+- **`tsc -b` rent.**
+- **Ny permanent vakt `tests/spilltest/sti-milepael.spec.ts`:** (1) tom sti → ingen
+  «Neste steg på stien»-boble (frispill uendret); (2) sti satt → dytt mot første
+  udekkede milepæl, flytter seg til neste med «Bra jobba!» når steget fullføres,
+  lukkes med ✕ og KOMMER TILBAKE ved scenebytte, og Dashbord-knappen er fortsatt
+  klikkbar (ingen sperre). Eksisterende full-maaned kjørt for regresjon.
+- **Manuelt (Espen):** `?dev=1` + `localStorage.setItem('sti-dev', JSON.stringify(
+  ['lei-lokale','apningsordre','still-ut-vare','sett-pris']))` → mentoren dytter mot
+  neste steg; dyttet flytter seg når du fullfører. Ekte flyt: lærer setter stien i
+  panelet (spor-d) → elev med samme klassekode får dyttet.

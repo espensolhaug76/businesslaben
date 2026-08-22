@@ -2579,6 +2579,8 @@ interface GameContextValue {
   setEspenSporDevFag: (fag: FagKode, val: boolean | null) => void
   /** ↺ Nullstill ALLE lokale dev-overstyringer (fag, nivå, «Espen spør»). */
   nullstillDevOverstyringer: () => void
+  /** STI: lærerens ordnede milepæl-liste (klasser/{kode}/sti). Tom = frispill. */
+  stiAktiv: string[]
 }
 
 const GameContext = createContext<GameContextValue | null>(null)
@@ -2599,6 +2601,18 @@ function lesTemaFallback(): Record<string, TemaAktivering> {
     if (raw) { const v = JSON.parse(raw); if (v && typeof v === 'object') return v as Record<string, TemaAktivering> }
   } catch { /* korrupt/utilgjengelig — tom */ }
   return {}
+}
+
+// STI (lærerstyrte milepæler): RTDB klasser/{kode}/sti = ordnet array av milepæl-
+// id-er (søster til temaAktivering). Uten klassekode: lokal dev-fallback
+// (localStorage `sti-dev`, JSON-array) så mentor-dyttet kan testes uten en levende
+// klasse. Tom liste = frispill.
+function lesStiFallback(): string[] {
+  try {
+    const raw = localStorage.getItem('sti-dev')
+    if (raw) { const v = JSON.parse(raw); if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string') }
+  } catch { /* korrupt/utilgjengelig — tom */ }
+  return []
 }
 
 // DEL 0 — GLOBALT KLASSENIVÅ (VG1/VG2). Egen RTDB-node klasser/{kode}/klasseNivaa
@@ -2808,6 +2822,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       persistEspenDev(next); return next
     })
   }
+
+  // STI: lærerens ordnede milepæl-liste (klasser/{kode}/sti). Tom array uten
+  // klassekode/uten data (frispill). Mentoren dytter mot neste udekkede milepæl.
+  const [stiAktiv, setStiAktiv] = useState<string[]>(() => lesStiFallback())
+  useEffect(() => {
+    const kode = hentKlassekode()
+    if (!kode) { setStiAktiv(lesStiFallback()); return }
+    return onValue(ref(db, `klasser/${kode}/sti`), snap => {
+      const v = snap.val()
+      setStiAktiv(Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+    })
+  }, [])
   const espenSporStyring: EspenSporStyring = {
     aktiv: espenSporDev.aktiv ?? espenSporRaw.aktiv,
     fag: {
@@ -2870,7 +2896,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [aktiveTemaer, state.turistsesong])
 
-  return <GameContext.Provider value={{ state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev, fagAktiv, fagRaw, fagDev, setFagDev, espenSporStyring, espenSporRaw, espenSporDev, setEspenSporDevAktiv, setEspenSporDevFag, nullstillDevOverstyringer }}>{children}</GameContext.Provider>
+  return <GameContext.Provider value={{ state, dispatch, aktiveTemaer, klasseNivaa, klasseNivaaDev, setKlasseNivaaDev, fagAktiv, fagRaw, fagDev, setFagDev, espenSporStyring, espenSporRaw, espenSporDev, setEspenSporDevAktiv, setEspenSporDevFag, nullstillDevOverstyringer, stiAktiv }}>{children}</GameContext.Provider>
 }
 
 export function useGame() {

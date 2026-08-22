@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, turistsesongInfo } from '../GameContext'
 import { MENTOR_TRIGGERS, mentorMelding, faneTriggere, sceneAvTrigger, MENTOR_INTRO } from '../data/mentorTriggers'
+import { nesteMilepael } from '../data/sti'
 import { STAMKUNDER_AKTIV, TURISTSESONG_AKTIV } from '../data/featureFlags'
 import { type FagKode } from '../data/fag'
 import Fagord from './Fagord'
@@ -332,7 +333,7 @@ function renderMelding(melding: string): ReactNode {
 }
 
 export default function Mentor({ blocked }: { blocked: boolean }) {
-  const { state, aktiveTemaer, dispatch, klasseNivaa, espenSporStyring, fagAktiv } = useGame()
+  const { state, aktiveTemaer, dispatch, klasseNivaa, espenSporStyring, fagAktiv, stiAktiv } = useGame()
   // TEST-BRO (KUN DEV): eksponer den rene trigger-vakta så spilltesten kan
   // asserte at en dynamisk trigger IKKE fyrer på tomt grunnlag (datavakt).
   useEffect(() => {
@@ -355,6 +356,13 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   // INTRO ved spillstart (null = ferdig/skjult, 0..2 = steg). Vises én gang.
   const [introStep, setIntroStep] = useState<number | null>(() => introDone() ? null : 0)
   function finishIntro() { saveIntroDone(); setIntroStep(null) }
+  // STI-DYTT (lærerstyrt milepæl-sti): en LAV-prioritets, IKKE-engangs boble som
+  // nevner neste udekkede milepæl. Skjules ved lukking, men kommer TILBAKE når
+  // milepælen endrer seg (steg fullført) eller ved scenebytte — aldri en sperre.
+  const nesteMil = nesteMilepael(stiAktiv, state)
+  const [stiSkjult, setStiSkjult] = useState(false)   // eleven lukket dyttet for gjeldende milepæl
+  const [stiBra, setStiBra] = useState(false)          // et steg ble nettopp fullført ⇒ «Bra! Neste …»
+  const sistMilId = useRef<string | null>(nesteMil?.id ?? null)
   const firedRef = useRef(fired); firedRef.current = fired
   const stateRef = useRef(state); stateRef.current = state   // fersk state for event-lyttere
   const activeSceneRef = useRef<string | null>(null)          // DEL 2 — gjeldende rute-scene
@@ -453,6 +461,24 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
     window.addEventListener('mentor:signal', h)
     return () => window.removeEventListener('mentor:signal', h)
   }, [fire, byttScene])
+
+  // STI-DYTT re-arm: (1) når neste milepæl endrer seg (steg fullført) → vis igjen,
+  // og flagg «Bra!» hvis vi hadde en forrige milepæl; (2) ved scenebytte (naturlig
+  // pause mellom handlinger) → la et lukket dytt komme tilbake. Aldri masete: mellom
+  // disse kan eleven lukke dyttet og få være i fred.
+  const nesteMilId = nesteMil?.id ?? null
+  useEffect(() => {
+    if (nesteMilId !== sistMilId.current) {
+      if (sistMilId.current && nesteMilId) setStiBra(true)
+      sistMilId.current = nesteMilId
+      setStiSkjult(false)
+    }
+  }, [nesteMilId])
+  useEffect(() => {
+    const h = () => setStiSkjult(false)
+    window.addEventListener('mentor:signal', h)
+    return () => window.removeEventListener('mentor:signal', h)
+  }, [])
 
   // DEL 1a — DAGLIG REFLEKSJON: reduceren la dagens signal i state.mentorDagligHint
   // (ett per dag, valgt + datavaktet reducer-side). Fyr den dag-scopede triggeren
@@ -651,7 +677,13 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
   // Dag-scopede fane-id-er (prisstrategi-gjentak) løses til sin statiske kortversjon.
   const faneMeldingTekst = (id: string) => id.startsWith('prisstrategi_gjentak|') ? mentorMelding('prisstrategi_gjentak') : mentorMelding(id)
   const faneMelding = (faneMsg && !ordbokOpen && !blocked && !hasQueued && !quizVises) ? faneMeldingTekst(faneMsg) : null
-  const melding = eventMelding ?? faneMelding     // én boble; hendelse har forrang
+  // STI-DYTT: LAVEST prioritet — vises kun når ingen annen boble/quiz/intro er oppe,
+  // og eleven ikke har lukket den for gjeldende milepæl. Tom sti ⇒ nesteMil = null ⇒
+  // ingen boble (dagens frispill, uendret). Aldri en sperre.
+  const stiNudge = (nesteMil && !stiSkjult && !ordbokOpen && !blocked && !hasQueued && !quizVises && introStep === null)
+    ? `${stiBra ? 'Bra jobba! ' : ''}🎯 Neste steg på stien: «${nesteMil.label}».`
+    : null
+  const melding = eventMelding ?? faneMelding ?? stiNudge   // én boble; hendelse har forrang, sti-dytt lavest
 
   // VENTER: meldinger/quiz står i kø men ingen boble vises ⇒ figuren PEKER +
   // «N»-badge; neste vises når eleven klikker figuren.
@@ -678,6 +710,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
       setPaused(queue.length > 1)
       setQueue(q => q.slice(1))
     } else if (faneMsg) setFaneMsg(null)
+    else if (stiNudge) { setStiSkjult(true); setStiBra(false) }   // lukk sti-dyttet (kommer tilbake ved steg/scenebytte)
   }
 
   function figureClick() {
@@ -745,7 +778,7 @@ export default function Mentor({ blocked }: { blocked: boolean }) {
       <AnimatePresence>
         {melding && (
           <motion.div
-            key={eventId ?? faneMsg}
+            key={eventId ?? faneMsg ?? (stiNudge ? `sti:${nesteMil?.id}` : 'boble')}
             initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
             style={{
               pointerEvents: 'auto', maxWidth: 300, marginBottom: 20,
