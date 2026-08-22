@@ -1411,8 +1411,13 @@ function reducer(state: GameState, action: Action): GameState {
     case 'HIRE_EMPLOYEE': {
       const employees = [...state.employees, action.employee]
       const monthlyPayroll = employees.reduce((s, e) => s + e.monthlySalary, 0)
+      // Ansettelse OPPRETTER funksjonen i org-kartet automatisk hvis den ikke
+      // finnes (Ansett-først-prinsippet — eleven skal aldri måtte bygge et
+      // org-kart FØR hen kan ansette noen).
+      const orgRoller = state.orgRoller.includes(action.employee.role)
+        ? state.orgRoller : [...state.orgRoller, action.employee.role]
       // Ansettelse lukker en ev. aktiv utlysning — resten av søkerne går videre.
-      return { ...state, employees, monthlyPayroll, aktivRekruttering: null }
+      return { ...state, employees, monthlyPayroll, orgRoller, aktivRekruttering: null }
     }
 
     // REKRUTTERING — lys ut stillingen: genererer 3 kandidater basert på

@@ -3536,3 +3536,77 @@ intervju → ansett**.
   balansejobb kan koble egenskaper til kapasitet/turnover.
 - Kandidater takker aldri nei og forhandler ikke — `lonnsforventning` vises men
   gater ikke ansettelse.
+
+## PERSONALE-OMLEGGING + PAPIRLAPP + DASHBORD-TEMA — 2026-08-22 (spor-a/rekruttering)
+
+Tre deler: (A) ansett FØR organisering, (B) stillingsannonsen som en fysisk
+lapp, (C) globalt lys/middels/mørk-tema for hele Bedriftsdashboardet.
+
+### DEL A — Ansett først, organiser etterpå
+- **`GameContext.tsx` `HIRE_EMPLOYEE`:** oppretter funksjonen i org-kartet
+  automatisk (`orgRoller` får `action.employee.role` hvis den mangler). Eleven
+  trenger ikke lenger bygge et org-kart før hen kan ansette.
+- **`DashboardOverlay.tsx`:** `PersonaleTab` deler seg nå i «👥 Ansett» (default)
+  og «🗂️ Organiser (n)». Ny `AnsettView` (RekrutteringPanel + «Dine ansatte»-liste
+  med status) og `OrganiserView` (dagens to-stegs org-bygging, uendret innhold).
+  `RekrutteringPanel` mistet `opprettede`-avhengigheten og viser ALLE bransjens
+  roller (`getActiveIndustryDefinition().roller`); «opprett funksjon først»-sperren
+  er fjernet; den doble Ansett-blokken nederst i `OrgKartSteg` er borte.
+
+### DEL B — Stillingsannonsen som fysisk lapp
+- **`index.html`:** lastet inn Kalam (håndskrift) fra Google Fonts.
+- **RekrutteringPanel-skjemaet:** gulnet notatlapp (`#f4ecd8`), «tape»-remse øverst,
+  `rotate(-0.6deg)`, svak skygge; håndskrevet annonselinje («[Bedrift] søker ny
+  [tittel]») i Kalam; egenskaps-chips reskinnet til papirklips (kremhvit, tynn mørk
+  kant) med drag-funksjonen UENDRET. All logikk (drag, POST_JOB) urørt.
+- **KandidatKort:** papirlapper med asymmetrisk `border-radius`, liten deterministisk
+  rotasjon per kort, varm mørk tekst; intervju/ansett-knappene funksjonelt uendret.
+- Papirfargene er HARDKODET og påvirkes IKKE av DEL C-temaet (en fysisk lapp bytter
+  ikke farge når du skrur på lyset i rommet).
+
+### DEL C — Lys/middels/mørk-tema
+- **Ny `src/game/data/dashboardTema.ts`:** `DashTema`-type, localStorage-persistens
+  (`dash_tema_v1`), og `DASH_TEMA_CSS` med tre variabelsett (`--dash-modal-bg/card/
+  card-2/border/text/text-sekundaer/text-dempet`) scopet til `[data-dash-tema="…"]`.
+  Mørk = dagens utseende uendret.
+- **`DashboardOverlay.tsx`:** `dashTema`-state (init fra localStorage) + 3-knappers
+  temavelger i headeren (til venstre for ✕); modal-rota fikk `data-dash-tema` +
+  `var(--dash-*)` for bg/border/text og et injisert `<style>{DASH_TEMA_CSS}</style>`.
+  Global streng-erstatning byttet de 8 mest brukte hardkodede verdiene til
+  `var(--dash-*)` (299 var-referanser). Aksentfarger, gradient-innmat og andre
+  alpha-verdier er urørt.
+
+### Skjønn / tillegg utover den eksakte fargelista
+- **`rgba(255,255,255,0.1)`:** verifiserte at ALLE 18 forekomstene er border-bruk
+  (ingen i `linear-gradient`), så erstattet dem alle → `var(--dash-border)`.
+- **`#f1f5f9`:** verifiserte at alle 42 forekomstene er tekstfarge (også ternære
+  `? '#f1f5f9'`), så erstattet bar-verdien (beholder omkringliggende fnutter →
+  gyldig `'var(--dash-text)'`).
+- Erstattet bar (uten fnutter rundt) så både frittstående verdier (`background:
+  'rgba(...)'`) og sammensatte strenger (`border: '1px solid rgba(...)'`) traff samme
+  var — CSS `var()` er gyldig begge steder.
+- Temavelger-knappen og ✕-knappen i headeren fikk `var(--dash-*)` manuelt (var ikke
+  i de 8, men hører til det tematiserte språket).
+- Ingen `createPortal` i fila → alt tematisert innhold ligger under modal-rota, så
+  `var()` resolver overalt (ingen «foreldreløse» variabler).
+
+### Validering
+- **`tsc -b` rent.**
+- **Headless smoke (Playwright):** DEL A — `HIRE_EMPLOYEE` uten forhåndsopprettet
+  rolle → `orgRoller` inneholder rollen etterpå; Personale åpner på «👥 Ansett»,
+  lappen vises direkte (ingen «opprett funksjon først»), «Dine ansatte» viser den
+  ansatte. DEL B — annonselinja bruker `Kalam`, kort-bg = `rgb(244,236,216)` (papir),
+  `rotate`. DEL C — `--dash-modal-bg` = `rgba(255,255,255,0.98)` og `--dash-text` =
+  `#0f172a` under lys tema, `data-dash-tema`/localStorage settes, og valget består
+  reload. Eksisterende full-maaned kjørt for regresjon.
+- **Manuelt (Espen):** `5173/game?skip=1&dev=1` → Personale (åpner på Ansett) →
+  ansett uten org-rolle → sjekk «Organiser» viser dem. Bytt Lys/Middels/Mørk i
+  headeren og se kontrast endre seg i minst 5 faner; lappen endrer seg IKKE. Reload
+  → tema består.
+
+### Avvik / merknader
+- Papir-fargene og Kalam er en FØRSTEPASSING (som NB-kalibrering) — Espen finpusser
+  i Chrome. Google Fonts krever nett; uten nett faller Kalam tilbake til `cursive`.
+- Lys tema er kalibrert konservativt (kort = svakt mørk-på-lys). Om noen enkeltkort
+  fortsatt føles «romskip» i lys modus, er det et tunbart CSS-var-tall i
+  `dashboardTema.ts`, ikke en kodeendring.

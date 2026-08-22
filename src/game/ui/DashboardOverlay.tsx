@@ -35,6 +35,7 @@ import {
 } from '../data/innboksEpost'
 import MarkedsplanOppsummering from './MarkedsplanOppsummering'
 import { aktiveFunksjoner, evaluerRefleksjon, oppgaveRefleksjoner } from '../data/orgRefleksjon'
+import { hentDashTema, lagreDashTema, DASH_TEMA_LABEL, DASH_TEMA_CSS, type DashTema } from '../data/dashboardTema'
 import { EGENSKAPER, egenskapLabel, REFERANSELONN, INTERVJUSPORSMAL } from '../data/rekruttering'
 import type { Kandidat } from '../types'
 import type { Product, DistributionChannel, Employee, EmployeeRole, EmployeeLevel, RolleDef, Shift, InboxMessage } from '../types'
@@ -66,7 +67,7 @@ const FAG_FARGER: Record<FagId, { navn: string; kort: string; farge: string }> =
   markedsforing:    { navn: 'Markedsføring og innovasjon', kort: 'M',   farge: '#a855f7' }, // L≈128 · VG2: Kommunikasjon og markedsføring
   kultur:           { navn: 'Kultur og samhandling',       kort: 'KS',  farge: '#f78fc8' }, // L≈180 (lysnet fra #f472b6 for lyshets-stigen)
   hms:              { navn: 'HMS',                          kort: 'HMS', farge: '#fcd34d' }, // L≈208 (rav→gul, lysnet fra #f59e0b) · VG2 eget fag
-  verktoy:          { navn: 'Verktøy',                      kort: 'V',   farge: '#64748b' }, // L≈114 · tverrgående, ikke ett fag
+  verktoy:          { navn: 'Verktøy',                      kort: 'V',   farge: 'var(--dash-text-sekundaer)' }, // L≈114 · tverrgående, ikke ett fag
 }
 
 // De tre programfagene læreren styrer (fag.ts sin FagKode) → FagId i FAG_FARGER,
@@ -138,7 +139,7 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
     <>
       <div className="dashboard-tab-bar" style={{
         display: 'flex', gap: '0.5rem', padding: '1rem 2rem 0',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        borderBottom: '1px solid var(--dash-border)',
         overflowX: 'auto', flexShrink: 0,
         scrollbarWidth: 'none',
       }}>
@@ -151,7 +152,7 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
               border: `1px solid ${aktiv ? '#00d4aa' : 'transparent'}`,
               borderBottom: 'none', borderRadius: '8px 8px 0 0',
               padding: '0.6rem 1.2rem 0.65rem',
-              color: aktiv ? '#00d4aa' : '#64748b',
+              color: aktiv ? '#00d4aa' : 'var(--dash-text-sekundaer)',
               fontWeight: 600, fontSize: 14, cursor: 'pointer',
               fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s',
               flexShrink: 0, position: 'relative',
@@ -186,7 +187,7 @@ function InnboksTabBar({ activeTab, setActiveTab }: { activeTab: Tab; setActiveT
           fargen aldri er den eneste bæreren av koblingen. */}
       <div style={{
         display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem', alignItems: 'center',
-        padding: '0.5rem 2rem 0', flexShrink: 0, fontSize: 10.5, color: '#64748b',
+        padding: '0.5rem 2rem 0', flexShrink: 0, fontSize: 10.5, color: 'var(--dash-text-sekundaer)',
       }}>
         <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>PROGRAMFAG:</span>
         {synligeFag.map(f => (
@@ -229,6 +230,8 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
   const [priserLagretMin, setPriserLagretMin] = useState<number | null>(null)
   const [malgruppeUtkast, setMalgruppeUtkast] = useState<MalgruppeUtkast | null>(null)
   const [malgruppeLagretMin, setMalgruppeLagretMin] = useState<number | null>(null)
+  const [dashTema, setDashTema] = useState<DashTema>(hentDashTema)
+  function velgTema(t: DashTema) { setDashTema(t); lagreDashTema(t) }
 
   // Åpning / direktenavigasjon til en SKJULT fane → Oversikt (ingen krasj).
   useEffect(() => {
@@ -288,30 +291,32 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
         >
           <motion.div
             data-testid="dashbord"
+            data-dash-tema={dashTema}
             initial={{ scale: 0.93, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', damping: 24 }}
             style={{
-              background: 'rgba(10,14,26,0.97)',
+              background: 'var(--dash-modal-bg)',
               backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid var(--dash-border)',
               borderRadius: '2rem', width: '100%', maxWidth: 960,
               maxHeight: 'calc(100vh - 3rem)',
               display: 'flex', flexDirection: 'column',
-              color: '#f1f5f9', overflow: 'hidden',
+              color: 'var(--dash-text)', overflow: 'hidden',
             }}
           >
+            <style>{DASH_TEMA_CSS}</style>
             {/* Header */}
             <div style={{ padding: '1.5rem 2rem 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h2 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>💻 Bedriftsdashboard</h2>
-                <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>All bedriftsstyring på ett sted</p>
+                <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0.2rem 0 0' }}>All bedriftsstyring på ett sted</p>
                 {/* AKTIVE FAG — hvilke programfag læreren har slått PÅ for klassen
                     (fd/m/ks). Fargesvak-trygt: kort (FD/M/KS) + fullt navn, ikke
                     kun farge. Fag som er av vises ikke (de er skjult for eleven). */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>AKTIVE FAG:</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--dash-text-sekundaer)', letterSpacing: '0.05em' }}>AKTIVE FAG:</span>
                   {FAG_KODER.filter(f => fagAktiv[f]).map(f => {
                     const { farge, kort, navn } = FAG_FARGER[KODE_TIL_FAGID[f]]
                     return (
@@ -326,15 +331,27 @@ export default function DashboardOverlay({ open, onClose, initialTab = 'oversikt
                     )
                   })}
                   {!FAG_KODER.some(f => fagAktiv[f]) && (
-                    <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>ingen</span>
+                    <span style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', fontStyle: 'italic' }}>ingen</span>
                   )}
                 </div>
               </div>
-              <button data-testid="dashbord-lukk" onClick={onClose} style={{
-                background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 99, width: 36, height: 36, color: '#94a3b8',
-                cursor: 'pointer', fontSize: 18, fontFamily: 'inherit',
-              }}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, alignSelf: 'flex-start' }}>
+                {/* Lys/middels/mørk temavelger (DEL C) — ren UI-preferanse, lagres i localStorage. */}
+                <div style={{ display: 'flex', gap: 4, background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 8, padding: 3 }}>
+                  {(['lys', 'middels', 'mork'] as DashTema[]).map(t => (
+                    <button key={t} onClick={() => velgTema(t)} title={DASH_TEMA_LABEL[t]} style={{
+                      background: dashTema === t ? 'rgba(0,212,170,0.18)' : 'transparent',
+                      border: 'none', borderRadius: 6, padding: '0.3rem 0.5rem',
+                      cursor: 'pointer', fontSize: 13, lineHeight: 1,
+                    }}>{DASH_TEMA_LABEL[t].split(' ')[0]}</button>
+                  ))}
+                </div>
+                <button data-testid="dashbord-lukk" onClick={onClose} style={{
+                  background: 'var(--dash-card-2)', border: '1px solid var(--dash-border)',
+                  borderRadius: 99, width: 36, height: 36, color: 'var(--dash-text-dempet)',
+                  cursor: 'pointer', fontSize: 18, fontFamily: 'inherit',
+                }}>✕</button>
+              </div>
             </div>
 
             {/* Tab bar */}
@@ -395,7 +412,7 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const allDone = Object.values(progress).every(Boolean)
 
   const QUALITY_STARS = ['☆☆☆☆☆', '★☆☆☆☆', '★★☆☆☆', '★★★☆☆', '★★★★☆', '★★★★★']
-  const QUALITY_COLOR = ['#64748b', '#ef4444', '#f97316', '#facc15', '#22c55e', '#22c55e']
+  const QUALITY_COLOR = ['var(--dash-text-sekundaer)', '#ef4444', '#f97316', '#facc15', '#22c55e', '#22c55e']
   const q = state.businessPlan.qualityScore
 
   function handleSimulate() {
@@ -417,8 +434,8 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
       </div>
 
       {/* 4P-fremdrift — flyttet hit fra HUD-en. Klikk en P for å hoppe til fanen. */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.9rem', letterSpacing: '0.06em' }}>
+      <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dash-text-sekundaer)', marginBottom: '0.9rem', letterSpacing: '0.06em' }}>
           🎯 <Fagord id="MKT_001">MARKEDSMIKSEN (4P)</Fagord>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '0.7rem' }}>
@@ -430,15 +447,15 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
           ]).map(({ p, tab, done }) => (
             <button key={p} onClick={() => onNavigate(tab)} title={`Gå til ${p}`} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'inherit',
-              background: done ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
+              background: done ? 'rgba(0,212,170,0.12)' : 'var(--dash-card-2)',
               border: `1px solid ${done ? '#00d4aa' : 'rgba(255,255,255,0.12)'}`, borderRadius: 12, padding: '0.7rem 0.4rem',
             }}>
               <div style={{
                 width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 800, background: done ? 'rgba(0,212,170,0.2)' : 'rgba(255,255,255,0.06)',
-                color: done ? '#00d4aa' : '#64748b',
+                color: done ? '#00d4aa' : 'var(--dash-text-sekundaer)',
               }}>{done ? '✓' : p[0]}</div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: done ? '#00d4aa' : '#94a3b8' }}>{p}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: done ? '#00d4aa' : 'var(--dash-text-dempet)' }}>{p}</span>
             </button>
           ))}
         </div>
@@ -450,13 +467,13 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
       </div>
 
       {/* Bedriftsstatus */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '1rem', letterSpacing: '0.06em' }}>📊 BEDRIFTSSTATUS</div>
+      <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dash-text-sekundaer)', marginBottom: '1rem', letterSpacing: '0.06em' }}>📊 BEDRIFTSSTATUS</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
 
           {/* Plankvalitet */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem' }}>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Plankvalitet</div>
+          <div style={{ background: 'var(--dash-card)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem' }}>
+            <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', marginBottom: 4 }}>Plankvalitet</div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 16, color: QUALITY_COLOR[q] }}>{QUALITY_STARS[q]}</span>
               <button
@@ -470,11 +487,11 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
 
           {/* Runway */}
           <div style={{
-            background: runway !== null && runway < 3 ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)',
+            background: runway !== null && runway < 3 ? 'rgba(239,68,68,0.08)' : 'var(--dash-card)',
             border: `1px solid ${runway !== null && runway < 3 ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.07)'}`,
             borderRadius: 10, padding: '0.75rem',
           }}>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Runway</div>
+            <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', marginBottom: 4 }}>Runway</div>
             <div style={{ fontSize: 18, fontWeight: 800, color: runway === null ? '#22c55e' : runway < 3 ? '#ef4444' : runway < 6 ? '#f97316' : '#38bdf8' }}>
               {runway === null ? '∞' : `${runway} mnd`}
             </div>
@@ -482,9 +499,9 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
           </div>
 
           {/* Produkter */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem' }}>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Produkter</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: state.products.length > 0 ? '#f1f5f9' : '#475569' }}>
+          <div style={{ background: 'var(--dash-card)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem' }}>
+            <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', marginBottom: 4 }}>Produkter</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: state.products.length > 0 ? 'var(--dash-text)' : '#475569' }}>
               {state.products.length}
             </div>
             {state.products.length === 0 && (
@@ -493,15 +510,15 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
           </div>
 
           {/* Ansatte */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem' }}>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Ansatte</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9' }}>{state.employees.length}</div>
+          <div style={{ background: 'var(--dash-card)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem' }}>
+            <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', marginBottom: 4 }}>Ansatte</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dash-text)' }}>{state.employees.length}</div>
           </div>
 
           {/* Måned / År */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem', gridColumn: '1/-1' }}>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Periode</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>
+          <div style={{ background: 'var(--dash-card)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '0.75rem', gridColumn: '1/-1' }}>
+            <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', marginBottom: 4 }}>Periode</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--dash-text)' }}>
               Måned {state.currentMonth} · År {state.currentYear}
             </div>
           </div>
@@ -526,8 +543,8 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
 
       {/* Revenue chart */}
       {monthlyResults.length > 0 && (
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: '1rem', letterSpacing: '0.08em' }}>MÅNEDLIG OMSETNING</div>
+        <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '1rem', padding: '1.25rem' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dash-text-sekundaer)', marginBottom: '1rem', letterSpacing: '0.08em' }}>MÅNEDLIG OMSETNING</div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 100 }}>
             {monthlyResults.map((r, i) => (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
@@ -542,7 +559,7 @@ function OversiktTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', fontSize: 14 }}>
-            <span style={{ color: '#64748b' }}>Total nettoresultat:</span>
+            <span style={{ color: 'var(--dash-text-sekundaer)' }}>Total nettoresultat:</span>
             <span style={{ fontWeight: 800, color: totalProfit >= 0 ? '#22c55e' : '#ef4444' }}>
               {totalProfit >= 0 ? '+' : ''}{formatKr(totalProfit)}
             </span>
@@ -630,7 +647,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
     <div>
       <div style={{ marginBottom: '1.25rem' }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Forretningsplan</h3>
-        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
+        <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0.2rem 0 0' }}>
           En god plan gir bedre lånevilkår og viser deg veien videre.
         </p>
       </div>
@@ -644,7 +661,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
         <div style={{ fontSize: 28, color: QUALITY_COLOR[q] }}>{stars}</div>
         <div>
           <div style={{ fontWeight: 700, color: QUALITY_COLOR[q] }}>{QUALITY_LABEL[q]}</div>
-          <div style={{ fontSize: 12, color: '#64748b' }}>Plankvalitet påvirker bankens rentesats</div>
+          <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}>Plankvalitet påvirker bankens rentesats</div>
         </div>
       </div>
 
@@ -660,7 +677,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
             style={{
               width: '100%', minHeight: 80, background: 'rgba(255,255,255,0.06)',
               border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-              padding: '0.75rem', color: '#f1f5f9', fontSize: 13, fontFamily: 'inherit',
+              padding: '0.75rem', color: 'var(--dash-text)', fontSize: 13, fontFamily: 'inherit',
               resize: 'vertical', boxSizing: 'border-box',
             }}
           />
@@ -678,7 +695,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
           complete={Object.values(canvas).filter(v => (v as string).trim().length > 10).length >= 2}
           icon="🗺️"
         >
-          <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 0.75rem' }}>
+          <p style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)', margin: '0 0 0.75rem' }}>
             Fyll ut de 4 manuelle feltene. De 5 grå feltene hentes automatisk fra andre faner.
           </p>
 
@@ -707,7 +724,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
                         {f.emoji} {f.label}
                       </div>
                       {f.value ? (
-                        <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.4 }}>{f.value}</div>
+                        <div style={{ fontSize: 11, color: 'var(--dash-text-dempet)', lineHeight: 1.4 }}>{f.value}</div>
                       ) : (
                         <button
                           onClick={() => onNavigate(f.tab)}
@@ -734,11 +751,11 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
               const filled = val.trim().length > 10
               return (
                 <div key={f.key} style={{
-                  background: filled ? 'rgba(0,212,170,0.06)' : 'rgba(255,255,255,0.03)',
+                  background: filled ? 'rgba(0,212,170,0.06)' : 'var(--dash-card)',
                   border: `1px solid ${filled ? 'rgba(0,212,170,0.2)' : 'rgba(255,255,255,0.07)'}`,
                   borderRadius: 8, padding: '0.6rem',
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: filled ? '#00d4aa' : '#64748b', marginBottom: '0.3rem' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: filled ? '#00d4aa' : 'var(--dash-text-sekundaer)', marginBottom: '0.3rem' }}>
                     {f.emoji} {f.label} {filled && '✅'}
                   </div>
                   <textarea
@@ -747,9 +764,9 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
                     placeholder={f.suggestions[0]}
                     rows={2}
                     style={{
-                      width: '100%', background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4,
-                      padding: '0.35rem', color: '#f1f5f9', fontSize: 11,
+                      width: '100%', background: 'var(--dash-card-2)',
+                      border: '1px solid var(--dash-border)', borderRadius: 4,
+                      padding: '0.35rem', color: 'var(--dash-text)', fontSize: 11,
                       fontFamily: 'inherit', resize: 'none', boxSizing: 'border-box',
                     }}
                   />
@@ -786,7 +803,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
             <p style={{ color: '#22c55e', fontSize: 13, margin: 0 }}>✅ Markedsundersøkelse kjøpt. Du har god innsikt i markedet.</p>
           ) : (
             <div>
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 0.75rem' }}>
+              <p style={{ color: 'var(--dash-text-dempet)', fontSize: 13, margin: '0 0 0.75rem' }}>
                 Kjøp en markedsundersøkelse for å få konkrete data. Gir +1 stjerne i plankvalitet.
               </p>
               <button
@@ -794,7 +811,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
                 disabled={state.money < 10_000}
                 style={{
                   background: state.money >= 10_000 ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${state.money >= 10_000 ? 'rgba(0,212,170,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                  border: `1px solid ${state.money >= 10_000 ? 'rgba(0,212,170,0.3)' : 'var(--dash-border)'}`,
                   borderRadius: 8, padding: '0.5rem 1.25rem',
                   color: state.money >= 10_000 ? '#00d4aa' : '#475569',
                   fontSize: 13, cursor: state.money >= 10_000 ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
@@ -808,7 +825,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
 
         {/* Target audience */}
         <PlanSection title="Målgruppe" complete={targetAudience.ageGroups.length > 0 || targetAudience.genders.length > 0} icon="🎯">
-          <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>
+          <p style={{ color: 'var(--dash-text-dempet)', fontSize: 13, margin: 0 }}>
             {taSummary !== 'Ikke definert' ? taSummary : 'Gå til Målgruppe-fanen for å definere hvem du selger til.'}
           </p>
         </PlanSection>
@@ -818,38 +835,38 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
           {products.length > 0 ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               {products.map(p => (
-                <span key={p.id} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 99, padding: '3px 10px', fontSize: 12 }}>
+                <span key={p.id} style={{ background: 'var(--dash-border)', borderRadius: 99, padding: '3px 10px', fontSize: 12 }}>
                   {p.icon} {p.name}
                 </span>
               ))}
             </div>
           ) : (
-            <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Gå til Produkter-fanen for å velge hva du skal selge.</p>
+            <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: 0 }}>Gå til Produkter-fanen for å velge hva du skal selge.</p>
           )}
         </PlanSection>
 
         {/* Budget */}
         <PlanSection title="Driftsbudsjett (estimert)" complete={monthlyCosts > 0} icon="💵">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.3rem 1rem', fontSize: 13 }}>
-            <span style={{ color: '#64748b' }}>Husleie</span>
+            <span style={{ color: 'var(--dash-text-sekundaer)' }}>Husleie</span>
             <span style={{ textAlign: 'right' }}>{formatKr(monthlyRent)}</span>
-            <span style={{ color: '#64748b' }}>Lønn</span>
+            <span style={{ color: 'var(--dash-text-sekundaer)' }}>Lønn</span>
             <span style={{ textAlign: 'right' }}>{formatKr(monthlyPayroll)}</span>
-            <span style={{ color: '#64748b' }}>Markedsføring</span>
+            <span style={{ color: 'var(--dash-text-sekundaer)' }}>Markedsføring</span>
             <span style={{ textAlign: 'right' }}>{formatKr(Object.values(marketingBudget).reduce((s, v) => s + v, 0))}</span>
-            <span style={{ color: '#64748b' }}>Lånebetalinger</span>
+            <span style={{ color: 'var(--dash-text-sekundaer)' }}>Lånebetalinger</span>
             <span style={{ textAlign: 'right' }}>{formatKr(monthlyLoanPayment)}</span>
-            <span style={{ color: '#64748b' }}>Forsikring/div.</span>
+            <span style={{ color: 'var(--dash-text-sekundaer)' }}>Forsikring/div.</span>
             <span style={{ textAlign: 'right' }}>{formatKr(2_000)}</span>
-            <div style={{ gridColumn: '1/-1', borderTop: '1px solid rgba(255,255,255,0.1)', margin: '0.3rem 0' }} />
+            <div style={{ gridColumn: '1/-1', borderTop: '1px solid var(--dash-border)', margin: '0.3rem 0' }} />
             <span style={{ fontWeight: 700 }}>Total/mnd</span>
             <span style={{ textAlign: 'right', fontWeight: 700, color: '#f97316' }}>{formatKr(monthlyCosts + 2000)}</span>
             {estRevenue > 0 && <>
-              <span style={{ color: '#64748b' }}>Est. inntekt/mnd</span>
+              <span style={{ color: 'var(--dash-text-sekundaer)' }}>Est. inntekt/mnd</span>
               <span style={{ textAlign: 'right', color: '#22c55e' }}>{formatKr(estRevenue)}</span>
             </>}
             {breakEvenMonth !== null && breakEvenMonth > 0 && breakEvenMonth < 36 && <>
-              <span style={{ color: '#64748b' }}>Estimert break-even</span>
+              <span style={{ color: 'var(--dash-text-sekundaer)' }}>Estimert break-even</span>
               <span style={{ textAlign: 'right', color: '#38bdf8' }}>Måned {breakEvenMonth}</span>
             </>}
           </div>
@@ -863,7 +880,7 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
         >
           Lagre plan
         </button>
-        <div style={{ fontSize: 13, color: '#64748b' }}>
+        <div style={{ fontSize: 13, color: 'var(--dash-text-sekundaer)' }}>
           Plankvalitet ({q}/5) påvirker rente: {RATE_LABELS[Math.max(0, Math.min(5, q))]} p.a.
         </div>
       </div>
@@ -874,8 +891,8 @@ function ForretningsplanTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
 function PlanSection({ title, complete, icon, children }: { title: string; complete: boolean; icon: string; children: React.ReactNode }) {
   return (
     <div style={{
-      background: complete ? 'rgba(0,212,170,0.05)' : 'rgba(255,255,255,0.03)',
-      border: `1px solid ${complete ? 'rgba(0,212,170,0.25)' : 'rgba(255,255,255,0.08)'}`,
+      background: complete ? 'rgba(0,212,170,0.05)' : 'var(--dash-card)',
+      border: `1px solid ${complete ? 'rgba(0,212,170,0.25)' : 'var(--dash-border)'}`,
       borderRadius: '0.75rem', padding: '1rem',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
@@ -954,7 +971,7 @@ function MalgruppeTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <div>
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>🎯 Målgruppe</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Hvem selger du til? Kunden genereres automatisk basert på valgene dine.</p>
+          <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0.2rem 0 0' }}>Hvem selger du til? Kunden genereres automatisk basert på valgene dine.</p>
         </div>
         <LagreBar label="Lagre målgruppe" dirty={dirty} nyligLagret={nyligLagret} lagretMin={lagretMin} onSave={save} />
       </div>
@@ -966,10 +983,10 @@ function MalgruppeTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
             return (
               <button key={g} onClick={() => oppdater(prev => ({ ...prev, geography: active ? null : g }))}
                 style={{
-                  background: active ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${active ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                  background: active ? 'rgba(56,189,248,0.15)' : 'var(--dash-card-2)',
+                  border: `1px solid ${active ? '#38bdf8' : 'var(--dash-border)'}`,
                   borderRadius: 99, padding: '0.4rem 1.1rem',
-                  color: active ? '#38bdf8' : '#94a3b8',
+                  color: active ? '#38bdf8' : 'var(--dash-text-dempet)',
                   fontSize: 13, fontWeight: active ? 700 : 400,
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}>
@@ -998,10 +1015,10 @@ function MalgruppeTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
             return (
               <button key={p} onClick={() => togglePsycho(p)} disabled={maxed}
                 style={{
-                  background: active ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${active ? '#00d4aa66' : 'rgba(255,255,255,0.1)'}`,
+                  background: active ? 'rgba(0,212,170,0.15)' : 'var(--dash-card-2)',
+                  border: `1px solid ${active ? '#00d4aa66' : 'var(--dash-border)'}`,
                   borderRadius: 99, padding: '0.4rem 1rem',
-                  color: active ? '#00d4aa' : maxed ? '#334155' : '#94a3b8',
+                  color: active ? '#00d4aa' : maxed ? '#334155' : 'var(--dash-text-dempet)',
                   fontSize: 13, fontWeight: active ? 700 : 400,
                   cursor: maxed ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
                   opacity: maxed ? 0.4 : 1,
@@ -1017,7 +1034,7 @@ function MalgruppeTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
       {persona && <PersonaCard persona={persona} matchScore={matchScore} products={state.products} psychographics={audience.psychographics} />}
 
       {!persona && (
-        <div style={{ textAlign: 'center', color: '#475569', padding: '2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px dashed rgba(255,255,255,0.1)', marginTop: '1rem' }}>
+        <div style={{ textAlign: 'center', color: '#475569', padding: '2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px dashed var(--dash-border)', marginTop: '1rem' }}>
           <div style={{ fontSize: 40, marginBottom: '0.75rem' }}>🧑‍🤝‍🧑</div>
           <p style={{ fontSize: 14 }}>Gjør minst ett valg for å generere din typiske kunde.</p>
         </div>
@@ -1058,13 +1075,13 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
   return (
     <div style={{
       marginTop: '1.5rem',
-      background: 'rgba(255,255,255,0.03)',
-      border: '1px solid rgba(255,255,255,0.1)',
+      background: 'var(--dash-card)',
+      border: '1px solid var(--dash-border)',
       borderRadius: '1.25rem', padding: '1.5rem',
       backdropFilter: 'blur(10px)',
     }}>
       {/* Header */}
-      <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.1em', marginBottom: '1rem' }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--dash-text-sekundaer)', letterSpacing: '0.1em', marginBottom: '1rem' }}>
         👤 PERSONA: DIN TYPISKE KUNDE
       </div>
 
@@ -1081,16 +1098,16 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
           {initials}
         </div>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 18, color: '#f1f5f9' }}>{persona.fullName}, {persona.age} år</div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>📍 {persona.location}</div>
-          <div style={{ fontSize: 13, color: '#64748b' }}>💼 {persona.occupation}</div>
+          <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--dash-text)' }}>{persona.fullName}, {persona.age} år</div>
+          <div style={{ fontSize: 13, color: 'var(--dash-text-sekundaer)', marginTop: 2 }}>📍 {persona.location}</div>
+          <div style={{ fontSize: 13, color: 'var(--dash-text-sekundaer)' }}>💼 {persona.occupation}</div>
           <div style={{ fontSize: 13, color: '#00d4aa', marginTop: 2 }}>
             💰 Bruker ~{persona.monthlyBudget.toLocaleString('nb-NO')} kr/mnd
             {/* DEL 1 (Persona-realisme): kafé viser ALLTID mnd + per-besøk
                 atskilt og konsistente (aldri samme tall for begge — se
                 cafeSpendFrom i personas.ts). */}
             {persona.perVisitSpend !== undefined && persona.visitsPerMonth !== undefined && (
-              <span style={{ color: '#64748b' }}> ({persona.perVisitSpend.toLocaleString('nb-NO')} kr/besøk · {persona.visitsPerMonth}×/mnd)</span>
+              <span style={{ color: 'var(--dash-text-sekundaer)' }}> ({persona.perVisitSpend.toLocaleString('nb-NO')} kr/besøk · {persona.visitsPerMonth}×/mnd)</span>
             )}
           </div>
         </div>
@@ -1098,7 +1115,7 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
 
       {/* Bio */}
       <div style={{
-        background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem',
+        background: 'var(--dash-card-2)', borderRadius: '0.75rem',
         padding: '0.9rem 1rem', marginBottom: '1.25rem',
         borderLeft: `3px solid ${persona.avatarColor}`,
         fontSize: 13, color: '#cbd5e1', lineHeight: 1.6, fontStyle: 'italic',
@@ -1110,12 +1127,12 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
         {/* Interests */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>INTERESSER</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dash-text-sekundaer)', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>INTERESSER</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
             {persona.interests.map(i => (
               <span key={i} style={{
-                background: 'rgba(255,255,255,0.08)', borderRadius: 99,
-                padding: '2px 9px', fontSize: 11, color: '#94a3b8',
+                background: 'var(--dash-border)', borderRadius: 99,
+                padding: '2px 9px', fontSize: 11, color: 'var(--dash-text-dempet)',
               }}>🏷 {i}</span>
             ))}
           </div>
@@ -1123,10 +1140,10 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
 
         {/* Social media */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>SOSIALE MEDIER</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dash-text-sekundaer)', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>SOSIALE MEDIER</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             {persona.socialMedia.map(s => (
-              <span key={s} style={{ fontSize: 12, color: '#94a3b8' }}>📱 {s}</span>
+              <span key={s} style={{ fontSize: 12, color: 'var(--dash-text-dempet)' }}>📱 {s}</span>
             ))}
           </div>
         </div>
@@ -1134,9 +1151,9 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
 
       {/* Shopping habits */}
       <div style={{ marginBottom: '1.25rem' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>HANDLEVANER</div>
-        <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: '0.25rem' }}>🛒 {persona.shoppingHabit}</div>
-        <div style={{ fontSize: 13, color: '#94a3b8' }}>💳 Betalingsvilje: {persona.willingness}</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dash-text-sekundaer)', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>HANDLEVANER</div>
+        <div style={{ fontSize: 13, color: 'var(--dash-text-dempet)', marginBottom: '0.25rem' }}>🛒 {persona.shoppingHabit}</div>
+        <div style={{ fontSize: 13, color: 'var(--dash-text-dempet)' }}>💳 Betalingsvilje: {persona.willingness}</div>
       </div>
 
       {/* Insight */}
@@ -1149,12 +1166,12 @@ function PersonaCard({ persona, matchScore, products, psychographics }: {
       </div>
 
       {/* Match bar */}
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.9rem 1rem' }}>
+      <div style={{ background: 'var(--dash-card-2)', borderRadius: '0.75rem', padding: '0.9rem 1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Match med dine produkter</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dash-text-sekundaer)' }}>Match med dine produkter</div>
           <div style={{ fontSize: 14, fontWeight: 800, color: ml.color }}>{matchScore}% — {ml.text}</div>
         </div>
-        <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--dash-border)', borderRadius: 99, height: 8, overflow: 'hidden' }}>
           <div style={{
             height: '100%', borderRadius: 99,
             width: `${matchScore}%`,
@@ -1188,7 +1205,7 @@ function StamkundeOversikt() {
   if (!rader.length) return null
   return (
     <div style={{ marginTop: '1.25rem' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dash-text-sekundaer)', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>
         STAMKUNDER — KJENTE FJES
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -1197,11 +1214,11 @@ function StamkundeOversikt() {
           // utviklingstrinnet (Ny/Trygg stamkunde · Anbefaler deg).
           const { label, farge, ikon } = stamkundeTrinnLabel(r)
           return (
-            <div key={r.navn} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '0.5rem 0.8rem' }}>
-              <span style={{ fontSize: 13, color: '#f1f5f9', fontWeight: 600 }}>{ikon} {r.navn}</span>
+            <div key={r.navn} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--dash-card-2)', border: '1px solid var(--dash-border)', borderRadius: 10, padding: '0.5rem 0.8rem' }}>
+              <span style={{ fontSize: 13, color: 'var(--dash-text)', fontWeight: 600 }}>{ikon} {r.navn}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: farge }}>{label}</span>
-                <span style={{ fontSize: 11, color: '#64748b' }}>{r.antallMoter} besøk</span>
+                <span style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)' }}>{r.antallMoter} besøk</span>
               </span>
             </div>
           )
@@ -1216,7 +1233,7 @@ function StamkundeOversikt() {
 function AudienceSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: '1.25rem' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>{label.toUpperCase()}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dash-text-sekundaer)', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>{label.toUpperCase()}</div>
       {children}
     </div>
   )
@@ -1229,10 +1246,10 @@ function ToggleGroup({ options, selected, onToggle, color }: { options: string[]
         const active = selected.includes(o)
         return (
           <button key={o} onClick={() => onToggle(o)} style={{
-            background: active ? `${color}18` : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${active ? color + '66' : 'rgba(255,255,255,0.1)'}`,
+            background: active ? `${color}18` : 'var(--dash-card-2)',
+            border: `1px solid ${active ? color + '66' : 'var(--dash-border)'}`,
             borderRadius: 99, padding: '0.4rem 1rem',
-            color: active ? color : '#94a3b8',
+            color: active ? color : 'var(--dash-text-dempet)',
             fontSize: 13, fontWeight: active ? 700 : 400,
             cursor: 'pointer', fontFamily: 'inherit',
           }}>
@@ -1336,7 +1353,7 @@ function OkonomiTab() {
           display: 'flex', gap: '1.5rem', alignItems: 'center',
         }}>
           <div>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}><Fagord id="ECO_005">Runway</Fagord></div>
+            <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}><Fagord id="ECO_005">Runway</Fagord></div>
             <div style={{
               fontSize: 28, fontWeight: 900,
               color: runway < 3 ? '#ef4444' : runway < 6 ? '#f97316' : '#38bdf8',
@@ -1345,9 +1362,9 @@ function OkonomiTab() {
             </div>
             {runway < 3 && <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 700 }}>⚠️ Kritisk! Søk lån eller øk inntekter</div>}
           </div>
-          <div style={{ borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '1.5rem' }}>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Burn rate</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#f97316' }}>{formatKr(burnRate)}<span style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>/mnd</span></div>
+          <div style={{ borderLeft: '1px solid var(--dash-border)', paddingLeft: '1.5rem' }}>
+            <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Burn rate</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#f97316' }}>{formatKr(burnRate)}<span style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)', fontWeight: 400 }}>/mnd</span></div>
           </div>
         </div>
       )}
@@ -1355,17 +1372,17 @@ function OkonomiTab() {
       {/* Cash flow overview */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
         <KpiCard label="Egenkapital"           value={formatKr(money)}             color="#22c55e" icon="💰" />
-        <KpiCard label="Total gjeld"           value={formatKr(totalDebt)}         color={totalDebt > 0 ? '#f97316' : '#64748b'} icon="🏦" />
+        <KpiCard label="Total gjeld"           value={formatKr(totalDebt)}         color={totalDebt > 0 ? '#f97316' : 'var(--dash-text-sekundaer)'} icon="🏦" />
         <KpiCard label="Kostnader/mnd"         value={formatKr(fasteMnd)}          color="#f97316" icon="📤" />
         <KpiCard label="Opptjent denne måneden" value={formatKr(opptjentDenneMnd)} color={opptjentDenneMnd >= 0 ? '#22c55e' : '#ef4444'} icon="📈" />
       </div>
 
       {/* Dagene denne måneden (DEL 1) — faktisk opptjening fra dagssyklusen, med
           enkel projeksjon. Tom liste før første stengte dag. */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+      <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>DAGENE DENNE MÅNEDEN</div>
-          <div style={{ fontSize: 12, color: '#64748b' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dash-text-sekundaer)' }}>DAGENE DENNE MÅNEDEN</div>
+          <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}>
             {dagerFullført} av {DAY_CONFIG.daysPerMonth} handledager
           </div>
         </div>
@@ -1381,7 +1398,7 @@ function OkonomiTab() {
                 const pos = d.resultat >= 0
                 return (
                   <div key={`${d.year}-${d.month}-${d.dayNumber}`} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-                    <span style={{ fontSize: 12, color: '#94a3b8', width: 46, flexShrink: 0 }}>Dag {d.dayNumber}</span>
+                    <span style={{ fontSize: 12, color: 'var(--dash-text-dempet)', width: 46, flexShrink: 0 }}>Dag {d.dayNumber}</span>
                     {/* enkel resultat-bar (midtstilt 0) */}
                     <div style={{ flex: 1, height: 14, position: 'relative', display: 'flex', alignItems: 'center' }}>
                       <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.12)' }} />
@@ -1391,7 +1408,7 @@ function OkonomiTab() {
                         width: `${(Math.abs(d.resultat) / maxAbs) * 48}%`,
                       }} />
                     </div>
-                    <span style={{ fontSize: 11, color: '#64748b', width: 96, flexShrink: 0, textAlign: 'right' }}>
+                    <span style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', width: 96, flexShrink: 0, textAlign: 'right' }}>
                       {d.soldStk + d.bakgrunnStk} solgt · {d.svinnStk} svinn
                     </span>
                     <span style={{ fontSize: 12, fontWeight: 700, width: 78, flexShrink: 0, textAlign: 'right', color: pos ? '#22c55e' : '#ef4444' }}>
@@ -1401,14 +1418,14 @@ function OkonomiTab() {
                 )
               })
             })()}
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '0.6rem', paddingTop: '0.6rem', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={{ borderTop: '1px solid var(--dash-border)', marginTop: '0.6rem', paddingTop: '0.6rem', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>Opptjent så langt</span>
               <span style={{ fontSize: 15, fontWeight: 800, color: opptjentDenneMnd >= 0 ? '#22c55e' : '#ef4444' }}>
                 {opptjentDenneMnd >= 0 ? '+' : ''}{formatKr(opptjentDenneMnd)}
               </span>
             </div>
             {gjenståendeDager > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginTop: '0.3rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--dash-text-sekundaer)', marginTop: '0.3rem' }}>
                 <span>Projisert måned (snitt {formatKr(Math.round(snittPerDag))}/dag × {gjenståendeDager} dager igjen)</span>
                 <span style={{ fontWeight: 700, color: projisertMnd >= 0 ? '#22c55e' : '#ef4444' }}>≈ {projisertMnd >= 0 ? '+' : ''}{formatKr(projisertMnd)}</span>
               </div>
@@ -1420,27 +1437,27 @@ function OkonomiTab() {
       {/* Cash flow detail — de FAKTISKE månedlige trekkene ved månedsrull: faste
           kostnader (fasteLinjer) + LÅNEAVDRAG (rente/avdrag skilt), begge med i
           sum/netto. Nedbetalt lån trekker 0 (amortiserLaan gir tom split). */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}><Fagord id="ECO_013">KONTANTSTRØM</Fagord> (trekkes ved månedsrull)</div>
+      <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dash-text-sekundaer)', marginBottom: '0.75rem' }}><Fagord id="ECO_013">KONTANTSTRØM</Fagord> (trekkes ved månedsrull)</div>
         {fasteLinjer.map(({ navn, belop }) => (
           <div key={navn} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
-            <span style={{ color: '#64748b' }}>{navn}</span>
+            <span style={{ color: 'var(--dash-text-sekundaer)' }}>{navn}</span>
             <span style={{ color: '#f97316' }}>-{formatKr(belop)}</span>
           </div>
         ))}
         {laanNesteMnd.betaling > 0 && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
-              <span style={{ color: '#64748b' }}>Lån — <Fagord id="ECO_021">renter</Fagord></span>
+              <span style={{ color: 'var(--dash-text-sekundaer)' }}>Lån — <Fagord id="ECO_021">renter</Fagord></span>
               <span style={{ color: '#f97316' }}>-{formatKr(laanNesteMnd.renteSum)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: '0.3rem' }}>
-              <span style={{ color: '#64748b' }}>Lån — avdrag</span>
+              <span style={{ color: 'var(--dash-text-sekundaer)' }}>Lån — avdrag</span>
               <span style={{ color: '#f97316' }}>-{formatKr(laanNesteMnd.avdragSum)}</span>
             </div>
           </>
         )}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
+        <div style={{ borderTop: '1px solid var(--dash-border)', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
           <span>Netto (projisert drift − kostnader)</span>
           <span style={{ color: netFlow >= 0 ? '#22c55e' : '#ef4444' }}>
             {netFlow >= 0 ? '+' : ''}{formatKr(netFlow)}
@@ -1450,15 +1467,15 @@ function OkonomiTab() {
 
       {/* Active loans */}
       {loans.length > 0 && (
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>AKTIVE LÅN <span style={{ fontWeight: 400 }}>(<Fagord id="ECO_020">gjeld</Fagord>)</span></div>
+        <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dash-text-sekundaer)', marginBottom: '0.75rem' }}>AKTIVE LÅN <span style={{ fontWeight: 400 }}>(<Fagord id="ECO_020">gjeld</Fagord>)</span></div>
           {loans.map(loan => (
             <div key={loan.id} style={{ marginBottom: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
                 <span>Lån ({(loan.interestRate * 100).toFixed(0)}% p.a.)</span>
                 <span style={{ color: '#f97316' }}>{formatKr(loan.remainingBalance)} gjenstår</span>
               </div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>
+              <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}>
                 {formatKr(loan.monthlyPayment)}/mnd · {loan.monthsRemaining} måneder igjen
               </div>
             </div>
@@ -1467,10 +1484,10 @@ function OkonomiTab() {
       )}
 
       {/* Bank button */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem' }}>
+      <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '1rem', padding: '1.25rem' }}>
         <div style={{ fontSize: 24, marginBottom: '0.5rem' }}>🏦</div>
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: '0.3rem' }}>SpareBank 1</div>
-        <div style={{ fontSize: 13, color: '#64748b', marginBottom: '1rem' }}>
+        <div style={{ fontSize: 13, color: 'var(--dash-text-sekundaer)', marginBottom: '1rem' }}>
           Din plankvalitet: <span style={{ color: '#ffd700' }}>{qStars}</span> ({q}/5) → Rente: {RATE_LABELS[Math.max(0, Math.min(5, q))]} p.a.
         </div>
         {businessPlan.qualityScore < 1 ? (
@@ -1496,23 +1513,23 @@ function OkonomiTab() {
           <div style={{
             background: 'rgba(10,14,26,0.98)', backdropFilter: 'blur(30px)',
             border: '1px solid rgba(255,255,255,0.12)', borderRadius: '2rem',
-            padding: '2.5rem', maxWidth: 500, width: '100%', color: '#f1f5f9',
+            padding: '2.5rem', maxWidth: 500, width: '100%', color: 'var(--dash-text)',
             fontFamily: 'inherit',
           }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 36, marginBottom: '0.5rem', textAlign: 'center' }}>🏦</div>
             <h2 style={{ textAlign: 'center', fontSize: 20, fontWeight: 800, margin: '0 0 0.25rem' }}>SpareBank 1 — Lånesøknad</h2>
-            <p style={{ textAlign: 'center', fontSize: 13, color: '#64748b', marginBottom: '1.5rem' }}>
+            <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--dash-text-sekundaer)', marginBottom: '1.5rem' }}>
               Forretningsplan vurdert: <span style={{ color: '#ffd700' }}>{qStars}</span> · Rente: {(rate * 100).toFixed(0)}% p.a.
             </p>
 
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.5rem' }}>LÅNEBELØP (<Fagord id="ECO_020">gjeld</Fagord>)</div>
+              <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)', marginBottom: '0.5rem' }}>LÅNEBELØP (<Fagord id="ECO_020">gjeld</Fagord>)</div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {LOAN_AMOUNTS.map(a => (
                   <button key={a} onClick={() => setLoanAmount(a)} style={{
                     flex: 1, minWidth: 100, background: loanAmount === a ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${loanAmount === a ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: 8, padding: '0.5rem', color: '#f1f5f9',
+                    border: `1px solid ${loanAmount === a ? '#38bdf8' : 'var(--dash-border)'}`,
+                    borderRadius: 8, padding: '0.5rem', color: 'var(--dash-text)',
                     fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
                   }}>
                     {formatKr(a)}
@@ -1522,13 +1539,13 @@ function OkonomiTab() {
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.5rem' }}><Fagord id="ECO_030">NEDBETALINGSTID</Fagord></div>
+              <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)', marginBottom: '0.5rem' }}><Fagord id="ECO_030">NEDBETALINGSTID</Fagord></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 {LOAN_TERMS.map(t => (
                   <button key={t.months} onClick={() => setLoanMonths(t.months)} style={{
-                    background: loanMonths === t.months ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${loanMonths === t.months ? '#38bdf8' : 'rgba(255,255,255,0.08)'}`,
-                    borderRadius: 8, padding: '0.6rem 1rem', color: '#f1f5f9',
+                    background: loanMonths === t.months ? 'rgba(56,189,248,0.12)' : 'var(--dash-card-2)',
+                    border: `1px solid ${loanMonths === t.months ? '#38bdf8' : 'var(--dash-border)'}`,
+                    borderRadius: 8, padding: '0.6rem 1rem', color: 'var(--dash-text)',
                     fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                   }}>
                     {t.label}
@@ -1538,13 +1555,13 @@ function OkonomiTab() {
             </div>
 
             <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '1rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: '0.75rem' }}>BANKENS TILBUD</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dash-text-sekundaer)', marginBottom: '0.75rem' }}>BANKENS TILBUD</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.4rem', fontSize: 14 }}>
-                <span style={{ color: '#64748b' }}>Månedlig <Fagord id="ECO_029">avdrag</Fagord></span>
+                <span style={{ color: 'var(--dash-text-sekundaer)' }}>Månedlig <Fagord id="ECO_029">avdrag</Fagord></span>
                 <span style={{ fontWeight: 700, color: '#38bdf8' }}>{formatKr(monthly)}</span>
-                <span style={{ color: '#64748b' }}>Total tilbakebetaling</span>
+                <span style={{ color: 'var(--dash-text-sekundaer)' }}>Total tilbakebetaling</span>
                 <span>{formatKr(totalRepay)}</span>
-                <span style={{ color: '#64748b' }}>Total <Fagord id="ECO_021">rentekostnad</Fagord></span>
+                <span style={{ color: 'var(--dash-text-sekundaer)' }}>Total <Fagord id="ECO_021">rentekostnad</Fagord></span>
                 <span style={{ color: '#f97316' }}>{formatKr(totalInterest)}</span>
               </div>
             </div>
@@ -1556,7 +1573,7 @@ function OkonomiTab() {
             )}
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button onClick={() => setShowBank(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 99, padding: '0.75rem', color: '#94a3b8', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button onClick={() => setShowBank(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--dash-border)', borderRadius: 99, padding: '0.75rem', color: 'var(--dash-text-dempet)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 ❌ Avslå
               </button>
               <button onClick={takeLoan} style={{ flex: 2, background: 'linear-gradient(135deg,#38bdf8,#818cf8)', border: 'none', borderRadius: 99, padding: '0.75rem', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -1579,7 +1596,7 @@ const MND_FULL = ['Januar', 'Februar', 'Mars', 'April', 'Mai', 'Juni', 'Juli', '
 const budsjettFelt: React.CSSProperties = {
   width: 116, boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)',
   border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '0.4rem 0.55rem',
-  color: '#f1f5f9', fontSize: 13, fontFamily: 'inherit', textAlign: 'right',
+  color: 'var(--dash-text)', fontSize: 13, fontFamily: 'inherit', textAlign: 'right',
 }
 
 function BudsjettSeksjon() {
@@ -1632,7 +1649,7 @@ function BudsjettSeksjon() {
   return (
     <div style={{ background: 'rgba(56,189,248,0.05)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
       <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>📊 Budsjett for {MND_FULL[mnd - 1]} · År {aar}</div>
-      <p style={{ color: '#94a3b8', fontSize: 12.5, margin: '0 0 0.9rem' }}>
+      <p style={{ color: 'var(--dash-text-dempet)', fontSize: 12.5, margin: '0 0 0.9rem' }}>
         Hva tror du kommer inn og går ut denne måneden? Fyll inn beløp — du sammenligner med de faktiske tallene i månedsoppgjøret.
       </p>
 
@@ -1645,7 +1662,7 @@ function BudsjettSeksjon() {
             {INTRO.map((_, i) => <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: i === introStep ? '#00d4aa' : 'rgba(255,255,255,0.22)' }} />)}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <button onClick={ferdigIntro} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Hopp over</button>
+            <button onClick={ferdigIntro} style={{ background: 'transparent', border: 'none', color: 'var(--dash-text-sekundaer)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Hopp over</button>
             <button onClick={() => introStep < INTRO.length - 1 ? setIntroStep(introStep + 1) : ferdigIntro()}
               style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.45rem 1.2rem', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
               {introStep < INTRO.length - 1 ? 'Neste →' : 'Kom i gang!'}
@@ -1671,7 +1688,7 @@ function BudsjettSeksjon() {
                 type="number" inputMode="numeric" value={utkast[l.key] || ''} disabled={laast}
                 onChange={e => setUtkast(u => ({ ...u, [l.key]: Math.max(0, Math.round(parseFloat(e.target.value) || 0)) }))}
                 placeholder="0" style={{ ...budsjettFelt, opacity: laast ? 0.6 : 1 }} />
-              <span style={{ width: 130, flexShrink: 0, fontSize: 11, color: '#64748b', textAlign: 'right' }}>
+              <span style={{ width: 130, flexShrink: 0, fontSize: 11, color: 'var(--dash-text-sekundaer)', textAlign: 'right' }}>
                 Sist måned: {sv === null ? 'ingen historikk' : formatKr(sv)}
               </span>
             </div>
@@ -1680,7 +1697,7 @@ function BudsjettSeksjon() {
       </div>
 
       {/* Planlagt resultat (elevens budsjett) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.9rem', paddingTop: '0.7rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.9rem', paddingTop: '0.7rem', borderTop: '1px solid var(--dash-border)' }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#cbd5e1' }}>Planlagt resultat</span>
         <span style={{ fontSize: 16, fontWeight: 800, color: planResultat >= 0 ? '#22c55e' : '#ef4444' }}>
           {planResultat >= 0 ? '+' : '−'}{formatKr(Math.abs(planResultat))}
@@ -1691,7 +1708,7 @@ function BudsjettSeksjon() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: '0.9rem' }}>
           <button onClick={() => dispatch({ type: 'SET_BUDSJETT', maaned: key, budsjett: utkast })}
             disabled={!endret}
-            style={{ background: endret ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: endret ? '#fff' : '#475569', fontWeight: 800, fontSize: 14, cursor: endret ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+            style={{ background: endret ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'var(--dash-border)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: endret ? '#fff' : '#475569', fontWeight: 800, fontSize: 14, cursor: endret ? 'pointer' : 'default', fontFamily: 'inherit' }}>
             Lagre budsjett
           </button>
           {lagret && !endret && <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>✓ Lagret</span>}
@@ -1764,7 +1781,7 @@ function NokkeltallSeksjon() {
   }
   const kanLagre = utkast.bruttofortjeneste !== '' || utkast.dekningsgrad !== '' || utkast.resultatgrad !== ''
 
-  const felt: React.CSSProperties = { width: 110, boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '0.4rem 0.55rem', color: '#f1f5f9', fontSize: 13, fontFamily: 'inherit', textAlign: 'right' }
+  const felt: React.CSSProperties = { width: 110, boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '0.4rem 0.55rem', color: 'var(--dash-text)', fontSize: 13, fontFamily: 'inherit', textAlign: 'right' }
   const rader: { label: React.ReactNode; formel: React.ReactNode; key: 'bruttofortjeneste' | 'dekningsgrad' | 'resultatgrad'; enhet: string }[] = [
     { key: 'bruttofortjeneste', enhet: 'kr', label: <Fagord id="ECO_022">Bruttofortjeneste</Fagord>,
       formel: <>Omsetning − Varekjøp = {nfmt(omsetning)} − {nfmt(varekjop)} = ?</> },
@@ -1777,29 +1794,29 @@ function NokkeltallSeksjon() {
   return (
     <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
       <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>🔢 Nøkkeltall — regn selv <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700 }}>VG2</span></div>
-      <p style={{ color: '#94a3b8', fontSize: 12.5, margin: '0 0 0.4rem' }}>
+      <p style={{ color: 'var(--dash-text-dempet)', fontSize: 12.5, margin: '0 0 0.4rem' }}>
         Regn ut nøkkeltallene fra tallene så langt i {MND_FULL[mnd - 1]}, og tast svaret ditt. Spillet retter ikke — ved månedsoppgjøret sammenligner vi ditt tall med det bokførte.
       </p>
-      <div style={{ fontSize: 11.5, color: '#cbd5e1', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.45rem 0.7rem', marginBottom: '0.9rem' }}>
-        Så langt denne måneden: <strong>Omsetning {nfmt(omsetning)} kr</strong> · <strong>Varekjøp {nfmt(varekjop)} kr</strong> · <strong>Resultat {nfmt(mdays.reduce((s, d) => s + d.resultat, 0))} kr</strong> <span style={{ color: '#64748b' }}>(vokser utover måneden)</span>
+      <div style={{ fontSize: 11.5, color: '#cbd5e1', background: 'var(--dash-card-2)', borderRadius: 8, padding: '0.45rem 0.7rem', marginBottom: '0.9rem' }}>
+        Så langt denne måneden: <strong>Omsetning {nfmt(omsetning)} kr</strong> · <strong>Varekjøp {nfmt(varekjop)} kr</strong> · <strong>Resultat {nfmt(mdays.reduce((s, d) => s + d.resultat, 0))} kr</strong> <span style={{ color: 'var(--dash-text-sekundaer)' }}>(vokser utover måneden)</span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
         {rader.map(r => (
           <div key={r.key}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{r.label} <span style={{ color: '#64748b', fontWeight: 400 }}>({r.enhet})</span></span>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--dash-text)' }}>{r.label} <span style={{ color: 'var(--dash-text-sekundaer)', fontWeight: 400 }}>({r.enhet})</span></span>
               <input type="number" inputMode="decimal" value={utkast[r.key]} placeholder="?"
                 onChange={e => setUtkast(u => ({ ...u, [r.key]: e.target.value }))} style={felt} />
             </div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, fontFamily: 'monospace' }}>{r.formel}</div>
+            <div style={{ fontSize: 11, color: 'var(--dash-text-dempet)', marginTop: 2, fontFamily: 'monospace' }}>{r.formel}</div>
           </div>
         ))}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: '0.9rem' }}>
         <button onClick={lagre} disabled={!kanLagre}
-          style={{ background: kanLagre ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 99, padding: '0.55rem 1.4rem', color: kanLagre ? '#fff' : '#475569', fontWeight: 800, fontSize: 13.5, cursor: kanLagre ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+          style={{ background: kanLagre ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'var(--dash-border)', border: 'none', borderRadius: 99, padding: '0.55rem 1.4rem', color: kanLagre ? '#fff' : '#475569', fontWeight: 800, fontSize: 13.5, cursor: kanLagre ? 'pointer' : 'default', fontFamily: 'inherit' }}>
           Lagre svar
         </button>
         {lagret && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#22c55e' }}>✓ Lagret — sammenlignes ved oppgjøret</span>}
@@ -1831,13 +1848,13 @@ function LokasjonTab() {
     return (
       <div>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 0.5rem' }}>Netthandel-oppsett</h3>
-        <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 1.5rem' }}>
+        <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0 0 1.5rem' }}>
           Du driver netthandel — du trenger ikke fysisk butikk, men du trenger en plattform og lager.
         </p>
         <div style={{ background: 'rgba(0,212,170,0.07)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: '1rem', padding: '1.25rem' }}>
           <div style={{ fontSize: 36, marginBottom: '0.5rem' }}>💻</div>
           <div style={{ fontWeight: 700 }}>Nettbutikk aktiv</div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: '0.3rem' }}>
+          <div style={{ fontSize: 13, color: 'var(--dash-text-sekundaer)', marginTop: '0.3rem' }}>
             Salgskanal: Netthandel · Kapasitet: 200 enheter
           </div>
         </div>
@@ -1848,7 +1865,7 @@ function LokasjonTab() {
   return (
     <div>
       <h3 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 0.5rem' }}>Fysisk Lokasjon</h3>
-      <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 1.5rem' }}>
+      <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0 0 1.5rem' }}>
         Finn et lokale i bykartet for å starte butikken.
       </p>
 
@@ -1856,20 +1873,20 @@ function LokasjonTab() {
         <div style={{ background: 'rgba(0,212,170,0.07)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: '1rem', padding: '1.25rem' }}>
           <div style={{ fontSize: 36, marginBottom: '0.5rem' }}>🏪</div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{state.companyName}</div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: '0.4rem' }}>
+          <div style={{ fontSize: 13, color: 'var(--dash-text-sekundaer)', marginTop: '0.4rem' }}>
             {zoneLabel[locationZone ?? ''] ?? locationZone} · {formatKr(monthlyRent)}/mnd
           </div>
-          <div style={{ fontSize: 13, color: '#64748b' }}>
+          <div style={{ fontSize: 13, color: 'var(--dash-text-sekundaer)' }}>
             Lagringskapasitet: {storageCapacity} enheter
           </div>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px dashed rgba(255,255,255,0.15)' }}>
+        <div style={{ textAlign: 'center', padding: '2rem', background: 'var(--dash-card)', borderRadius: '1rem', border: '1px dashed rgba(255,255,255,0.15)' }}>
           <div style={{ fontSize: 48, marginBottom: '1rem' }}>🗺️</div>
-          <p style={{ fontSize: 15, color: '#94a3b8', marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: 15, color: 'var(--dash-text-dempet)', marginBottom: '1.5rem' }}>
             Ingen lokasjon valgt ennå. Gå ut i bykartet og finn et "TIL LEIE"-skilt.
           </p>
-          <div style={{ fontSize: 13, color: '#64748b' }}>Lukk dashboardet for å utforske byen</div>
+          <div style={{ fontSize: 13, color: 'var(--dash-text-sekundaer)' }}>Lukk dashboardet for å utforske byen</div>
         </div>
       )}
     </div>
@@ -1946,7 +1963,7 @@ function ProdukterTab() {
     <div>
       <div style={{ marginBottom: '1.25rem' }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Varelager</h3>
-        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
+        <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0.2rem 0 0' }}>
           Velg antall → klikk Bestill. Pengene trekkes med en gang, og varene
           ankommer neste morgen.
         </p>
@@ -1966,14 +1983,14 @@ function ProdukterTab() {
             return (
               <div key={p.id} style={{
                 display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem 0.75rem',
-                background: isMain ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)',
+                background: isMain ? 'rgba(255,215,0,0.08)' : 'var(--dash-card)',
                 border: isMain ? '1px solid rgba(255,215,0,0.35)' : '1px solid rgba(255,255,255,0.06)',
                 borderRadius: 10, padding: '0.5rem 0.7rem',
               }}>
                 <span style={{ fontSize: 16 }}>{p.icon}</span>
-                <span style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 12 }}>{isMain && '⭐ '}{p.name}</span>
+                <span style={{ fontWeight: 700, color: 'var(--dash-text)', fontSize: 12 }}>{isMain && '⭐ '}{p.name}</span>
                 <span style={{ color: '#00d4aa', fontSize: 12 }}>{p.stock} stk</span>
-                <span style={{ fontSize: 12, color: '#64748b' }}>· Kostpris: {formatKr(p.costPrice)}</span>
+                <span style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}>· Kostpris: {formatKr(p.costPrice)}</span>
 
                 <button
                   onClick={() => dispatch({ type: 'SET_MAIN_PRODUCT', id: p.id })}
@@ -1983,7 +2000,7 @@ function ProdukterTab() {
                     background: isMain ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.06)',
                     border: `1px solid ${isMain ? '#ffd70066' : 'rgba(255,255,255,0.15)'}`,
                     borderRadius: 6, padding: '1px 7px', fontSize: 10, fontWeight: 700,
-                    color: isMain ? '#ffd700' : '#94a3b8', cursor: 'pointer', fontFamily: 'inherit',
+                    color: isMain ? '#ffd700' : 'var(--dash-text-dempet)', cursor: 'pointer', fontFamily: 'inherit',
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -2011,12 +2028,12 @@ function ProdukterTab() {
             {state.incomingOrders.map((o, i) => (
               <div key={`${o.productId}_${o.bestiltDag}_${i}`} style={{
                 display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem 0.75rem',
-                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--dash-card)', border: '1px solid rgba(255,255,255,0.06)',
                 borderRadius: 10, padding: '0.5rem 0.7rem',
               }}>
-                <span style={{ fontWeight: 700, color: '#f1f5f9', fontSize: 12 }}>{productName(o.productId)}</span>
+                <span style={{ fontWeight: 700, color: 'var(--dash-text)', fontSize: 12 }}>{productName(o.productId)}</span>
                 <span style={{ color: '#7dd3fc', fontSize: 12 }}>{o.qty} stk</span>
-                <span style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8' }}>
+                <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--dash-text-dempet)' }}>
                   {getActiveIndustryDefinition().forsyning.ankomstEtikett(o.ankomstDag)}
                 </span>
               </div>
@@ -2042,8 +2059,8 @@ function ProdukterTab() {
 
           return (
             <div key={item.id} style={{
-              background: gikkTom ? 'rgba(248,113,113,0.07)' : 'rgba(255,255,255,0.03)',
-              border: gikkTom ? '1px solid rgba(248,113,113,0.45)' : '1px solid rgba(255,255,255,0.08)',
+              background: gikkTom ? 'rgba(248,113,113,0.07)' : 'var(--dash-card)',
+              border: gikkTom ? '1px solid rgba(248,113,113,0.45)' : '1px solid var(--dash-border)',
               borderRadius: '1rem', padding: '1rem',
             }}>
               {/* Item header + innkjøpspris. IKKE anbefalt utsalgspris — ingen
@@ -2074,30 +2091,30 @@ function ProdukterTab() {
                   <div style={{ fontSize: 11, color: '#475569' }}>Maks etterspørsel: {item.maxDemandPerMonth} stk/mnd</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>Innkjøp: {formatKr(item.costPrice)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}>Innkjøp: {formatKr(item.costPrice)}</div>
                 </div>
               </div>
 
               {/* Order row */}
               <div style={{
                 display: 'flex', gap: '0.75rem', alignItems: 'center',
-                background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.75rem',
+                background: 'var(--dash-card-2)', borderRadius: '0.75rem', padding: '0.75rem',
               }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Antall å bestille</div>
+                  <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', marginBottom: 4 }}>Antall å bestille</div>
                   <input
                     data-testid={`qty-${item.id}`}
                     type="number" min={1} max={500} value={qty}
                     onChange={e => setQty(item.id, Math.max(1, parseInt(e.target.value) || 1))}
                     style={{
-                      width: '100%', background: 'rgba(255,255,255,0.08)',
+                      width: '100%', background: 'var(--dash-border)',
                       border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
-                      padding: '6px 10px', color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit',
+                      padding: '6px 10px', color: 'var(--dash-text)', fontSize: 14, fontFamily: 'inherit',
                     }}
                   />
                 </div>
                 <div style={{ textAlign: 'center', minWidth: 80 }}>
-                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Totalkostnad</div>
+                  <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', marginBottom: 2 }}>Totalkostnad</div>
                   <div style={{ fontSize: 15, fontWeight: 800, color: canAfford ? '#22c55e' : '#ef4444' }}>
                     {formatKr(totalCost)}
                   </div>
@@ -2112,7 +2129,7 @@ function ProdukterTab() {
                   style={{
                     background: canAfford
                       ? 'linear-gradient(135deg,#00d4aa,#0d9488)'
-                      : 'rgba(255,255,255,0.08)',
+                      : 'var(--dash-border)',
                     border: 'none', borderRadius: 8, padding: '0.6rem 1.25rem',
                     color: canAfford ? '#fff' : '#475569',
                     fontWeight: 700, fontSize: 14, cursor: canAfford ? 'pointer' : 'not-allowed',
@@ -2153,8 +2170,8 @@ function ProdukterTab() {
                     type="number" min={0} max={500} value={redigerQty}
                     onChange={e => setRedigerQty(Math.max(0, parseInt(e.target.value) || 0))}
                     style={{
-                      width: 84, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: 6, padding: '5px 9px', color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit',
+                      width: 84, background: 'var(--dash-border)', border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 6, padding: '5px 9px', color: 'var(--dash-text)', fontSize: 14, fontFamily: 'inherit',
                     }}
                   />
                   <button
@@ -2169,14 +2186,14 @@ function ProdukterTab() {
                     onClick={() => setRedigerer(null)}
                     style={{
                       background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
-                      padding: '5px 12px', color: '#94a3b8', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      padding: '5px 12px', color: 'var(--dash-text-dempet)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                     }}
                   >Avbryt</button>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>0 = kanseller bestillingen</span>
+                  <span style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)' }}>0 = kanseller bestillingen</span>
                 </div>
               )}
               {kansellertId === item.id && (
-                <div data-testid={`kansellert-${item.id}`} style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div data-testid={`kansellert-${item.id}`} style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--dash-text-dempet)', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span>✓</span><span>Bestilling kansellert</span>
                 </div>
               )}
@@ -2224,7 +2241,7 @@ function LagreBar({ label, dirty, nyligLagret, lagretMin, onSave }: {
         </button>
       </div>
       {lagretMin != null && (
-        <span style={{ fontSize: 11, color: '#64748b' }}>Sist lagret kl. {hhmm(BALANCE.klokke.apneMinutt + lagretMin)} (spilltid)</span>
+        <span style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)' }}>Sist lagret kl. {hhmm(BALANCE.klokke.apneMinutt + lagretMin)} (spilltid)</span>
       )}
     </div>
   )
@@ -2279,7 +2296,7 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
         <div>
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Prissetting</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Sett <Fagord id="ECO_031">utsalgspris</Fagord> per produkt</p>
+          <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0.2rem 0 0' }}>Sett <Fagord id="ECO_031">utsalgspris</Fagord> per produkt</p>
         </div>
         {lagreBar}
       </div>
@@ -2289,7 +2306,7 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
       <div style={{
         background: 'rgba(0,212,170,0.05)', border: '1px solid rgba(0,212,170,0.18)',
         borderRadius: '0.75rem', padding: '0.7rem 1rem', marginBottom: '1rem',
-        fontSize: 12.5, color: '#94a3b8', lineHeight: 1.7,
+        fontSize: 12.5, color: 'var(--dash-text-dempet)', lineHeight: 1.7,
       }}>
         <strong style={{ color: '#cbd5e1', fontWeight: 700 }}>Måter å sette pris på:</strong>{' '}
         <Fagord id="MKT_048">kostnadsbasert</Fagord>, <Fagord id="MKT_049">konkurransebasert</Fagord> og{' '}
@@ -2306,7 +2323,7 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
         background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)',
         borderRadius: '0.75rem', padding: '0.75rem 1rem', marginBottom: '1.25rem',
       }}>
-        <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>
+        <p style={{ color: 'var(--dash-text-dempet)', fontSize: 12, margin: 0 }}>
           📊 Se hva konkurrenter i nærheten tar for lignende varer — gjelder varene du har ført NÅ.
         </p>
         <button
@@ -2315,7 +2332,7 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
           title={allResearched ? 'Kjøp på nytt for å dekke nyere varer' : undefined}
           style={{
             background: state.money >= 2_500 ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.05)',
-            border: `1px solid ${state.money >= 2_500 ? 'rgba(56,189,248,0.4)' : 'rgba(255,255,255,0.1)'}`,
+            border: `1px solid ${state.money >= 2_500 ? 'rgba(56,189,248,0.4)' : 'var(--dash-border)'}`,
             borderRadius: 8, padding: '0.5rem 1rem', whiteSpace: 'nowrap',
             color: state.money >= 2_500 ? '#38bdf8' : '#475569',
             fontSize: 13, fontWeight: 700, cursor: state.money >= 2_500 ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
@@ -2333,12 +2350,12 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
           const researched = researchedIds.has(p.id)
           const range = competitorRange(p.markedsPris)
           return (
-            <div key={p.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem', padding: '1.25rem' }}>
+            <div key={p.id} style={{ background: 'var(--dash-card-2)', border: '1px solid var(--dash-border)', borderRadius: '1rem', padding: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: 24 }}>{p.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}><Fagord id="ECO_006">Innkjøp</Fagord>: {formatKr(p.costPrice)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}><Fagord id="ECO_006">Innkjøp</Fagord>: {formatKr(p.costPrice)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <input
@@ -2346,11 +2363,11 @@ function PriserTab({ utkast, setUtkast, lagretMin, setLagretMin }: {
                     type="number" min={0} step={1} value={p.retailPrice || ''} placeholder="sett pris"
                     onChange={e => setPrice(p.id, parseInt(e.target.value) || 0)}
                     style={{
-                      width: 100, textAlign: 'right', background: 'rgba(255,255,255,0.08)',
+                      width: 100, textAlign: 'right', background: 'var(--dash-border)',
                       border: `1px solid ${p.retailPrice > 0 ? 'rgba(255,255,255,0.18)' : 'rgba(245,158,11,0.6)'}`, borderRadius: 6,
                       padding: '4px 8px', color: '#38bdf8', fontSize: 18, fontWeight: 800, fontFamily: 'inherit',
                     }}
-                  /> <span style={{ fontSize: 13, color: '#64748b' }}>kr</span>
+                  /> <span style={{ fontSize: 13, color: 'var(--dash-text-sekundaer)' }}>kr</span>
                   <div style={{ fontSize: 12, fontWeight: 700, color: mgColor }}><Fagord id="ECO_002">Margin</Fagord>: {p.retailPrice > 0 ? `${mg}%` : '—'}</div>
                 </div>
               </div>
@@ -2418,7 +2435,7 @@ const CHANNEL_INFO: Record<DistributionChannel, { label: string; emoji: string; 
 // eleven må resonnere fra hub-tabellen (📚-lenke). Én aktiv kampanje om gangen.
 const kampFelt: React.CSSProperties = {
   boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
-  borderRadius: 8, padding: '0.35rem 0.5rem', color: '#f1f5f9', fontSize: 13, fontFamily: 'inherit',
+  borderRadius: 8, padding: '0.35rem 0.5rem', color: 'var(--dash-text)', fontSize: 13, fontFamily: 'inherit',
 }
 
 function KampanjeSeksjon() {
@@ -2466,7 +2483,7 @@ function KampanjeSeksjon() {
     } })
   }
 
-  const kort: React.CSSProperties = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '0.7rem 0.85rem', marginBottom: '0.7rem' }
+  const kort: React.CSSProperties = { background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 10, padding: '0.7rem 0.85rem', marginBottom: '0.7rem' }
 
   // ── Aktiv kampanje: status (ingen ny planlegging før den er ferdig) ──
   if (aktiv) {
@@ -2477,7 +2494,7 @@ function KampanjeSeksjon() {
         <p style={{ color: '#cbd5e1', fontSize: 13, margin: '0 0 0.6rem' }}>
           Dag {aktiv.dagerKjort} av {aktiv.varighet} — {igjen} {igjen === 1 ? 'dag' : 'dager'} igjen. Steng dagene for å fullføre; da kommer effektrapporten.
         </p>
-        <div style={{ fontSize: 12.5, color: '#94a3b8' }}>
+        <div style={{ fontSize: 12.5, color: 'var(--dash-text-dempet)' }}>
           Mål: øke {aktiv.maalType === 'kunder' ? 'antall kunder' : 'salget'} med {aktiv.maalProsent} % ·
           Kanaler: {aktiv.kanaler.map(k => kanalById(k.kanalId)?.navn ?? k.kanalId).join(', ')} ·
           Budsjett: {formatKr(aktiv.kanaler.reduce((s, k) => s + k.krPerDag, 0))}/dag
@@ -2488,7 +2505,7 @@ function KampanjeSeksjon() {
           <MarkedsplanOppsummering
             situasjon={aktiv.situasjon} maalType={aktiv.maalType} maalProsent={aktiv.maalProsent}
             segmenter={aktiv.segmenter} kanaler={aktiv.kanaler} varighet={aktiv.varighet}
-            evaluering={<span style={{ color: '#94a3b8' }}>Kommer i effektrapporten når kampanjen er ferdig.</span>} />
+            evaluering={<span style={{ color: 'var(--dash-text-dempet)' }}>Kommer i effektrapporten når kampanjen er ferdig.</span>} />
         </div>
         {IS_DEV_COORDS && (
           <button onClick={() => dispatch({ type: 'DEV_SPOL_KAMPANJE' })}
@@ -2504,7 +2521,7 @@ function KampanjeSeksjon() {
   return (
     <div style={{ background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.28)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '1.5rem' }}>
       <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>📣 Kampanje — planlegg</div>
-      <p style={{ color: '#94a3b8', fontSize: 12.5, margin: '0 0 0.9rem' }}>
+      <p style={{ color: 'var(--dash-text-dempet)', fontSize: 12.5, margin: '0 0 0.9rem' }}>
         Sett et mål, velg målgruppe, kanal og periode. Effekten avhenger av om kanalen når målgruppa di — sjekk kildene før du velger.
       </p>
 
@@ -2517,7 +2534,7 @@ function KampanjeSeksjon() {
             {KAMP_INTRO.map((_, i) => <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: i === introStep ? '#00d4aa' : 'rgba(255,255,255,0.22)' }} />)}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <button onClick={ferdigIntro} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Hopp over</button>
+            <button onClick={ferdigIntro} style={{ background: 'transparent', border: 'none', color: 'var(--dash-text-sekundaer)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Hopp over</button>
             <button onClick={() => introStep < KAMP_INTRO.length - 1 ? setIntroStep(introStep + 1) : ferdigIntro()}
               style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.45rem 1.2rem', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
               {introStep < KAMP_INTRO.length - 1 ? 'Neste →' : 'Kom i gang!'}
@@ -2549,13 +2566,13 @@ function KampanjeSeksjon() {
             const på = segmenter.includes(a)
             return (
               <button key={a} onClick={() => toggleSegment(a)} style={{
-                background: på ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${på ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: 99, padding: '0.3rem 0.9rem', color: på ? '#00d4aa' : '#94a3b8', fontSize: 12.5, fontWeight: på ? 700 : 400, cursor: 'pointer', fontFamily: 'inherit',
+                background: på ? 'rgba(0,212,170,0.15)' : 'var(--dash-card-2)', border: `1px solid ${på ? '#00d4aa' : 'var(--dash-border)'}`,
+                borderRadius: 99, padding: '0.3rem 0.9rem', color: på ? '#00d4aa' : 'var(--dash-text-dempet)', fontSize: 12.5, fontWeight: på ? 700 : 400, cursor: 'pointer', fontFamily: 'inherit',
               }}>{a}</button>
             )
           })}
         </div>
-        <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 5 }}>Forhåndsvalgt fra Målgruppe-fanen — juster om kampanjen retter seg mot en annen gruppe.</div>
+        <div style={{ fontSize: 10.5, color: 'var(--dash-text-sekundaer)', marginTop: 5 }}>Forhåndsvalgt fra Målgruppe-fanen — juster om kampanjen retter seg mot en annen gruppe.</div>
       </div>
 
       {/* c) KANAL + DAGSBUDSJETT */}
@@ -2565,7 +2582,7 @@ function KampanjeSeksjon() {
         <a href={KOMMUNIKASJONSKANALER_RUTE} target="_blank" rel="noopener noreferrer"
           style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, background: 'rgba(168,85,247,0.14)', border: '1px solid rgba(168,85,247,0.55)', borderRadius: 10, padding: '0.55rem 0.8rem', color: '#c084fc', fontSize: 12.5, fontWeight: 800, textDecoration: 'none' }}>
           <span style={{ fontSize: 16 }}>🧠</span>
-          <span style={{ flex: 1 }}>Hvem bruker hvilke medier? <span style={{ fontWeight: 400, color: '#94a3b8' }}>— sjekk før du velger kanal</span></span>
+          <span style={{ flex: 1 }}>Hvem bruker hvilke medier? <span style={{ fontWeight: 400, color: 'var(--dash-text-dempet)' }}>— sjekk før du velger kanal</span></span>
           <span>↗</span>
         </a>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2575,13 +2592,13 @@ function KampanjeSeksjon() {
               <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button onClick={() => toggleKanal(k.id)} style={{
                   flex: 1, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'inherit',
-                  background: valgt ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${valgt ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+                  background: valgt ? 'rgba(0,212,170,0.1)' : 'var(--dash-card-2)', border: `1px solid ${valgt ? '#00d4aa' : 'var(--dash-border)'}`,
                   borderRadius: 8, padding: '0.4rem 0.6rem',
                 }}>
                   <span style={{ fontSize: 16 }}>{k.emoji}</span>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{k.navn}</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--dash-text)' }}>{k.navn}</span>
                   {!k.ekte && <span style={{ fontSize: 9.5, color: '#f59e0b', fontStyle: 'italic' }}>fiktivt medium</span>}
-                  <span style={{ fontSize: 11, color: '#64748b' }}>fra {formatKr(kanalDagspris(k.id))}/dag</span>
+                  <span style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)' }}>fra {formatKr(kanalDagspris(k.id))}/dag</span>
                 </button>
                 {valgt && (
                   <input type="number" min={kanalDagspris(k.id)} step={100} value={valgt.krPerDag} onChange={e => setKr(k.id, parseFloat(e.target.value) || 0)}
@@ -2598,7 +2615,7 @@ function KampanjeSeksjon() {
         <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc', marginBottom: 6 }}>4 · VARIGHET</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input type="range" min={3} max={7} step={1} value={varighet} onChange={e => setVarighet(parseInt(e.target.value))} style={{ flex: 1, accentColor: '#a855f7' }} />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', width: 60 }}>{varighet} dager</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dash-text)', width: 60 }}>{varighet} dager</span>
         </div>
       </div>
 
@@ -2618,28 +2635,28 @@ function KampanjeSeksjon() {
         </label>
         {salgOn && (
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {prisedeVarer.length === 0 && <div style={{ fontSize: 12, color: '#64748b' }}>Ingen prisede varer ennå.</div>}
+            {prisedeVarer.length === 0 && <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}>Ingen prisede varer ennå.</div>}
             {prisedeVarer.map(p => {
               const valgt = salgsvarer.find(v => v.productId === p.id)
               return (
                 <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button onClick={() => toggleSalgsvare(p.id, p.retailPrice)} style={{ flex: 1, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', background: valgt ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${valgt ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, padding: '0.35rem 0.6rem', color: '#f1f5f9', fontSize: 12.5 }}>
-                    {p.icon} {p.name} <span style={{ color: '#64748b' }}>· ord. {formatKr(p.retailPrice)}</span>
+                  <button onClick={() => toggleSalgsvare(p.id, p.retailPrice)} style={{ flex: 1, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', background: valgt ? 'rgba(0,212,170,0.1)' : 'var(--dash-card-2)', border: `1px solid ${valgt ? '#00d4aa' : 'var(--dash-border)'}`, borderRadius: 8, padding: '0.35rem 0.6rem', color: 'var(--dash-text)', fontSize: 12.5 }}>
+                    {p.icon} {p.name} <span style={{ color: 'var(--dash-text-sekundaer)' }}>· ord. {formatKr(p.retailPrice)}</span>
                   </button>
                   {valgt && <input type="number" min={0} value={valgt.nyPris} onChange={e => setNyPris(p.id, parseFloat(e.target.value) || 0)} title="ny pris" style={{ ...kampFelt, width: 90, textAlign: 'right' }} />}
                 </div>
               )
             })}
-            <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2 }}>⚖️ <Fagord id="MKT_054">Førpris</Fagord>-regelen: en vare må ha hatt ordinær pris i minst 2 uker før du kan sette den ned. Brudd gir tilsynsbrev etter kampanjen.</div>
+            <div style={{ fontSize: 10.5, color: 'var(--dash-text-sekundaer)', marginTop: 2 }}>⚖️ <Fagord id="MKT_054">Førpris</Fagord>-regelen: en vare må ha hatt ordinær pris i minst 2 uker før du kan sette den ned. Brudd gir tilsynsbrev etter kampanjen.</div>
           </div>
         )}
       </div>
 
       {/* Total + start */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-        <div style={{ fontSize: 13 }}>Total kampanjekostnad: <strong style={{ color: '#f97316' }}>{formatKr(kostnad)}</strong> <span style={{ color: '#64748b', fontSize: 11 }}>({formatKr(kanaler.reduce((s, k) => s + k.krPerDag, 0))}/dag × {varighet})</span></div>
+        <div style={{ fontSize: 13 }}>Total kampanjekostnad: <strong style={{ color: '#f97316' }}>{formatKr(kostnad)}</strong> <span style={{ color: 'var(--dash-text-sekundaer)', fontSize: 11 }}>({formatKr(kanaler.reduce((s, k) => s + k.krPerDag, 0))}/dag × {varighet})</span></div>
         <button onClick={start} disabled={!kanStarte}
-          style={{ background: kanStarte ? 'linear-gradient(135deg,#a855f7,#7c3aed)' : 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 99, padding: '0.65rem 1.6rem', color: kanStarte ? '#fff' : '#475569', fontWeight: 800, fontSize: 14, cursor: kanStarte ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
+          style={{ background: kanStarte ? 'linear-gradient(135deg,#a855f7,#7c3aed)' : 'var(--dash-border)', border: 'none', borderRadius: 99, padding: '0.65rem 1.6rem', color: kanStarte ? '#fff' : '#475569', fontWeight: 800, fontSize: 14, cursor: kanStarte ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
           Start kampanje
         </button>
       </div>
@@ -2687,7 +2704,7 @@ function MarkedsforingTab() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <div>
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Markedsføring</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>
+          <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0.2rem 0 0' }}>
             Kampanje = kort støt mot et mål. Løpende = jevn synlighet.
           </p>
         </div>
@@ -2701,7 +2718,7 @@ function MarkedsforingTab() {
 
       {/* ── SEKSJON 2: LØPENDE SYNLIGHET (månedlig budsjett per kanal) ── */}
       <div style={{ fontSize: 14, fontWeight: 800, color: '#cbd5e1', margin: '0.5rem 0 0.75rem' }}>📻 LØPENDE SYNLIGHET — månedlig</div>
-      <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 0.9rem' }}>
+      <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 12, margin: '0 0 0.9rem' }}>
         Månedlig budsjett per kanal for jevn synlighet. Effekten avhenger — som for kampanjen — av om kanalen når målgruppa di.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
@@ -2735,13 +2752,13 @@ function MarkedsforingTab() {
           ].map(a => (
             <button key={a.id} onClick={() => setAppeal(a.id as typeof appeal)}
               style={{
-                flex: 1, background: appeal === a.id ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${appeal === a.id ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+                flex: 1, background: appeal === a.id ? 'rgba(0,212,170,0.12)' : 'var(--dash-card-2)',
+                border: `1px solid ${appeal === a.id ? '#00d4aa' : 'var(--dash-border)'}`,
                 borderRadius: '0.75rem', padding: '0.75rem', cursor: 'pointer',
-                fontFamily: 'inherit', color: '#f1f5f9', textAlign: 'center',
+                fontFamily: 'inherit', color: 'var(--dash-text)', textAlign: 'center',
               }}>
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{a.label}</div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>{a.desc}</div>
+              <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}>{a.desc}</div>
             </button>
           ))}
         </div>
@@ -2765,7 +2782,7 @@ function DistribusjonTab() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Distribusjon</h3>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0' }}>Hvor kundene kan kjøpe av deg — velg salgskanaler.</p>
+          <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0.2rem 0 0' }}>Hvor kundene kan kjøpe av deg — velg salgskanaler.</p>
         </div>
         <button onClick={save} style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.6rem 1.5rem', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
           Lagre ✓
@@ -2778,8 +2795,8 @@ function DistribusjonTab() {
           return (
             <div key={ch} onClick={() => !locked && toggleChannel(ch)}
               style={{
-                background: active ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${active ? '#00d4aa55' : 'rgba(255,255,255,0.08)'}`,
+                background: active ? 'rgba(0,212,170,0.08)' : 'var(--dash-card)',
+                border: `1px solid ${active ? '#00d4aa55' : 'var(--dash-border)'}`,
                 borderRadius: '1rem', padding: '1rem',
                 cursor: ch === 'physicalStore' ? 'default' : locked ? 'not-allowed' : 'pointer',
                 opacity: locked ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: '1rem',
@@ -2787,7 +2804,7 @@ function DistribusjonTab() {
               <span style={{ fontSize: 28 }}>{info.emoji}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{info.label}</div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>{info.desc}</div>
+                <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}>{info.desc}</div>
                 {locked && <div style={{ fontSize: 11, color: '#f97316', marginTop: 2 }}>🔒 Krever Nivå {info.requiresLevel}</div>}
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -2800,8 +2817,8 @@ function DistribusjonTab() {
           )
         })}
       </div>
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', padding: '0.75rem 1rem', fontSize: 14, display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ color: '#64748b' }}>Total kanalkostnad:</span>
+      <div style={{ background: 'var(--dash-card-2)', borderRadius: '0.75rem', padding: '0.75rem 1rem', fontSize: 14, display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ color: 'var(--dash-text-sekundaer)' }}>Total kanalkostnad:</span>
         <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(channelMonthlyCost)}/mnd</span>
       </div>
     </div>
@@ -2846,26 +2863,84 @@ type OrgDrag = { kind: 'nyRolle' | 'emp' | 'funksjon'; id: string }
 // STEG 1 «Hvem gjør hva?» (rolleoppgaver på personer) → STEG 2 org-kartet.
 // Steg 1 er utgangspunktet, ikke en lås — eleven kan endre alt i steg 2.
 function PersonaleTab() {
-  const [steg, setSteg] = useState<1 | 2>(1)
+  const { state } = useGame()
+  const [visning, setVisning] = useState<'ansett' | 'organiser'>('ansett')
   return (
     <div>
       <div style={{ marginBottom: '1.1rem' }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Personale</h3>
-        <p style={{ color: '#64748b', fontSize: 13, margin: '0.2rem 0 0.7rem' }}>
-          Først: hvem gjør hva? I en liten bedrift har som regel én person flere
-          roller. Deretter bygger du organisasjonskartet.
+        <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0.2rem 0 0.7rem' }}>
+          Ansett folk etter hvert som du trenger dem. Organiseringen (org-kart,
+          vaktliste) er noe du gjør når du faktisk har noen å organisere.
         </p>
-        {/* Steg-veksler */}
-        <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: 3, gap: 3 }}>
-          {([[1, '① Hvem gjør hva?'], [2, '② Organisasjonskart']] as const).map(([n, label]) => (
-            <button key={n} onClick={() => setSteg(n)} style={{
-              background: steg === n ? 'rgba(0,212,170,0.14)' : 'transparent',
-              border: `1px solid ${steg === n ? '#00d4aa' : 'transparent'}`,
+        <div style={{ display: 'inline-flex', background: 'var(--dash-card-2)', border: '1px solid var(--dash-border)', borderRadius: 10, padding: 3, gap: 3 }}>
+          {([['ansett', '👥 Ansett'], ['organiser', `🗂️ Organiser${state.employees.length ? ` (${state.employees.length})` : ''}`]] as const).map(([n, label]) => (
+            <button key={n} onClick={() => setVisning(n)} style={{
+              background: visning === n ? 'rgba(0,212,170,0.14)' : 'transparent',
+              border: `1px solid ${visning === n ? '#00d4aa' : 'transparent'}`,
               borderRadius: 8, padding: '0.35rem 0.9rem', cursor: 'pointer', fontFamily: 'inherit',
-              color: steg === n ? '#00d4aa' : '#94a3b8', fontSize: 12.5, fontWeight: 700,
+              color: visning === n ? '#00d4aa' : 'var(--dash-text-dempet)', fontSize: 12.5, fontWeight: 700,
             }}>{label}</button>
           ))}
         </div>
+      </div>
+      {visning === 'ansett' ? <AnsettView /> : <OrganiserView />}
+    </div>
+  )
+}
+
+// ── ANSETT-visning: rekruttering + kort liste over egne ansatte ─────────────
+function AnsettView() {
+  const { state } = useGame()
+  const [role, setRole] = useState<EmployeeRole>('selger')
+  const [level, setLevel] = useState<EmployeeLevel>('junior')
+  return (
+    <div>
+      <RekrutteringPanel role={role} setRole={setRole} level={level} setLevel={setLevel} />
+      {state.employees.length > 0 && (
+        <div style={{ marginTop: '1rem' }}>
+          <SectionTittel emoji="🧑‍🤝‍🧑" tekst="Dine ansatte" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            {state.employees.map(e => {
+              const paVakt = e.grenId && rolleDef(e.role)?.vaktrolle && e.vakt
+              const status = paVakt ? '🟢 På vakt' : e.grenId ? '⚪ Disponert' : '🪑 På benken'
+              return (
+                <div key={e.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: 'var(--dash-card)', border: '1px solid var(--dash-border)',
+                  borderRadius: 10, padding: '0.55rem 0.8rem', fontSize: 12.5,
+                }}>
+                  <span style={{ color: 'var(--dash-text)', fontWeight: 700 }}>{e.navn}</span>
+                  <span style={{ color: 'var(--dash-text-sekundaer)' }}>{rolleTittel(e.role)} · {LEVEL_INFO[e.level].label}</span>
+                  <span style={{ color: 'var(--dash-text-dempet)' }}>{status}</span>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: '#475569', marginTop: '0.5rem' }}>
+            Gå til «🗂️ Organiser» for å plassere folk på vakt og sette opp
+            organisasjonskartet.
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── ORGANISER-visning: dagens to-stegs org-bygging (uendret innhold) ────────
+function OrganiserView() {
+  const [steg, setSteg] = useState<1 | 2>(1)
+  return (
+    <div>
+      <div style={{ display: 'inline-flex', background: 'var(--dash-card-2)', border: '1px solid var(--dash-border)', borderRadius: 10, padding: 3, gap: 3, marginBottom: '1.1rem' }}>
+        {([[1, '① Hvem gjør hva?'], [2, '② Organisasjonskart']] as const).map(([n, label]) => (
+          <button key={n} onClick={() => setSteg(n)} style={{
+            background: steg === n ? 'rgba(0,212,170,0.14)' : 'transparent',
+            border: `1px solid ${steg === n ? '#00d4aa' : 'transparent'}`,
+            borderRadius: 8, padding: '0.35rem 0.9rem', cursor: 'pointer', fontFamily: 'inherit',
+            color: steg === n ? '#00d4aa' : 'var(--dash-text-dempet)', fontSize: 12.5, fontWeight: 700,
+          }}>{label}</button>
+        ))}
       </div>
       {steg === 1 ? <HvemGjorHvaSteg onNeste={() => setSteg(2)} /> : <OrgKartSteg />}
     </div>
@@ -2874,8 +2949,6 @@ function PersonaleTab() {
 
 function OrgKartSteg() {
   const { state, dispatch } = useGame()
-  const [role, setRole] = useState<EmployeeRole>('selger')
-  const [level, setLevel] = useState<EmployeeLevel>('junior')
   const [drag, setDrag] = useState<OrgDrag | null>(null)          // hva som dras
   const [over, setOver] = useState<string | null>(null)           // hover-mål (highlight)
   const [viserRefleksjon, setViserRefleksjon] = useState(false)
@@ -2912,7 +2985,7 @@ function OrgKartSteg() {
 
   return (
     <div>
-      <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 1.1rem' }}>
+      <p style={{ color: 'var(--dash-text-sekundaer)', fontSize: 13, margin: '0 0 1.1rem' }}>
         Bygg organisasjonen selv: dra roller fra paletten inn i kartet for å
         opprette funksjoner → ansett inn i dem → sett Salg på vakt. Lønn
         trekkes månedlig — også for udisponerte. (Steg 1 fylte inn et
@@ -2927,7 +3000,7 @@ function OrgKartSteg() {
           borderRadius: 12, padding: '0.5rem 1.1rem',
         }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: '#ffd700' }}>👑 Daglig leder — Deg</div>
-          <div style={{ fontSize: 10, color: '#94a3b8' }}>Gratis arbeidskraft · Junior-kapasitet</div>
+          <div style={{ fontSize: 10, color: 'var(--dash-text-dempet)' }}>Gratis arbeidskraft · Junior-kapasitet</div>
         </div>
         <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.2)', margin: '0 auto' }} />
       </div>
@@ -2947,8 +3020,8 @@ function OrgKartSteg() {
                 <div key={r.id}
                   {...sone(`f_${r.id}`, d => d.kind === 'emp' && draggetEmp(d)?.role === r.id, d => dispatch({ type: 'ASSIGN_EMPLOYEE_BRANCH', id: d.id, grenId: r.id }))}
                   style={{
-                    background: aktiv ? `${r.farge}1e` : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${aktiv ? r.farge : 'rgba(255,255,255,0.09)'}`,
+                    background: aktiv ? `${r.farge}1e` : 'var(--dash-card)',
+                    border: `1px solid ${aktiv ? r.farge : 'var(--dash-border)'}`,
                     borderRadius: 12, padding: '0.55rem 0.5rem', minHeight: 92,
                     transition: 'background 0.12s, border 0.12s',
                   }}>
@@ -2962,7 +3035,7 @@ function OrgKartSteg() {
                       <span style={{ fontSize: 13 }}>{r.emoji}</span>
                       <span style={{ fontSize: 12, fontWeight: 800, color: r.farge }}>{r.funksjon}</span>
                     </div>
-                    <div style={{ fontSize: 9, color: '#64748b' }}>
+                    <div style={{ fontSize: 9, color: 'var(--dash-text-sekundaer)' }}>
                       {r.vaktrolle ? 'Gulvvakt · kapasitet' : r.maanedseffekt ? 'Månedseffekt' : 'Organisasjon'}
                     </div>
                   </div>
@@ -2979,7 +3052,7 @@ function OrgKartSteg() {
             })}
           </div>
         ) : (
-          <div style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center' }}>
+          <div style={{ fontSize: 12.5, color: 'var(--dash-text-sekundaer)', textAlign: 'center' }}>
             Kartet har bare deg. Dra et <span style={{ color: '#00d4aa' }}>rollekort</span> fra
             paletten under hit for å opprette din første funksjon.
           </div>
@@ -3005,8 +3078,8 @@ function OrgKartSteg() {
                 }}>
                 <span style={{ fontSize: 15 }}>{r.emoji}</span>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>{r.funksjon}</div>
-                  <div style={{ fontSize: 9, color: '#94a3b8' }}>{r.kjerne ? 'Kjernerolle' : 'Bransjerolle'}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dash-text)' }}>{r.funksjon}</div>
+                  <div style={{ fontSize: 9, color: 'var(--dash-text-dempet)' }}>{r.kjerne ? 'Kjernerolle' : 'Bransjerolle'}</div>
                 </div>
               </div>
             ))}
@@ -3023,16 +3096,16 @@ function OrgKartSteg() {
       <div {...sone('benk', d => d.kind === 'emp', d => dispatch({ type: 'ASSIGN_EMPLOYEE_BRANCH', id: d.id, grenId: null }))}
         style={{
           background: over === 'benk' ? 'rgba(148,163,184,0.14)' : 'rgba(255,255,255,0.02)',
-          border: `1px dashed ${over === 'benk' ? '#94a3b8' : 'rgba(255,255,255,0.14)'}`,
+          border: `1px dashed ${over === 'benk' ? 'var(--dash-text-dempet)' : 'rgba(255,255,255,0.14)'}`,
           borderRadius: 12, padding: '0.7rem 0.8rem', marginBottom: '1.4rem',
         }}>
-        <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--dash-text-dempet)', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
           🪑 PERSONALBENK · udisponert ({benk.length})
         </div>
         {benk.length > 0 ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
             {benk.map(e => (
-              <DragCard key={e.id} emp={e} farge="#94a3b8" compact
+              <DragCard key={e.id} emp={e} farge="var(--dash-text-dempet)" compact
                 onDragStart={startDrag({ kind: 'emp', id: e.id })}
                 onFire={() => dispatch({ type: 'FIRE_EMPLOYEE', id: e.id })} />
             ))}
@@ -3047,12 +3120,12 @@ function OrgKartSteg() {
       {/* VAKTLISTE */}
       <SectionTittel emoji="🗓️" tekst="Vaktliste · dagsmal (gjelder alle dager)" />
       <div style={{
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--dash-card)', border: '1px solid var(--dash-border)',
         borderRadius: 12, padding: '0.75rem', marginBottom: '1.4rem',
       }}>
         <div style={{ display: 'flex', paddingLeft: 128, marginBottom: 4 }}>
           {VAKT_LUKER.map(t => (
-            <div key={t} style={{ flex: 1, fontSize: 9, color: '#64748b', textAlign: 'left' }}>{String(t).padStart(2, '0')}</div>
+            <div key={t} style={{ flex: 1, fontSize: 9, color: 'var(--dash-text-sekundaer)', textAlign: 'left' }}>{String(t).padStart(2, '0')}</div>
           ))}
           <div style={{ width: 24 }} />
         </div>
@@ -3064,7 +3137,7 @@ function OrgKartSteg() {
             onSet={v => dispatch({ type: 'SET_EMPLOYEE_SHIFT', id: e.id, vakt: v })} />
         ))}
         {salgsIVakt.length === 0 && (
-          <div style={{ fontSize: 12, color: '#64748b', padding: '0.4rem 0 0.1rem' }}>
+          <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)', padding: '0.4rem 0 0.1rem' }}>
             Opprett en <span style={{ color: '#00d4aa' }}>Salg</span>-funksjon og disponer selgere der for å sette dem på vakt.
           </div>
         )}
@@ -3088,7 +3161,7 @@ function OrgKartSteg() {
       </button>
       {viserRefleksjon && (
         <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+          background: 'var(--dash-card)', border: '1px solid var(--dash-border)',
           borderRadius: 12, padding: '0.85rem 1rem', marginBottom: '1.4rem',
           display: 'flex', flexDirection: 'column', gap: '0.55rem',
         }}>
@@ -3100,7 +3173,7 @@ function OrgKartSteg() {
               </div>
             ))
           ) : (
-            <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.45 }}>
+            <div style={{ fontSize: 13, color: 'var(--dash-text-dempet)', lineHeight: 1.45 }}>
               🤔 Ingen åpenbare hull akkurat nå — men fortsett å vurdere organiseringen etter hvert som bedriften vokser.
             </div>
           )}
@@ -3109,25 +3182,21 @@ function OrgKartSteg() {
 
       {/* Total lønn */}
       <div style={{
-        background: 'rgba(255,255,255,0.03)', borderRadius: '0.75rem',
+        background: 'var(--dash-card)', borderRadius: '0.75rem',
         padding: '0.6rem 1rem', fontSize: 14, marginBottom: '1.4rem',
         display: 'flex', justifyContent: 'space-between',
       }}>
-        <span style={{ color: '#64748b' }}>Total lønn per måned:</span>
+        <span style={{ color: 'var(--dash-text-sekundaer)' }}>Total lønn per måned:</span>
         <span style={{ fontWeight: 700, color: '#f97316' }}>{formatKr(state.monthlyPayroll)}</span>
       </div>
-
-      {/* REKRUTTERING — erstatter gammel ett-klikks Ansett. */}
-      <RekrutteringPanel opprettede={opprettede} role={role} setRole={setRole} level={level} setLevel={setLevel} />
     </div>
   )
 }
 
 // ── RekrutteringPanel — stillingsannonse → søkerliste → intervju → ansett ────
 function RekrutteringPanel({
-  opprettede, role, setRole, level, setLevel,
+  role, setRole, level, setLevel,
 }: {
-  opprettede: RolleDef[]
   role: EmployeeRole
   setRole: (r: EmployeeRole) => void
   level: EmployeeLevel
@@ -3141,37 +3210,23 @@ function RekrutteringPanel({
   const [apentIntervju, setApentIntervju] = useState<string | null>(null)
   const [intervjuSvar, setIntervjuSvar] = useState<Record<string, Record<string, string>>>({})
 
-  const valgtRolle = opprettede.some(r => r.id === role) ? role : (opprettede[0]?.id ?? null)
+  const alleRoller = getActiveIndustryDefinition().roller
+  const valgtRolle = alleRoller.some(r => r.id === role) ? role : (alleRoller[0]?.id ?? null)
   const rek = state.aktivRekruttering
   const canAfford = state.money >= tilbudtLonn
-
-  if (opprettede.length === 0) {
-    return (
-      <div style={{
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: '1rem', padding: '1.25rem',
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: '0.5rem' }}>Rekruttering</div>
-        <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-          Opprett en funksjon i org-kartet først (dra et rollekort fra paletten
-          inn i kartet) — så kan du lyse ut stillingen.
-        </div>
-      </div>
-    )
-  }
 
   // ── SØKERLISTE (utlysning aktiv) ──────────────────────────────────────────
   if (rek) {
     const rolleTitt = rolleTittel(rek.rolleId)
     return (
       <div style={{
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--dash-card)', border: '1px solid var(--dash-border)',
         borderRadius: '1rem', padding: '1.25rem',
       }}>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: '0.3rem' }}>
           Søkere til {rolleTitt} ({LEVEL_INFO[rek.level].label})
         </div>
-        <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: '1rem' }}>
+        <div style={{ fontSize: 11.5, color: 'var(--dash-text-sekundaer)', marginBottom: '1rem' }}>
           Tilbudt lønn: {formatKr(rek.tilbudtLonn)}/mnd ·
           Ønskede egenskaper: {rek.onskedeEgenskaper.length
             ? rek.onskedeEgenskaper.map(egenskapLabel).join(', ')
@@ -3193,71 +3248,87 @@ function RekrutteringPanel({
           ))}
         </div>
         <button onClick={() => dispatch({ type: 'CANCEL_RECRUITMENT' })} style={{
-          width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 8, padding: '0.6rem', color: '#94a3b8', fontFamily: 'inherit',
+          width: '100%', background: 'var(--dash-card-2)', border: '1px solid var(--dash-border)',
+          borderRadius: 8, padding: '0.6rem', color: 'var(--dash-text-dempet)', fontFamily: 'inherit',
           fontSize: 12.5, cursor: 'pointer',
         }}>✕ Avlys utlysningen</button>
       </div>
     )
   }
 
-  // ── STILLINGSANNONSE (skjema) ─────────────────────────────────────────────
+  // ── STILLINGSANNONSE (skjema) — fysisk notatlapp (DEL B) ──────────────────
+  // Papir-palett, HARDKODET (unntatt dashbord-temaet, DEL C): en fysisk lapp
+  // endrer ikke farge når du bytter lys i rommet. Kalam = håndskrift.
   const bankEgenskaper = EGENSKAPER.filter(e => !onskedeEgenskaper.includes(e.id))
+  const PAPIR = '#f4ecd8', PAPIR_LYS = '#faf4e2', BLEKK = '#3a2f1f', BLEKK_SVAK = '#6b5d45'
+  const KALAM = "'Kalam', cursive"
+  const papirKant = '1px solid rgba(58,47,31,0.28)'
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: '1rem', padding: '1.25rem',
+      position: 'relative',
+      background: PAPIR, border: '1px solid rgba(58,47,31,0.18)',
+      borderRadius: '0.4rem', padding: '1.5rem 1.25rem 1.25rem',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transform: 'rotate(-0.6deg)',
+      color: BLEKK, fontFamily: KALAM,
     }}>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: '1rem' }}>Lys ut ny stilling</div>
+      {/* «tape»-remse øverst i midten */}
+      <div style={{
+        position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%) rotate(-2.5deg)',
+        width: 78, height: 20, background: 'rgba(255,251,214,0.55)',
+        border: '1px solid rgba(210,190,120,0.4)', boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+      }} />
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: '1rem', fontFamily: KALAM, color: BLEKK, textAlign: 'center' }}>
+        📌 Vi søker folk
+      </div>
 
       <div style={{ marginBottom: '0.75rem' }}>
-        <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Stilling</div>
+        <div style={{ fontSize: 12.5, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: KALAM }}>Stilling</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          {opprettede.map(r => (
+          {alleRoller.map(r => (
             <button key={r.id} onClick={() => setRole(r.id)} style={{
               flex: '1 1 30%', minWidth: 100,
-              background: valgtRolle === r.id ? 'rgba(0,212,170,0.12)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${valgtRolle === r.id ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: '0.6rem', padding: '0.55rem 0.4rem',
-              cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
+              background: valgtRolle === r.id ? 'rgba(0,212,170,0.16)' : PAPIR_LYS,
+              border: `1px solid ${valgtRolle === r.id ? '#0d9488' : 'rgba(58,47,31,0.22)'}`,
+              borderRadius: '0.5rem', padding: '0.55rem 0.4rem',
+              cursor: 'pointer', fontFamily: KALAM, color: BLEKK,
             }}>
               <div style={{ fontSize: 17, marginBottom: 2 }}>{r.emoji}</div>
-              <div style={{ fontSize: 11, fontWeight: 700 }}>{r.tittel}</div>
+              <div style={{ fontSize: 11.5, fontWeight: 700 }}>{r.tittel}</div>
             </button>
           ))}
         </div>
       </div>
 
       <div style={{ marginBottom: '1rem' }}>
-        <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>Nivå</div>
+        <div style={{ fontSize: 12.5, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: KALAM }}>Nivå</div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {(Object.keys(LEVEL_INFO) as EmployeeLevel[]).map(lv => (
             <button key={lv} onClick={() => { setLevel(lv); setTilbudtLonn(LEVEL_INFO[lv].salary) }} style={{
-              flex: 1, background: level === lv ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${level === lv ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: '0.6rem', padding: '0.6rem',
-              cursor: 'pointer', fontFamily: 'inherit', color: '#f1f5f9',
+              flex: 1, background: level === lv ? 'rgba(56,189,248,0.16)' : PAPIR_LYS,
+              border: `1px solid ${level === lv ? '#0284c7' : 'rgba(58,47,31,0.22)'}`,
+              borderRadius: '0.5rem', padding: '0.6rem',
+              cursor: 'pointer', fontFamily: KALAM, color: BLEKK,
             }}>
               <div style={{ fontSize: 13, fontWeight: 700 }}>{LEVEL_INFO[lv].label}</div>
               {valgtRolle && rolleDef(valgtRolle)?.vaktrolle && (
-                <div style={{ fontSize: 10, color: '#00d4aa', marginTop: 1 }}>{BALANCE.kapasitetPerTime[lv]}/t</div>
+                <div style={{ fontSize: 10.5, color: '#0d9488', marginTop: 1 }}>{BALANCE.kapasitetPerTime[lv]}/t</div>
               )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Stillingsannonse med drag-inn egenskaper */}
+      {/* Håndskrevet annonselinje + drag-inn egenskaper */}
       <div style={{ marginBottom: '1rem' }}>
-        <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>
-          Stillingsannonse — dra inn inntil 3 ønskede egenskaper
-        </div>
         <div style={{
-          background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.25)',
-          borderRadius: 10, padding: '0.7rem 0.85rem', marginBottom: '0.5rem', fontSize: 13, color: '#f1f5f9',
+          fontSize: 18, fontWeight: 700, fontFamily: KALAM, color: BLEKK,
+          marginBottom: '0.5rem', lineHeight: 1.3,
         }}>
           {state.companyName || 'Bedriften'} søker ny{' '}
-          <strong>{valgtRolle ? rolleTittel(valgtRolle) : '…'}</strong>.
+          <span style={{ textDecoration: 'underline' }}>{valgtRolle ? rolleTittel(valgtRolle) : '…'}</span>
+        </div>
+        <div style={{ fontSize: 12, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: KALAM }}>
+          Vi ser etter (dra inn inntil 3):
         </div>
         <div
           onDragOver={e => { if (egenskapDrag) { e.preventDefault(); setEgenskapOver('slot') } }}
@@ -3270,21 +3341,22 @@ function RekrutteringPanel({
             setEgenskapDrag(null); setEgenskapOver(null)
           }}
           style={{
-            background: egenskapOver === 'slot' ? 'rgba(0,212,170,0.08)' : 'transparent',
-            border: `1px dashed ${egenskapOver === 'slot' ? '#00d4aa' : 'rgba(255,255,255,0.14)'}`,
-            borderRadius: 10, padding: '0.6rem', minHeight: 44, marginBottom: '0.5rem',
+            background: egenskapOver === 'slot' ? 'rgba(13,148,136,0.1)' : 'transparent',
+            border: `1.5px dashed ${egenskapOver === 'slot' ? '#0d9488' : 'rgba(58,47,31,0.35)'}`,
+            borderRadius: 8, padding: '0.6rem', minHeight: 44, marginBottom: '0.5rem',
             display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center',
           }}>
           {onskedeEgenskaper.length === 0 && (
-            <span style={{ fontSize: 11.5, color: '#475569' }}>Dra egenskaper hit (maks 3)</span>
+            <span style={{ fontSize: 12.5, color: 'rgba(58,47,31,0.5)', fontFamily: KALAM }}>Dra egenskaper hit (maks 3)</span>
           )}
           {onskedeEgenskaper.map(id => (
             <div key={id} draggable
               onDragStart={() => setEgenskapDrag(id)}
               title="Dra ned i banken for å fjerne"
               style={{
-                cursor: 'grab', background: 'rgba(0,212,170,0.14)', border: '1px solid #00d4aa',
-                borderRadius: 8, padding: '0.3rem 0.6rem', fontSize: 12, fontWeight: 700, color: '#00d4aa',
+                cursor: 'grab', background: PAPIR_LYS, border: `1px solid ${BLEKK_SVAK}`,
+                borderRadius: '3px 7px 3px 7px', padding: '0.3rem 0.6rem', fontSize: 12.5, fontWeight: 700,
+                color: BLEKK, fontFamily: KALAM, boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
               }}>{egenskapLabel(id)}</div>
           ))}
         </div>
@@ -3297,31 +3369,32 @@ function RekrutteringPanel({
             setEgenskapDrag(null); setEgenskapOver(null)
           }}
           style={{
-            background: egenskapOver === 'bank' ? 'rgba(248,113,113,0.08)' : 'rgba(255,255,255,0.02)',
-            border: `1px dashed ${egenskapOver === 'bank' ? '#f87171' : 'rgba(255,255,255,0.1)'}`,
-            borderRadius: 10, padding: '0.55rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem',
+            background: egenskapOver === 'bank' ? 'rgba(180,83,9,0.1)' : 'rgba(58,47,31,0.03)',
+            border: `1.5px dashed ${egenskapOver === 'bank' ? '#b45309' : 'rgba(58,47,31,0.28)'}`,
+            borderRadius: 8, padding: '0.55rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem',
           }}>
           {bankEgenskaper.map(e => (
             <div key={e.id} draggable onDragStart={() => setEgenskapDrag(e.id)}
               title="Dra opp i annonsen"
               style={{
-                cursor: 'grab', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.14)',
-                borderRadius: 8, padding: '0.3rem 0.6rem', fontSize: 12, color: '#cbd5e1',
+                cursor: 'grab', background: PAPIR_LYS, border: papirKant,
+                borderRadius: '3px 7px 3px 7px', padding: '0.3rem 0.6rem', fontSize: 12.5,
+                color: BLEKK, fontFamily: KALAM,
               }}>{e.label}</div>
           ))}
         </div>
       </div>
 
-      {/* Lønn */}
+      {/* Lønn — skjemakontroll (lys inputfelt, ikke papir) */}
       <div style={{ marginBottom: '1.1rem' }}>
-        <div style={{ fontSize: 12, color: '#64748b', marginBottom: '0.4rem' }}>
+        <div style={{ fontSize: 12.5, color: BLEKK_SVAK, marginBottom: '0.4rem', fontFamily: KALAM }}>
           Lønn du tilbyr — <Fagord id="JUS_007">tariff</Fagord>-referanse for {LEVEL_INFO[level].label}: {formatKr(REFERANSELONN[level])}/mnd
         </div>
         <input type="number" step={500} min={Math.round(REFERANSELONN[level] * 0.5 / 500) * 500}
           value={tilbudtLonn} onChange={e => setTilbudtLonn(Math.max(0, Number(e.target.value)))}
           style={{
-            width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.14)',
-            borderRadius: 8, padding: '0.55rem 0.7rem', color: '#f1f5f9', fontFamily: 'inherit', fontSize: 14,
+            width: '100%', background: PAPIR_LYS, border: papirKant,
+            borderRadius: 6, padding: '0.55rem 0.7rem', color: BLEKK, fontFamily: KALAM, fontSize: 15, fontWeight: 700,
           }} />
       </div>
 
@@ -3332,10 +3405,10 @@ function RekrutteringPanel({
         disabled={!canAfford || !valgtRolle}
         style={{
           width: '100%',
-          background: canAfford ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(255,255,255,0.06)',
+          background: canAfford ? 'linear-gradient(135deg,#00d4aa,#0d9488)' : 'rgba(58,47,31,0.12)',
           border: 'none', borderRadius: 8, padding: '0.75rem',
-          color: canAfford ? '#fff' : '#475569',
-          fontWeight: 700, fontSize: 15, cursor: canAfford ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+          color: canAfford ? '#fff' : BLEKK_SVAK,
+          fontWeight: 700, fontSize: 15, cursor: canAfford ? 'pointer' : 'not-allowed', fontFamily: KALAM,
         }}>
         {canAfford ? '📢 Lys ut stillingen' : '💸 Ikke råd til denne lønna'}
       </button>
@@ -3354,22 +3427,29 @@ function KandidatKort({
   onSvar: (spmId: string, valgId: string) => void
   onAnsett: () => void
 }) {
+  // Papir-palett (DEL B) — søkerlappene ser ut som avrevne papirlapper, ikke
+  // mørke UI-kort. HARDKODET (unntatt dashbord-temaet).
+  const PAPIR = '#f5eeda', PAPIR_LYS = '#faf4e2', BLEKK = '#3a2f1f', BLEKK_SVAK = '#6b5d45'
+  const KALAM = "'Kalam', cursive"
   const villHaMer = kandidat.lonnsforventning > rekruttering.tilbudtLonn
+  const rot = ((kandidat.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 5) - 2) * 0.55
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
-      borderRadius: 12, padding: '0.85rem',
+      background: PAPIR, border: '1px solid rgba(58,47,31,0.18)',
+      borderRadius: '2px 8px 4px 10px', padding: '0.85rem',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.13)', transform: `rotate(${rot}deg)`,
+      color: BLEKK, fontFamily: KALAM,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>{kandidat.navn}</div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>{kandidat.erfaring}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: BLEKK, fontFamily: KALAM }}>{kandidat.navn}</div>
+          <div style={{ fontSize: 11.5, color: BLEKK_SVAK }}>{kandidat.erfaring}</div>
         </div>
-        <div style={{ textAlign: 'right', fontSize: 11 }}>
-          <div style={{ color: villHaMer ? '#f59e0b' : '#64748b' }}>
+        <div style={{ textAlign: 'right', fontSize: 11.5 }}>
+          <div style={{ color: villHaMer ? '#b45309' : BLEKK_SVAK }}>
             Ønsker: {formatKr(kandidat.lonnsforventning)}/mnd
           </div>
-          {villHaMer && <div style={{ color: '#f59e0b', fontSize: 10 }}>vil ha mer enn tilbudt</div>}
+          {villHaMer && <div style={{ color: '#b45309', fontSize: 10.5 }}>vil ha mer enn tilbudt</div>}
         </div>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.6rem' }}>
@@ -3377,23 +3457,23 @@ function KandidatKort({
           const matcher = rekruttering.onskedeEgenskaper.includes(id)
           return (
             <span key={id} style={{
-              fontSize: 10.5, padding: '0.2rem 0.5rem', borderRadius: 6,
-              background: matcher ? 'rgba(0,212,170,0.14)' : 'rgba(255,255,255,0.05)',
-              color: matcher ? '#00d4aa' : '#94a3b8',
-              border: `1px solid ${matcher ? '#00d4aa' : 'rgba(255,255,255,0.1)'}`,
+              fontSize: 11, padding: '0.2rem 0.5rem', borderRadius: '2px 6px 2px 6px', fontFamily: KALAM,
+              background: matcher ? 'rgba(13,148,136,0.16)' : PAPIR_LYS,
+              color: matcher ? '#0d7a6f' : BLEKK,
+              border: `1px solid ${matcher ? '#0d9488' : 'rgba(58,47,31,0.25)'}`,
             }}>{egenskapLabel(id)}</span>
           )
         })}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button onClick={onApneIntervju} style={{
-          flex: 1, background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.35)',
-          borderRadius: 8, padding: '0.5rem', color: '#7dd3fc', fontFamily: 'inherit',
+          flex: 1, background: 'rgba(2,132,199,0.12)', border: '1px solid #0284c7',
+          borderRadius: 7, padding: '0.5rem', color: '#0369a1', fontFamily: KALAM,
           fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
         }}>🎤 {apent ? 'Lukk intervju' : 'Intervju'}</button>
         <button onClick={onAnsett} style={{
           flex: 1, background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none',
-          borderRadius: 8, padding: '0.5rem', color: '#fff', fontFamily: 'inherit',
+          borderRadius: 7, padding: '0.5rem', color: '#fff', fontFamily: KALAM,
           fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
         }}>✅ Ansett {kandidat.navn.split(' ')[0]}</button>
       </div>
@@ -3401,19 +3481,19 @@ function KandidatKort({
         <div style={{ marginTop: '0.7rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
           {INTERVJUSPORSMAL.map(spm => (
             <div key={spm.id}>
-              <div style={{ fontSize: 12.5, color: '#cbd5e1', marginBottom: '0.4rem' }}>{spm.sporsmal}</div>
+              <div style={{ fontSize: 13, color: BLEKK, marginBottom: '0.4rem', fontFamily: KALAM, fontWeight: 700 }}>{spm.sporsmal}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 {spm.valg.map(v => (
                   <button key={v.id} onClick={() => onSvar(spm.id, v.id)} style={{
-                    textAlign: 'left', background: svar[spm.id] === v.id ? 'rgba(0,212,170,0.1)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${svar[spm.id] === v.id ? '#00d4aa' : 'rgba(255,255,255,0.09)'}`,
-                    borderRadius: 8, padding: '0.4rem 0.6rem', fontFamily: 'inherit',
-                    fontSize: 11.5, color: '#e2e8f0', cursor: 'pointer',
+                    textAlign: 'left', background: svar[spm.id] === v.id ? 'rgba(13,148,136,0.14)' : PAPIR_LYS,
+                    border: `1px solid ${svar[spm.id] === v.id ? '#0d9488' : 'rgba(58,47,31,0.22)'}`,
+                    borderRadius: 7, padding: '0.4rem 0.6rem', fontFamily: KALAM,
+                    fontSize: 12, color: BLEKK, cursor: 'pointer',
                   }}>{v.tekst}</button>
                 ))}
               </div>
               {svar[spm.id] && (
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: '0.3rem', fontStyle: 'italic' }}>
+                <div style={{ fontSize: 11.5, color: BLEKK_SVAK, marginTop: '0.3rem', fontStyle: 'italic', fontFamily: KALAM }}>
                   {spm.valg.find(v => v.id === svar[spm.id])?.tilbakemelding}
                 </div>
               )}
@@ -3444,7 +3524,7 @@ function HvemGjorHvaSteg({ onNeste }: { onNeste: () => void }) {
   const fordeling = state.oppgaveFordeling ?? {}
   const personer = [
     { id: 'meg', navn: 'Deg', undertittel: 'Daglig leder', emoji: '👑', farge: '#ffd700' },
-    ...state.employees.map(e => ({ id: e.id, navn: e.navn, undertittel: LEVEL_INFO[e.level].label, emoji: '🧑', farge: '#94a3b8' })),
+    ...state.employees.map(e => ({ id: e.id, navn: e.navn, undertittel: LEVEL_INFO[e.level].label, emoji: '🧑', farge: 'var(--dash-text-dempet)' })),
   ]
 
   function sone(key: string, accept: boolean, drop: () => void) {
@@ -3462,7 +3542,7 @@ function HvemGjorHvaSteg({ onNeste }: { onNeste: () => void }) {
 
   function chip(r: RolleDef, onFjern: () => void) {
     return (
-      <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: `${r.farge}1e`, border: `1px solid ${r.farge}55`, borderRadius: 99, padding: '1px 4px 1px 8px', fontSize: 11, fontWeight: 700, color: '#f1f5f9' }}>
+      <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: `${r.farge}1e`, border: `1px solid ${r.farge}55`, borderRadius: 99, padding: '1px 4px 1px 8px', fontSize: 11, fontWeight: 700, color: 'var(--dash-text)' }}>
         {r.emoji} {oppgaveNavn(r)}
         <button onClick={onFjern} title="Fjern oppgave" style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, lineHeight: 1, padding: '0 2px', fontFamily: 'inherit' }}>✕</button>
       </span>
@@ -3479,7 +3559,7 @@ function HvemGjorHvaSteg({ onNeste }: { onNeste: () => void }) {
             title="Dra på en person (eller Økonomi/regnskap til Outsourcet)"
             style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'grab', background: `${r.farge}12`, border: `1px solid ${r.farge}40`, borderRadius: 8, padding: '0.4rem 0.7rem' }}>
             <span style={{ fontSize: 15 }}>{r.emoji}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>{oppgaveNavn(r)}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--dash-text)' }}>{oppgaveNavn(r)}</span>
           </div>
         ))}
       </div>
@@ -3492,12 +3572,12 @@ function HvemGjorHvaSteg({ onNeste }: { onNeste: () => void }) {
           const aktiv = over === `p_${p.id}`
           return (
             <div key={p.id} {...sone(`p_${p.id}`, !!dragRole, () => dispatch({ type: 'SET_OPPGAVE', personId: p.id, roleId: dragRole!, on: true }))}
-              style={{ background: aktiv ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${aktiv ? '#00d4aa' : `${p.farge}55`}`, borderRadius: 12, padding: '0.6rem', minHeight: 96, transition: 'background 0.12s, border 0.12s' }}>
+              style={{ background: aktiv ? 'rgba(0,212,170,0.08)' : 'var(--dash-card)', border: `1px solid ${aktiv ? '#00d4aa' : `${p.farge}55`}`, borderRadius: 12, padding: '0.6rem', minHeight: 96, transition: 'background 0.12s, border 0.12s' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '0.5rem' }}>
                 <span style={{ fontSize: 16 }}>{p.emoji}</span>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 800, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.navn}</div>
-                  <div style={{ fontSize: 9.5, color: '#64748b' }}>{p.undertittel}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--dash-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.navn}</div>
+                  <div style={{ fontSize: 9.5, color: 'var(--dash-text-sekundaer)' }}>{p.undertittel}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -3528,8 +3608,8 @@ function HvemGjorHvaSteg({ onNeste }: { onNeste: () => void }) {
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#f59e0b' }}>−{formatKr(BALANCE.regnskapOutsourcingMnd)}/mnd</span>
               </div>
             ) : (
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                Dra <strong style={{ color: '#f1f5f9' }}>Økonomi/regnskap</strong> hit for å sette det ut til en regnskapsfører
+              <div style={{ fontSize: 12, color: 'var(--dash-text-dempet)' }}>
+                Dra <strong style={{ color: 'var(--dash-text)' }}>Økonomi/regnskap</strong> hit for å sette det ut til en regnskapsfører
                 — fast kostnad {formatKr(BALANCE.regnskapOutsourcingMnd)}/mnd, egen linje i månedsoppgjøret. (Kun regnskapet kan settes ut.)
               </div>
             )}
@@ -3547,7 +3627,7 @@ function HvemGjorHvaSteg({ onNeste }: { onNeste: () => void }) {
             </div>
           ))
         ) : (
-          <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.45 }}>🤔 Fordel oppgavene på personene — så kommer det noen spørsmål å tenke over.</div>
+          <div style={{ fontSize: 13, color: 'var(--dash-text-dempet)', lineHeight: 1.45 }}>🤔 Fordel oppgavene på personene — så kommer det noen spørsmål å tenke over.</div>
         )}
       </div>
 
@@ -3556,7 +3636,7 @@ function HvemGjorHvaSteg({ onNeste }: { onNeste: () => void }) {
         style={{ background: 'linear-gradient(135deg,#00d4aa,#0d9488)', border: 'none', borderRadius: 99, padding: '0.7rem 1.6rem', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
         Bruk fordelingen i organisasjonskartet →
       </button>
-      <p style={{ fontSize: 11, color: '#64748b', margin: '0.55rem 0 0' }}>
+      <p style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', margin: '0.55rem 0 0' }}>
         Oppgavene du har fordelt opprettes som funksjoner i kartet. Du kan endre alt der — dette er bare et utgangspunkt.
       </p>
     </div>
@@ -3588,8 +3668,8 @@ function DragCard({ emp, farge, compact, onDragStart, onFire }: {
     >
       <span style={{ fontSize: 15 }}>{rolleEmoji(emp.role)}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.navn}</div>
-        <div style={{ fontSize: 9.5, color: '#94a3b8' }}>{LEVEL_INFO[emp.level].label} · {formatKr(emp.monthlySalary)}</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--dash-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.navn}</div>
+        <div style={{ fontSize: 9.5, color: 'var(--dash-text-dempet)' }}>{LEVEL_INFO[emp.level].label} · {formatKr(emp.monthlySalary)}</div>
       </div>
       <button onClick={onFire} title="Avslutt arbeidsforhold" style={{
         background: 'transparent', border: 'none', color: '#ef4444', fontSize: 13,
@@ -3654,8 +3734,8 @@ function VaktRad({ navn, sub, farge, vakt, onSet }: {
   return (
     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
       <div style={{ width: 128, flexShrink: 0, paddingRight: 6 }}>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{navn}</div>
-        <div style={{ fontSize: 9, color: '#64748b' }}>{sub}</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--dash-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{navn}</div>
+        <div style={{ fontSize: 9, color: 'var(--dash-text-sekundaer)' }}>{sub}</div>
       </div>
       <div style={{ flex: 1, display: 'flex', gap: 2, touchAction: 'none' }}>
         {VAKT_LUKER.map((_, k) => (
@@ -3665,7 +3745,7 @@ function VaktRad({ navn, sub, farge, vakt, onSet }: {
             style={{
               flex: 1, height: 24, borderRadius: 4, cursor: 'pointer',
               background: dekket(k) ? farge : 'rgba(255,255,255,0.06)',
-              border: `1px solid ${dekket(k) ? farge : 'rgba(255,255,255,0.08)'}`,
+              border: `1px solid ${dekket(k) ? farge : 'var(--dash-border)'}`,
               transition: 'background 0.08s',
             }}
           />
@@ -3696,13 +3776,13 @@ function RapporterTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       {results.map((r, i) => (
         <div key={i} style={{
-          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+          background: 'var(--dash-card-2)', border: '1px solid var(--dash-border)',
           borderRadius: '1rem', padding: '1rem',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 15 }}>{MONTH_NAMES[r.month - 1]}</div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>
+            <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)' }}>
               Inntekt: {formatKr(r.revenue)} · Kost: {formatKr(r.costs)} · Solgt: {r.unitsSold} stk
             </div>
           </div>
@@ -3710,7 +3790,7 @@ function RapporterTab() {
             <div style={{ fontWeight: 800, fontSize: 18, color: r.profit >= 0 ? '#22c55e' : '#ef4444' }}>
               {r.profit >= 0 ? '+' : ''}{formatKr(r.profit)}
             </div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>+{r.xpEarned} XP</div>
+            <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)' }}>+{r.xpEarned} XP</div>
           </div>
         </div>
       ))}
@@ -3742,7 +3822,7 @@ function InnboksTab() {
 
   if (msgs.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+      <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--dash-text-sekundaer)' }}>
         <div style={{ fontSize: 48, marginBottom: '1rem' }}>📬</div>
         <p>Ingen meldinger ennå. Simuler en måned for å motta oppdateringer.</p>
       </div>
@@ -3767,7 +3847,7 @@ function InnboksTab() {
             <div
               key={msg.id}
               style={{
-                background: msg.read ? 'rgba(255,255,255,0.03)' : 'rgba(56,189,248,0.06)',
+                background: msg.read ? 'var(--dash-card)' : 'rgba(56,189,248,0.06)',
                 border: `1px solid ${msg.read ? 'rgba(255,255,255,0.07)' : 'rgba(56,189,248,0.25)'}`,
                 borderRadius: '0.75rem', overflow: 'hidden',
               }}
@@ -3780,7 +3860,7 @@ function InnboksTab() {
                 }}
                 style={{
                   width: '100%', background: 'transparent', border: 'none',
-                  padding: '0.75rem 1rem', cursor: 'pointer', color: '#f1f5f9',
+                  padding: '0.75rem 1rem', cursor: 'pointer', color: 'var(--dash-text)',
                   fontFamily: 'inherit', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.75rem',
                 }}
               >
@@ -3790,17 +3870,17 @@ function InnboksTab() {
                     {msg.title}
                     {!msg.read && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', flexShrink: 0, display: 'inline-block' }} />}
                   </div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                  <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)' }}>
                     {msg.date}
                     {msg.epostStatus === 'ubesvart' && msg.fristAbsDag != null && (() => {
                       const naa = epostAbsDag(state.currentYear, state.currentMonth, state.dayNumber)
                       const igjen = msg.fristAbsDag - naa
                       const tekst = igjen <= 0 ? 'Svarfrist: i dag!' : igjen === 1 ? 'Svarfrist: i morgen' : `Svarfrist: om ${igjen} dager`
-                      return <span style={{ marginLeft: 8, color: igjen <= 1 ? '#f59e0b' : '#94a3b8', fontWeight: 700 }}>⏰ {tekst}</span>
+                      return <span style={{ marginLeft: 8, color: igjen <= 1 ? '#f59e0b' : 'var(--dash-text-dempet)', fontWeight: 700 }}>⏰ {tekst}</span>
                     })()}
                   </div>
                 </div>
-                <span style={{ color: '#64748b', fontSize: 12 }}>{isOpen ? '▲' : '▼'}</span>
+                <span style={{ color: 'var(--dash-text-sekundaer)', fontSize: 12 }}>{isOpen ? '▲' : '▼'}</span>
               </button>
 
               {/* Expanded body */}
@@ -3811,7 +3891,7 @@ function InnboksTab() {
                   </p>
 
                   {msg.competenceGoal && (
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: '0.75rem' }}>
+                    <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', marginBottom: '0.75rem' }}>
                       📚 {msg.competenceGoal}
                     </div>
                   )}
@@ -3838,14 +3918,14 @@ function InnboksTab() {
                             style={{
                               background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)',
                               borderRadius: 8, padding: '0.5rem 0.75rem',
-                              color: '#f1f5f9', fontSize: 13, cursor: 'pointer',
+                              color: 'var(--dash-text)', fontSize: 13, cursor: 'pointer',
                               fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s',
                             }}
                             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(56,189,248,0.14)')}
                             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(56,189,248,0.06)')}
                           >
                             <strong>{c.text}</strong>
-                            {c.effect && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{c.effect}</div>}
+                            {c.effect && <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)', marginTop: 2 }}>{c.effect}</div>}
                           </button>
                         ))}
                       </div>
@@ -3873,13 +3953,13 @@ function InnboksTab() {
                   {msg.type === 'beredskap' && (
                     (state.beredskap.brannalarmUtfall?.rekkefolge.length ?? 0) > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.6, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
+                        <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.6, background: 'var(--dash-card-2)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
                           {(state.beredskap.brannalarmUtfall!.kvalitet === 'good' ? BRANNALARM.utfallTrygg : BRANNALARM.utfallKaos)
                             .replace('{ekte}', state.beredskap.brannalarmUtfall!.ekte ? BRANNALARM.ekteBrann : BRANNALARM.falskAlarm)}
                         </div>
                         {/* Se selv hvor det skar seg (delt komponent) */}
                         <BrannalarmSammenligning rekkefolge={state.beredskap.brannalarmUtfall!.rekkefolge} />
-                        <div style={{ fontSize: 11, color: '#64748b' }}>Se 🦺 HMS-fanen for evaluering og for å øve på nytt.</div>
+                        <div style={{ fontSize: 11, color: 'var(--dash-text-sekundaer)' }}>Se 🦺 HMS-fanen for evaluering og for å øve på nytt.</div>
                       </div>
                     ) : (
                       <BrannalarmOvelse messageId={msg.id} />
@@ -3895,9 +3975,9 @@ function InnboksTab() {
                   {msg.choices && msg.choices.length > 0 && !msg.choices[0].eventId && msg.type !== 'beredskap' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                       {msg.choices.map((c, i) => (
-                        <div key={i} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 6, padding: '0.4rem 0.6rem', fontSize: 12 }}>
-                          <span style={{ color: '#f1f5f9' }}>{c.text}</span>
-                          {c.effect && <span style={{ color: '#64748b' }}> — {c.effect}</span>}
+                        <div key={i} style={{ background: 'var(--dash-card-2)', borderRadius: 6, padding: '0.4rem 0.6rem', fontSize: 12 }}>
+                          <span style={{ color: 'var(--dash-text)' }}>{c.text}</span>
+                          {c.effect && <span style={{ color: 'var(--dash-text-sekundaer)' }}> — {c.effect}</span>}
                         </div>
                       ))}
                     </div>
@@ -3922,7 +4002,7 @@ function InnboksTab() {
 // fasit før valget (brannalarm-modellen). Fortegn + tekst, aldri kun farge.
 const EPOST_STATUS: Record<string, { ikon: string; tekst: string; farge: string }> = {
   akseptert: { ikon: '✅', tekst: 'Takket ja', farge: '#22c55e' },
-  avslatt:   { ikon: '✋', tekst: 'Takket nei', farge: '#94a3b8' },
+  avslatt:   { ikon: '✋', tekst: 'Takket nei', farge: 'var(--dash-text-dempet)' },
   levert:    { ikon: '📦', tekst: 'Levert', farge: '#22c55e' },
   sviktet:   { ikon: '⚠️', tekst: 'Ikke oppfylt', farge: '#f59e0b' },
   utlopt:    { ikon: '⌛', tekst: 'Frist utløpt', farge: '#ef4444' },
@@ -3958,7 +4038,7 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
           </span>
         )}
         {msg.epostRefleksjon && (
-          <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.6, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
+          <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.6, background: 'var(--dash-card-2)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
             🧑‍🏫 {msg.epostRefleksjon}
           </div>
         )}
@@ -3974,12 +4054,12 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, padding: '0.6rem 0.8rem', fontSize: 12.5, color: '#cbd5e1' }}>
-          <div style={{ fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>Bestillingen:</div>
+          <div style={{ fontWeight: 700, color: 'var(--dash-text)', marginBottom: 4 }}>Bestillingen:</div>
           {kb.varer.map((v, i) => (
             <div key={i}>· {v.qty} {v.navn} — leveres {kb.leveringTekst}</div>
           ))}
-          <div style={{ marginTop: 6, color: '#94a3b8' }}>Betaling ved dine priser: <strong style={{ color: '#f1f5f9' }}>{grunn.toLocaleString('nb-NO')} kr</strong></div>
-          <div style={{ marginTop: 2, color: '#94a3b8', fontSize: 11 }}>Du må ha nok på lager på leveringsdagen — bestill i forkant om du mangler.</div>
+          <div style={{ marginTop: 6, color: 'var(--dash-text-dempet)' }}>Betaling ved dine priser: <strong style={{ color: 'var(--dash-text)' }}>{grunn.toLocaleString('nb-NO')} kr</strong></div>
+          <div style={{ marginTop: 2, color: 'var(--dash-text-dempet)', fontSize: 11 }}>Du må ha nok på lager på leveringsdagen — bestill i forkant om du mangler.</div>
         </div>
 
         {/* Mengderabatt eleven avgjør */}
@@ -3988,21 +4068,21 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {[0, 0.10, 0.15].map(r => (
               <button key={r} onClick={() => setRabatt(r)}
-                style={{ background: rabatt === r ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${rabatt === r ? '#38bdf8' : 'rgba(255,255,255,0.12)'}`, borderRadius: 8, padding: '0.35rem 0.7rem', color: '#f1f5f9', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ background: rabatt === r ? 'rgba(56,189,248,0.2)' : 'var(--dash-card-2)', border: `1px solid ${rabatt === r ? '#38bdf8' : 'rgba(255,255,255,0.12)'}`, borderRadius: 8, padding: '0.35rem 0.7rem', color: 'var(--dash-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                 {r === 0 ? 'Ingen' : `${Math.round(r * 100)} %`}
               </button>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Betaling: <strong style={{ color: '#f1f5f9' }}>{betaling.toLocaleString('nb-NO')} kr</strong> — rabatt bygger kunderelasjon, men koster margin.</div>
+          <div style={{ fontSize: 11, color: 'var(--dash-text-dempet)', marginTop: 4 }}>Betaling: <strong style={{ color: 'var(--dash-text)' }}>{betaling.toLocaleString('nb-NO')} kr</strong> — rabatt bygger kunderelasjon, men koster margin.</div>
         </div>
 
         {/* VG2 (globalt klassenivå): skriftlig pristilbud (vurderingsspor) */}
         {erVg2 && (
           <div>
-            <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Skriftlig <Fagord id="SAL_004">pristilbud</Fagord> til kunden (valgfritt):</label>
+            <label style={{ fontSize: 11, color: 'var(--dash-text-dempet)', fontWeight: 600 }}>Skriftlig <Fagord id="SAL_004">pristilbud</Fagord> til kunden (valgfritt):</label>
             <textarea value={pristilbud} onChange={e => setPristilbud(e.target.value)} rows={2}
               placeholder="F.eks. «12 boller + kaffe, samlet 540 kr, levert fredag kl. 10.»"
-              style={{ width: '100%', marginTop: 4, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '0.45rem 0.6rem', color: '#f1f5f9', fontSize: 12, fontFamily: 'inherit', resize: 'vertical' }} />
+              style={{ width: '100%', marginTop: 4, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '0.45rem 0.6rem', color: 'var(--dash-text)', fontSize: 12, fontFamily: 'inherit', resize: 'vertical' }} />
           </div>
         )}
 
@@ -4025,10 +4105,10 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, padding: '0.6rem 0.8rem', fontSize: 12.5, color: '#cbd5e1' }}>
-          <div>Kjøp <strong style={{ color: '#f1f5f9' }}>{lt.antall} × {lt.navn}</strong></div>
-          <div style={{ marginTop: 4 }}>Tilbudspris: <strong style={{ color: '#f1f5f9' }}>{enhet} kr/stk</strong> ({lt.rabattProsent} % av {lt.listeprisPerEnhet} kr listepris)</div>
-          <div style={{ marginTop: 2, color: '#94a3b8' }}>Totalt: {total.toLocaleString('nb-NO')} kr</div>
-          <div style={{ marginTop: 6, color: '#94a3b8', fontSize: 11 }}>💡 Lønner det seg? Sammenlign tilbudsprisen med det du normalt betaler per enhet.</div>
+          <div>Kjøp <strong style={{ color: 'var(--dash-text)' }}>{lt.antall} × {lt.navn}</strong></div>
+          <div style={{ marginTop: 4 }}>Tilbudspris: <strong style={{ color: 'var(--dash-text)' }}>{enhet} kr/stk</strong> ({lt.rabattProsent} % av {lt.listeprisPerEnhet} kr listepris)</div>
+          <div style={{ marginTop: 2, color: 'var(--dash-text-dempet)' }}>Totalt: {total.toLocaleString('nb-NO')} kr</div>
+          <div style={{ marginTop: 6, color: 'var(--dash-text-dempet)', fontSize: 11 }}>💡 Lønner det seg? Sammenlign tilbudsprisen med det du normalt betaler per enhet.</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button style={{ ...knappJa, opacity: raakraft ? 0.5 : 1, cursor: raakraft ? 'not-allowed' : 'pointer' }} disabled={raakraft}
@@ -4048,9 +4128,9 @@ function EpostQuestBlokk({ msg }: { msg: InboxMessage }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, padding: '0.6rem 0.8rem', fontSize: 12.5, color: '#cbd5e1' }}>
-        <div><strong style={{ color: '#f1f5f9' }}>{mt.kanalNavn}</strong> — {mt.tilbyder}</div>
-        <div style={{ marginTop: 4 }}>Pris: <strong style={{ color: '#f1f5f9' }}>{mt.kostnad.toLocaleString('nb-NO')} kr</strong> for {mt.varighetDager} dager</div>
-        <div style={{ marginTop: 6, color: '#94a3b8', fontSize: 11 }}>💡 Når denne kanalen DIN målgruppe? Sjekk hvem kanalen treffer før du betaler.</div>
+        <div><strong style={{ color: 'var(--dash-text)' }}>{mt.kanalNavn}</strong> — {mt.tilbyder}</div>
+        <div style={{ marginTop: 4 }}>Pris: <strong style={{ color: 'var(--dash-text)' }}>{mt.kostnad.toLocaleString('nb-NO')} kr</strong> for {mt.varighetDager} dager</div>
+        <div style={{ marginTop: 6, color: 'var(--dash-text-dempet)', fontSize: 11 }}>💡 Når denne kanalen DIN målgruppe? Sjekk hvem kanalen treffer før du betaler.</div>
         {mt.merkekrav && erVg2 && (
           <div style={{ marginTop: 6, color: '#fbbf24', fontSize: 11 }}>⚖️ Dette er <Fagord id="JUS_008">betalt omtale</Fagord> — den må merkes som reklame.</div>
         )}
@@ -4076,7 +4156,7 @@ function KpiCard({ label, value, color, icon }: { label: string; value: string; 
       borderRadius: '1rem', padding: '1rem',
     }}>
       <div style={{ fontSize: 20, marginBottom: '0.3rem' }}>{icon}</div>
-      <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: '0.2rem' }}>{label}</div>
+      <div style={{ fontSize: 12, color: 'var(--dash-text-sekundaer)', fontWeight: 600, marginBottom: '0.2rem' }}>{label}</div>
       <div style={{ fontSize: 18, fontWeight: 800, color }}>{value}</div>
     </div>
   )
